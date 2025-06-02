@@ -131,6 +131,7 @@ dmypy.json
 # Pybuild artifacts
 .pybuild/
 .idea
+.DS_Store
 # Debhelper and dpkg build files
 debian/.debhelper/
 debian/debhelper-build-stamp
