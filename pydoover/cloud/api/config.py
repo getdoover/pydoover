@@ -4,7 +4,7 @@ import base64
 import os
 import re
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class NotSet:
@@ -53,7 +53,9 @@ class ConfigEntry:
         match = cls.pattern.match(data.strip())
 
         if match["token_expires"]:
-            token_expires = datetime.fromtimestamp(float(match["token_expires"]))
+            token_expires = datetime.fromtimestamp(
+                float(match["token_expires"]), tz=timezone.utc
+            )
         else:
             token_expires = None
 

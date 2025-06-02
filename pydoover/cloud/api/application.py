@@ -131,11 +131,10 @@ class Application:
             "image_name": self.image_name,
             "config_schema": self.config_schema,
         }
-        if include_deployment_data:
+        deployment_fp = self.base_path / "deployment"
+        if include_deployment_data and deployment_fp.exists():
             tmp_fp = Path(f"/tmp/{self.name}_deployment_data.zip")
-            shutil.make_archive(
-                str(tmp_fp.with_suffix("")), "zip", self.base_path / "deployment"
-            )
+            shutil.make_archive(str(tmp_fp.with_suffix("")), "zip", deployment_fp)
             data["deployment_data"] = base64.b64encode(tmp_fp.read_bytes()).decode(
                 "utf-8"
             )

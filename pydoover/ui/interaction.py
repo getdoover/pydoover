@@ -596,7 +596,7 @@ def slider(
 
 
 def callback(pattern: str | re.Pattern[str]):
-    """Decorator to mark a function as a UI callback.
+    r"""Decorator to mark a function as a UI callback.
 
     This accepts either a string or a compiled regex expression to match against the UI element name.
 
