@@ -19,4 +19,6 @@ jobs:
         run: ruff check --output-format=github
 
       - name: Run Tests
-        run: uv run pytest tests
+        run: |
+          uv sync --all-extras
+          uv run pytest tests
