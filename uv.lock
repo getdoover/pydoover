@@ -348,7 +348,7 @@ wheels = [
 
 [[package]]
 name = "pydoover"
-version = "0.4.0a0"
+version = "0.4.1a1"
 source = { editable = "." }
 dependencies = [
     { name = "requests" },

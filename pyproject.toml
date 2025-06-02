@@ -1,7 +1,7 @@
 [project]
 name = "pydoover"
 authors = [{ name = "Doover Team", email = "developers@doover.com" }]
-version = "0.4.0"
+version = "0.4.1a1"
 description = "Python package for interacting with Doover"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,12 +18,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-
 grpc = [
     "grpcio==1.65.1",
     "protobuf==5.28.2",
 ]
-
 reports = [
     "pytz>=2025.2",
     "tzlocal>=5.3.1",
