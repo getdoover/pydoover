@@ -3,6 +3,20 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.1
+------
+- Remove explicit imports to allow usage without optional dependencies installed.
+
+v0.4.0
+------
+- Support for new applications
+- Support for offline DDA
+- RTD documentation
+- Open source pydoover
+- Add testing structures
+- Move to UV from Pipenv
+- Add linting and automated testing
+
 v0.3.0
 -------
 - TODO (various changes from unstable 5/3/2024)
