@@ -1,0 +1,22 @@
+name: Run Linting & Tests
+
+on:
+  push:
+
+jobs:
+  run_tests:
+    name: Run Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup UV
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: 3.11
+      - uses: astral-sh/ruff-action@v3
+
+      - name: Run Linting
+        run: ruff check --output-format=github
+
+      - name: Run Tests
+        run: uv run pytest tests

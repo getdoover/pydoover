@@ -1,0 +1,29 @@
+{
+    "digital_input_count": {
+        "min": 0,
+        "max": null,
+        "name": "digital_input_count",
+        "displayName": "Digital Input Count",
+        "type": "int",
+        "default": "$device.digitalinputcount"
+    },
+    "digital_output_count": {
+        "min": 0,
+        "max": null,
+        "name": "digital_output_count",
+        "displayName": "Digital Output Count",
+        "type": "int",
+        "default": "$device.digitaloutputcount"
+    },
+    "digital_outputs_enabled": {
+        "name": "digital_outputs_enabled",
+        "displayName": "Digital Outputs Enabled",
+        "type": "bool",
+        "default": true
+    },
+    "a_funny_message": {
+        "name": "a_funny_message",
+        "displayName": "A Funny Message",
+        "type": "str"
+    }
+}

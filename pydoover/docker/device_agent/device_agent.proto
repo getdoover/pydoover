@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+package device_agent;
+
+// The doover device agent service definition.
+service deviceAgent {
+
+    rpc TestComms (TestCommsRequest) returns (TestCommsResponse) {}
+
+    rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
+
+    rpc GetChannelSubscription (ChannelSubscriptionRequest) returns (stream ChannelSubscriptionResponse) {}
+    rpc WriteToChannel (ChannelWriteRequest) returns (ChannelWriteResponse) {}
+    rpc GetDebugInfo (DebugInfoRequest) returns (DebugInfoResponse) {}
+    rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
+}
+
+message RequestHeader {
+    optional string app_id = 1;
+}
+
+message ResponseHeader {
+    bool success = 1;
+    bool cloud_synced = 2;
+    bool cloud_ready = 5;
+    optional int32 response_code = 3;
+    optional string response_message = 4;
+}
+
+message MessageDetails {
+    string message_id = 1;
+    string channel_name = 2;
+    string payload = 3;
+    string timestamp = 4;
+}
+
+message ChannelDetails {
+    string channel_name = 1;
+    optional string aggregate = 2;
+}
+
+message AgentDetails {
+    string agent_id = 1;
+    string agent_name = 2;
+    repeated ChannelDetails channels = 3;
+}
+
+message TestCommsRequest {
+    RequestHeader header = 2;
+    string message = 1;
+}
+
+message TestCommsResponse {
+    ResponseHeader response_header = 1;
+    string response = 2;
+}
+
+message MessageDetailsRequest {
+    RequestHeader header = 2;
+    string message_id = 1;
+}
+
+message MessageDetailsResponse {
+    ResponseHeader response_header = 1;
+    optional MessageDetails message = 2;
+}
+
+message ChannelDetailsRequest {
+    RequestHeader header = 2;
+    string channel_name = 1;
+}
+
+message ChannelDetailsResponse {
+    ResponseHeader response_header = 1;
+    optional ChannelDetails channel = 2;
+}
+
+message ChannelSubscriptionRequest {
+    RequestHeader header = 2;
+    string channel_name = 1;
+}
+
+message ChannelSubscriptionResponse {
+    ResponseHeader response_header = 1;
+    optional ChannelDetails channel = 2;
+    optional MessageDetails message = 3;
+}
+
+message ChannelWriteRequest {
+    RequestHeader header = 5;
+    string channel_name = 1;
+    string message_payload = 2;
+    optional bool save_log = 3;
+    optional int32 max_age = 4;
+}
+
+message DebugInfoRequest {
+    RequestHeader header = 1;
+}
+
+message ChannelWriteResponse {
+    ResponseHeader response_header = 1;
+    string message_id = 2;
+}
+
+message DebugChannelState {
+    string channel_name = 1;
+    bool active = 2;
+    float local_updated_at = 3;
+    float cloud_updated_at = 4;
+}
+
+message DebugPendingMessage {
+    string channel_name = 1;
+    string app_key = 2;
+    bool save_log = 3;
+    string payload = 4;
+    int32 publish_in = 5;
+}
+
+message DebugInfoResponse {
+    ResponseHeader response_header = 1;
+    repeated string active_callbacks = 2;
+    repeated string wss_callbacks = 3;
+    repeated string wss_aggregates = 4;
+    repeated string wss_subscriptions = 5;
+    repeated DebugChannelState channels = 6;
+    repeated DebugPendingMessage pending_messages = 7;
+    bool wss_connected = 8;
+}
+
+message TempAPITokenRequest {
+    RequestHeader header = 1;
+}
+
+message TempAPITokenResponse {
+    ResponseHeader response_header = 1;
+    string token = 2;
+    string valid_until = 3;
+    string endpoint = 4;
+}

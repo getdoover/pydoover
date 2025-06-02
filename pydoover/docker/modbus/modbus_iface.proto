@@ -1,0 +1,238 @@
+syntax = "proto3";
+
+package modbus_iface;
+
+// The doover modbus service definition.
+service modbusIface {
+
+    rpc testComms (testCommsRequest) returns (testCommsResponse) {}
+
+    rpc openBus (openBusRequest) returns (openBusResponse) {}
+    rpc listBus (listBusRequest) returns (listBusResponse) {}
+    rpc busStatus (busStatusRequest) returns (busStatusResponse) {}
+    rpc closeBus (closeBusRequest) returns (closeBusResponse) {}
+
+    rpc readRegisters (readRegisterRequest) returns (readRegisterResponse) {}
+    rpc writeRegisters (writeRegisterRequest) returns (writeRegisterResponse) {}
+    rpc scheduleWriteRegisters (scheduleWriteRegisterRequest) returns (scheduleWriteRegisterResponse) {}
+
+    rpc readRegisterSubscription (readRegisterSubscriptionRequest) returns (stream readRegisterSubscriptionResponse) {}
+
+    rpc createServer (createServerRequest) returns (createServerResponse) {}
+    rpc listServer (listServerRequest) returns (listServerResponse) {}
+    rpc closeServer (closeServerRequest) returns (closeServerResponse) {}
+
+    rpc setServerRegisters (setServerRegistersRequest) returns (setServerRegistersResponse) {}
+    rpc getServerRegisters (getServerRegistersRequest) returns (getServerRegistersResponse) {}
+    rpc scheduleServerRegisters (scheduleServerRegistersRequest) returns (scheduleServerRegistersResponse) {}
+}
+
+message busStatus {
+    string bus_id = 1;
+    bool open = 2;
+    optional serialBusSettings serial_settings = 3;
+    optional ethernetBusSettings ethernet_settings = 4;
+}
+
+message responseHeader {
+    bool success = 1;
+    optional int32 response_code = 2;
+    optional string response_message = 3;
+    repeated busStatus bus_status = 4;
+}
+
+message serverResponseHeader {
+    bool success = 1;
+    optional int32 response_code = 2;
+    optional string response_message = 3;
+}
+
+message testCommsRequest {
+    string message = 1;
+}
+
+message testCommsResponse {
+    responseHeader response_header = 1;
+    string response = 2;
+}
+
+message serialBusSettings {
+    string port = 1;
+    int32 baud = 2;
+    optional string modbus_method = 3;
+    optional int32 data_bits = 4;
+    optional string parity = 5;
+    optional int32 stop_bits = 6;
+    optional float timeout = 7;
+}
+
+message ethernetBusSettings {
+    string ip = 1;
+    int32 port = 2;
+    optional string modbus_method = 3;
+    optional float timeout = 4;
+}
+
+message openBusRequest {
+    string bus_id = 1;
+    oneof bus_settings {
+        serialBusSettings serial_settings = 2;
+        ethernetBusSettings ethernet_settings = 3;
+    }
+}
+
+message openBusResponse {
+    responseHeader response_header = 1;
+    string bus_id = 2;
+}
+
+message listBusRequest {
+}
+
+message listBusResponse {
+    responseHeader response_header = 1;
+    repeated busStatus bus_status = 2;
+}
+
+message busStatusRequest {
+    string bus_id = 1;
+}
+
+message busStatusResponse {
+    responseHeader response_header = 1;
+    busStatus bus_status = 2;
+}
+
+message closeBusRequest {
+    string bus_id = 1;
+}
+
+message closeBusResponse {
+    responseHeader response_header = 1;
+    string bus_id = 2;
+}
+
+message readRegisterRequest {
+    string bus_id = 1;
+    int32 modbus_id = 2;
+    int32 register_type = 3;
+    int32 address = 4;
+    int32 count = 5;
+}
+
+message readRegisterResponse {
+    responseHeader response_header = 1;
+    int32 response_code = 2;
+    repeated int32 values = 3;
+}
+
+message writeRegisterRequest {
+    string bus_id = 1;
+    int32 modbus_id = 2;
+    int32 register_type = 3;
+    int32 address = 4;
+    repeated int32 values = 5;
+}
+
+message writeRegisterResponse {
+    responseHeader response_header = 1;
+    int32 response_code = 2;
+}
+
+message scheduleWriteRegisterRequest {
+    string bus_id = 1;
+    int32 register_type = 2;
+    int32 address = 3;
+    repeated int32 values = 4;
+    int32 delay_secs = 5;
+}
+
+message scheduleWriteRegisterResponse {
+    responseHeader response_header = 1;
+    string bus_id = 2;
+    int32 delay_secs = 3;
+}
+
+message readRegisterSubscriptionRequest {
+    string bus_id = 1;
+    int32 modbus_id = 2;
+    int32 register_type = 3;
+    int32 address = 4;
+    int32 count = 5;
+    int32 poll_secs = 6;
+}
+
+message readRegisterSubscriptionResponse {
+    responseHeader response_header = 1;
+    string bus_id = 2;
+    int32 response_code = 3;
+    repeated int32 values = 4;
+}
+
+message createServerRequest {
+    string type = 1;
+    optional int32 port = 2;
+    optional string host = 3;
+    repeated int32 holding_registers = 4;
+    repeated int32 input_registers = 5;
+    repeated bool coils = 6;
+    repeated bool discrete_inputs = 7;
+    int32 modbus_id = 8;
+}
+
+message createServerResponse {
+    serverResponseHeader response_header = 1;
+    string response = 2;
+}
+
+message listServerRequest {
+}
+
+message listServerResponse {
+    serverResponseHeader response_header = 1;
+    repeated string servers = 2;
+}
+
+message closeServerRequest {
+    int32 port = 1;
+}
+
+message closeServerResponse {
+    serverResponseHeader response_header = 1;
+    int32 port = 2;
+}
+
+message setServerRegistersRequest {
+    int32 port = 1;
+    int32 function_code = 2;
+    repeated int32 address = 3;
+    repeated int32 values = 4;
+}
+
+message setServerRegistersResponse {
+    serverResponseHeader response_header = 1;
+}
+
+message getServerRegistersRequest {
+    int32 port = 1;
+    int32 function_code = 2;
+    int32 address = 3;
+    int32 count = 4;
+}
+
+message getServerRegistersResponse {
+    serverResponseHeader response_header = 1;
+    repeated int32 values = 2;
+}
+
+message scheduleServerRegistersRequest {
+    int32 port = 1;
+    int32 function_code = 2;
+    int32 address = 3;
+    repeated int32 values = 4;
+    float delay_secs = 5;
+}
+
+message scheduleServerRegistersResponse {
+    serverResponseHeader response_header = 1;
+}

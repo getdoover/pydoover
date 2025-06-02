@@ -1,0 +1,70 @@
+name: Release Package to APT Repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'I want to manually trigger an apt release, without publishing a GitHub release (not recommended!)'
+        required: true
+        type: boolean
+  release:
+    types: [ created ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    name: Build Debian package
+    runs-on: ubuntu-22.04
+
+    container:
+      image: spaneng/doover-apt-cicd-base:latest
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+          role-to-assume: ${{ vars.AWS_APT_DEPLOY_ROLE_ARN }}
+
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          cd /tmp
+          apt update
+          echo 'y' | mk-build-deps -i ${GITHUB_WORKSPACE}/debian/control
+
+      - name: Build package
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+          gbp buildpackage \
+            --git-ignore-branch \
+            --git-upstream-tree=${GITHUB_SHA} \
+            --git-builder="debuild -b -us -uc" \
+            --git-export-dir=debian/build/
+          echo --- debian/build/
+          find debian/build/
+
+      - name: Publish package
+        if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' &&  github.event.inputs.confirmation != 'false')
+
+        env:
+          REPO_SIGNING_KEY_ID: ${{ vars.APT_RELEASE_REPO_SIGNING_KEY_ID }}
+          REPO_SIGNING_KEY_PASSPHRASE: ${{ secrets.APT_RELEASE_REPO_SIGNING_KEY_PASSPHRASE }}
+
+        run: |
+          export GPG_TTY=`tty`
+          export PACKAGE_NAME=$(dh_listpackages)
+          aws s3 cp s3://doover-apt-repo-private/apt_gpg_private.backup - | \
+            gpg --import --pinentry-mode=loopback --no-tty --batch --yes --passphrase ${REPO_SIGNING_KEY_PASSPHRASE}
+          aws s3 cp debian/build/*.deb s3://doover-apt-packages/${PACKAGE_NAME}/
+          deb-s3 upload \
+            debian/build/*.deb \
+            --lock \
+            --bucket "apt.u.doover.com" \
+            --s3-region "${AWS_DEFAULT_REGION}" \
+            --sign "${REPO_SIGNING_KEY_ID}" \
+            --gpg-options "\-\-pinentry-mode=loopback \-\-no-tty \-\-batch \-\-yes \-\-passphrase ${REPO_SIGNING_KEY_PASSPHRASE}"

@@ -1,0 +1,18 @@
+Source: pydoover
+Section: misc
+Priority: extra
+Maintainer: Doover Team <developers@doover.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all-dev,
+               pybuild-plugin-pyproject,
+               python3-hatchling,
+               python3-setuptools
+Homepage: https://doover.com
+Standards-Version: 4.7.0
+
+Package: doover-pydoover
+Description: pydoover main package
+Architecture: all
+Depends: ${misc:Depends},
+         ${python3:Depends}

@@ -1,0 +1,4 @@
+{
+    "deployment_package_dir": "simple_app/",
+    "application_config": "simple_app/app_config.json"
+}

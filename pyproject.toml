@@ -1,0 +1,63 @@
+[project]
+name = "pydoover"
+authors = [{ name = "Doover Team", email = "developers@doover.com" }]
+version = "0.4.0a"
+description = "Python package for interacting with Doover"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["doover", "pydoover", "doover cli"]
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Programming Language :: Python',
+    'Intended Audience :: Developers',
+    "Natural Language :: English",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "requests==2.32.3",
+]
+
+[project.optional-dependencies]
+
+grpc = [
+    "grpcio==1.65.1",
+    "protobuf==5.28.2",
+]
+
+reports = [
+    "pytz>=2025.2",
+    "tzlocal>=5.3.1",
+    "xlsxwriter>=3.2.2",
+]
+test = [
+    "jsonschema>=4.23.0",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+docs = [
+    "sphinx>=8.2.3",
+    "sphinx-rtd-theme>=3.0.2",
+]
+
+[project.urls]
+Homepage = "https://doover.com"
+
+[project.scripts]
+pydoover = "pydoover.cli:entrypoint"
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "session"
+
+[tool.ruff]
+exclude = [
+    "pydoover/docker/device_agent/grpc_stubs",
+    "pydoover/docker/modbus/grpc_stubs",
+    "pydoover/docker/platform/grpc_stubs",
+]
