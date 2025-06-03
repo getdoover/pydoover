@@ -3,6 +3,13 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.2
+------
+- ConfigEntries are tz aware
+- Make interaction docstring raw
+- Only include deployment data if it exists
+- Don't export some unnecessary _key values for app config
+
 v0.4.1
 ------
 - Remove explicit imports to allow usage without optional dependencies installed.
