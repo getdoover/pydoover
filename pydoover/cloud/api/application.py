@@ -152,6 +152,13 @@ class Application:
             if config_path.exists()
             else {self.name: {}}
         )
-        data[self.name].update(**self.to_dict())
+
+        upstream = self.to_dict()
+        upstream.pop("long_description", None)
+        upstream.pop("owner_org_key", None)
+        upstream.pop("code_repo_key", None)
+        upstream.pop("container_registry_profile_key", None)
+
+        data[self.name].update(**upstream)
         config_path.write_text(json.dumps(data, indent=4))
         log.info(f"Configuration saved to {config_path}")
