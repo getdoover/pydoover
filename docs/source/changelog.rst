@@ -3,6 +3,10 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.3
+------
+- Fix accidental extra argument in UI which stopped display names from setting
+
 v0.4.2
 ------
 - ConfigEntries are tz aware

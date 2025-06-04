@@ -52,7 +52,6 @@ class Element:
     def __init__(
         self,
         name: str,
-        optional,
         display_name: str | None = None,
         is_available: bool = None,  # not sure of type
         help_str: str = None,
