@@ -1,6 +1,7 @@
 import copy
 import inspect
 import logging
+import re
 import time
 import json
 from datetime import datetime
@@ -196,9 +197,9 @@ class UIManager:
             if command is not None:
                 command._handle_new_value(new_value)
 
-                for pattern, callback in self._command_callbacks:
-                    if pattern.match(command_name):
-                        callback(command, new_value)
+            for pattern, callback in self._command_callbacks:
+                if pattern.match(command_name):
+                    callback(command, new_value)
 
     async def on_command_update_async(self, _, aggregate: dict[str, Any]):
         log.debug("Running on_command_update_async")
@@ -281,10 +282,17 @@ class UIManager:
 
         update_elements_from_ui_state(payload)
 
+    def _transform_interaction_name(self, name):
+        # inject the app key (unique) into the interaction name
+        # so we don't have namespace collisions between apps.
+        if self.app_key in name:
+            return name
+        return f"{self.app_key}_{name.strip()}"
+
     def _add_interaction(self, interaction: Interaction):
         # inject the app key (unique) into the interaction name
         # so we don't have namespace collisions between apps.
-        name = f"{self.app_key}_{interaction.name.strip()}"
+        name = self._transform_interaction_name(interaction.name)
         interaction.name = name
 
         if not NAME_VALIDATOR.match(name):
@@ -343,15 +351,35 @@ class UIManager:
             obj_to_search,
             predicate=lambda f: inspect.ismethod(f) and hasattr(f, "_is_ui_callback"),
         ):
-            self._command_callbacks.append((func._ui_callback_pattern, func))
+            if isinstance(func._ui_callback_pattern, str):
+                p = func._ui_callback_pattern
+                if func._is_ui_global_interaction:
+                    pattern = re.compile(self._transform_interaction_name(p))
+                else:
+                    pattern = re.compile(p)
+
+            elif isinstance(func._ui_callback_pattern, re.Pattern):
+                pattern = func._ui_callback_pattern
+                if func._is_ui_global_interaction:
+                    pattern = re.compile(
+                        self._transform_interaction_name(pattern.pattern)
+                    )
+
+            else:
+                raise ValueError(
+                    "Invalid pattern type for UI callback. Must be a string or re.Pattern."
+                )
+
+            self._command_callbacks.append((pattern, func))
 
     def get_interaction(self, name: str) -> Optional[Interaction]:
         try:
-            return self._interactions[name]
+            return self._interactions[self._transform_interaction_name(name)]
         except KeyError:
             return None
 
     def update_interaction(self, name: str, updated: Interaction) -> bool:
+        name = self._transform_interaction_name(name)
         if name not in self._interactions:
             return False
 
@@ -372,10 +400,7 @@ class UIManager:
         command.coerce(value, critical=critical)
 
     def get_element(self, element_name: str) -> Optional[ElementT]:
-        result = self._base_container.get_element(element_name)
-        # if not result:
-        #     result = find_object_with_key(self.last_ui_state, element_name)
-        return result
+        return self._base_container.get_element(element_name)
 
     def get_from_ui_state(self, element_name: str) -> Optional[dict]:
         return find_object_with_key(self.last_ui_state, element_name)
@@ -485,7 +510,7 @@ class UIManager:
         else:
             # fixme: allow for timestamp in DDA message publishing...
             return self.client.publish_to_channel(
-                channel_name, data, record_log=record_log, max_age=max_age, **kwargs
+                channel_name, data, record_log=record_log, max_age=max_age
             )
 
     async def _publish_to_channel_async(
@@ -502,7 +527,7 @@ class UIManager:
             raise RuntimeError("Cannot push async with a Client object")
 
         return await self.client.publish_to_channel_async(
-            channel_name, data, record_log=record_log, max_age=max_age, **kwargs
+            channel_name, data, record_log=record_log, max_age=max_age
         )
 
     @maybe_async()

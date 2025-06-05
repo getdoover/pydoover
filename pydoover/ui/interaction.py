@@ -595,7 +595,7 @@ def slider(
     return decorator
 
 
-def callback(pattern: str | re.Pattern[str]):
+def callback(pattern: str | re.Pattern[str], global_interaction: bool = False):
     r"""Decorator to mark a function as a UI callback.
 
     This accepts either a string or a compiled regex expression to match against the UI element name.
@@ -616,18 +616,43 @@ def callback(pattern: str | re.Pattern[str]):
         def do_toggle(self, element, new_value):
             pass
 
+    .. note::
+
+        Due to how apps namespace interaction names, if you pass in a string, `{app_name}_` will be prepended to the pattern.
+        This means that if you want to trigger a callback for a "global" interaction
+        (the most notable example being the camera "Get Now" button), global_interaction=True.
+
+    An example global command::
+
+        @ui.callback("camera_get_now", global_interaction=True)
+        def camera_get_now(self, element, new_value):
+            pass
+
+
+    .. note::
+
+        Similar to the above, regex patterns will also be re-compiled and prepended with `{app_name}_` by default.
+        You can disable this behaviour by passing `global_interaction=True` to the decorator.
+
+    An example regex compiled global command::
+
+        @ui.callback("^test_global_param_\d+$", global_interaction=True)
+        def test_global_param(self, element, new_value):
+            pass
+
+
     Parameters
     ----------
     pattern: str | re.Pattern[str]
         A string or compiled regex pattern that matches the name of the UI element this callback is for.
+    global_interaction: bool
+        See above examples for when to use this. This is a special case.
     """
 
     def decorator(func):
         func._is_ui_callback = True
-        if isinstance(pattern, str):
-            func._ui_callback_pattern = re.compile(pattern)
-        else:
-            func._ui_callback_pattern = re.compile(pattern)
+        func._is_ui_global_interaction = global_interaction
+        func._ui_callback_pattern = pattern
         return func
 
     return decorator
