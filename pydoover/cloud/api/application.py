@@ -29,13 +29,18 @@ class Application:
 
     This generally resides in the `doover_config.json` file in the application directory.
 
+    .. note::
+
+        While not generally relevant, a `staging_config` field (dictionary) in `doover_config.json` can be used to
+        override the main configuration when deploying the app to a staging environment. This is useful for testing.
+
+
     Attributes:
     """
 
     def __init__(
         self,
         key: str,
-        staging_key: str | None,
         name: str,
         display_name: str,
         app_type: Type,
@@ -51,10 +56,10 @@ class Application:
         build_args: str,
         container_registry_profile: Object,
         config_schema: dict[str, Any],
+        staging_config: dict[str, Any],
         app_base: Path,
     ):
         self.key = key
-        self.staging_key = staging_key
 
         self.name = name  # mandatory field
         self.display_name = display_name  # mandatory field
@@ -82,6 +87,7 @@ class Application:
         self.build_args = build_args
 
         self.config_schema = config_schema or {}
+        self.staging_config = staging_config
 
         self.base_path = app_base
 
@@ -97,7 +103,6 @@ class Application:
     def from_config(cls, data: dict, app_base: Path) -> "Application":
         return cls(
             data.get("key"),
-            data.get("staging_key"),
             data.get("name"),
             data.get("display_name"),
             data.get("type"),
@@ -113,6 +118,7 @@ class Application:
             data.get("build_args"),
             Object(key=data.get("container_registry_profile")),
             data.get("config_schema"),
+            data.get("staging_config", {}),
             app_base,
         )
 
@@ -121,6 +127,7 @@ class Application:
     ) -> dict[str, Any]:
         data = {
             "name": self.name,
+            "key": self.key,
             "display_name": self.display_name,
             "type": self.type,
             "visibility": self.visibility,
@@ -137,10 +144,11 @@ class Application:
         }
 
         if include_deployment_data:
-            data["key"] = self.staging_key if is_staging else self.key
+            if is_staging:
+                # allow staging config to override the main config
+                data.update(**self.staging_config)
         else:
-            data["key"] = self.key
-            data["staging_key"] = self.staging_key
+            data["staging_config"] = self.staging_config
 
         deployment_fp = self.base_path / "deployment"
         if include_deployment_data and deployment_fp.exists():

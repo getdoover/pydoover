@@ -596,9 +596,13 @@ class Client:
         """Get the list of applications available to the current agent."""
         return self.request(Route("GET", "/apps/api/v1/applications/"))
 
-    def create_application(self, application: Application) -> str:
+    def create_application(
+        self, application: Application, is_staging: bool = False
+    ) -> str:
         """Create a new application with the given data."""
-        payload = application.to_dict(include_deployment_data=True)
+        payload = application.to_dict(
+            include_deployment_data=True, is_staging=is_staging
+        )
         del payload["image_name"]  # not supported by site yet.
         data = self.request(Route("POST", "/apps/api/v1/applications/"), json=payload)
         return data["key"]
