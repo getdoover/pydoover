@@ -35,6 +35,7 @@ class Application:
     def __init__(
         self,
         key: str,
+        staging_key: str | None,
         name: str,
         display_name: str,
         app_type: Type,
@@ -53,6 +54,7 @@ class Application:
         app_base: Path,
     ):
         self.key = key
+        self.staging_key = staging_key
 
         self.name = name  # mandatory field
         self.display_name = display_name  # mandatory field
@@ -95,6 +97,7 @@ class Application:
     def from_config(cls, data: dict, app_base: Path) -> "Application":
         return cls(
             data.get("key"),
+            data.get("staging_key"),
             data.get("name"),
             data.get("display_name"),
             data.get("type"),
@@ -113,9 +116,10 @@ class Application:
             app_base,
         )
 
-    def to_dict(self, include_deployment_data: bool = False) -> dict[str, Any]:
+    def to_dict(
+        self, include_deployment_data: bool = False, is_staging: bool = False
+    ) -> dict[str, Any]:
         data = {
-            "key": self.key,
             "name": self.name,
             "display_name": self.display_name,
             "type": self.type,
@@ -131,6 +135,13 @@ class Application:
             "image_name": self.image_name,
             "config_schema": self.config_schema,
         }
+
+        if include_deployment_data:
+            data["key"] = self.staging_key if is_staging else self.key
+        else:
+            data["key"] = self.key
+            data["staging_key"] = self.staging_key
+
         deployment_fp = self.base_path / "deployment"
         if include_deployment_data and deployment_fp.exists():
             tmp_fp = Path(f"/tmp/{self.name}_deployment_data.zip")

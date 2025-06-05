@@ -608,9 +608,13 @@ class Client:
         data = self.request(Route("GET", "/apps/api/v1/applications/{}/", key))
         return Application.from_data(data=data)
 
-    def update_application(self, application: Application) -> None:
+    def update_application(
+        self, application: Application, is_staging: bool = False
+    ) -> None:
         """Update an existing application with the given data."""
-        payload = application.to_dict(include_deployment_data=True)
+        payload = application.to_dict(
+            include_deployment_data=True, is_staging=is_staging
+        )
         del payload["image_name"]  # not supported by site yet.
         return self.request(
             Route("PATCH", "/apps/api/v1/applications/{}/", application.key),
