@@ -354,13 +354,13 @@ class UIManager:
             if isinstance(func._ui_callback_pattern, str):
                 p = func._ui_callback_pattern
                 if func._is_ui_global_interaction:
-                    pattern = re.compile(self._transform_interaction_name(p))
-                else:
                     pattern = re.compile(p)
+                else:
+                    pattern = re.compile(self._transform_interaction_name(p))
 
             elif isinstance(func._ui_callback_pattern, re.Pattern):
                 pattern = func._ui_callback_pattern
-                if func._is_ui_global_interaction:
+                if func._is_ui_global_interaction is False:
                     pattern = re.compile(
                         self._transform_interaction_name(pattern.pattern)
                     )
@@ -370,6 +370,7 @@ class UIManager:
                     "Invalid pattern type for UI callback. Must be a string or re.Pattern."
                 )
 
+            log.info(f"Registering UI callback ({func}) with pattern {pattern.pattern}")
             self._command_callbacks.append((pattern, func))
 
     def get_interaction(self, name: str) -> Optional[Interaction]:
