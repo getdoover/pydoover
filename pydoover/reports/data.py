@@ -172,7 +172,7 @@ class ReportGeneratorDooverDataMixin:
         and any remaining fraction.
         """
         curr_server_time = int(self.get_current_server_time(agent_id))
-        local_time = int(datetime.utcnow().replace(tzinfo=timezone.utc).timestamp())
+        local_time = int(datetime.now(timezone.utc).timestamp())
         time_diff = curr_server_time - local_time
 
         start_secs = (

@@ -1,7 +1,7 @@
 import logging
 
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional, TypeVar
 from urllib.parse import quote, urlencode
 
@@ -100,9 +100,8 @@ class Client:
 
     def request(self, route: Route, **kwargs):
         # default is access token to not expire
-        if (
-            self.access_token.expires_at
-            and self.access_token.expires_at < datetime.utcnow()
+        if self.access_token.expires_at and self.access_token.expires_at < datetime.now(
+            timezone.utc
         ):
             logging.info("Token expired, attempting to refresh token.")
             self.login()
@@ -679,7 +678,7 @@ class Client:
         difference = timedelta(
             seconds=float(data["valid_until"]) - float(data["current_time"])
         )
-        expires_at = datetime.utcnow() + difference
+        expires_at = datetime.now(timezone.utc) + difference
         return data["token"], expires_at, data["agent_id"]
 
     def login(self):
@@ -693,7 +692,7 @@ class Client:
 
         logging.info(
             f"Successfully logged in and set token to expire "
-            f"in {int((expires_at - datetime.utcnow()).total_seconds() / 60)}min..."
+            f"in {int((expires_at - datetime.now(timezone.utc)).total_seconds() / 60)}min..."
         )
         try:
             self.login_callback()
