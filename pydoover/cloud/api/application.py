@@ -147,16 +147,18 @@ class Application:
             if is_staging:
                 # allow staging config to override the main config
                 data.update(**self.staging_config)
+
+            deployment_fp = self.base_path / "deployment"
+            if deployment_fp.exists():
+                tmp_fp = Path(f"/tmp/{self.name}_deployment_data.zip")
+                shutil.make_archive(str(tmp_fp.with_suffix("")), "zip", deployment_fp)
+                data["deployment_data"] = base64.b64encode(tmp_fp.read_bytes()).decode(
+                    "utf-8"
+                )
+            else:
+                data["deployment_data"] = None
         else:
             data["staging_config"] = self.staging_config
-
-        deployment_fp = self.base_path / "deployment"
-        if include_deployment_data and deployment_fp.exists():
-            tmp_fp = Path(f"/tmp/{self.name}_deployment_data.zip")
-            shutil.make_archive(str(tmp_fp.with_suffix("")), "zip", deployment_fp)
-            data["deployment_data"] = base64.b64encode(tmp_fp.read_bytes()).decode(
-                "utf-8"
-            )
 
         return data
 
