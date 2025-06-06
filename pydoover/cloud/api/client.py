@@ -621,7 +621,7 @@ class Client:
         )
         del payload["image_name"]  # not supported by site yet.
         return self.request(
-            Route("PATCH", "/apps/api/v1/applications/{}/", application.key),
+            Route("PATCH", "/apps/api/v1/applications/{}/", payload["key"]),
             json=payload,
         )
 
