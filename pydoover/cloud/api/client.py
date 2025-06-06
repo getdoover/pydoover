@@ -603,7 +603,6 @@ class Client:
         payload = application.to_dict(
             include_deployment_data=True, is_staging=is_staging
         )
-        del payload["image_name"]  # not supported by site yet.
         data = self.request(Route("POST", "/apps/api/v1/applications/"), json=payload)
         return data["key"]
 
@@ -619,7 +618,6 @@ class Client:
         payload = application.to_dict(
             include_deployment_data=True, is_staging=is_staging
         )
-        del payload["image_name"]  # not supported by site yet.
         return self.request(
             Route("PATCH", "/apps/api/v1/applications/{}/", payload["key"]),
             json=payload,
