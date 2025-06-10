@@ -2,7 +2,11 @@
 
 PyDoover is a Python package that provides a simple and easy-to-use interface for using the Doover platform on devices, in tasks and CLIs.
 
-# Getting Started
+## Quick Links
+
+- [Doover Website](https://doover.com)
+- [General Documentation](https://docs.doover.com)
+- [PyDoover API Reference](https://pydoover.readthedocs.io)
 
 ## Installing
 **Python 3.11 or higher is required**
