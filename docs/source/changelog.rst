@@ -3,6 +3,15 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.4
+------
+- Add a global_interaction parameter to ui.callback
+- Fix interactions to work with app namespaces
+- Change deprecated `.utcnow()` to `.now(tz=timezone.utc)`
+- Separate staging and production config for applications in `doover_config.json`
+- Fixes for publishing apps to the Doover App Store
+
+
 v0.4.3
 ------
 - Fix accidental extra argument in UI which stopped display names from setting
