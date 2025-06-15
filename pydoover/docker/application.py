@@ -117,7 +117,9 @@ class Application:
         self._is_async = get_is_async(is_async)
         self._ready = asyncio.Event()
         self._tag_values = {}
+
         self._shutdown_at = None
+        self._startup_at = None
 
         if name is None:
             self.name = self.__class__.__name__
@@ -437,17 +439,22 @@ class Application:
         except (KeyError, TypeError):
             pass
         else:
-            await self._check_shutdown_at(shutdown_at)
+            startup_at = tag_values.get("startup_at")
+            await self._check_shutdown_at(shutdown_at, startup_at)
 
-    async def _check_shutdown_at(self, shutdown_at):
-        dt = datetime.fromtimestamp(shutdown_at)
+    async def _check_shutdown_at(self, shutdown_at, startup_at):
+        shutdown_at = datetime.fromtimestamp(shutdown_at)
+        startup_at = datetime.fromtimestamp(startup_at)
         if self._shutdown_at is None or (
-            dt > self._shutdown_at and dt > datetime.now()
+            shutdown_at > self._shutdown_at and shutdown_at > datetime.now()
         ):
             # shutdown should be in the future and not already scheduled
-            log.info(f"Shutdown scheduled at {dt.strftime('%Y-%m-%d %H:%M:%S')}")
-            self._shutdown_at = dt
-            await call_maybe_async(self.on_shutdown_at, dt)
+            log.info(
+                f"Shutdown scheduled at {shutdown_at.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+            self._shutdown_at = shutdown_at
+            self._startup_at = startup_at
+            await call_maybe_async(self.on_shutdown_at, shutdown_at, startup_at)
 
     def get_tag(self, tag_key: str, app_key: str = None) -> Any | None:
         """Get a tag value for a specific app.
@@ -617,7 +624,7 @@ class Application:
         log.info("Requesting shutdown")
         await self.set_tag_async("shutdown_requested", True)
 
-    async def on_shutdown_at(self, dt: datetime) -> None:
+    async def on_shutdown_at(self, shutdown: datetime, startup: datetime) -> None:
         """Callback for when a shutdown is scheduled.
 
         See [https://docs.doover.com/docker/shutdown-behaviour] for a detailed explanation of the shutdown behaviour.
@@ -635,14 +642,16 @@ class Application:
             class MyApplication(Application):
                 # setup, main_loop, etc...
 
-                async def on_shutdown_at(self, dt: datetime):
-                    log.info(f"Shutdown scheduled at {dt}. Performing cleanup...")
+                async def on_shutdown_at(self, shutdown: datetime, startup: datetime):
+                    log.info(f"Shutdown scheduled at {shutdown_at}. Performing cleanup...")
 
 
         Parameters
         ----------
-        dt : datetime
+        shutdown : datetime
             The datetime when the shutdown is scheduled.
+        startup : datetime
+            The datetime when the next startup is scheduled.
         """
         pass
 
