@@ -1247,7 +1247,7 @@ class PlatformInterface(GRPCInterface):
         edge: str,
         include_system_events: bool = False,
         events_from: int = 0,
-    ) -> list[Event]:
+    ) -> (bool, list[Event]):
         """Get digital input events.
 
         .. note:: This method can be used in both synchronous and asynchronous contexts.
@@ -1265,8 +1265,8 @@ class PlatformInterface(GRPCInterface):
 
         Returns
         -------
-        List[:class:`pydoover.docker.platform.Event`]
-            List of events for the given digital input pin.
+        bool, List[:class:`pydoover.docker.platform.Event`]
+            Whether the events are synced and a list of events for the given digital input pin.
         """
         rising = False
         falling = False
@@ -1277,7 +1277,7 @@ class PlatformInterface(GRPCInterface):
         elif edge == "both":
             rising = True
             falling = True
-        return self.make_request(
+        resp: platform_iface_pb2.getDIEventsResponse = self.make_request(
             "getDIEvents",
             platform_iface_pb2.getDIEventsRequest(
                 pin=di_pin,
@@ -1287,6 +1287,7 @@ class PlatformInterface(GRPCInterface):
                 events_from=events_from,
             ),
         )
+        return resp.events_synced, resp.events
 
     async def get_di_events_async(
         self,
@@ -1294,7 +1295,7 @@ class PlatformInterface(GRPCInterface):
         edge: str,
         include_system_events: bool = False,
         events_from: int = 0,
-    ) -> list[Event]:
+    ) -> (bool, list[Event]):
         rising = False
         falling = False
         if edge == "rising":
@@ -1304,7 +1305,7 @@ class PlatformInterface(GRPCInterface):
         elif edge == "both":
             rising = True
             falling = True
-        return await self.make_request_async(
+        resp: platform_iface_pb2.getDIEventsResponse = await self.make_request_async(
             "getDIEvents",
             platform_iface_pb2.getDIEventsRequest(
                 pin=di_pin,
@@ -1313,8 +1314,8 @@ class PlatformInterface(GRPCInterface):
                 include_system_events=include_system_events,
                 events_from=events_from,
             ),
-            response_field="events",
         )
+        return resp.events_synced, resp.events
 
 
 platform_iface = PlatformInterface
