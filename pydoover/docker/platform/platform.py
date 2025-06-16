@@ -453,25 +453,27 @@ class PlatformInterface(GRPCInterface):
     def _cast_pins(pins):
         if isinstance(pins, int):
             return [pins]
-        elif isinstance(pins, list):
-            return pins
-        else:
-            raise ValueError(
-                f"Invalid type for pins: {type(pins)}. Must be int or list."
-            )
-            # log.error(f"Invalid type for pins: {type(pins)}. Must be int or list."
-            # return None
+
+        if not isinstance(pins, Iterable):
+            raise ValueError("Pins must be iterable or integer.")
+
+        result = []
+        for p in pins:
+            result.extend(PlatformInterface._cast_pins(p))
+        return result
 
     @staticmethod
     def _cast_values(values):
-        if isinstance(values, int):
+        if isinstance(values, (bool, int)):
             return [bool(values)]
-        elif isinstance(values, list):
-            return [bool(v) for v in values]
-        else:
-            raise ValueError(
-                f"Invalid type for values: {type(values)}. Must be bool or list."
-            )
+
+        if not isinstance(values, Iterable):
+            raise ValueError("Values must be iterable, bool or integer.")
+
+        result = []
+        for p in values:
+            result.extend(PlatformInterface._cast_values(p))
+        return result
 
     @staticmethod
     def _cast_ao_values(values):
@@ -1287,7 +1289,9 @@ class PlatformInterface(GRPCInterface):
                 events_from=events_from,
             ),
         )
-        return resp.events_synced, resp.events
+        if resp:
+            return resp.events_synced, resp.events
+        return None, []
 
     async def get_di_events_async(
         self,
@@ -1315,7 +1319,9 @@ class PlatformInterface(GRPCInterface):
                 events_from=events_from,
             ),
         )
-        return resp.events_synced, resp.events
+        if resp:
+            return resp.events_synced, resp.events
+        return None, []
 
 
 platform_iface = PlatformInterface
