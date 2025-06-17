@@ -161,3 +161,20 @@ class Widget:
         This allows for future implementations of Widget objects if needed.
         """
         return value  # fixme: this hackiness
+
+
+class ApplicationVariant:
+    """Represents variants of how applications are displayed to users.
+
+    The default variant is `submodule`.
+
+    Attributes
+    ----------
+    submodule
+        Embeds applications within a submodule to provide logical differences between multiple apps on a device.
+    stacked
+        Stacks applications on top of each other without submodule partitioning.
+    """
+
+    submodule = "submodule"
+    stacked = "stacked"

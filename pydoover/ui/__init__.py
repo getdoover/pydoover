@@ -28,6 +28,7 @@ from .misc import (
     Range as Range,
     Option as Option,
     Widget as Widget,
+    ApplicationVariant as ApplicationVariant,
 )
 from .parameter import (
     Parameter as Parameter,

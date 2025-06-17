@@ -10,6 +10,7 @@ from typing import Union, Any, Optional, TypeVar, TYPE_CHECKING
 
 from .element import Element
 from .interaction import SlimCommand, Interaction, NotSet
+from .misc import ApplicationVariant
 from .submodule import Container, NAME_VALIDATOR, Application as UIApplication
 from .variable import Variable
 
@@ -857,11 +858,11 @@ class UIManager:
 
         self._base_container.display_name = name
 
-    def set_variant(self, variant: str):
-        if variant not in ("stacked", "submodule"):
+    def set_variant(self, variant: ApplicationVariant) -> None:
+        if variant not in (ApplicationVariant.submodule, ApplicationVariant.stacked):
             raise ValueError("Variant must be one of 'stacked', 'submodule'")
 
-        self._base_container.variant = variant
+        self._base_container.variant = str(variant)
 
     def set_position(self, position: int):
         self._base_container.position = position
