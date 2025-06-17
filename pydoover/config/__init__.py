@@ -77,6 +77,15 @@ class Schema:
             else:
                 elem.load_data(value)
 
+        for elem_name in set(self.__element_map.keys()) - set(config.keys()):
+            # catch missing required elements, and set any other elements to their default value
+            elem = self.__element_map[elem_name]
+            if elem.required:
+                raise ValueError(
+                    f"Required config element {elem_name} not found in deployment config."
+                )
+            elem.load_data(elem.default)
+
     def export(self, fp: pathlib.Path, app_name: str):
         if fp.exists():
             data = json.loads(fp.read_text())
