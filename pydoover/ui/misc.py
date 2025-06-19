@@ -87,6 +87,14 @@ class Range:
         self.colour = colour
         self.show_on_graph = show_on_graph
 
+    def __repr__(self) -> str:
+        return f"Range(label={self.label}, min={self.min}, max={self.max}, colour={self.colour}, show_on_graph={self.show_on_graph})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Range):
+            return NotImplemented
+        return self.to_dict() == other.to_dict()
+
     def to_dict(self):
         to_return = {
             "min": self.min,
