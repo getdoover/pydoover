@@ -440,6 +440,10 @@ class Application:
             await self._check_shutdown_at(shutdown_at)
 
     async def _check_shutdown_at(self, shutdown_at):
+        if not self.is_ready:
+            log.info("Ignoring check shutdown request, app not ready yet")
+            return
+
         dt = datetime.fromtimestamp(shutdown_at)
         if self._shutdown_at is None or (
             dt > self._shutdown_at and dt > datetime.now()
