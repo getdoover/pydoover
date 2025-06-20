@@ -90,9 +90,11 @@ class ProcessorBase:
         self.task_id: str = kwargs["task_id"]
 
         self.api: Client = Client(
-            token=self.access_token, base_url=kwargs["api_endpoint"]
+            token=self.access_token,
+            base_url=kwargs["api_endpoint"],
+            agent_id=self.agent_id,
         )
-        self.ui_manager: UIManager = UIManager(self.agent_id, self.app_key, self.api)
+        self.ui_manager: UIManager = UIManager(self.app_key, self.api)
 
         self.deployment_config: dict[str, Any] = kwargs["agent_settings"].get(
             "deployment_config", {}

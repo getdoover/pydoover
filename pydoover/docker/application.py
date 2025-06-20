@@ -106,7 +106,6 @@ class Application:
         )
 
         self.ui_manager = UIManager(
-            agent_id=None,
             app_key=app_key,
             client=self.device_agent,
             is_async=is_async,
@@ -139,6 +138,9 @@ class Application:
                 f"Application key {self.app_key} not found in deployment config"
             )
             app_config = {}
+
+        self.device_agent.agent_id = app_config.get("AGENT_ID")
+        log.info(f"Agent ID set: {self.device_agent.agent_id}")
 
         log.info(f"Deployment Config Updated: {app_config}")
         self.config._inject_deployment_config(app_config)
@@ -222,6 +224,13 @@ class Application:
         self.ui_manager.start_comms()
         await self.ui_manager.await_comms_sync(15)
         self._ready.set()
+
+        try:
+            shutdown_at = self._tag_values["shutdown_at"]
+        except KeyError:
+            pass
+        else:
+            await self._check_shutdown_at(shutdown_at)
 
         ## allow for other async tasks to run between setup and loop
         await asyncio.sleep(0.2)
@@ -441,7 +450,7 @@ class Application:
 
     async def _check_shutdown_at(self, shutdown_at):
         if not self.is_ready:
-            log.info("Ignoring check shutdown request, app not ready yet")
+            log.info("Ignoring check shutdown request, app not ready yet.")
             return
 
         dt = datetime.fromtimestamp(shutdown_at)

@@ -29,7 +29,6 @@ InteractionT = TypeVar("InteractionT", bound=Interaction)
 class UIManager:
     def __init__(
         self,
-        agent_id: str = None,
         app_key: str = None,
         client: Union["Client", "DeviceAgentInterface"] = None,
         auto_start: bool = False,
@@ -43,7 +42,6 @@ class UIManager:
         self._has_persistent_connection = client and client.has_persistent_connection()
         self._subscriptions_ready = False
 
-        self.agent_id = agent_id
         self.app_key = app_key
 
         self.last_ui_state = (
@@ -119,14 +117,14 @@ class UIManager:
                 self.last_ui_state_wss_connections = json.loads(
                     self.last_ui_state_wss_connections
                 )
-            connections = self.last_ui_state_wss_connections["connections"]
-            # The following isn't working currently as agent_id is None
-            # for k in connections.keys():
-            #     if k != self.agent_id and connections[k] is True:
-            #         return True
+            connections = set(self.last_ui_state_wss_connections["connections"].keys())
+
+            # agent ID will get set on startup in processor Client and on config load in apps.
+            if self.client.agent_id and len(connections - {self.client.agent_id}) > 0:
+                return True
 
             # if there is more than one connection, then we are being observed
-            return len(connections.keys()) > 1
+            return len(connections) > 1
         except Exception as e:
             log.error(f"Error checking if being observed: {e}")
             return False
