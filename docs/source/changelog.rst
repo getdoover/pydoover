@@ -3,6 +3,15 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.5
+------
+- Fix a problem with `get_di_events` and inconsistent return types between sync and async
+- Set any missing config elements to their default value at runtime
+- Add `ApplicationVariant` enum
+- Don't process `shutdown_at` events before DDA is synced
+- Add `__eq__` and `__repr__` methods to `Range` class
+- Improve `is_being_observed` behaviour to disregard the device agent ID
+
 v0.4.4
 ------
 - Add a global_interaction parameter to ui.callback
