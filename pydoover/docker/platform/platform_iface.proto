@@ -34,7 +34,9 @@ service platformIface {
     // rpc getUptime (getUptimeRequest) returns (getUptimeResponse) {}
     // rpc getSystemInfo (getSystemInfoRequest) returns (getSystemInfoResponse) {}
     rpc getLocation (getLocationRequest) returns (getLocationResponse) {}
+    
     rpc getShutdownImmunity (getShutdownImmunityRequest) returns (getShutdownImmunityResponse) {}
+    rpc setShutdownImmunity (setShutdownImmunityRequest) returns (setShutdownImmunityResponse) {}
 
     rpc scheduleStartup (scheduleStartupRequest) returns (scheduleStartupResponse) {}
     rpc scheduleShutdown (scheduleShutdownRequest) returns (scheduleShutdownResponse) {}
@@ -196,6 +198,13 @@ message getSystemStatusResponse {
 message getShutdownImmunityRequest {}
 
 message getShutdownImmunityResponse {
+    ResponseHeader response_header = 1;
+    optional int32 immunity_secs = 2;
+}
+
+message setShutdownImmunityRequest {}
+
+message setShutdownImmunityResponse {
     ResponseHeader response_header = 1;
     optional int32 immunity_secs = 2;
 }

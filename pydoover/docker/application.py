@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import logging
+import time
 
 from datetime import datetime
 from pathlib import Path
@@ -123,7 +124,7 @@ class Application:
         else:
             self.name = name
 
-        self.loop_pause_period = 1
+        self.loop_target_period = 1
         self._error_wait_period = 10
 
         self._test_next_event = asyncio.Event()
@@ -161,7 +162,7 @@ class Application:
     async def next(self):
         """Increment a main loop iteration. This is only available in test mode.
 
-        Normally, the main loop runs in an infinite cycle every `loop_pause_period` seconds.
+        Normally, the main loop runs in an infinite cycle every `loop_target_period` seconds.
 
         During testing, it is helpful to be able to control the flow of the main loop, so this method allows you to
         increment the main loop iteration manually. Simply call this method to run the next iteration of the main loop.
@@ -253,7 +254,8 @@ class Application:
             else:
                 if self.test_mode is False:
                     # slow down the loop in live mode.
-                    await asyncio.sleep(self.loop_pause_period)
+                    # await asyncio.sleep(self.loop_target_period)
+                    await self.wait_for_interval(self.loop_target_period)
                 else:
                     # allow other async tasks to run if the user has done a doozy and chained a whole heap of .next()s
                     await asyncio.sleep(0.01)
@@ -262,6 +264,49 @@ class Application:
                 # signal that the loop is done.
                 self._test_next_loop_done.set()
 
+    async def wait_for_interval(self, target_time: float):
+        """
+        Waits for the necessary amount of time to maintain a consistent interval 
+        of `target_time` seconds between calls to this method.
+        """
+
+        current_time = time.time()
+        if not hasattr(self, "_last_interval_time") or self._last_interval_time is None:
+            self._last_interval_time = current_time
+            ## Wait for half the target time on the first call
+            await asyncio.sleep(target_time / 2)
+            return
+
+        elapsed = current_time - self._last_interval_time
+        await self._assess_loop_time(elapsed, target_time) ## This will display a warning if the loop is running slower than target
+        elapsed = current_time - self._last_interval_time
+        remaining = target_time - elapsed
+        log.debug(f"Last loop time: {elapsed}, target_time: {target_time}")
+        if remaining > 0:
+            log.debug(f"Sleeping for {remaining} seconds to maintain target loop time")
+            await asyncio.sleep(remaining)
+        self._last_interval_time = time.time()
+
+    async def _assess_loop_time(self, last_loop_time: float, target_time: float):
+        """
+        Assess the loop time and adjust the target time if necessary.
+        """
+        if not hasattr(self, "_loop_times"):
+            self._loop_times = []
+        self._loop_times.append(last_loop_time)
+        if len(self._loop_times) > 20:
+            self._loop_times.pop(0)
+        average_loop_time = sum(self._loop_times) / len(self._loop_times)
+        log.debug(f"Average loop time: {average_loop_time}, target_time: {target_time}")
+        
+        ## If the loop time is greater than 20% above the target time, display a warning every 6 seconds or so
+        if average_loop_time > (target_time * 1.2):
+            if not hasattr(self, "_last_loop_time_warning") or self._last_loop_time_warning is None:
+                self._last_loop_time_warning = time.time()
+            elif time.time() - self._last_loop_time_warning > 6:
+                log.warning(f"Loop is running slower than target. Average loop time: {average_loop_time}, target_time: {target_time}")
+                self._last_loop_time_warning = time.time()
+            
     async def close(self):
         log.info(
             "\n########################################"
@@ -356,7 +401,7 @@ class Application:
     def set_ui(self, ui):
         self.ui_manager.set_children(ui)
 
-    async def update_ui(self, force_log: bool = False):
+    async def _update_ui(self, force_log: bool = False):
         await self.ui_manager.handle_comms_async(force_log)
 
     ## Platform Interface Functions
@@ -713,7 +758,7 @@ class Application:
 
             await self.set_tag_async("shutdown_check_ok", resp)
 
-        await self.update_ui()
+        await self._update_ui()
 
     async def setup(self):
         """The main setup function for the application.
@@ -738,8 +783,8 @@ class Application:
         This function is called in a continuous loop, so it should generally not perform any long blocking calls, instead deferring to
         checking if a result is ready to be processed in a future loop.
 
-        You can control the speed at which this loop runs by setting the `loop_pause_period` attribute of the application instance.
-        By default, this is set to a minimum invocation period of every 2 seconds.
+        You can control the speed at which this loop runs by setting the `loop_target_period` attribute of the application instance.
+        By default, this is set to a target invocation period of 1 second.
 
         This function can be asynchronous or synchronous, depending on your needs.
 
