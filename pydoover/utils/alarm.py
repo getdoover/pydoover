@@ -2,6 +2,7 @@
 
 import time
 import logging
+from functools import wraps
 
 ## A generic alarm class that can be used to trigger things via a callback function when a threshold is met
 ## threshold can be greater than or less than a specified value
@@ -148,6 +149,7 @@ def check_alarm(
         ## Generate an id for the alarm instance
         alarm_id = id(func)
 
+        @wraps(func)
         async def wrapper(*args, **kwargs):
             ## Get self from the first argument (assuming this decorates instance methods)
             self = args[0]
