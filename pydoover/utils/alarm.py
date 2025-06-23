@@ -148,7 +148,7 @@ def check_alarm(
         ## Generate an id for the alarm instance
         alarm_id = id(func)
 
-        async def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs):
             ## Get self from the first argument (assuming this decorates instance methods)
             self = args[0]
             
@@ -169,7 +169,7 @@ def check_alarm(
 
             wrapper._alarm = _alarm
 
-            result = await func(*args, **kwargs)
+            result = func(*args, **kwargs)
 
             _alarm.check_value(result)
 
