@@ -111,7 +111,8 @@ class Alarm:
                 return False
 
     def _trigger_alarm(self):
-        self.callback()
+        if self.callback:
+            self.callback()
         self.last_alarm_time = time.time()
 
     def reset_alarm(self):
@@ -137,6 +138,7 @@ def check_alarm(
     callback
     direction
     grace_period
+    min_inter_alarm
 
     Returns
     -------
@@ -147,6 +149,9 @@ def check_alarm(
         alarm_id = id(func)
 
         async def wrapper(*args, **kwargs):
+            ## Get self from the first argument (assuming this decorates instance methods)
+            self = args[0]
+            
             ## Instantiate the alarm if it doesn't exist
             ## This allows multiple instances of the same function to have separate alarms
             if not hasattr(self, "_alarm_instances"):
@@ -164,7 +169,7 @@ def check_alarm(
 
             wrapper._alarm = _alarm
 
-            result = await func(self, *args, **kwargs)
+            result = await func(*args, **kwargs)
 
             _alarm.check_value(result)
 
