@@ -120,8 +120,6 @@ class Alarm:
 
 
 def check_alarm(
-    self,
-    value,
     threshold=None,
     callback=None,
     direction=None,
