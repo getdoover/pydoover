@@ -95,14 +95,32 @@ def create_alarm(
 
     Parameters
     ----------
-    threshold
+    threshold_met
     callback
-    direction
     grace_period
     min_inter_alarm
 
     Returns
     -------
+
+    Example
+    -------
+
+        self.get_test_increment = create_alarm(
+            self.get_test_increment,
+            lambda x:x>20,
+            callback=self.test_alarm_callback,
+            grace_period=15,
+            min_inter_alarm=60,
+        )
+
+    async def get_test_increment(self):
+        return self.test_increment
+
+
+    in the above case, the alarm will be checked each time the get_test_increment method is called
+    if the value returned is greater than 20 for at least 15 seconds, the callback will be called
+    the callback will be called at most once every 60 seconds
     """
 
     alarm = Alarm(
