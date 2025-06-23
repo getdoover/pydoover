@@ -96,7 +96,7 @@ class Alarm:
             return False
 
         else:
-            self.initial_trigger_time + self.grace_period < time.time():
+            if self.initial_trigger_time + self.grace_period < time.time():
                 return True
             else:
                 return False
