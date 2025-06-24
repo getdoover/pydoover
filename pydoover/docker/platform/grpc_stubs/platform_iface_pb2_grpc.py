@@ -5,10 +5,8 @@ import warnings
 
 from . import platform_iface_pb2 as grpc__stubs_dot_platform__iface__pb2
 
-GRPC_GENERATED_VERSION = '1.65.1'
+GRPC_GENERATED_VERSION = '1.73.0'
 GRPC_VERSION = grpc.__version__
-EXPECTED_ERROR_RELEASE = '1.66.0'
-SCHEDULED_RELEASE_DATE = 'August 6, 2024'
 _version_not_supported = False
 
 try:
@@ -18,15 +16,12 @@ except ImportError:
     _version_not_supported = True
 
 if _version_not_supported:
-    warnings.warn(
+    raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
         + f' but the generated code in grpc_stubs/platform_iface_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
-        + f' This warning will become an error in {EXPECTED_ERROR_RELEASE},'
-        + f' scheduled for release on {SCHEDULED_RELEASE_DATE}.',
-        RuntimeWarning
     )
 
 
@@ -144,6 +139,11 @@ class platformIfaceStub(object):
                 '/platform_iface.platformIface/getShutdownImmunity',
                 request_serializer=grpc__stubs_dot_platform__iface__pb2.getShutdownImmunityRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_platform__iface__pb2.getShutdownImmunityResponse.FromString,
+                _registered_method=True)
+        self.setShutdownImmunity = channel.unary_unary(
+                '/platform_iface.platformIface/setShutdownImmunity',
+                request_serializer=grpc__stubs_dot_platform__iface__pb2.setShutdownImmunityRequest.SerializeToString,
+                response_deserializer=grpc__stubs_dot_platform__iface__pb2.setShutdownImmunityResponse.FromString,
                 _registered_method=True)
         self.scheduleStartup = channel.unary_unary(
                 '/platform_iface.platformIface/scheduleStartup',
@@ -315,6 +315,12 @@ class platformIfaceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def setShutdownImmunity(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def scheduleStartup(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -464,6 +470,11 @@ def add_platformIfaceServicer_to_server(servicer, server):
                     servicer.getShutdownImmunity,
                     request_deserializer=grpc__stubs_dot_platform__iface__pb2.getShutdownImmunityRequest.FromString,
                     response_serializer=grpc__stubs_dot_platform__iface__pb2.getShutdownImmunityResponse.SerializeToString,
+            ),
+            'setShutdownImmunity': grpc.unary_unary_rpc_method_handler(
+                    servicer.setShutdownImmunity,
+                    request_deserializer=grpc__stubs_dot_platform__iface__pb2.setShutdownImmunityRequest.FromString,
+                    response_serializer=grpc__stubs_dot_platform__iface__pb2.setShutdownImmunityResponse.SerializeToString,
             ),
             'scheduleStartup': grpc.unary_unary_rpc_method_handler(
                     servicer.scheduleStartup,
@@ -1069,6 +1080,33 @@ class platformIface(object):
             '/platform_iface.platformIface/getShutdownImmunity',
             grpc__stubs_dot_platform__iface__pb2.getShutdownImmunityRequest.SerializeToString,
             grpc__stubs_dot_platform__iface__pb2.getShutdownImmunityResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def setShutdownImmunity(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/setShutdownImmunity',
+            grpc__stubs_dot_platform__iface__pb2.setShutdownImmunityRequest.SerializeToString,
+            grpc__stubs_dot_platform__iface__pb2.setShutdownImmunityResponse.FromString,
             options,
             channel_credentials,
             insecure,

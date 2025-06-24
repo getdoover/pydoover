@@ -1,7 +1,8 @@
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -248,6 +249,18 @@ class getShutdownImmunityRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class getShutdownImmunityResponse(_message.Message):
+    __slots__ = ("response_header", "immunity_secs")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    IMMUNITY_SECS_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    immunity_secs: int
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., immunity_secs: _Optional[int] = ...) -> None: ...
+
+class setShutdownImmunityRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class setShutdownImmunityResponse(_message.Message):
     __slots__ = ("response_header", "immunity_secs")
     RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
     IMMUNITY_SECS_FIELD_NUMBER: _ClassVar[int]

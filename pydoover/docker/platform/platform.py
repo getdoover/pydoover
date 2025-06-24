@@ -1132,6 +1132,41 @@ class PlatformInterface(GRPCInterface):
             platform_iface_pb2.getShutdownImmunityRequest(),
             response_field="immunity_secs",
         )
+    
+    
+    @cli_command()
+    @maybe_async()
+    def set_immunity_seconds(self, immunity_secs: int) -> float:
+        """Set the number of seconds the device is immune for.
+
+        Immunity is the time for which the device will ignore any shutdown requests.
+
+        .. note:: This method can be used in both synchronous and asynchronous contexts.
+
+        Examples
+        --------
+
+        Set the number of seconds the device is immune for::
+
+            immunity_secs = await self.platform_iface.set_immunity_seconds(120)
+
+        Returns
+        -------
+        float
+            The number of seconds the device is immune for.
+        """
+        return self.make_request(
+            "setShutdownImmunity",
+            platform_iface_pb2.setShutdownImmunityRequest(immunity_secs=immunity_secs),
+            response_field="immunity_secs",
+        )
+
+    async def set_immunity_seconds_async(self, immunity_secs: int):
+        return await self.make_request_async(
+            "setShutdownImmunity",
+            platform_iface_pb2.setShutdownImmunityRequest(immunity_secs=immunity_secs),
+            response_field="immunity_secs",
+        )
 
     @maybe_async()
     def schedule_startup(self, time_secs: int) -> None:
