@@ -3,6 +3,11 @@
 import time
 import logging
 
+# Configure logging to show debug messages
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 ## A generic alarm class that can be used to trigger things via a callback function when a threshold is met
 ## threshold can be greater than or less than a specified value
 
