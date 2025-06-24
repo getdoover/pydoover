@@ -2,6 +2,7 @@
 
 import time
 import logging
+import asyncio
 
 ## A generic alarm class that can be used to trigger things via a callback function when a threshold is met
 ## threshold can be greater than or less than a specified value
@@ -32,7 +33,7 @@ class Alarm:
         self.last_alarm_time = None
         self.initial_trigger_time = None
 
-    def check_value(
+    async def check_value(
         self,
         value,
         threshold_met,
@@ -56,7 +57,7 @@ class Alarm:
                 logging.debug(f"Grace period met: {value}")
                 if self._check_min_inter_alarm():
                     logging.debug(f"Min inter alarm met: {value}")
-                    self._trigger_alarm()
+                    await self._trigger_alarm()
                 else:
                     logging.debug(f"Min inter alarm not met: {value}")
             else:
@@ -82,9 +83,12 @@ class Alarm:
             else:
                 return False
 
-    def _trigger_alarm(self):
+    async def _trigger_alarm(self):
         if self.callback:
-            self.callback()
+            if asyncio.iscoroutinefunction(self.callback):
+                await self.callback()
+            else:
+                self.callback()
         self.last_alarm_time = time.time()
 
     def reset_alarm(self):
@@ -143,7 +147,7 @@ def create_alarm(
     async def wrapper(*args, **kwargs):
         result = await func(*args, **kwargs)
 
-        alarm.check_value(result, threshold_met)
+        await alarm.check_value(result, threshold_met)
 
         return result
 
