@@ -3,11 +3,6 @@
 import time
 import logging
 
-# Configure logging to show debug messages
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
 ## A generic alarm class that can be used to trigger things via a callback function when a threshold is met
 ## threshold can be greater than or less than a specified value
 
@@ -44,6 +39,16 @@ class Alarm:
         grace_period=None,
         min_inter_alarm=None,
     ):
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+
         if grace_period is not None:
             self.grace_period = grace_period
 
@@ -51,21 +56,30 @@ class Alarm:
             self.min_inter_alarm = min_inter_alarm
 
         if self.threshold_met(value) is False:
-            logging.debug(f"Threshold not met: {value}")
+            logging.info(f"Threshold not met: {value}")
             self.initial_trigger_time = None
-            return False
 
         else:
-            logging.debug(f"Threshold met: {value}")
+            logging.info(f"Threshold met: {value}")
             if self._check_grace_period():
-                logging.debug("Grace period met")
+                logging.info("Grace period met")
                 if self._check_min_inter_alarm():
-                    logging.debug("Min inter alarm met")
+                    logging.info("Min inter alarm met")
                     self._trigger_alarm()
                 else:
-                    logging.debug("Min inter alarm not met")
+                    logging.info("Min inter alarm not met")
             else:
-                logging.debug("Grace period not met")
+                logging.info("Grace period not met")
+
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
+        logging.info("&&&&&&&&&&&&&&&&&&")
 
     def _check_grace_period(self):
         if self.initial_trigger_time is None:
