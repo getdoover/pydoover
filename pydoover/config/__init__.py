@@ -27,6 +27,37 @@ class NotSet:
 
 
 class Schema:
+    """Represents the configuration schema for a Doover application.
+
+    A config schema is a definition of the config for your application.
+
+    It is used as `.config` in your application and can generate a JSON Schema
+    which will provide user validation and a "form" in the Doover UI.
+
+    Any attributes added in the `__init__` method will be added to the schema.
+    Order is preserved from the order you define them in the `__init__` method.
+
+    The schema can be exported to a JSON file using the `export` method, although in a template application this is done for you.
+
+    To export the schema to the `doover_config.json` file, use the Doover cli: ``doover config-schema export``.
+    This will validate and export the schema to the `doover_config.json` file in the root of your Doover project.
+
+    Examples
+    --------
+
+    >>> from pydoover import config
+    >>> class MyAppConfig(config.Schema):
+    ...     def __init__(self):
+    ...         self.pump_pin = config.Integer("Digital Output Number", description="The digital output pin to drive the pump.")
+    ...         self.pump_on_time = config.Number("Pump On Time", default=5.2, description="The time in seconds to run the pump.")
+    ...         self.engine_type = config.Enum(
+    ...             "Engine Type",
+    ...             choices=["Honda", "John Deere", "Cat"],
+    ...             description="The type of diesel engine attached to the pump.",
+    ...         )
+
+    """
+
     __element_map: "dict[str, ConfigElement]"
 
     def add_element(self, element):
@@ -87,6 +118,33 @@ class Schema:
             elem.load_data(elem.default)
 
     def export(self, fp: pathlib.Path, app_name: str):
+        """Export the config schema to a JSON file.
+
+        This will export the config schema to the ``config_schema`` field in the ``doover_config.json`` file in the root of your project .
+
+        Examples
+        --------
+
+        Generally, this will be done in the application template.
+
+        >>> from pydoover import config
+        >>> class MyAppConfig(config.Schema):
+        ...     def __init__(self):
+        ...         self.pump_pin = config.Integer("Digital Output Number", description="The digital output pin to drive the pump.")
+        ...
+        ... if __name__ == "__main__":
+        ...     from pathlib import Path
+        ...     MyAppConfig().export(pathlib.Path("/path/to/my/app/doover_config.json"), "my_app_name")
+
+
+        Parameters
+        ----------
+        fp: pathlib.Path
+            The path to the JSON file to export the config schema to.
+        app_name: str
+            The name of the application to export the config schema for.
+            This will be used as the key in the `doover_config.json` file.
+        """
         if fp.exists():
             data = json.loads(fp.read_text())
         else:
@@ -101,6 +159,20 @@ class Schema:
 
 
 class ConfigElement:
+    """Represents a config element in the Doover configuration schema.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    default: int
+        The default value for the integer. If NotSet, the value is required.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    """
+
     _type = "unknown"
 
     def __init__(
@@ -143,10 +215,12 @@ class ConfigElement:
 
     @property
     def required(self):
+        """Whether the config element is required."""
         return self.default is NotSet
 
     @property
     def value(self):
+        """The value of the config element."""
         if self._value is NotSet:
             raise ValueError(f"Value for {self._name} not set. Check your config file?")
         return self._value
@@ -183,7 +257,29 @@ class ConfigElement:
 
 
 class Integer(ConfigElement):
-    """Represents a JSON Integer type. Internally represented as an int."""
+    """Represents a JSON Integer type. Internally represented as an int.
+
+    Attributes
+    -----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    default: int
+        The default value for the integer. If NotSet, the value is required.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    minimum: int | None
+        The minimum value for the integer. If None, no minimum is enforced.
+    exclusive_minimum: int | None
+        The exclusive minimum value for the integer. If None, no exclusive minimum is enforced.
+    maximum: int | None
+        The maximum value for the integer. If None, no maximum is enforced.
+    exclusive_maximum: int | None
+        The exclusive maximum value for the integer. If None, no exclusive maximum is enforced.
+    multiple_of: int | None
+        The value that the integer must be a multiple of. If None, no multiple is enforced.
+    """
 
     _type = "integer"
     value: int
@@ -223,18 +319,62 @@ class Integer(ConfigElement):
 
 
 class Number(Integer):
-    """Represents a JSON Number type, for any numeric type. Internally represented as a float."""
+    """Represents a JSON Number type, for any numeric type. Internally represented as a float.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    default: float
+        The default value for the integer. If NotSet, the value is required.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    """
 
     _type = "number"
     value: float
 
 
 class Boolean(ConfigElement):
+    """Represents a JSON Boolean type. Internally represented as a bool.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    default: bool
+        The default value for the integer. If NotSet, the value is required.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    """
+
     _type = "boolean"
     value: bool
 
 
 class String(ConfigElement):
+    """Represents a JSON String type. Internally represented as a str.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    default: str
+        The default value for the integer. If NotSet, the value is required.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    length: int | None
+        The length of the string. If None, no length is enforced.
+    pattern: str | None
+        A regex pattern that the string must match. If None, no pattern is enforced.
+    """
+
     _type = "string"
     value: str
 
@@ -256,6 +396,24 @@ class String(ConfigElement):
 
 
 class Enum(ConfigElement):
+    """Represents a JSON Enum type. Internally represented as a list of choices.
+
+    The UI renders this as a drop-down.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    default: same type as choices.
+        The default value for the integer. If NotSet, the value is required.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    choices: list of str | float
+        A list of choices for the enum. All choices must be of the same type (str or float).
+    """
+
     _type = None
 
     def __init__(self, display_name, *, choices: list = None, **kwargs):
@@ -281,6 +439,28 @@ class Array(ConfigElement):
     - Item type
     - Minimum and maximum number of items
     - Unique items
+
+    .. note::
+
+        The ``default`` value is not allowed for Array elements, as it is confusing.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    element: ConfigElement
+        The type of elements in the array. This can be any ConfigElement, such as String, Integer, etc.
+    min_items: int | None
+        The minimum number of items in the array. If None, no minimum is enforced.
+    max_items: int | None
+        The maximum number of items in the array. If None, no maximum is enforced.
+    unique_items: bool | None
+        Whether the items in the array must be unique. If None, no uniqueness is enforced.
+
     """
 
     _type = "array"
@@ -336,7 +516,41 @@ class Array(ConfigElement):
 
 
 class Object(ConfigElement):
-    """Represents a JSON Object type."""
+    """Represents a JSON Object type.
+
+    This is a complex type that can contain multiple elements, each with its own type.
+    It can also have additional elements that are not defined in the schema.
+
+    The UI renders this as a form with fields for each element.
+
+    Examples
+    --------
+
+    >>> from pydoover import config
+    >>> class MyAppConfig(config.Schema):
+    ...     def __init__(self):
+    ...         self.pump = config.Object(
+    ...             "Pump Settings",
+    ...          )
+    ...         self.pump.add_elements(
+    ...             config.Integer("Digital Output Number", description="The digital output pin to drive the pump."),
+    ...             config.Number("On Time", default=5.2, description="The time in seconds to run the pump."),
+    ...         )
+
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    additional_elements: bool | dict[str, Any]
+        If True, allows additional elements that are not defined in the schema.
+        If a dict, defines the schema for additional elements.
+        If False, no additional elements are allowed.
+    """
 
     _type = "object"
 
@@ -384,6 +598,26 @@ class Object(ConfigElement):
 
 
 class Variable:
+    """Represents a variable in the config schema.
+
+    This is a special type of config element that is used to reference other config elements.
+    It is used to create dynamic references to other config elements, such as device-specific settings.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    scope: str
+        The scope of the variable, which is usually the application name.
+    name: str
+        The name of the variable, which is usually the key of the config element.
+
+    """
+
     def __init__(self, scope: str, name: str):
         self._scope = transform_key(scope)
         self._name = transform_key(name)
@@ -393,6 +627,22 @@ class Variable:
 
 
 class Application(ConfigElement):
+    """Represents a Doover application configuration element.
+
+    This is used to reference other Doover applications in the configuration schema.
+
+    This is rendered as a dropdown in the UI, allowing the user to select an installed application.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    """
+
     _type = "string"
     value: str
 

@@ -46,7 +46,7 @@ sudo apt install doover-pydoover
 
 To install all dependencies for development, install all optional dependencies (grpc, reports, test, etc.), run:
 ```bash
-uv sync --all-extras
+uv sync --all-extras --all-groups
 ```
 
 We use pre-commit hooks to ensure code quality and consistency using Ruff. To set up pre-commit hooks, run the following command:
@@ -59,6 +59,15 @@ To run unit tests, use `pytest` in the main directory of the repository:
 
 ```bash
 uv run pytest
+```
+
+### Documentation
+The documentation for PyDoover is generated using Sphinx and can be found in the `docs` directory. To build the documentation, run:
+
+```bash
+uv sync --all-extras --all-groups  # ensure all dependencies are installed
+cd docs
+make html
 ```
 
 
