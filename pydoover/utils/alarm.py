@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import time
+import logging
 
 ## A generic alarm class that can be used to trigger things via a callback function when a threshold is met
 ## threshold can be greater than or less than a specified value
@@ -45,12 +46,21 @@ class Alarm:
             self.min_inter_alarm = min_inter_alarm
 
         if self.threshold_met(value) is False:
+            logging.debug(f"Threshold not met: {value}")
             self.initial_trigger_time = None
             return False
 
         else:
-            if self._check_grace_period() and self._check_min_inter_alarm():
-                self._trigger_alarm()
+            logging.debug(f"Threshold met: {value}")
+            if self._check_grace_period():
+                logging.debug("Grace period met")
+                if self._check_min_inter_alarm():
+                    logging.debug("Min inter alarm met")
+                    self._trigger_alarm()
+                else:
+                    logging.debug("Min inter alarm not met")
+            else:
+                logging.debug("Grace period not met")
 
     def _check_grace_period(self):
         if self.initial_trigger_time is None:
