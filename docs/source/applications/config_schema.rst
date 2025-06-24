@@ -15,7 +15,7 @@ Config Elements
     :members:
     :inherited-members:
 
-.. autoclass:: pydoover.config.Numeric
+.. autoclass:: pydoover.config.Number
     :members:
     :inherited-members:
 
