@@ -39,16 +39,6 @@ class Alarm:
         grace_period=None,
         min_inter_alarm=None,
     ):
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-
         if grace_period is not None:
             self.grace_period = grace_period
 
@@ -56,30 +46,21 @@ class Alarm:
             self.min_inter_alarm = min_inter_alarm
 
         if self.threshold_met(value) is False:
-            logging.info(f"Threshold not met: {value}")
+            logging.debug(f"Threshold not met: {value}")
             self.initial_trigger_time = None
+            return False
 
         else:
-            logging.info(f"Threshold met: {value}")
+            logging.debug(f"Threshold met: {value}")
             if self._check_grace_period():
-                logging.info("Grace period met")
+                logging.debug(f"Grace period met: {value}")
                 if self._check_min_inter_alarm():
-                    logging.info("Min inter alarm met")
+                    logging.debug(f"Min inter alarm met: {value}")
                     self._trigger_alarm()
                 else:
-                    logging.info("Min inter alarm not met")
+                    logging.debug(f"Min inter alarm not met: {value}")
             else:
-                logging.info("Grace period not met")
-
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
-        logging.info("&&&&&&&&&&&&&&&&&&")
+                logging.debug(f"Grace period not met: {value}")
 
     def _check_grace_period(self):
         if self.initial_trigger_time is None:
