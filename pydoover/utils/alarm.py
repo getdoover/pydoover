@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import time
+import logging
+import asyncio
 
 ## A generic alarm class that can be used to trigger things via a callback function when a threshold is met
 ## threshold can be greater than or less than a specified value
@@ -10,6 +12,7 @@ import time
 
 ## Grace period is the amount of time which the threshold has to be met before the alarm is triggered again
 ## Min inter alarm is the minimum time between alarms
+log = logging.getLogger(__name__)
 
 
 class Alarm:
@@ -31,7 +34,7 @@ class Alarm:
         self.last_alarm_time = None
         self.initial_trigger_time = None
 
-    def check_value(
+    async def check_value(
         self,
         value,
         threshold_met,
@@ -45,12 +48,21 @@ class Alarm:
             self.min_inter_alarm = min_inter_alarm
 
         if self.threshold_met(value) is False:
+            log.debug(f"Threshold not met: {value}")
             self.initial_trigger_time = None
             return False
 
         else:
-            if self._check_grace_period() and self._check_min_inter_alarm():
-                self._trigger_alarm()
+            log.debug(f"Threshold met: {value}")
+            if self._check_grace_period():
+                log.debug(f"Grace period met: {value}")
+                if self._check_min_inter_alarm():
+                    log.debug(f"Min inter alarm met: {value}")
+                    await self._trigger_alarm()
+                else:
+                    log.debug(f"Min inter alarm not met: {value}")
+            else:
+                log.debug(f"Grace period not met: {value}")
 
     def _check_grace_period(self):
         if self.initial_trigger_time is None:
@@ -72,9 +84,12 @@ class Alarm:
             else:
                 return False
 
-    def _trigger_alarm(self):
+    async def _trigger_alarm(self):
         if self.callback:
-            self.callback()
+            if asyncio.iscoroutinefunction(self.callback):
+                await self.callback()
+            else:
+                self.callback()
         self.last_alarm_time = time.time()
 
     def reset_alarm(self):
@@ -133,7 +148,7 @@ def create_alarm(
     async def wrapper(*args, **kwargs):
         result = await func(*args, **kwargs)
 
-        alarm.check_value(result, threshold_met)
+        await alarm.check_value(result, threshold_met)
 
         return result
 
