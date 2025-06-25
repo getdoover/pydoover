@@ -4,6 +4,7 @@ import json
 import os
 import logging
 import time
+from collections import deque
 
 from datetime import datetime
 from pathlib import Path
@@ -126,6 +127,10 @@ class Application:
 
         self.loop_target_period = 1
         self._error_wait_period = 10
+
+        self._last_interval_time: float | None = None
+        self._last_loop_time_warning: float | None = None
+        self._loop_times = deque(maxlen=20)
 
         self._test_next_event = asyncio.Event()
         self._test_next_loop_done = asyncio.Event()
@@ -266,19 +271,20 @@ class Application:
 
     async def wait_for_interval(self, target_time: float):
         """
-        Waits for the necessary amount of time to maintain a consistent interval 
+        Waits for the necessary amount of time to maintain a consistent interval
         of `target_time` seconds between calls to this method.
         """
 
         current_time = time.time()
-        if not hasattr(self, "_last_interval_time") or self._last_interval_time is None:
+        if self._last_interval_time is None:
             self._last_interval_time = current_time
             ## Wait for half the target time on the first call
             await asyncio.sleep(target_time / 2)
             return
 
         elapsed = current_time - self._last_interval_time
-        await self._assess_loop_time(elapsed, target_time) ## This will display a warning if the loop is running slower than target
+        ## This will display a warning if the loop is running slower than target
+        await self._assess_loop_time(elapsed, target_time)
         elapsed = current_time - self._last_interval_time
         remaining = target_time - elapsed
         log.debug(f"Last loop time: {elapsed}, target_time: {target_time}")
@@ -291,22 +297,20 @@ class Application:
         """
         Assess the loop time and adjust the target time if necessary.
         """
-        if not hasattr(self, "_loop_times"):
-            self._loop_times = []
         self._loop_times.append(last_loop_time)
-        if len(self._loop_times) > 20:
-            self._loop_times.pop(0)
         average_loop_time = sum(self._loop_times) / len(self._loop_times)
         log.debug(f"Average loop time: {average_loop_time}, target_time: {target_time}")
-        
+
         ## If the loop time is greater than 20% above the target time, display a warning every 6 seconds or so
         if average_loop_time > (target_time * 1.2):
-            if not hasattr(self, "_last_loop_time_warning") or self._last_loop_time_warning is None:
+            if self._last_loop_time_warning is None:
                 self._last_loop_time_warning = time.time()
             elif time.time() - self._last_loop_time_warning > 6:
-                log.warning(f"Loop is running slower than target. Average loop time: {average_loop_time}, target_time: {target_time}")
+                log.warning(
+                    f"Loop is running slower than target. Average loop time: {average_loop_time}, target_time: {target_time}"
+                )
                 self._last_loop_time_warning = time.time()
-            
+
     async def close(self):
         log.info(
             "\n########################################"
