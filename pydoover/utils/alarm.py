@@ -12,6 +12,7 @@ import asyncio
 
 ## Grace period is the amount of time which the threshold has to be met before the alarm is triggered again
 ## Min inter alarm is the minimum time between alarms
+log = logging.getLogger(__name__)
 
 
 class Alarm:
@@ -47,21 +48,21 @@ class Alarm:
             self.min_inter_alarm = min_inter_alarm
 
         if self.threshold_met(value) is False:
-            logging.debug(f"Threshold not met: {value}")
+            log.debug(f"Threshold not met: {value}")
             self.initial_trigger_time = None
             return False
 
         else:
-            logging.debug(f"Threshold met: {value}")
+            log.debug(f"Threshold met: {value}")
             if self._check_grace_period():
-                logging.debug(f"Grace period met: {value}")
+                log.debug(f"Grace period met: {value}")
                 if self._check_min_inter_alarm():
-                    logging.debug(f"Min inter alarm met: {value}")
+                    log.debug(f"Min inter alarm met: {value}")
                     await self._trigger_alarm()
                 else:
-                    logging.debug(f"Min inter alarm not met: {value}")
+                    log.debug(f"Min inter alarm not met: {value}")
             else:
-                logging.debug(f"Grace period not met: {value}")
+                log.debug(f"Grace period not met: {value}")
 
     def _check_grace_period(self):
         if self.initial_trigger_time is None:
