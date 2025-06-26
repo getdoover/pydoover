@@ -1,3 +1,9 @@
+pydoover (0.4.7) focal jammy; urgency=medium
+
+  * Latest debian release v0.4.0 -> 0.4.7.
+
+ -- Josh Bramley <josh@span-eng.com>  Wed, 24 Apr 2025 20:21:20 +1000
+
 pydoover (0.4.0) focal jammy; urgency=medium
 
   * Add apps rewrite.
