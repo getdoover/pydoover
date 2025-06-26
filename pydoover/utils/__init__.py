@@ -24,3 +24,5 @@ from .diff import (
     generate_diff as generate_diff,
     maybe_load_json as maybe_load_json,
 )
+
+from .alarm import create_alarm as create_alarm
