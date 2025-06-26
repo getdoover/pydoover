@@ -118,6 +118,7 @@ class Application:
         self._ready = asyncio.Event()
         self._tag_values = {}
         self._shutdown_at = None
+        self.force_log_on_shutdown = False
 
         if name is None:
             self.name = self.__class__.__name__
@@ -266,7 +267,7 @@ class Application:
 
     async def wait_for_interval(self, target_time: float):
         """
-        Waits for the necessary amount of time to maintain a consistent interval 
+        Waits for the necessary amount of time to maintain a consistent interval
         of `target_time` seconds between calls to this method.
         """
 
@@ -278,7 +279,9 @@ class Application:
             return
 
         elapsed = current_time - self._last_interval_time
-        await self._assess_loop_time(elapsed, target_time) ## This will display a warning if the loop is running slower than target
+        await self._assess_loop_time(
+            elapsed, target_time
+        )  ## This will display a warning if the loop is running slower than target
         elapsed = current_time - self._last_interval_time
         remaining = target_time - elapsed
         log.debug(f"Last loop time: {elapsed}, target_time: {target_time}")
@@ -298,15 +301,20 @@ class Application:
             self._loop_times.pop(0)
         average_loop_time = sum(self._loop_times) / len(self._loop_times)
         log.debug(f"Average loop time: {average_loop_time}, target_time: {target_time}")
-        
+
         ## If the loop time is greater than 20% above the target time, display a warning every 6 seconds or so
         if average_loop_time > (target_time * 1.2):
-            if not hasattr(self, "_last_loop_time_warning") or self._last_loop_time_warning is None:
+            if (
+                not hasattr(self, "_last_loop_time_warning")
+                or self._last_loop_time_warning is None
+            ):
                 self._last_loop_time_warning = time.time()
             elif time.time() - self._last_loop_time_warning > 6:
-                log.warning(f"Loop is running slower than target. Average loop time: {average_loop_time}, target_time: {target_time}")
+                log.warning(
+                    f"Loop is running slower than target. Average loop time: {average_loop_time}, target_time: {target_time}"
+                )
                 self._last_loop_time_warning = time.time()
-            
+
     async def close(self):
         log.info(
             "\n########################################"
@@ -397,6 +405,9 @@ class Application:
         else:
             log.debug("UI comms sync complete")
         return result
+
+    def set_ui_update_period(self, period: int):
+        self.ui_manager.set_min_ui_update_period(period)
 
     def set_ui(self, ui):
         self.ui_manager.set_children(ui)
@@ -702,7 +713,8 @@ class Application:
         dt : datetime
             The datetime when the shutdown is scheduled.
         """
-        pass
+        if self.force_log_on_shutdown:
+            await self._update_ui(force_log=True)
 
     async def check_can_shutdown(self) -> bool:
         """Check if the application can shutdown.
