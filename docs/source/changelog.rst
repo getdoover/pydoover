@@ -3,6 +3,12 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.7
+------
+- Add message logging before a shutdown event is sent
+- Add `create_alarm` to `doover.utils` package
+
+
 v0.4.6
 ------
 - New alarms util functionality

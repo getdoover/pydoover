@@ -1,7 +1,7 @@
 [project]
 name = "pydoover"
 authors = [{ name = "Doover Team", email = "developers@doover.com" }]
-version = "0.4.6"
+version = "0.4.7"
 description = "Python package for interacting with Doover"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -34,8 +34,8 @@ test = [
 ]
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [dependency-groups]
 docs = [
