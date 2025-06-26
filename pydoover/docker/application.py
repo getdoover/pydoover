@@ -119,6 +119,7 @@ class Application:
         self._ready = asyncio.Event()
         self._tag_values = {}
         self._shutdown_at = None
+        self.force_log_on_shutdown = False
 
         if name is None:
             self.name = self.__class__.__name__
@@ -283,8 +284,9 @@ class Application:
             return
 
         elapsed = current_time - self._last_interval_time
-        ## This will display a warning if the loop is running slower than target
-        await self._assess_loop_time(elapsed, target_time)
+        await self._assess_loop_time(
+            elapsed, target_time
+        )  ## This will display a warning if the loop is running slower than target
         elapsed = current_time - self._last_interval_time
         remaining = target_time - elapsed
         log.debug(f"Last loop time: {elapsed}, target_time: {target_time}")
@@ -303,7 +305,10 @@ class Application:
 
         ## If the loop time is greater than 20% above the target time, display a warning every 6 seconds or so
         if average_loop_time > (target_time * 1.2):
-            if self._last_loop_time_warning is None:
+            if (
+                not hasattr(self, "_last_loop_time_warning")
+                or self._last_loop_time_warning is None
+            ):
                 self._last_loop_time_warning = time.time()
             elif time.time() - self._last_loop_time_warning > 6:
                 log.warning(
@@ -706,7 +711,8 @@ class Application:
         dt : datetime
             The datetime when the shutdown is scheduled.
         """
-        pass
+        if self.force_log_on_shutdown:
+            await self._update_ui(force_log=True)
 
     async def check_can_shutdown(self) -> bool:
         """Check if the application can shutdown.
