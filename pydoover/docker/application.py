@@ -4,6 +4,7 @@ import json
 import os
 import logging
 import time
+from collections import deque
 
 from datetime import datetime
 from pathlib import Path
@@ -127,6 +128,10 @@ class Application:
 
         self.loop_target_period = 1
         self._error_wait_period = 10
+
+        self._last_interval_time: float | None = None
+        self._last_loop_time_warning: float | None = None
+        self._loop_times = deque(maxlen=20)
 
         self._test_next_event = asyncio.Event()
         self._test_next_loop_done = asyncio.Event()
@@ -272,7 +277,7 @@ class Application:
         """
 
         current_time = time.time()
-        if not hasattr(self, "_last_interval_time") or self._last_interval_time is None:
+        if self._last_interval_time is None:
             self._last_interval_time = current_time
             ## Wait for half the target time on the first call
             await asyncio.sleep(target_time / 2)
@@ -294,11 +299,7 @@ class Application:
         """
         Assess the loop time and adjust the target time if necessary.
         """
-        if not hasattr(self, "_loop_times"):
-            self._loop_times = []
         self._loop_times.append(last_loop_time)
-        if len(self._loop_times) > 20:
-            self._loop_times.pop(0)
         average_loop_time = sum(self._loop_times) / len(self._loop_times)
         log.debug(f"Average loop time: {average_loop_time}, target_time: {target_time}")
 

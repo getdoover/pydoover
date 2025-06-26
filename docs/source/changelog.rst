@@ -3,6 +3,13 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.6
+------
+- New alarms util functionality
+- New platform interface power management calls
+- Improved main loop sleeping logic
+- Bug fixes
+
 v0.4.5
 ------
 - Fix a problem with `get_di_events` and inconsistent return types between sync and async
