@@ -433,9 +433,6 @@ class UIManager:
 
     get_available_commands = get_all_interaction_names
 
-    def set_min_ui_update_period(self, period: int):
-        self.min_ui_update_period = period
-
     def record_critical_value(self, name, value):
         log.warning(
             "this function is deprecated. use the critical=True parameter of another appropriate function."

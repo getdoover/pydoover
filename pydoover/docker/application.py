@@ -407,9 +407,6 @@ class Application:
             log.debug("UI comms sync complete")
         return result
 
-    def set_ui_update_period(self, period: int):
-        self.ui_manager.set_min_ui_update_period(period)
-
     def set_ui(self, ui):
         self.ui_manager.set_children(ui)
 
