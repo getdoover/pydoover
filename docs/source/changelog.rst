@@ -3,6 +3,10 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.8
+------
+- Add `get_immunity_seconds` and `set_immunity_seconds` to platform interface
+
 v0.4.7
 ------
 - Add message logging before a shutdown event is sent
