@@ -10,7 +10,7 @@ rm -rf grpc_stubs/
 mkdir -p grpc_stubs/
 cp *.proto grpc_stubs/
 touch grpc_stubs/__init__.py
-python3 -m grpc_tools.protoc -I. --python_out=./ --pyi_out=./ --grpc_python_out=./ ./grpc_stubs/*.proto
+uv run python -m grpc_tools.protoc -I. --python_out=./ --pyi_out=./ --grpc_python_out=./ ./grpc_stubs/*.proto
 rm grpc_stubs/*.proto
 
 # see: https://stackoverflow.com/questions/16745988/sed-command-with-i-option-in-place-editing-works-fine-on-ubuntu-but-not-mac

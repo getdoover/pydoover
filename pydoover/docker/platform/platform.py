@@ -9,7 +9,7 @@ from typing import Callable
 import grpc
 
 from .grpc_stubs import platform_iface_pb2, platform_iface_pb2_grpc
-from .types import Location, Event
+from .platform_types import Location, Event
 from ..grpc_interface import GRPCInterface
 from ...utils import maybe_async, call_maybe_async, deprecated
 from ...cli.decorators import command as cli_command
@@ -1132,8 +1132,7 @@ class PlatformInterface(GRPCInterface):
             platform_iface_pb2.getShutdownImmunityRequest(),
             response_field="immunity_secs",
         )
-    
-    
+
     @cli_command()
     @maybe_async()
     def set_immunity_seconds(self, immunity_secs: int) -> float:
