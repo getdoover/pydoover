@@ -202,7 +202,9 @@ message getShutdownImmunityResponse {
     optional int32 immunity_secs = 2;
 }
 
-message setShutdownImmunityRequest {}
+message setShutdownImmunityRequest {
+    int32 immunity_secs = 1;
+}
 
 message setShutdownImmunityResponse {
     ResponseHeader response_header = 1;

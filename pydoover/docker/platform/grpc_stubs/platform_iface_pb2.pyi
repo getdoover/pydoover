@@ -256,8 +256,10 @@ class getShutdownImmunityResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., immunity_secs: _Optional[int] = ...) -> None: ...
 
 class setShutdownImmunityRequest(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
+    __slots__ = ("immunity_secs",)
+    IMMUNITY_SECS_FIELD_NUMBER: _ClassVar[int]
+    immunity_secs: int
+    def __init__(self, immunity_secs: _Optional[int] = ...) -> None: ...
 
 class setShutdownImmunityResponse(_message.Message):
     __slots__ = ("response_header", "immunity_secs")
