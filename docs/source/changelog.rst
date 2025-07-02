@@ -5,7 +5,7 @@ of what has changed, and whats new for each version of the library.
 
 v0.4.9
 ------
-- Fix import error in `doover
+- Fix import error in `docker.platform_iface`
 
 v0.4.8
 ------

@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, Awaitable, Callable
 
+from aiohttp.web import Response, Server, ServerRunner, TCPSite
+
 from .device_agent import DeviceAgentInterface
 from .modbus import ModbusInterface
 from .platform import PlatformInterface
@@ -137,6 +139,14 @@ class Application:
         self._test_next_loop_done = asyncio.Event()
         self.test_mode = test_mode
 
+        self._is_healthy = False
+
+    async def _handle_healthcheck(self, _request):
+        if self._is_healthy:
+            return Response(text="OK", status=200)
+        else:
+            return Response(text="ERROR", status=503)
+
     async def _on_deployment_config_update(self, _, config: dict[str, Any]):
         try:
             app_config = config["applications"][self.app_key]
@@ -204,6 +214,13 @@ class Application:
         await self._test_next_loop_done.wait()
 
     async def _run(self):
+        log.info("Starting healthcheck server on http://127.0.0.1:49200")
+        server = Server(self._handle_healthcheck)
+        runner = ServerRunner(server)
+        await runner.setup()
+        site = TCPSite(runner, "127.0.0.1", 49200)
+        await site.start()
+
         if self._config_fp is not None:
             data = json.loads(self._config_fp.read_text())
             self.config._inject_deployment_config(data)
@@ -255,6 +272,7 @@ class Application:
                 log.warning(
                     f"\n\n\nWaiting {self._error_wait_period} seconds before restarting app\n\n"
                 )
+                self._is_healthy = False
                 await asyncio.sleep(self._error_wait_period)
                 break
             else:
@@ -265,6 +283,8 @@ class Application:
                 else:
                     # allow other async tasks to run if the user has done a doozy and chained a whole heap of .next()s
                     await asyncio.sleep(0.01)
+
+                self._is_healthy = True
 
             if self.test_mode is True:
                 # signal that the loop is done.
