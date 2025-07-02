@@ -4,18 +4,17 @@ This is exposed as the `doover-app-healthcheck` command.
 """
 
 import os
-from contextlib import suppress
-
-import requests
+from subprocess import run
 
 
 def main():
-    success = False
     port = os.environ.get("HEALTHCHECK_PORT", 49200)
-    with suppress(Exception):
-        response = requests.get(f"http://127.0.0.1:{port}/healthcheck")
-        if response.status_code == 200:
-            success = True
+    try:
+        run(["curl", f"http://127.0.0.1:{port}/health"], check=True)
+    except Exception:
+        success = False
+    else:
+        success = True
 
     if success:
         print("OK")
