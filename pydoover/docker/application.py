@@ -92,6 +92,7 @@ class Application:
         name: str = None,
         test_mode: bool = False,
         config_fp: str = None,
+        healthcheck_port: int = None,
     ):
         self.config = config
 
@@ -140,6 +141,7 @@ class Application:
         self.test_mode = test_mode
 
         self._is_healthy = False
+        self._healthcheck_port = healthcheck_port
 
     async def _handle_healthcheck(self, _request):
         if self._is_healthy:
@@ -214,11 +216,13 @@ class Application:
         await self._test_next_loop_done.wait()
 
     async def _run(self):
-        log.info("Starting healthcheck server on http://127.0.0.1:49200")
+        log.info(
+            f"Starting healthcheck server on http://127.0.0.1:{self._healthcheck_port}"
+        )
         server = Server(self._handle_healthcheck)
         runner = ServerRunner(server)
         await runner.setup()
-        site = TCPSite(runner, "127.0.0.1", 49200)
+        site = TCPSite(runner, "127.0.0.1", self._healthcheck_port)
         await site.start()
 
         if self._config_fp is not None:
@@ -846,6 +850,12 @@ def parse_args():
         help="Config file path to override app config",
     )
     parser.add_argument(
+        "--healthcheck-port",
+        type=int,
+        default=None,
+        help="Port for the healthcheck server (default: 49200). This must be overidden per-app to avoid conflicts.",
+    )
+    parser.add_argument(
         "--debug", action="store_true", default=False, help="Debug Mode"
     )
 
@@ -855,6 +865,9 @@ def parse_args():
     dda_uri = args.dda_uri or os.environ.get("DDA_URI") or "localhost:50051"
     plt_uri = args.plt_uri or os.environ.get("PLT_URI") or "localhost:50053"
     modbus_uri = args.modbus_uri or os.environ.get("MODBUS_URI") or "localhost:50054"
+    healthcheck_port = int(
+        args.healthcheck_port or os.environ.get("HEALTHCHECK_PORT") or 49200
+    )
     config_fp = args.config_fp or os.environ.get("CONFIG_FP")
 
     remote_dev = args.remote_dev or os.environ.get("REMOTE_DEV")
@@ -864,7 +877,16 @@ def parse_args():
         modbus_uri = modbus_uri.replace("localhost", remote_dev)
 
     debug = args.debug or os.environ.get("DEBUG") == "1"
-    return app_key, dda_uri, plt_uri, modbus_uri, remote_dev, config_fp, debug
+    return (
+        app_key,
+        dda_uri,
+        plt_uri,
+        modbus_uri,
+        remote_dev,
+        config_fp,
+        debug,
+        healthcheck_port,
+    )
 
 
 def run_app(app: Application, start: bool = True):
@@ -896,7 +918,16 @@ def run_app(app: Application, start: bool = True):
         If True, the application will run in a blocking manner. If False, it will return an async runner function.
         Defaults to True.
     """
-    app_key, dda_uri, plt_uri, modbus_uri, remote_dev, config_fp, debug = parse_args()
+    (
+        app_key,
+        dda_uri,
+        plt_uri,
+        modbus_uri,
+        remote_dev,
+        config_fp,
+        debug,
+        healthcheck_port,
+    ) = parse_args()
 
     user_is_async = asyncio.iscoroutinefunction(
         app.setup
@@ -918,6 +949,7 @@ def run_app(app: Application, start: bool = True):
     app.modbus_iface.uri = modbus_uri
     app.device_agent.uri = dda_uri
     app._config_fp = config_fp and Path(config_fp)
+    app._healthcheck_port = healthcheck_port
 
     async def runner():
         async with app:
@@ -939,7 +971,16 @@ def run_app2(
     plt_iface_cls: type[PlatformInterface] = PlatformInterface,
     mb_iface_cls: type[ModbusInterface] = ModbusInterface,
 ):
-    app_key, dda_uri, plt_uri, modbus_uri, remote_dev, config_fp, debug = parse_args()
+    (
+        app_key,
+        dda_uri,
+        plt_uri,
+        modbus_uri,
+        remote_dev,
+        config_fp,
+        debug,
+        healthcheck_port,
+    ) = parse_args()
 
     user_is_async = asyncio.iscoroutinefunction(
         app_cls.setup
@@ -955,6 +996,7 @@ def run_app2(
         modbus_iface=mb_iface_cls(app_key, modbus_uri, is_async, config),
         device_agent=dda_iface_cls(app_key, dda_uri, is_async),
         config_fp=config_fp,
+        healthcheck_port=healthcheck_port,
     )
 
     async def runner():
