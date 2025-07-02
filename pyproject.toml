@@ -55,6 +55,7 @@ Homepage = "https://doover.com"
 
 [project.scripts]
 pydoover = "pydoover.cli:entrypoint"
+doover-app-healthcheck = "pydoover.utils.healthcheck:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
