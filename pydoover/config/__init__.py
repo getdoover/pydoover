@@ -578,7 +578,9 @@ class Object(ConfigElement):
     def __getattr__(self, key):
         if key in self._elements:
             return self._elements[key]
-        return super().__getattr__(key)
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{key}'"
+        )
 
     def add_elements(self, *element):
         for element in element:
