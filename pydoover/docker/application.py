@@ -10,7 +10,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, Awaitable, Callable
 
-from aiohttp.web import Response, Server, ServerRunner, TCPSite
+try:
+    from aiohttp.web import Response, Server, ServerRunner, TCPSite
+except ImportError:
+    RUN_HEALTHCHECK = False
+else:
+    RUN_HEALTHCHECK = True
 
 from .device_agent import DeviceAgentInterface
 from .modbus import ModbusInterface
@@ -216,14 +221,17 @@ class Application:
         await self._test_next_loop_done.wait()
 
     async def _run(self):
-        log.info(
-            f"Starting healthcheck server on http://127.0.0.1:{self._healthcheck_port}"
-        )
-        server = Server(self._handle_healthcheck)
-        runner = ServerRunner(server)
-        await runner.setup()
-        site = TCPSite(runner, "127.0.0.1", self._healthcheck_port)
-        await site.start()
+        if RUN_HEALTHCHECK:
+            log.info(
+                f"Starting healthcheck server on http://127.0.0.1:{self._healthcheck_port}"
+            )
+            server = Server(self._handle_healthcheck)
+            runner = ServerRunner(server)
+            await runner.setup()
+            site = TCPSite(runner, "127.0.0.1", self._healthcheck_port)
+            await site.start()
+        else:
+            log.info("`aiohttp` not installed, skipping healthcheck server.")
 
         if self._config_fp is not None:
             data = json.loads(self._config_fp.read_text())
