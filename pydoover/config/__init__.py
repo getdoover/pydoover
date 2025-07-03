@@ -576,7 +576,8 @@ class Object(ConfigElement):
         super().__setattr__(key, value)
 
     def __getattr__(self, key):
-        if key in self._elements:
+        # Safety check: if _elements doesn't exist yet, it means we're still initializing
+        if hasattr(self, "_elements") and key in self._elements:
             return self._elements[key]
         raise AttributeError(
             f"'{self.__class__.__name__}' object has no attribute '{key}'"
