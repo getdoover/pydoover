@@ -558,7 +558,7 @@ class Object(ConfigElement):
         self,
         display_name,
         *,
-        additional_elements: bool | dict[str, Any] = False,
+        additional_elements: bool | dict[str, Any] = True,
         **kwargs,
     ):
         if "default" in kwargs:
@@ -574,6 +574,11 @@ class Object(ConfigElement):
         if isinstance(value, ConfigElement):
             self.add_elements(value)
         super().__setattr__(key, value)
+
+    def __getattr__(self, key):
+        if key in self._elements:
+            return self._elements[key]
+        return super().__getattr__(key)
 
     def add_elements(self, *element):
         for element in element:
@@ -594,7 +599,13 @@ class Object(ConfigElement):
 
     def load_data(self, data):
         for name, value in data.items():
-            self._elements[name].load_data(value)
+            try:
+                self._elements[name].load_data(value)
+            except KeyError:
+                if self.additional_elements is True:
+                    self._elements[name] = ConfigElement(name, default=value)
+                else:
+                    raise ValueError(f"Unknown element {name} in config.")
 
 
 class Variable:
