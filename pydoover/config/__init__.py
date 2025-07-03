@@ -577,7 +577,7 @@ class Object(ConfigElement):
 
     def __getattr__(self, key):
         # Safety check: if _elements doesn't exist yet, it means we're still initializing
-        if hasattr(self, "_elements") and key in self._elements:
+        if "_elements" in self.__dict__ and key in self._elements:
             return self._elements[key]
         raise AttributeError(
             f"'{self.__class__.__name__}' object has no attribute '{key}'"
