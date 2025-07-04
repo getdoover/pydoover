@@ -14,7 +14,7 @@ def maybe_load_json(data):
 def apply_diff(
     data: dict[str, Any],
     diff: dict[str, Any],
-    do_delete: bool = True,
+    do_delete: bool = False,
     clone: bool = True,
 ):
     """Apply a doover compatible diff to a JSON / dict object.
