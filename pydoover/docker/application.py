@@ -577,6 +577,8 @@ class Application:
             The value of the tag, or None if the tag does not exist.
         """
         try:
+            if app_key is None:
+                app_key = self.app_key
             return self._tag_values[app_key][tag_key]
         except (KeyError, TypeError):
             log.debug(f"Tag {tag_key} not found in current tags")
