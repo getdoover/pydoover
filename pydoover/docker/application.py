@@ -222,14 +222,17 @@ class Application:
 
     async def _run(self):
         if RUN_HEALTHCHECK:
-            log.info(
-                f"Starting healthcheck server on http://127.0.0.1:{self._healthcheck_port}"
-            )
-            server = Server(self._handle_healthcheck)
-            runner = ServerRunner(server)
-            await runner.setup()
-            site = TCPSite(runner, "127.0.0.1", self._healthcheck_port)
-            await site.start()
+            try:
+                log.info(
+                    f"Starting healthcheck server on http://127.0.0.1:{self._healthcheck_port}"
+                )
+                server = Server(self._handle_healthcheck)
+                runner = ServerRunner(server)
+                await runner.setup()
+                site = TCPSite(runner, "127.0.0.1", self._healthcheck_port)
+                await site.start()
+            except Exception as e:
+                log.error(f"Error starting healthcheck server: {e}", exc_info=e)
         else:
             log.info("`aiohttp` not installed, skipping healthcheck server.")
 
