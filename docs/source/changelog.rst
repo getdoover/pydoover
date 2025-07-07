@@ -3,6 +3,13 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.10
+-------
+- Add health checking for docker apps
+- Add support for `additional_elements` in `config.ConfigSchema`
+- Add generic `.attribute_name` support for `config.Object` objects.
+
+
 v0.4.9
 ------
 - Fix import error in `docker.platform_iface`

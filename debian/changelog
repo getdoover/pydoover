@@ -1,3 +1,9 @@
+pydoover (0.4.10) focal jammy; urgency=medium
+
+  * Release pydoover v0.4.10.
+
+ -- Tom Wyatt <tom@span-eng.com>  Fri, 27 Apr 2025 11:21:20 +1000
+
 pydoover (0.4.8) focal jammy; urgency=medium
 
   * Latest debian release v0.4.7 -> 0.4.8.
