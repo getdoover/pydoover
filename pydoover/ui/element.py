@@ -235,17 +235,30 @@ class ConnectionInfo(Element):
 class AlertStream(Element):
     """Represents an Alert Stream UI Element
 
+    .. note::
+
+        This is a special element that is used to display the "Notifications" banner in the UI.
+        If any installed app includes this element, it will be shown.
+        Do not change the name of this element, doing so will lead to confusion as
+        it is manually set to listen to the "significantEvent" channel in the UI.
+
     Parameters
     ----------
     name: str
         The name of the alert stream.
+        This defaults to "significantEvent", but is currently unused in the UI.
     display_name: str, optional
-        The display name of the alert stream.
+        The display name of the alert stream. This is not used in the UI.
     """
 
     type = "uiAlertStream"
 
-    def __init__(self, name, display_name: str = None, **kwargs):
+    def __init__(
+        self,
+        name: str = "significantEvent",
+        display_name: str = "placeholder",
+        **kwargs,
+    ):
         super().__init__(name, display_name, is_available=None, help_str=None, **kwargs)
 
 
