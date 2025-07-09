@@ -34,7 +34,7 @@ jobs:
         run: |
           cd /tmp
           apt update
-          apt install -y python3-requests python3-fuzzywuzzy python3-grpcio python3-protobuf python3-aiohttp python3-pytest
+          apt install -y python3-requests python3-aiohttp
           echo 'y' | mk-build-deps -i ${GITHUB_WORKSPACE}/debian/control
 
       - name: Build package
