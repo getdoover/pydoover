@@ -58,7 +58,7 @@ class Schema:
 
     """
 
-    __element_map: "dict[str, ConfigElement]"
+    __element_map: "dict[str, ConfigElement]" = {}
 
     def add_element(self, element):
         try:
