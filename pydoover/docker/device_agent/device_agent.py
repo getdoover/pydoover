@@ -66,6 +66,7 @@ class DeviceAgentInterface(GRPCInterface):
         self.is_dda_available = False
         self.is_dda_online = False
         self.has_dda_been_online = False
+        self.agent_id = None
 
         # this is a list of channels that the agent interface will subscribe to,
         # and a list of callbacks that will be called when a message is received,
