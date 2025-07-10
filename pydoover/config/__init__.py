@@ -488,16 +488,15 @@ class Enum(ConfigElement):
 
         if isinstance(choices, EnumType):
             choices = [choice.value for choice in choices]
+            self._enum_lookup = {str(choice): choice for choice in choices}
+            choices = list(self._enum_lookup.keys())
+        else:
+            self._enum_lookup = None
 
-        self._enum_lookup = None
         if all(isinstance(choice, str) for choice in choices):
             self._type = "string"
         elif all(isinstance(choice, float) for choice in choices):
             self._type = "number"
-        else:
-            self._enum_lookup = {str(choice): choice for choice in choices}
-            choices = [str(choice) for choice in choices]
-            self._type = "string"
 
         self.choices = choices
 
