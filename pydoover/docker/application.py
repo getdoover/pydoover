@@ -555,7 +555,9 @@ class Application:
             self._shutdown_at = dt
             await call_maybe_async(self.on_shutdown_at, dt)
 
-    def get_tag(self, tag_key: str, app_key: str = None) -> Any | None:
+    def get_tag(
+        self, tag_key: str, app_key: str = None, default: Any = None
+    ) -> Any | None:
         """Get a tag value for a specific app.
 
         If you want to get a global tag, use :meth:`get_global_tag` instead.
@@ -576,6 +578,8 @@ class Application:
             The tag to fetch.
         app_key: str, optional
             The app key to get the tag for. This defaults to the current app.
+        default: Any, optional
+            The default value to return if the tag does not exist. Defaults to None.
 
 
         Returns
@@ -589,9 +593,9 @@ class Application:
             return self._tag_values[app_key][tag_key]
         except (KeyError, TypeError):
             log.debug(f"Tag {tag_key} not found in current tags")
-            return None
+            return default
 
-    def get_global_tag(self, tag_key: str) -> Any | None:
+    def get_global_tag(self, tag_key: str, default: Any = None) -> Any | None:
         """Get a global tag value.
 
         Global tags are tags that are not specific to an app, but are shared across all apps.
@@ -611,6 +615,8 @@ class Application:
         ----------
         tag_key: str
             The global tag to fetch.
+        default: Any, optional
+            The default value to return if the tag does not exist. Defaults to None.
 
         Returns
         -------
@@ -621,7 +627,7 @@ class Application:
             return self._tag_values[tag_key]
         except (KeyError, TypeError):
             log.debug(f"Global tag {tag_key} not found in current tags")
-            return None
+            return default
 
     @maybe_async()
     def set_tag(self, tag_key: str, value: Any, app_key: str = None) -> None:
