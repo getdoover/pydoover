@@ -51,7 +51,14 @@ class Interaction(Element):
     ):
         super().__init__(name, display_name, **kwargs)
         self._current_value = current_value
-        self._default_value = default or kwargs.pop("default_val", None)
+
+        if default is not None:
+            self._default_value = default
+        elif "default_val" in kwargs:
+            # for backwards compatibility with old code that used default_val
+            self._default_value = kwargs.pop("default_val", None)
+        else:
+            self._default_value = None
 
         self._manager: Optional["UIManager"] = None
 
