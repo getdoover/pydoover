@@ -4,6 +4,7 @@ import logging
 import pathlib
 import re
 
+from enum import EnumType, Enum as _Enum
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -400,6 +401,67 @@ class Enum(ConfigElement):
 
     The UI renders this as a drop-down.
 
+    Examples
+    --------
+
+    You can specify a list of choices as strings or floats, or use an EnumType.
+
+
+        from pydoover import config
+
+        class MyChoice(enum.Enum):
+            A = "Choice 1"
+            B = "Choice 2"
+            C = "Choice 3"
+
+        class AppConfig(config.Schema):
+            def __init__(self):
+                self.choice = config.Enum(
+                    "Choose Something",
+                    choices=MyChoice,
+                    default=MyChoice.A,
+                )
+
+                self.other_choice = config.Enum(
+                    "Other Choice",
+                    choices=["a", "b", "c"],
+                    default="a"
+                )
+
+
+    You can also set enum values to be objects to allow for custom attributes, provided your object implements `__str__`:
+
+
+        from pydoover import config
+
+        class Choice:
+            def __init__(self, name, level):
+                self.name = name
+                self.level = level
+
+            def __str__(self):
+                return self.name
+
+        class ChoiceType(enum.Enum):
+            A = Choice("A", 1)
+            B = Choice("B", 2)
+            C = Choice("C", 3)
+
+        class AppConfig(config.Schema):
+            def __init__(self):
+                self.choice = config.Enum(
+                    "Choose Something",
+                    choices=ChoiceType,
+                    default=ChoiceType.A,
+                )
+
+            @property
+            def choice_value(self):
+                return self.choice.value.level
+
+
+
+
     Attributes
     ----------
     display_name: str
@@ -410,20 +472,42 @@ class Enum(ConfigElement):
         A help text for the config element.
     hidden: bool
         Whether the config element should be hidden in the UI.
-    choices: list of str | float
+    choices: EnumType or list of str | float
         A list of choices for the enum. All choices must be of the same type (str or float).
+        This optionally accepts an EnumType, with the value of the enum denoting the choice.
+        The value can be an object which implements the ``__str__`` method. Each ``__str__`` value must be unique.
     """
 
     _type = None
 
-    def __init__(self, display_name, *, choices: list = None, **kwargs):
-        super().__init__(display_name, **kwargs)
-        self.choices = choices
+    def __init__(self, display_name, *, choices: list = None, default: Any, **kwargs):
+        if isinstance(default, _Enum):
+            default = str(default.value)
 
+        super().__init__(display_name, default=default, **kwargs)
+
+        if isinstance(choices, EnumType):
+            choices = [choice.value for choice in choices]
+
+        self._enum_lookup = None
         if all(isinstance(choice, str) for choice in choices):
             self._type = "string"
         elif all(isinstance(choice, float) for choice in choices):
             self._type = "number"
+        else:
+            self._enum_lookup = {str(choice): choice for choice in choices}
+            choices = [str(choice) for choice in choices]
+            self._type = "string"
+
+        self.choices = choices
+
+    @property
+    def value(self):
+        actual: Any = super().value
+        if self._enum_lookup is None:
+            return actual
+        else:
+            return self._enum_lookup[actual]
 
     def to_dict(self):
         return {
