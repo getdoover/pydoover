@@ -404,8 +404,7 @@ class Enum(ConfigElement):
     Examples
     --------
 
-    You can specify a list of choices as strings or floats, or use an EnumType.
-
+    You can specify a list of choices as strings or floats, or use an EnumType::
 
         from pydoover import config
 
@@ -429,8 +428,7 @@ class Enum(ConfigElement):
                 )
 
 
-    You can also set enum values to be objects to allow for custom attributes, provided your object implements `__str__`:
-
+    You can also set enum values to be objects to allow for custom attributes, provided your object implements ``__str__``::
 
         from pydoover import config
 
@@ -458,7 +456,6 @@ class Enum(ConfigElement):
             @property
             def choice_value(self):
                 return self.choice.value.level
-
 
 
 
