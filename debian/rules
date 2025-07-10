@@ -6,3 +6,6 @@ export HATCH_VERBOSE=3
 
 %:
 	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_test:
+	echo "disabling dh_auto_test as automated ci/cd tests are run in a separate pipeline"

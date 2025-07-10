@@ -122,6 +122,7 @@ class Application:
         )
 
         self.app_key = app_key
+        self.app_display_name = ""
 
         self._is_async = get_is_async(is_async)
         self._ready = asyncio.Event()
@@ -165,6 +166,9 @@ class Application:
 
         self.device_agent.agent_id = app_config.get("AGENT_ID")
         log.info(f"Agent ID set: {self.device_agent.agent_id}")
+
+        self.app_display_name = app_config.get("APP_DISPLAY_NAME", "")
+        log.info(f"Application display name set: {self.app_display_name}")
 
         log.info(f"Deployment Config Updated: {app_config}")
         self.config._inject_deployment_config(app_config)
@@ -788,6 +792,7 @@ class Application:
     async def _setup(self):
         log.info(f"Setting up internal app: {self.name}")
         self.ui_manager.register_callbacks(self)
+        self.ui_manager.set_display_name(self.app_display_name)
         self.device_agent.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
         await self.ui_manager.clear_ui_async()
 
