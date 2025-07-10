@@ -111,12 +111,15 @@ class Application:
             data.get("description"),
             data.get("long_description"),
             [Object(key=d) for d in data.get("depends_on", [])],
-            Object(key=data.get("owner_org")),
-            Object(key=data.get("code_repo")),
+            Object(key=data.get("owner_org") or data.get("owner_org_key")),
+            Object(key=data.get("code_repo") or data.get("code_repo_key")),
             data.get("repo_branch"),
             data.get("image_name"),
             data.get("build_args"),
-            Object(key=data.get("container_registry_profile")),
+            Object(
+                key=data.get("container_registry_profile")
+                or data.get("container_registry_profile_key")
+            ),
             data.get("config_schema"),
             data.get("staging_config", {}),
             app_base,
@@ -176,9 +179,9 @@ class Application:
 
         upstream = self.to_dict()
         upstream.pop("long_description", None)
-        upstream.pop("owner_org_key", None)
-        upstream.pop("code_repo_key", None)
-        upstream.pop("container_registry_profile_key", None)
+        # upstream.pop("owner_org_key", None)
+        # upstream.pop("code_repo_key", None)
+        # upstream.pop("container_registry_profile_key", None)
 
         data[self.name].update(**upstream)
         config_path.write_text(json.dumps(data, indent=4))
