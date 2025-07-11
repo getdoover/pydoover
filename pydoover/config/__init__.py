@@ -477,7 +477,9 @@ class Enum(ConfigElement):
 
     _type = None
 
-    def __init__(self, display_name, *, choices: list = None, default: Any, **kwargs):
+    def __init__(
+        self, display_name, *, choices: list | EnumType = None, default: Any, **kwargs
+    ):
         if isinstance(default, _Enum):
             default = str(default.value)
 
@@ -499,11 +501,14 @@ class Enum(ConfigElement):
 
     @property
     def value(self):
-        actual: Any = super().value
+        return super().value
+
+    @value.setter
+    def value(self, value):
         if self._enum_lookup is None:
-            return actual
+            self._value = value
         else:
-            return self._enum_lookup[actual]
+            self._value = self._enum_lookup[value]
 
     def to_dict(self):
         return {
