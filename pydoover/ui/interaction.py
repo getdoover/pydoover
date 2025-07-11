@@ -209,6 +209,8 @@ class Action(Interaction):
         The colour of the action button. Defaults to Colour.blue.
     requires_confirm: bool
         Whether the action requires confirmation before execution on the site. Defaults to True.
+    disabled: bool
+        Whether the button appears disabled in the UI. Defaults to False.
     """
 
     type = "uiAction"
@@ -219,16 +221,19 @@ class Action(Interaction):
         display_name: str,
         colour: Colour = Colour.blue,
         requires_confirm: bool = True,
+        disabled: bool = False,
         **kwargs,
     ):
         super().__init__(name, display_name, **kwargs)
         self.colour = colour
         self.requires_confirm = requires_confirm
+        self.disabled = disabled
 
     def to_dict(self):
         result = super().to_dict()
         result["colour"] = str(self.colour)
         result["requiresConfirm"] = self.requires_confirm
+        result["disabled"] = self.disabled
         return result
 
 
