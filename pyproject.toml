@@ -1,7 +1,7 @@
 [project]
 name = "pydoover"
 authors = [{ name = "Doover Team", email = "developers@doover.com" }]
-version = "0.4.10"
+version = "0.4.11"
 description = "Python package for interacting with Doover"
 readme = "README.md"
 requires-python = ">=3.11"

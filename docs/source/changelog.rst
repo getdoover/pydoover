@@ -3,6 +3,17 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.11
+-------
+- Add `disabled` to `ui.Action`
+- Add built-in enum support for `config.Enum`
+- Add default parameters to `get_tag` and `get_global_tag`
+- Add support for `owner_org_key` in `cloud.Application`
+- Add default device agent for device agent
+- Fix issue with empty config schema
+- Add default values for `ui.AlertStream`
+
+
 v0.4.10
 -------
 - Add health checking for docker apps
