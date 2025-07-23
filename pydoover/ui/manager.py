@@ -431,6 +431,11 @@ class UIManager:
     def get_all_interaction_names(self) -> list[str]:
         return list(self._interactions.keys())
 
+    def get_all_variables(self) -> list[Variable]:
+        if self._base_container is None:
+            return []
+        return self._base_container.get_all_elements(type_filter=Variable)
+
     get_available_commands = get_all_interaction_names
 
     def record_critical_value(self, name, value):
@@ -443,6 +448,15 @@ class UIManager:
         self._critical_values[name] = value
         self._has_critical_interaction_pending = True
         # self._has_critical_ui_state_pending = True
+
+    def _assess_pending_log_requests(self):
+        ## Iterate through all variables and check if they have a pending log request
+        log_requested = False
+        for variable in self.get_all_variables():
+            if variable.has_pending_log_request():
+                variable.clear_log_request()
+                log_requested = True
+        return log_requested
 
     def _get_max_age(self, force_update: bool = False) -> tuple[bool, int]:
         period = (
@@ -467,11 +481,13 @@ class UIManager:
 
     @maybe_async()
     def handle_comms(self, force_log: bool = False):
-        force_log, max_age = self._get_max_age(force_log)
+        log_requested = self._assess_pending_log_requests()
+        force_log, max_age = self._get_max_age(force_log or log_requested)
         self.push(force_log, max_age)
 
     async def handle_comms_async(self, force_log: bool = False):
-        force_log, max_age = self._get_max_age(force_log)
+        log_requested = self._assess_pending_log_requests()
+        force_log, max_age = self._get_max_age(force_log or log_requested)
         await self.push_async(force_log, max_age)
 
     def publish_to_channel(
@@ -619,7 +635,8 @@ class UIManager:
                 "ui_cmds",
                 {"cmds": commands_update},
                 timestamp=timestamp,
-                max_age=max_age,
+                max_age=1,
+                record_log=True,
             )
 
         ui_state_update = self._get_ui_state_update(
@@ -674,7 +691,8 @@ class UIManager:
                 "ui_cmds",
                 {"cmds": commands_update},
                 timestamp=timestamp,
-                max_age=max_age,
+                max_age=1,
+                record_log=True,
             )
 
         ui_state_update = self._get_ui_state_update(

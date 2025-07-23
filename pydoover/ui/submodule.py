@@ -1,7 +1,7 @@
 import inspect
 import re
 
-from typing import Any
+from typing import Any, Type
 
 from .element import Element
 
@@ -219,6 +219,18 @@ class Container(Element):
         You probably don't want or need to call this method.
         """
         self._children.clear()
+
+    def get_all_elements(
+        self, type_filter: Type[Element] | None = None
+    ) -> list[Element]:
+        """Returns a list of all elements recursively contained within this container."""
+        elements = []
+        for element in self._children.values():
+            if isinstance(element, Container):
+                elements.extend(element.get_all_elements(type_filter))
+            elif type_filter is None or isinstance(element, type_filter):
+                elements.append(element)
+        return elements
 
     def get_element(self, element_name: str) -> Element | None:
         """Retrieves a child element by its name from this container.

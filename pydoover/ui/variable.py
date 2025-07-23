@@ -27,6 +27,10 @@ class Variable(Element):
         A list of ranges associated with the variable, used for display purposes.
     earliest_data_time: datetime, optional
         The earliest time for which data is available for this variable. Defaults to None.
+    default_zoom: str, optional
+        The default zoom setting for the inbuilt plot viewer. Defaults to None.
+    log_threshold: float, optional
+        The change threshold for logging the variable. Defaults to None (no threshold). 0 means log every change.
     """
 
     type = "uiVariable"
@@ -41,6 +45,7 @@ class Variable(Element):
         ranges: list[Union[Range, dict]] = None,
         earliest_data_time: datetime | None = None,
         default_zoom: str | None = None,
+        log_threshold: float | None = None,
         **kwargs,
     ):
         # kwargs: verbose_str=verbose_str, show_activity=show_activity, form=form, graphic=graphic, layout=layout
@@ -51,6 +56,9 @@ class Variable(Element):
         self.precision = precision or kwargs.pop("dec_precision", None)
         self.earliest_data_time = earliest_data_time
         self.default_zoom = default_zoom or kwargs.pop("default_zoom", None)
+        self.log_threshold = log_threshold or kwargs.pop("log_threshold", None)
+
+        self._log_request_pending = False
 
         self.ranges = []
         if ranges is not None:
@@ -92,7 +100,7 @@ class Variable(Element):
         """Updates the current value of the variable."""
         self.update(val)
 
-    def update(self, new_value: Any) -> None:
+    def update(self, new_value: Any, force_log: bool = False) -> None:
         """Updates the current value of the variable.
 
         If precision is set, rounds the value to the specified number of decimal places.
@@ -101,11 +109,42 @@ class Variable(Element):
         ----------
         new_value: Any
             The new value to set for the variable. If None, it sets the current value to None.
+        force_log: bool
+            If True, forces a log request to be sent to the server.
         """
+        if force_log:
+            self._log_request_pending = True
+        elif self.assess_log_threshold(new_value):
+            self._log_request_pending = True
+
         if self.precision is not None and new_value is not None:
             self._curr_val = round(new_value, self.precision)
         else:
             self._curr_val = new_value
+
+    def assess_log_threshold(self, new_value: Any) -> bool:
+        """If log_threshold is set, and the new value is sufficiently different, return True to indicate that a log request should be sent."""
+        if self.log_threshold is None:
+            return False
+        if isinstance(self._curr_val, (int, float, bool, datetime)) and isinstance(
+            new_value, (int, float, bool, datetime)
+        ):
+            if type(self._curr_val) is not type(new_value):
+                return True
+            return abs(new_value - self._curr_val) > self.log_threshold
+        if isinstance(self._curr_val, str) and isinstance(new_value, str):
+            return new_value != self._curr_val
+        if self._curr_val in (None, NotSet) and new_value not in (None, NotSet):
+            return True
+        return False
+
+    def has_pending_log_request(self) -> bool:
+        """Returns True if a log request is pending."""
+        return self._log_request_pending
+
+    def clear_log_request(self) -> None:
+        """Clears the log request flag."""
+        self._log_request_pending = False
 
     def recv_ui_state_update(self, state: dict[str, Any]) -> None:
         if self._curr_val is NotSet and "currentValue" in state:
@@ -205,11 +244,25 @@ class BooleanVariable(Variable):
         The display name of the variable.
     curr_val: bool, optional
         The current value of the variable. Defaults to None.
+    log_threshold: float, optional
+        The change threshold for logging the variable. Defaults to 0 (log every change). None means don't log on change.
     """
 
-    def __init__(self, name: str, display_name: str, curr_val: bool = None, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        display_name: str,
+        curr_val: bool = None,
+        log_threshold: float | None = 0,
+        **kwargs,
+    ):
         super().__init__(
-            name, display_name, var_type="bool", curr_val=curr_val, **kwargs
+            name,
+            display_name,
+            var_type="bool",
+            curr_val=curr_val,
+            log_threshold=log_threshold,
+            **kwargs,
         )
 
 

@@ -34,7 +34,7 @@ def apply_diff(
     for k, v in diff.items():
         if isinstance(v, dict):
             # print(f"applying: ({type(k)}) {k} -> ({type(v)}) {v} (data: ({type(data)}) {data})")
-            data[k] = apply_diff(data.get(k, {}), v, do_delete=do_delete, clone=False)
+            data[k] = apply_diff(data.get(k, {}), v, do_delete=do_delete, clone=clone)
         elif v is None:
             # del data[k]
             if do_delete:
