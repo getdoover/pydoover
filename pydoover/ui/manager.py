@@ -490,6 +490,27 @@ class UIManager:
         force_log, max_age = self._get_max_age(force_log or log_requested)
         await self.push_async(force_log, max_age)
 
+    def send_notification(self, message: str, record_activity: bool = True):
+        self.publish_to_channel(
+            "significantEvent",
+            {
+                "notification_msg": message,
+            },
+            record_log=True,
+            max_age=1,
+        )
+        if record_activity:
+            self.record_activity(message)
+
+    def record_activity(self, message: str):
+        self.publish_to_channel(
+            "activity_log",
+            {
+                "action_string": message,
+            },
+            record_log=True,
+        )
+
     def publish_to_channel(
         self,
         channel_name: str,

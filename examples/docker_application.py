@@ -84,7 +84,7 @@ class HelloWorld(DockerApplication):
     def send_alert(self, new_value):
         output = self.ui_manager.get_element("test_output").current_value
         self.log(f"Sending alert: {output}")
-        self.publish_to_channel("significantAlerts", output)
+        self.send_notification(output, record_activity=True)
         self.send_alert.coerce(None)
 
     @ui.text_parameter("test_message", "Put in a message")
