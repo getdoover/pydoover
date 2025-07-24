@@ -665,6 +665,23 @@ class Application:
         await self._do_set_tag_async(tag_key, value, app_key)
 
     @maybe_async()
+    def set_tags(self, tags: dict[str, Any], app_key: str = None) -> None:
+        """Set multiple tags at once.
+
+        This method sets multiple tags at once.
+        """
+        if app_key is None:
+            app_key = self.app_key
+
+        self._do_set_tags(tags, app_key)
+
+    async def set_tags_async(self, tags: dict[str, Any], app_key: str = None) -> None:
+        if app_key is None:
+            app_key = self.app_key
+
+        await self._do_set_tags_async(tags, app_key)
+
+    @maybe_async()
     def set_global_tag(self, tag_key: str, value: Any) -> None:
         """Set a global tag value.
 
@@ -710,6 +727,32 @@ class Application:
             data = {tag_key: value}
         else:
             data = {app_key: {tag_key: value}}
+
+        apply_diff(self._tag_values, data, clone=False)
+        await self.device_agent.publish_to_channel_async(
+            TAG_CHANNEL_NAME, data, max_age=TAG_CLOUD_MAX_AGE, record_log=True
+        )
+
+    def _do_set_tags(
+        self, tags: dict[str, Any], app_key: str | None, is_global: bool = False
+    ):
+        if is_global:
+            data = tags
+        else:
+            data = {app_key: tags}
+
+        apply_diff(self._tag_values, data, clone=False)
+        self.device_agent.publish_to_channel(
+            TAG_CHANNEL_NAME, data, max_age=TAG_CLOUD_MAX_AGE, record_log=True
+        )
+
+    async def _do_set_tags_async(
+        self, tags: dict[str, Any], app_key: str | None, is_global: bool = False
+    ):
+        if is_global:
+            data = tags
+        else:
+            data = {app_key: tags}
 
         apply_diff(self._tag_values, data, clone=False)
         await self.device_agent.publish_to_channel_async(
