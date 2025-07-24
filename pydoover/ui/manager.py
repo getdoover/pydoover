@@ -454,6 +454,7 @@ class UIManager:
         log_requested = False
         for variable in self.get_all_variables():
             if variable.has_pending_log_request():
+                log.debug(f"Variable {variable.name} has a pending log request")
                 variable.clear_log_request()
                 log_requested = True
         return log_requested
@@ -490,6 +491,7 @@ class UIManager:
         force_log, max_age = self._get_max_age(force_log or log_requested)
         await self.push_async(force_log, max_age)
 
+    @maybe_async()
     def send_notification(self, message: str, record_activity: bool = True):
         self.publish_to_channel(
             "significantEvent",
@@ -502,8 +504,20 @@ class UIManager:
         if record_activity:
             self.record_activity(message)
 
-    def record_activity(self, message: str):
-        self.publish_to_channel(
+    async def send_notification_async(self, message: str, record_activity: bool = True):
+        await self._publish_to_channel_async(
+            "significantEvent",
+            {
+                "notification_msg": message,
+            },
+            record_log=True,
+            max_age=1,
+        )
+        if record_activity:
+            await self.record_activity_async(message)
+
+    async def record_activity_async(self, message: str):
+        await self._publish_to_channel_async(
             "activity_log",
             {
                 "action_string": message,
