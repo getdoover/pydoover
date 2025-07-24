@@ -120,6 +120,11 @@ class platformIfaceStub(object):
                 request_serializer=grpc__stubs_dot_platform__iface__pb2.getInputVoltageRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_platform__iface__pb2.getInputVoltageResponse.FromString,
                 _registered_method=True)
+        self.getSystemPower = channel.unary_unary(
+                '/platform_iface.platformIface/getSystemPower',
+                request_serializer=grpc__stubs_dot_platform__iface__pb2.getSystemPowerRequest.SerializeToString,
+                response_deserializer=grpc__stubs_dot_platform__iface__pb2.getSystemPowerResponse.FromString,
+                _registered_method=True)
         self.getTemperature = channel.unary_unary(
                 '/platform_iface.platformIface/getTemperature',
                 request_serializer=grpc__stubs_dot_platform__iface__pb2.getTemperatureRequest.SerializeToString,
@@ -282,6 +287,12 @@ class platformIfaceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def getInputVoltage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getSystemPower(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -450,6 +461,11 @@ def add_platformIfaceServicer_to_server(servicer, server):
                     servicer.getInputVoltage,
                     request_deserializer=grpc__stubs_dot_platform__iface__pb2.getInputVoltageRequest.FromString,
                     response_serializer=grpc__stubs_dot_platform__iface__pb2.getInputVoltageResponse.SerializeToString,
+            ),
+            'getSystemPower': grpc.unary_unary_rpc_method_handler(
+                    servicer.getSystemPower,
+                    request_deserializer=grpc__stubs_dot_platform__iface__pb2.getSystemPowerRequest.FromString,
+                    response_serializer=grpc__stubs_dot_platform__iface__pb2.getSystemPowerResponse.SerializeToString,
             ),
             'getTemperature': grpc.unary_unary_rpc_method_handler(
                     servicer.getTemperature,
@@ -950,6 +966,33 @@ class platformIface(object):
             '/platform_iface.platformIface/getInputVoltage',
             grpc__stubs_dot_platform__iface__pb2.getInputVoltageRequest.SerializeToString,
             grpc__stubs_dot_platform__iface__pb2.getInputVoltageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getSystemPower(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getSystemPower',
+            grpc__stubs_dot_platform__iface__pb2.getSystemPowerRequest.SerializeToString,
+            grpc__stubs_dot_platform__iface__pb2.getSystemPowerResponse.FromString,
             options,
             channel_credentials,
             insecure,

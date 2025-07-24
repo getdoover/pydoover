@@ -224,7 +224,7 @@ class getSystemStatusRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class getSystemStatusResponse(_message.Message):
-    __slots__ = ("response_header", "input_voltage", "temperature", "rtc_time", "uptime", "system_info", "scheduled_startup_secs", "scheduled_shutdown_secs")
+    __slots__ = ("response_header", "input_voltage", "temperature", "rtc_time", "uptime", "system_info", "scheduled_startup_secs", "scheduled_shutdown_secs", "system_current", "system_power")
     RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
     INPUT_VOLTAGE_FIELD_NUMBER: _ClassVar[int]
     TEMPERATURE_FIELD_NUMBER: _ClassVar[int]
@@ -233,6 +233,8 @@ class getSystemStatusResponse(_message.Message):
     SYSTEM_INFO_FIELD_NUMBER: _ClassVar[int]
     SCHEDULED_STARTUP_SECS_FIELD_NUMBER: _ClassVar[int]
     SCHEDULED_SHUTDOWN_SECS_FIELD_NUMBER: _ClassVar[int]
+    SYSTEM_CURRENT_FIELD_NUMBER: _ClassVar[int]
+    SYSTEM_POWER_FIELD_NUMBER: _ClassVar[int]
     response_header: ResponseHeader
     input_voltage: float
     temperature: float
@@ -241,7 +243,9 @@ class getSystemStatusResponse(_message.Message):
     system_info: str
     scheduled_startup_secs: int
     scheduled_shutdown_secs: int
-    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., input_voltage: _Optional[float] = ..., temperature: _Optional[float] = ..., rtc_time: _Optional[str] = ..., uptime: _Optional[float] = ..., system_info: _Optional[str] = ..., scheduled_startup_secs: _Optional[int] = ..., scheduled_shutdown_secs: _Optional[int] = ...) -> None: ...
+    system_current: float
+    system_power: float
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., input_voltage: _Optional[float] = ..., temperature: _Optional[float] = ..., rtc_time: _Optional[str] = ..., uptime: _Optional[float] = ..., system_info: _Optional[str] = ..., scheduled_startup_secs: _Optional[int] = ..., scheduled_shutdown_secs: _Optional[int] = ..., system_current: _Optional[float] = ..., system_power: _Optional[float] = ...) -> None: ...
 
 class getShutdownImmunityRequest(_message.Message):
     __slots__ = ()
@@ -340,6 +344,18 @@ class getInputVoltageResponse(_message.Message):
     response_header: ResponseHeader
     voltage: float
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., voltage: _Optional[float] = ...) -> None: ...
+
+class getSystemPowerRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class getSystemPowerResponse(_message.Message):
+    __slots__ = ("response_header", "power_watts")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    POWER_WATTS_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    power_watts: float
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., power_watts: _Optional[float] = ...) -> None: ...
 
 class loadFirmwareRequest(_message.Message):
     __slots__ = ("url", "target")

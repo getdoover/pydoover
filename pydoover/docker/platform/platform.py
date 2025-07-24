@@ -992,6 +992,41 @@ class PlatformInterface(GRPCInterface):
 
     @cli_command()
     @maybe_async()
+    def get_system_power(self) -> float:
+        """Get the system input power.
+
+        This is the power supplied to the system in watts.
+
+        .. note:: This method can be used in both synchronous and asynchronous contexts.
+
+        Examples
+        --------
+
+        Get the system input power::
+
+            power_watts = await self.platform_iface.get_system_power()
+
+
+        Returns
+        -------
+        float
+            The system input power in watts. Returns None if the request failed.
+        """
+        return self.make_request(
+            "getSystemPower",
+            platform_iface_pb2.getSystemPowerRequest(),
+            response_field="power_watts",
+        )
+
+    async def get_system_power_async(self) -> float:
+        return await self.make_request_async(
+            "getSystemPower",
+            platform_iface_pb2.getSystemPowerRequest(),
+            response_field="power_watts",
+        )
+
+    @cli_command()
+    @maybe_async()
     def get_system_temperature(self) -> float:
         """Get the system temperature.
 

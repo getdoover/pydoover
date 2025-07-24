@@ -27,6 +27,7 @@ service platformIface {
 
     rpc getSystemStatus (getSystemStatusRequest) returns (getSystemStatusResponse) {}
     rpc getInputVoltage (getInputVoltageRequest) returns (getInputVoltageResponse) {}
+    rpc getSystemPower (getSystemPowerRequest) returns (getSystemPowerResponse) {}
     rpc getTemperature (getTemperatureRequest) returns (getTemperatureResponse) {}
     rpc getIoTable (getIoTableRequest) returns (getIoTableResponse) {}
     // rpc getRtcTime (getRtcTimeRequest) returns (getRtcTimeResponse) {}
@@ -193,6 +194,8 @@ message getSystemStatusResponse {
     optional string system_info = 6;
     optional int32 scheduled_startup_secs = 7;
     optional int32 scheduled_shutdown_secs = 8;
+    optional float system_current = 9;
+    optional float system_power = 10;
 }
 
 message getShutdownImmunityRequest {}
@@ -254,6 +257,13 @@ message getInputVoltageRequest {}
 message getInputVoltageResponse {
     ResponseHeader response_header = 1;
     optional float voltage = 2;
+}
+
+message getSystemPowerRequest {}
+
+message getSystemPowerResponse {
+    ResponseHeader response_header = 1;
+    optional float power_watts = 2;
 }
 
 message loadFirmwareRequest {
