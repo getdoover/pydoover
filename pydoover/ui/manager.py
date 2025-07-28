@@ -200,6 +200,9 @@ class UIManager:
                 if hasattr(command, "default") and command.default is not None:
                     new_value = command.default
 
+            if not command._is_new_value(new_value):
+                continue
+
             command._handle_new_value(new_value)
 
             for pattern, callback in self._command_callbacks:
@@ -217,11 +220,11 @@ class UIManager:
             await call_maybe_async(c)
 
         # work out command diff and call individual commands
-        changed = {c: v for c, v in aggregate.items() if v != prev_agg.get(c)}
+        changed = {c: v for c, v in aggregate.items()}
 
         log.debug(f"Prev Agg ({self.last_ui_cmds_update}): {prev_agg}")
         log.debug(f"New/Current Agg: {aggregate}")
-        log.debug(f"Changed: {changed}")
+        # log.debug(f"Changed: {changed}")
 
         ## Iterate through all the commands that we have locally, and call the callback if it exists
         for command_name, command in self._interactions.items():
@@ -231,6 +234,9 @@ class UIManager:
                 new_value = None
                 if hasattr(command, "default") and command.default is not None:
                     new_value = command.default
+
+            if not command._is_new_value(new_value):
+                continue
 
             await command._handle_new_value_async(new_value)
 

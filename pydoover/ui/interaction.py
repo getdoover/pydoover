@@ -132,6 +132,9 @@ class Interaction(Element):
         else:
             return new_value
 
+    def _is_new_value(self, new_value: Any) -> bool:
+        return new_value != self.current_value
+
     def _handle_new_value_common(self, new_value: Any):
         try:
             new_value = self.transform_check(new_value)
