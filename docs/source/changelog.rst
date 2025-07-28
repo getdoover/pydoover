@@ -3,6 +3,12 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.12
+-------
+- Fix issue with `log_threshold` in `ui.Variable`
+- Fix issue with `set_tag` and `set_tags` in `cloud.Application`
+- Fix issue with `set_tag` and `set_tags` in `cloud.Application`
+
 v0.4.11
 -------
 - Add `disabled` to `ui.Action`
