@@ -660,7 +660,9 @@ class Application:
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        self._do_set_tags({tag_key: value}, app_key, only_if_changed)
+        self._do_set_tags(
+            {tag_key: value}, app_key=app_key, only_if_changed=only_if_changed
+        )
 
     async def set_tag_async(
         self,
@@ -669,25 +671,23 @@ class Application:
         app_key: str = None,
         only_if_changed: bool = True,
     ) -> None:
-        await self._do_set_tags_async({tag_key: value}, app_key, only_if_changed)
+        await self._do_set_tags_async(
+            {tag_key: value}, app_key=app_key, only_if_changed=only_if_changed
+        )
 
     @maybe_async()
     def set_tags(
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
         """Set multiple tags at once."""
-        if app_key is None:
-            app_key = self.app_key
-
-        self._do_set_tags(tags, app_key, only_if_changed)
+        self._do_set_tags(tags, app_key=app_key, only_if_changed=only_if_changed)
 
     async def set_tags_async(
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
-        if app_key is None:
-            app_key = self.app_key
-
-        await self._do_set_tags_async(tags, app_key, only_if_changed)
+        await self._do_set_tags_async(
+            tags, app_key=app_key, only_if_changed=only_if_changed
+        )
 
     @maybe_async()
     def set_global_tag(
