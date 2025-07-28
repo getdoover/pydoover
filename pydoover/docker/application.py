@@ -741,6 +741,8 @@ class Application:
         if is_global:
             data = tags
         else:
+            if app_key is None:
+                app_key = self.app_key
             data = {app_key: tags}
 
         if only_if_changed:
@@ -763,6 +765,8 @@ class Application:
         if is_global:
             data = tags
         else:
+            if app_key is None:
+                app_key = self.app_key
             data = {app_key: tags}
 
         if only_if_changed:
