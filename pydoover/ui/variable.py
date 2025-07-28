@@ -56,7 +56,11 @@ class Variable(Element):
         self.precision = precision or kwargs.pop("dec_precision", None)
         self.earliest_data_time = earliest_data_time
         self.default_zoom = default_zoom or kwargs.pop("default_zoom", None)
-        self.log_threshold = log_threshold or kwargs.pop("log_threshold", None)
+        self.log_threshold = (
+            log_threshold
+            if log_threshold is not None
+            else kwargs.pop("log_threshold", None)
+        )
 
         self._log_request_pending = False
 
