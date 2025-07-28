@@ -196,7 +196,9 @@ class UIManager:
             if command_name in changed:
                 new_value = changed[command_name]
             else:
-                new_value = command.default if command.default is not None else None
+                new_value = None
+                if hasattr(command, "default") and command.default is not None:
+                    new_value = command.default
 
             command._handle_new_value(new_value)
 
@@ -226,7 +228,9 @@ class UIManager:
             if command_name in changed:
                 new_value = changed[command_name]
             else:
-                new_value = command.default if command.default is not None else None
+                new_value = None
+                if hasattr(command, "default") and command.default is not None:
+                    new_value = command.default
 
             await command._handle_new_value_async(new_value)
 
