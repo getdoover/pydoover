@@ -28,6 +28,7 @@ from ..utils import (
     maybe_async,
     setup_logging,
     apply_diff,
+    generate_diff,
 )
 
 if TYPE_CHECKING:
@@ -630,7 +631,13 @@ class Application:
             return default
 
     @maybe_async()
-    def set_tag(self, tag_key: str, value: Any, app_key: str = None) -> None:
+    def set_tag(
+        self,
+        tag_key: str,
+        value: Any,
+        app_key: str = None,
+        only_if_changed: bool = True,
+    ) -> None:
         """Set a tag value.
 
         This method sets a tag value for a specific app. If you want to set a global tag, use :meth:`set_global_tag` instead.
@@ -650,39 +657,42 @@ class Application:
             The value to set the tag to.
         app_key: str, optional
             The app key to set the tag for. This defaults to the current app's key.
+        only_if_changed: bool, optional
+            If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
+        self._do_set_tags({tag_key: value}, app_key, only_if_changed)
+
+    async def set_tag_async(
+        self,
+        tag_key: str,
+        value: Any,
+        app_key: str = None,
+        only_if_changed: bool = True,
+    ) -> None:
+        await self._do_set_tags_async({tag_key: value}, app_key, only_if_changed)
+
+    @maybe_async()
+    def set_tags(
+        self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
+    ) -> None:
+        """Set multiple tags at once."""
         if app_key is None:
             app_key = self.app_key
 
-        self._do_set_tag(tag_key, value, app_key)
+        self._do_set_tags(tags, app_key, only_if_changed)
 
-    async def set_tag_async(
-        self, tag_key: str, value: Any, app_key: str = None
+    async def set_tags_async(
+        self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
         if app_key is None:
             app_key = self.app_key
 
-        await self._do_set_tag_async(tag_key, value, app_key)
+        await self._do_set_tags_async(tags, app_key, only_if_changed)
 
     @maybe_async()
-    def set_tags(self, tags: dict[str, Any], app_key: str = None) -> None:
-        """Set multiple tags at once.
-
-        This method sets multiple tags at once.
-        """
-        if app_key is None:
-            app_key = self.app_key
-
-        self._do_set_tags(tags, app_key)
-
-    async def set_tags_async(self, tags: dict[str, Any], app_key: str = None) -> None:
-        if app_key is None:
-            app_key = self.app_key
-
-        await self._do_set_tags_async(tags, app_key)
-
-    @maybe_async()
-    def set_global_tag(self, tag_key: str, value: Any) -> None:
+    def set_global_tag(
+        self, tag_key: str, value: Any, only_if_changed: bool = True
+    ) -> None:
         """Set a global tag value.
 
         As in :meth:`get_global_tag`, global tags are not specific to an app, but are shared across all apps and should be used sparingly as such.
@@ -700,46 +710,43 @@ class Application:
             The global tag to set.
         value: Any
             The value to set the global tag to.
+        only_if_changed: bool, optional
+            If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        self._do_set_tag(tag_key, value, app_key=None, is_global=True)
-
-    async def set_global_tag_async(self, tag_key: str, value: Any) -> None:
-        """Set a global tag value asynchronously. This is a convenience method for setting global tags."""
-        await self._do_set_tag_async(tag_key, value, app_key=None, is_global=True)
-
-    def _do_set_tag(
-        self, tag_key: str, value: Any, app_key: str | None, is_global: bool = False
-    ):
-        if is_global:
-            data = {tag_key: value}
-        else:
-            data = {app_key: {tag_key: value}}
-
-        apply_diff(self._tag_values, data, clone=False)
-        self.device_agent.publish_to_channel(
-            TAG_CHANNEL_NAME, data, max_age=TAG_CLOUD_MAX_AGE, record_log=True
+        self._do_set_tags(
+            {tag_key: value},
+            app_key=None,
+            is_global=True,
+            only_if_changed=only_if_changed,
         )
 
-    async def _do_set_tag_async(
-        self, tag_key: str, value: Any, app_key: str | None, is_global: bool = False
-    ):
-        if is_global:
-            data = {tag_key: value}
-        else:
-            data = {app_key: {tag_key: value}}
-
-        apply_diff(self._tag_values, data, clone=False)
-        await self.device_agent.publish_to_channel_async(
-            TAG_CHANNEL_NAME, data, max_age=TAG_CLOUD_MAX_AGE, record_log=True
+    async def set_global_tag_async(
+        self, tag_key: str, value: Any, only_if_changed: bool = True
+    ) -> None:
+        """Set a global tag value asynchronously. This is a convenience method for setting global tags."""
+        await self._do_set_tags_async(
+            {tag_key: value},
+            app_key=None,
+            is_global=True,
+            only_if_changed=only_if_changed,
         )
 
     def _do_set_tags(
-        self, tags: dict[str, Any], app_key: str | None, is_global: bool = False
+        self,
+        tags: dict[str, Any],
+        app_key: str | None,
+        is_global: bool = False,
+        only_if_changed: bool = True,
     ):
         if is_global:
             data = tags
         else:
             data = {app_key: tags}
+
+        if only_if_changed:
+            diff = generate_diff(self._tag_values, data, do_delete=False)
+            if len(diff) == 0:
+                return
 
         apply_diff(self._tag_values, data, clone=False)
         self.device_agent.publish_to_channel(
@@ -747,12 +754,21 @@ class Application:
         )
 
     async def _do_set_tags_async(
-        self, tags: dict[str, Any], app_key: str | None, is_global: bool = False
+        self,
+        tags: dict[str, Any],
+        app_key: str | None,
+        is_global: bool = False,
+        only_if_changed: bool = True,
     ):
         if is_global:
             data = tags
         else:
             data = {app_key: tags}
+
+        if only_if_changed:
+            diff = generate_diff(self._tag_values, data, do_delete=False)
+            if len(diff) == 0:
+                return
 
         apply_diff(self._tag_values, data, clone=False)
         await self.device_agent.publish_to_channel_async(

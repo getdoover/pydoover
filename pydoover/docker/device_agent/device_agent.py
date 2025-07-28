@@ -3,6 +3,7 @@ import copy
 import datetime
 import json
 import logging
+import time
 import sys
 
 from collections.abc import Coroutine, Callable
@@ -95,6 +96,26 @@ class DeviceAgentInterface(GRPCInterface):
     @cli_command()
     def get_has_dda_been_online(self):
         return self.has_dda_been_online
+
+    @cli_command()
+    @maybe_async()
+    def await_dda_available(self, timeout: int = 10):
+        start_time = datetime.datetime.now()
+        while (
+            not self.test_dda_available()
+            or (datetime.datetime.now() - start_time).seconds > timeout
+        ):
+            time.sleep(0.1)
+        return True
+
+    async def await_dda_available_async(self, timeout: int = 10):
+        start_time = datetime.datetime.now()
+        while (
+            not self.test_dda_available()
+            or (datetime.datetime.now() - start_time).seconds > timeout
+        ):
+            await asyncio.sleep(0.1)
+        return True
 
     def add_subscription(self, channel_name: str, callback: MaybeAsyncCallback) -> None:
         """Add a subscription to a channel.
@@ -468,6 +489,14 @@ class DeviceAgentInterface(GRPCInterface):
         for listener in self._listeners.values():
             listener.cancel()
         logging.info("Closing device agent interface...")
+
+    def test_dda_available(self):
+        try:
+            self.test_comms()
+            return True
+        except Exception as e:
+            log.error(f"Failed to get DDA comms: {e}")
+            return False
 
     @cli_command()
     def test_comms(self, message: str = "Comms Check Message") -> str | None:

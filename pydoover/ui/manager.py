@@ -190,11 +190,15 @@ class UIManager:
         self._on_command_update_common(aggregate)
 
         changed = {c: v for c, v in aggregate.items()}
-        for command_name, new_value in changed.items():
-            command = self.get_command(command_name)
-            log.debug(f"command name: {command_name}, command: {command}")
-            if command is not None:
-                command._handle_new_value(new_value)
+
+        ## Iterate through all the commands that we have locally, and call the callback if it exists
+        for command_name, command in self._interactions.items():
+            if command_name in changed:
+                new_value = changed[command_name]
+            else:
+                new_value = command.default if command.default is not None else None
+
+            command._handle_new_value(new_value)
 
             for pattern, callback in self._command_callbacks:
                 if pattern.match(command_name):
@@ -217,10 +221,14 @@ class UIManager:
         log.debug(f"New/Current Agg: {aggregate}")
         log.debug(f"Changed: {changed}")
 
-        for command_name, new_value in changed.items():
-            command = self.get_command(command_name)
-            if command is not None:
-                await command._handle_new_value_async(new_value)
+        ## Iterate through all the commands that we have locally, and call the callback if it exists
+        for command_name, command in self._interactions.items():
+            if command_name in changed:
+                new_value = changed[command_name]
+            else:
+                new_value = command.default if command.default is not None else None
+
+            await command._handle_new_value_async(new_value)
 
             for pattern, callback in self._command_callbacks:
                 if pattern.match(command_name):

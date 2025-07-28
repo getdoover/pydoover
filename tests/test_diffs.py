@@ -93,3 +93,18 @@ class TestGenerateDiff:
         x1 = {"a": 1}
         x2 = "a"
         assert generate_diff(x1, x2) == "a"
+
+    def test_generate_diff_no_delete(self):
+        x1 = {"a": 1, "b": 2, "c": 3}
+
+        x2 = {"a": 1, "b": 2, "c": 4}
+        assert generate_diff(x1, x2, do_delete=False) == {"c": 4}
+
+        x2 = {"c": 4}
+        assert generate_diff(x1, x2, do_delete=False) == {"c": 4}
+
+        x2 = {"b": 2}
+        assert generate_diff(x1, x2, do_delete=False) == {}
+
+        x2 = x1
+        assert generate_diff(x1, x2, do_delete=False) == {}

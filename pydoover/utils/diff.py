@@ -48,12 +48,12 @@ def apply_diff(
     return data
 
 
-def generate_diff(old, new):
+def generate_diff(old, new, do_delete: bool = True):
     """Generate a doover compatible diff between two JSON / dict objects.
 
     A diff will contain all keys that are different between the two objects.
 
-    Any keys that are in the old object but not in the new object will be set to None.
+    Any keys that are in the old object but not in the new object will be set to None if do_delete is True.
     """
     if not isinstance(new, dict) or not isinstance(old, dict):
         return new
@@ -61,11 +61,12 @@ def generate_diff(old, new):
     diff = {}
     for k, v in new.items():
         if isinstance(v, dict):
-            d = generate_diff(old.get(k, {}), v)
+            d = generate_diff(old.get(k, {}), v, do_delete=do_delete)
             if d:
-                diff[k] = generate_diff(old.get(k, {}), v)
+                diff[k] = generate_diff(old.get(k, {}), v, do_delete=do_delete)
         elif k not in old or old[k] != v:
             diff[k] = v
     for k in old.keys() - new.keys():
-        diff[k] = None
+        if do_delete:
+            diff[k] = None
     return diff
