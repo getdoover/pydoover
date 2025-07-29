@@ -128,6 +128,7 @@ class Application:
         self._is_async = get_is_async(is_async)
         self._ready = asyncio.Event()
         self._tag_values = {}
+        self._tag_subscriptions = {}
         self._shutdown_at = None
         self.force_log_on_shutdown = False
 
@@ -533,7 +534,9 @@ class Application:
             return False
 
     async def _on_tag_update(self, _, tag_values: dict[str, Any]):
+        diff = generate_diff(self._tag_values, tag_values, do_delete=False)
         self._tag_values = tag_values or {}
+        await self.fulfill_tag_subscriptions(diff)
 
         try:
             shutdown_at = tag_values["shutdown_at"]
@@ -555,6 +558,49 @@ class Application:
             log.info(f"Shutdown scheduled at {dt.strftime('%Y-%m-%d %H:%M:%S')}")
             self._shutdown_at = dt
             await call_maybe_async(self.on_shutdown_at, dt)
+
+    async def fulfill_tag_subscriptions(self, diff):
+        if diff is None or len(diff) == 0:
+            return
+
+        async def _wrap_callback(callback, tag_key, new_value):
+            try:
+                await asyncio.wait_for(
+                    call_maybe_async(callback, tag_key, new_value), timeout=1
+                )
+            except Exception as e:
+                log.exception(f"Error in {callback.__name__}: {e}", exc_info=e)
+
+        for k, callback in self._tag_subscriptions.items():
+            if isinstance(k, tuple):
+                app_key, tag_key = k
+                if app_key in diff and tag_key in diff[app_key]:
+                    new_value = (
+                        self._tag_values[app_key][tag_key]
+                        if app_key in self._tag_values
+                        and tag_key in self._tag_values[app_key]
+                        else None
+                    )
+                    await _wrap_callback(callback, tag_key, new_value)
+            else:
+                if k in diff:
+                    new_value = self._tag_values[k] if k in self._tag_values else None
+                    await _wrap_callback(callback, k, new_value)
+
+    def subscribe_to_tag(
+        self,
+        tag_key: str,
+        callback: Callable[[str, dict[str, Any]], Awaitable[Any]]
+        | Callable[[str, dict[str, Any]], Any],
+        app_key: str = None,
+        global_tag: bool = False,
+    ):
+        if global_tag:
+            self._tag_subscriptions[tag_key] = callback
+        else:
+            if app_key is None:
+                app_key = self.app_key
+            self._tag_subscriptions[(app_key, tag_key)] = callback
 
     def get_tag(
         self, tag_key: str, app_key: str = None, default: Any = None
