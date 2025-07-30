@@ -299,6 +299,12 @@ class UIManager:
 
         update_elements_from_ui_state(payload)
 
+    def get_full_interaction_key(self, name: str) -> str:
+        # Get the complete name of the key for the interaction
+        if self.app_key in name:
+            return name
+        return f"{self.app_key}_{name.strip()}"
+
     def _transform_interaction_name(self, name):
         # inject the app key (unique) into the interaction name
         # so we don't have namespace collisions between apps.
