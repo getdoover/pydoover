@@ -3,6 +3,11 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.13
+-------
+- Fix bug with pydoover cli type hints
+- Other minor fixes and features
+
 v0.4.12
 -------
 - Fix issue with `log_threshold` in `ui.Variable`
