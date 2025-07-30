@@ -3,8 +3,7 @@ import logging
 import time
 import json
 
-from collections.abc import Iterable, Coroutine
-from typing import Callable
+from collections.abc import Iterable, Coroutine, Callable
 
 import grpc
 

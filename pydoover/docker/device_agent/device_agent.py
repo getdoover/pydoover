@@ -7,7 +7,7 @@ import time
 import sys
 
 from collections.abc import Coroutine, Callable
-from typing import Any, Union
+from typing import Any
 
 import grpc
 
@@ -18,10 +18,10 @@ from ...cli.decorators import command as cli_command
 
 log = logging.getLogger(__name__)
 
-MaybeAsyncCallback = Union[
-    Callable[[str, dict[str, Any] | str], None],
-    Coroutine[[str, dict[str, Any] | str], None],
-]
+MaybeAsyncCallback = (
+    Callable[[str, dict[str, Any] | str], None]
+    | Coroutine[[str, dict[str, Any] | str], None]
+)
 
 
 class DeviceAgentInterface(GRPCInterface):

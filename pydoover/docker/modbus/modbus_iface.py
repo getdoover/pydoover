@@ -2,8 +2,6 @@ import asyncio
 import logging
 from collections.abc import Coroutine, Callable
 
-from typing import Union
-
 import grpc
 
 from .config import ModbusConfig, ModbusType, ManyModbusConfig
@@ -14,9 +12,9 @@ from ...cli.decorators import command as cli_command, ignore_alias
 from ...config import Schema
 
 log = logging.getLogger(__name__)
-ReadRegisterSubscriptionCallback = Union[
-    Callable[[list[int]], None], Coroutine[[list[int]], None]
-]
+ReadRegisterSubscriptionCallback = (
+    Callable[[list[int]], None] | Coroutine[[list[int]], None]
+)
 
 
 def two_words_to_32bit_float(word1: int, word2: int, swap: bool = False):
