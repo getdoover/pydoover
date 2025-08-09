@@ -43,6 +43,7 @@ class UIManager:
         self._subscriptions_ready = False
 
         self.app_key = app_key
+        self.app_wrap_ui = True
 
         self.last_ui_state = (
             dict()
@@ -662,7 +663,10 @@ class UIManager:
         if clear is False and not data:
             data = {}
 
-        return {"state": {"children": {self.app_key: data}}}
+        if self.app_wrap_ui:
+            return {"state": {"children": {self.app_key: data}}}
+        else:
+            return {"state": data}
 
     @maybe_async()
     def push(
