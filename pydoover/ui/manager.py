@@ -707,7 +707,7 @@ class UIManager:
         ):
             self._publish_to_channel(
                 "ui_state",
-                ui_state_update or {},
+                self._wrap_ui_state(ui_state_update),
                 record_log=record_log,
                 timestamp=timestamp,
                 max_age=max_age,
