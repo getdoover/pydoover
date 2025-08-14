@@ -142,6 +142,7 @@ class Application:
 
         self.loop_target_period = 1
         self._error_wait_period = 10
+        self.dda_startup_timeout: int = 300
 
         self._last_interval_time: float | None = None
         self._last_loop_time_warning: float | None = None
@@ -244,6 +245,11 @@ class Application:
                 log.error(f"Error starting healthcheck server: {e}", exc_info=e)
         else:
             log.info("`aiohttp` not installed, skipping healthcheck server.")
+
+        log.info(
+            f"Waiting for DDA to start with a timeout of {self.dda_startup_timeout} seconds."
+        )
+        await self.device_agent.await_dda_available_async(self.dda_startup_timeout)
 
         if self._config_fp is not None:
             data = json.loads(self._config_fp.read_text())

@@ -1,12 +1,12 @@
 import asyncio
 import copy
-import datetime
 import json
 import logging
 import time
 import sys
 
 from collections.abc import Coroutine, Callable
+from datetime import datetime
 from typing import Any
 
 import grpc
@@ -100,22 +100,35 @@ class DeviceAgentInterface(GRPCInterface):
     @cli_command()
     @maybe_async()
     def await_dda_available(self, timeout: int = 10):
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
         while (
             not self.test_dda_available()
-            or (datetime.datetime.now() - start_time).seconds > timeout
+            or (datetime.now() - start_time).seconds > timeout
         ):
             time.sleep(0.1)
         return True
 
-    async def await_dda_available_async(self, timeout: int = 10):
-        start_time = datetime.datetime.now()
-        while (
-            not self.test_dda_available()
-            or (datetime.datetime.now() - start_time).seconds > timeout
-        ):
-            await asyncio.sleep(0.1)
-        return True
+    async def await_dda_available_async(self, timeout: int):
+        start_time = datetime.now()
+        backoff = 1
+        while True:
+            try:
+                await self.test_comms_async()
+            except Exception as e:
+                log.error(f"Failed to get DDA comms: {e}")
+            else:
+                log.info("DDA is available.")
+                return True
+
+            if (datetime.now() - start_time).seconds > timeout:
+                log.warning(
+                    f"Timed out waiting {timeout} seconds for DDA to become available"
+                )
+                return False
+
+            log.info(f"DDA is not available. Retrying in {backoff} seconds...")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 1)
 
     def add_subscription(self, channel_name: str, callback: MaybeAsyncCallback) -> None:
         """Add a subscription to a channel.
@@ -223,7 +236,7 @@ class DeviceAgentInterface(GRPCInterface):
 
         self._aggregates[channel_name] = data
         self._synced_channels[channel_name] = True
-        self.last_channel_message_ts[channel_name] = datetime.datetime.now()
+        self.last_channel_message_ts[channel_name] = datetime.now()
 
         log.debug(
             f"Calling {len(self._subscriptions.get(channel_name, []))} "
@@ -301,11 +314,11 @@ class DeviceAgentInterface(GRPCInterface):
         bool
             True if all channels are synced within the timeout, False otherwise.
         """
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
         while not all(
             [self.is_channel_synced(channel_name) for channel_name in channel_names]
         ):
-            if (datetime.datetime.now() - start_time).seconds > timeout:
+            if (datetime.now() - start_time).seconds > timeout:
                 return False
             await asyncio.sleep(inter_wait)
         return True
@@ -443,14 +456,14 @@ class DeviceAgentInterface(GRPCInterface):
     @staticmethod
     def _parse_get_token_response(
         response,
-    ) -> tuple[str, datetime.datetime, str] | None:
+    ) -> tuple[str, datetime, str] | None:
         if response is None:
             return None
 
         try:
             return (
                 response.token,
-                datetime.datetime.fromtimestamp(float(response.valid_until)),
+                datetime.fromtimestamp(float(response.valid_until)),
                 response.endpoint,
             )
         except (ValueError, Exception) as e:
@@ -459,7 +472,7 @@ class DeviceAgentInterface(GRPCInterface):
 
     @cli_command()
     @maybe_async()
-    def get_temp_token(self) -> tuple[str, datetime.datetime, str] | None:
+    def get_temp_token(self) -> tuple[str, datetime, str] | None:
         """Get a temporary API token.
 
         .. deprecated:: 0.4.0
@@ -479,7 +492,7 @@ class DeviceAgentInterface(GRPCInterface):
 
     async def get_temp_token_async(
         self,
-    ) -> tuple[str, datetime.datetime, str] | None:
+    ) -> tuple[str, datetime, str] | None:
         resp = await self.make_request_async(
             "GetTempAPIToken", device_agent_pb2.TempAPITokenRequest()
         )
@@ -513,6 +526,15 @@ class DeviceAgentInterface(GRPCInterface):
             The response from device agent.
         """
         return self.make_request(
+            "TestComms",
+            device_agent_pb2.TestCommsRequest(message=message),
+            response_field="response",
+        )
+
+    async def test_comms_async(
+        self, message: str = "Comms Check Message"
+    ) -> str | None:
+        return await self.make_request_async(
             "TestComms",
             device_agent_pb2.TestCommsRequest(message=message),
             response_field="response",
