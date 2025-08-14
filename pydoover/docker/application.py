@@ -29,7 +29,6 @@ from ..utils import (
     setup_logging as utils_setup_logging,
     apply_diff,
     generate_diff,
-    LogFormatter,
 )
 
 if TYPE_CHECKING:
@@ -1045,7 +1044,7 @@ def run_app(
     app: Application,
     start: bool = True,
     setup_logging: bool = True,
-    log_formatter: type[logging.Formatter] = LogFormatter,
+    log_formatter: logging.Formatter = None,
 ):
     """Run the application.
 
@@ -1077,7 +1076,7 @@ def run_app(
     setup_logging : bool, optional
         If True, the logging will be set up. Defaults to True. You can pass a custom logging formatter to the `log_formatter` parameter.
     log_formatter : logging.Formatter, optional
-        The logging formatter to use. Defaults to a simple custom formatter defined in `pydoover.utils.LogFormatter`.
+        The logging formatter to use. Defaults to None, which will use a simple custom formatter defined in `pydoover.utils.LogFormatter`.
     """
     (
         app_key,

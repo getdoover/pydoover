@@ -418,13 +418,15 @@ class LogFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-def setup_logging(debug: bool, formatter: type[logging.Formatter] = LogFormatter):
+def setup_logging(debug: bool, formatter: logging.Formatter = None):
     if debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
 
+    formatter = formatter or LogFormatter()
+
     handler = logging.StreamHandler()
-    handler.setFormatter(formatter())
+    handler.setFormatter(formatter)
     logging.getLogger().handlers.clear()
     logging.getLogger().addHandler(handler)
