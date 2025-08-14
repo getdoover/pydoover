@@ -26,9 +26,10 @@ from ..utils import (
     call_maybe_async,
     get_is_async,
     maybe_async,
-    setup_logging,
+    setup_logging as utils_setup_logging,
     apply_diff,
     generate_diff,
+    LogFormatter,
 )
 
 if TYPE_CHECKING:
@@ -1040,7 +1041,12 @@ def parse_args():
     )
 
 
-def run_app(app: Application, start: bool = True):
+def run_app(
+    app: Application,
+    start: bool = True,
+    setup_logging: bool = True,
+    log_formatter: type[logging.Formatter] = LogFormatter,
+):
     """Run the application.
 
     This function initializes the application, sets up the interfaces, and runs the main loop.
@@ -1068,6 +1074,10 @@ def run_app(app: Application, start: bool = True):
     start : bool, optional
         If True, the application will run in a blocking manner. If False, it will return an async runner function.
         Defaults to True.
+    setup_logging : bool, optional
+        If True, the logging will be set up. Defaults to True. You can pass a custom logging formatter to the `log_formatter` parameter.
+    log_formatter : logging.Formatter, optional
+        The logging formatter to use. Defaults to a simple custom formatter defined in `pydoover.utils.LogFormatter`.
     """
     (
         app_key,
@@ -1084,7 +1094,8 @@ def run_app(app: Application, start: bool = True):
         app.setup
     ) or asyncio.iscoroutinefunction(app.main_loop)
     is_async = get_is_async(user_is_async)
-    setup_logging(debug)
+    if setup_logging:
+        utils_setup_logging(debug=debug, formatter=log_formatter)
 
     for inst in (
         app,
@@ -1137,7 +1148,7 @@ def run_app2(
         app_cls.setup
     ) or asyncio.iscoroutinefunction(app_cls.main_loop)
     is_async = get_is_async(user_is_async)
-    setup_logging(debug)
+    utils_setup_logging(debug)
 
     app = app_cls(
         config,
