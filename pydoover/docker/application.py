@@ -127,8 +127,11 @@ class Application:
 
         self._is_async = get_is_async(is_async)
         self._ready = asyncio.Event()
+
         self._tag_values = {}
         self._tag_subscriptions = {}
+        self._tag_ready = asyncio.Event()
+
         self._shutdown_at = None
         self.force_log_on_shutdown = False
 
@@ -538,6 +541,9 @@ class Application:
         self._tag_values = tag_values or {}
         await self.fulfill_tag_subscriptions(diff)
 
+        # signifies the first tag update (or any subsequent tag update) has run and we are ready to start.
+        self._tag_ready.set()
+
         try:
             shutdown_at = tag_values["shutdown_at"]
         except (KeyError, TypeError):
@@ -910,6 +916,12 @@ class Application:
         self.ui_manager.set_display_name(self.app_display_name)
         self.device_agent.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
         await self.ui_manager.clear_ui_async()
+
+        try:
+            # wait for tag values to sync from DDA - but only for 10sec.
+            await asyncio.wait_for(self._tag_ready.wait(), timeout=10.0)
+        except TimeoutError:
+            log.warning("Timed out waiting for tag values to be set")
 
     async def _main_loop(self):
         log.debug(f"Running internal main_loop: {self.name}")
