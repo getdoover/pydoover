@@ -113,10 +113,12 @@ class DeviceAgentInterface(GRPCInterface):
         backoff = 1
         while True:
             try:
-                await self.test_comms_async()
+                resp = await self.test_comms_async()
             except Exception as e:
                 log.error(f"Failed to get DDA comms: {e}")
-            else:
+                resp = None
+
+            if resp is not None:
                 log.info("DDA is available.")
                 return True
 
