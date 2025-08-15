@@ -3,6 +3,11 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.14
+-------
+- Wait up to 300 seconds for device agent to be ready before running `setup` in docker applications
+- Add `log_formatter` and `log_filters` parameters to `run_app()`
+
 v0.4.13
 -------
 - Fix bug with pydoover cli type hints

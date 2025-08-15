@@ -1,3 +1,9 @@
+pydoover (0.4.14) focal jammy; urgency=medium
+
+  * Release v0.4.14. See docs.doover.com for release notes.
+
+ -- Tom Wyatt <tom@span-eng.com>  Fri, 30 July 2025 11:21:20 +1000
+
 pydoover (0.4.13) focal jammy; urgency=medium
 
   * Release v0.4.13. See docs.doover.com for release notes.
