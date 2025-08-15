@@ -1078,6 +1078,8 @@ def run_app(
         If True, the logging will be set up. Defaults to True. You can pass a custom logging formatter to the `log_formatter` parameter.
     log_formatter : logging.Formatter, optional
         The logging formatter to use. Defaults to None, which will use a simple custom formatter defined in `pydoover.utils.LogFormatter`.
+    log_filters : logging.Filter | list[logging.Filter], optional
+        The logging filters to use. Defaults to None, which will not apply any filters.
     """
     (
         app_key,
