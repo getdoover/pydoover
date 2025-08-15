@@ -418,7 +418,7 @@ class LogFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-def setup_logging(debug: bool, formatter: logging.Formatter = None):
+def setup_logging(debug: bool, formatter: logging.Formatter = None, filters: logging.Filter | list[logging.Filter] = None):
     if debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
@@ -428,5 +428,11 @@ def setup_logging(debug: bool, formatter: logging.Formatter = None):
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
+    if filters:
+        if isinstance(filters, logging.Filter):
+            filters = [filters]
+        for filter in filters:
+            handler.addFilter(filter)
+
     logging.getLogger().handlers.clear()
     logging.getLogger().addHandler(handler)

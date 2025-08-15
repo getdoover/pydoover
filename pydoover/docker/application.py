@@ -1045,6 +1045,7 @@ def run_app(
     start: bool = True,
     setup_logging: bool = True,
     log_formatter: logging.Formatter = None,
+    log_filters: logging.Filter | list[logging.Filter] = None,
 ):
     """Run the application.
 
@@ -1094,7 +1095,7 @@ def run_app(
     ) or asyncio.iscoroutinefunction(app.main_loop)
     is_async = get_is_async(user_is_async)
     if setup_logging:
-        utils_setup_logging(debug=debug, formatter=log_formatter)
+        utils_setup_logging(debug=debug, formatter=log_formatter, filters=log_filters)
 
     for inst in (
         app,
