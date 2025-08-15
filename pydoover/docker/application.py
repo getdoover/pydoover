@@ -1045,6 +1045,7 @@ def run_app(
     start: bool = True,
     setup_logging: bool = True,
     log_formatter: logging.Formatter = None,
+    log_filters: logging.Filter | list[logging.Filter] = None,
 ):
     """Run the application.
 
@@ -1077,6 +1078,8 @@ def run_app(
         If True, the logging will be set up. Defaults to True. You can pass a custom logging formatter to the `log_formatter` parameter.
     log_formatter : logging.Formatter, optional
         The logging formatter to use. Defaults to None, which will use a simple custom formatter defined in `pydoover.utils.LogFormatter`.
+    log_filters : logging.Filter | list[logging.Filter], optional
+        The logging filters to use. Defaults to None, which will not apply any filters.
     """
     (
         app_key,
@@ -1094,7 +1097,7 @@ def run_app(
     ) or asyncio.iscoroutinefunction(app.main_loop)
     is_async = get_is_async(user_is_async)
     if setup_logging:
-        utils_setup_logging(debug=debug, formatter=log_formatter)
+        utils_setup_logging(debug=debug, formatter=log_formatter, filters=log_filters)
 
     for inst in (
         app,
