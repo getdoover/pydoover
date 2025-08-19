@@ -338,27 +338,3 @@ class Multiplot(Element):
 
         return result
 
-
-class RemoteComponent(Element):
-    """Represents a remote component in the UI.
-
-    Parameters
-    ----------
-    name: str
-        The name of the remote component.
-    display_name: str
-        The display name of the remote component.
-    component_url: str
-        The URL of the remote component.
-    """
-
-    type = "uiRemoteComponent"
-
-    def __init__(self, name: str, display_name: str, component_url: str, **kwargs):
-        super().__init__(name, display_name, component_url=component_url)
-        self.kwargs = kwargs
-
-    def to_dict(self):
-        res = super().to_dict()
-        res.update(self.kwargs)
-        return res
