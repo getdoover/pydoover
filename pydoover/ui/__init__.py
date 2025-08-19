@@ -3,8 +3,7 @@ from .element import (
     ConnectionType as ConnectionType,
     ConnectionInfo as ConnectionInfo,
     AlertStream as AlertStream,
-    Multiplot as Multiplot,
-    RemoteComponent as RemoteComponent,
+    Multiplot as Multiplot
 )
 from .interaction import (
     Interaction as Interaction,
@@ -45,6 +44,7 @@ from .submodule import (
     Container as Container,
     Submodule as Submodule,
     Application as Application,
+    RemoteComponent as RemoteComponent,
 )
 from .variable import (
     Variable as Variable,
