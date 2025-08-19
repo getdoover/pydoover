@@ -334,8 +334,15 @@ class RemoteComponent(Container):
 
     type = "uiRemoteComponent"
 
-    def __init__(self, name: str, display_name: str, component_url: str, **kwargs):
-        super().__init__(name, display_name, component_url=component_url)
+    def __init__(
+        self, name: str, 
+        display_name: str, 
+        component_url: str, 
+        children: list[Element] = None, 
+        **kwargs
+    ):
+        super().__init__(name, display_name, children, **kwargs)
+        self.component_url = component_url
         self.kwargs = kwargs
 
     def to_dict(self):
