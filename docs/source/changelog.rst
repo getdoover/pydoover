@@ -3,6 +3,11 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.15
+-------
+- `RemoteComponent` now inherits from `Container` to support adding `children`.
+- The default `serial_port` for `config.ModbusInterface` is now `/dev/ttyAMA0` to match the Doovit port.
+
 v0.4.14
 -------
 - Wait up to 300 seconds for device agent to be ready before running `setup` in docker applications
