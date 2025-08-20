@@ -14,7 +14,7 @@ class ModbusConfig(Object):
         self.name = String("Name", default="default")
 
         # todo: only show these if serial type is selected
-        self.serial_port = String("Serial Port", default="/dev/ttyS0")
+        self.serial_port = String("Serial Port", default="/dev/ttyAMA0")
         self.serial_baud = Integer("Serial Baud", default=9600)
         # pretty sure this is unused
         self.serial_method = Enum(
