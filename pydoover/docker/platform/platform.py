@@ -138,7 +138,7 @@ class PulseCounter:
             log.info(f"Ignoring pulse on di={di} with dt={dt_secs}s")
             return
 
-        log.info(f"Received pulse on di={di} with dt={dt_secs}s")
+        log.debug(f"Received pulse on di={di} with dt={dt_secs}s")
         self.count += 1
         self.pulse_timestamps += [time.time()]
         if self.callback is not None:

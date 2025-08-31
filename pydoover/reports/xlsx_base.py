@@ -241,7 +241,12 @@ class XlsxReportGenerator(ReportGenerator):
         # Process each message using the helper function.
         for m in msgs:
             temp_values = self.process_message(m, series, value_cache)
-            local_dt = datetime.fromtimestamp(m["timestamp"], timezone.utc).astimezone()
+            utc_dt = datetime.fromtimestamp(m["timestamp"], timezone.utc)
+            local_dt = (
+                utc_dt.astimezone(self.for_timezone)
+                if self.for_timezone
+                else utc_dt.astimezone()
+            )
             local_dt_str = local_dt.strftime("%d/%m/%y %H:%M:%S")
 
             if len(temp_values.keys()) < 1:
