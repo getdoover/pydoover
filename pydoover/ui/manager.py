@@ -31,7 +31,7 @@ class UIManager:
     def __init__(
         self,
         app_key: str = None,
-        client: Union["Client", "DeviceAgentInterface", DooverData] = None,
+        client: Union["Client", "DeviceAgentInterface", "DooverData"] = None,
         auto_start: bool = False,
         min_ui_update_period: int = 600,
         min_observed_update_period: int = 4,
