@@ -6,4 +6,4 @@ from .types import (
     DeploymentEvent as DeploymentEvent,
     Message as Message,
 )
-from handler import run_app as run_app
+from .handler import run_app as run_app
