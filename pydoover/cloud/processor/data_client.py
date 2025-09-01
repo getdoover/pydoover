@@ -12,13 +12,15 @@ class DooverData:
         self.base_url = base_url
         self.session: aiohttp.ClientSession = None
 
-    async def setup(self, token: str, agent_id: int):
+    async def setup(self, agent_id: int):
         self.agent_id = agent_id
 
         if self.session:
             await self.close()
 
         self.session = aiohttp.ClientSession()
+
+    def set_token(self, token: str):
         self.session.headers["Authorization"] = f"Bearer {token}"
 
     async def close(self):

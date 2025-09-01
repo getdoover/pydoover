@@ -69,8 +69,9 @@ class Application:
         self._tags = None
 
         # this is ok to setup because it doesn't store any state
+        await self.api.setup(self.agent_id)
         token = await self.fetch_token()
-        await self.api.setup(token, self.agent_id)
+        self.api.set_token(token)
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
@@ -110,9 +111,8 @@ class Application:
         request = AWSRequest(method="GET", url=endpoint)
 
         # Sign the request
-        SigV4Auth(credentials, "execute-api", os.environ.get("AWS_REGION")).add_auth(
-            request
-        )
+        region = os.environ.get("AWS_REGION") or "ap-southeast-2"
+        SigV4Auth(credentials, "execute-api", region).add_auth(request)
 
         # Convert to requests format and execute
         prepared_request = request.prepare()
