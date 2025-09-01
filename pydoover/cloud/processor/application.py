@@ -2,11 +2,12 @@ import logging
 import os
 import time
 
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from .types import MessageCreateEvent, Channel, DeploymentEvent
 from .data_client import DooverData
 from ...ui import UIManager
+from ...config import Schema
 
 
 log = logging.getLogger()
@@ -18,10 +19,6 @@ except ImportError:
     AWS_BOTO3_SUPPORT = False
 else:
     AWS_BOTO3_SUPPORT = True
-
-if TYPE_CHECKING:
-    from ...config import Schema
-
 
 if AWS_BOTO3_SUPPORT:
     from botocore.auth import SigV4Auth
@@ -36,7 +33,7 @@ DEFAULT_DATA_ENDPOINT = "https://data.sandbox.udoover.com/api"
 
 
 class Application:
-    def __init__(self, config: "Schema"):
+    def __init__(self, config: Schema | None):
         self.config = config
 
         self._token_endpoint = (
@@ -77,6 +74,11 @@ class Application:
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
+
+        if self.config is not None:
+            # if there's no config defined this can legitimately be None in which case don't bother fetching it.
+            config = await self.api.get_channel(self.agent_id, "deployment_config")
+            self.config._inject_deployment_config(config.get(self.app_key, {}))
 
     async def _close(self):
         await self.api.close()
@@ -136,6 +138,8 @@ class Application:
 
         self.app_key: str = event.get("app_key", os.environ.get("APP_KEY"))
         self.agent_id: int = event["agent_id"]
+
+        await self._setup()
 
         try:
             await self.setup()
