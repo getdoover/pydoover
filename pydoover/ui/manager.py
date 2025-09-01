@@ -20,6 +20,7 @@ from ..utils import call_maybe_async, get_is_async, maybe_async, find_object_wit
 
 if TYPE_CHECKING:
     from ..docker.device_agent.device_agent import DeviceAgentInterface
+    from ..cloud.processor.data_client import DooverData
 
 log = logging.getLogger(__name__)
 ElementT = TypeVar("ElementT", bound=Element)
@@ -30,7 +31,7 @@ class UIManager:
     def __init__(
         self,
         app_key: str = None,
-        client: Union["Client", "DeviceAgentInterface"] = None,
+        client: Union["Client", "DeviceAgentInterface", DooverData] = None,
         auto_start: bool = False,
         min_ui_update_period: int = 600,
         min_observed_update_period: int = 4,
@@ -76,6 +77,8 @@ class UIManager:
 
         # to keep track of which interactions / ui_cmds to change
         self._changed_interactions = set()
+
+        self.agent_id = None
 
         if auto_start:
             self.start_comms()
@@ -583,6 +586,8 @@ class UIManager:
             return channel.publish(
                 data, save_log=record_log, timestamp=timestamp, **kwargs
             )
+        elif getattr(self.client, "is_processor_v2", False):
+            raise RuntimeError("Doover data must be used with async methods.")
         else:
             # fixme: allow for timestamp in DDA message publishing...
             return self.client.publish_to_channel(
@@ -602,6 +607,15 @@ class UIManager:
             # in theory this works but lets just discourage this behaviour...
             raise RuntimeError("Cannot push async with a Client object")
 
+        elif getattr(self.client, "is_processor_v2", False):
+            return await self.client.publish_message(
+                self.agent_id,
+                channel_name,
+                data,
+                timestamp=timestamp,
+                record_log=record_log,
+            )
+
         return await self.client.publish_to_channel_async(
             channel_name, data, record_log=record_log, max_age=max_age
         )
@@ -615,6 +629,8 @@ class UIManager:
 
             ui_cmds_agg = ui_cmds.fetch_aggregate()
             ui_state_agg = ui_state.fetch_aggregate()
+        elif getattr(self.client, "is_processor_v2", False):
+            raise RuntimeError("Doover data must be used with async methods.")
         else:
             ui_cmds_agg = self.client.get_channel_aggregate("ui_cmds")
             ui_state_agg = self.client.get_channel_aggregate("ui_state")
@@ -633,9 +649,22 @@ class UIManager:
     async def pull_async(self):
         if isinstance(self.client, Client):
             raise RuntimeError("Cannot pull async with a Client object")
+        elif getattr(self.client, "is_processor_v2", False):
+            ui_cmds = await self.client.get_channel(self.agent_id, "ui_cmds")
+            ui_state = await self.client.get_channel(self.agent_id, "ui_state")
 
-        ui_cmds_agg = await self.client.get_channel_aggregate_async("ui_cmds")
-        ui_state_agg = await self.client.get_channel_aggregate_async("ui_state")
+            ui_cmds_agg = ui_cmds.aggregate
+            ui_state_agg = ui_state.aggregate
+        else:
+            ui_cmds_agg = await self.client.get_channel_aggregate_async("ui_cmds")
+            ui_state_agg = await self.client.get_channel_aggregate_async("ui_state")
+
+        try:
+            ui_cmds_agg = ui_cmds_agg["cmds"]
+        except Exception as e:
+            log.warning(f"Failed to get UI commands: {e}")
+            ui_cmds_agg = {}
+
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
         await self.on_command_update_async(None, ui_cmds_agg)
