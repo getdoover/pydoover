@@ -161,13 +161,13 @@ class Application:
 
         func = None
         payload = None
-        match event["EVENT_TYPE"]:
+        match event["op"]:
             case "on_message_create":
                 func = self.on_message_create
-                payload = MessageCreateEvent.from_dict(event)
+                payload = MessageCreateEvent.from_dict(event["d"])
             case "on_deployment":
                 func = self.on_deployment
-                payload = DeploymentEvent.from_dict(event)
+                payload = DeploymentEvent.from_dict(event["d"])
 
         if func is None:
             log.error(f"Unknown event type: {event['EVENT_TYPE']}")
