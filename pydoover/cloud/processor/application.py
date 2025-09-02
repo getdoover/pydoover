@@ -170,7 +170,7 @@ class Application:
                 payload = DeploymentEvent.from_dict(event["d"])
 
         if func is None:
-            log.error(f"Unknown event type: {event['EVENT_TYPE']}")
+            log.error(f"Unknown event type: {event['op']}")
         else:
             try:
                 s = time.perf_counter()

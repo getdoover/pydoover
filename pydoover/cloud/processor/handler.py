@@ -10,6 +10,7 @@ def run_app(
 ):
     if setup_logging:
         logging.basicConfig(level=logging.INFO)
+        logging.getLogger().setLevel("INFO")
 
     # should probably fact check this but I don't think we can run asyncio.run in a lambda because it
     # recycles the environment...
