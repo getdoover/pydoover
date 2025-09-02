@@ -55,7 +55,7 @@ class Application:
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
         self.api.set_token(self._initial_token)
-        data = await self.api.fetch_processor_info(self.subscription_id)
+        data = await self.api.fetch_processor_info(self.subscription_id, self.agent_id)
 
         self.agent_id = self.api.agent_id = data["agent_id"]
         self.api.set_token(data["token"])
@@ -107,6 +107,8 @@ class Application:
         # self.agent_id: int = event["agent_id"]
         self.subscription_id = subscription_id
         self._initial_token = event["token"]
+        # this can be set during testing. during normal operation it's signed in the JWT.
+        self.agent_id = event.get("agent_id")
 
         s = time.perf_counter()
         await self._setup()

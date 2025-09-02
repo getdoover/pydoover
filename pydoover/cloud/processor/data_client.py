@@ -65,8 +65,11 @@ class DooverData:
             data=payload,
         )
 
-    async def fetch_processor_info(self, subscription_id: str):
+    async def fetch_processor_info(self, subscription_id: str, agent_id: int = None):
+        if agent_id:
+            data = {"agent_id": agent_id}
+        else:
+            data = {}
         return await self._request(
-            "POST",
-            f"{self.base_url}/processors/subscriptions/{subscription_id}",
+            "POST", f"{self.base_url}/processors/subscriptions/{subscription_id}", data
         )
