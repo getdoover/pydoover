@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime
 from typing import Any
 
 import aiohttp
 
 from .types import Channel
+
+log = logging.getLogger(__name__)
 
 
 class DooverData:
@@ -33,6 +36,7 @@ class DooverData:
 
     async def _request(self, method, endpoint, data: dict | str = None):
         async with self.session.request(method, endpoint, json=data) as resp:
+            log.info(resp.content)
             resp.raise_for_status()
             return await resp.json()
 

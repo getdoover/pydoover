@@ -640,7 +640,7 @@ class UIManager:
             ui_cmds_agg = ui_cmds_agg["cmds"]
         except Exception as e:
             log.warning(f"Failed to get UI commands: {e}")
-            ui_cmds_agg = {}
+            ui_cmds_agg = ui_cmds_agg
 
         self.on_command_update(None, ui_cmds_agg)
 
@@ -661,7 +661,7 @@ class UIManager:
             ui_cmds_agg = ui_cmds_agg["cmds"]
         except Exception as e:
             log.warning(f"Failed to get UI commands: {e}")
-            ui_cmds_agg = {}
+            ui_cmds_agg = ui_cmds_agg
 
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
