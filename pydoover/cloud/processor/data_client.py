@@ -36,7 +36,6 @@ class DooverData:
 
     async def _request(self, method, endpoint, data: dict | str = None):
         async with self.session.request(method, endpoint, json=data) as resp:
-            log.info(resp.content)
             resp.raise_for_status()
             return await resp.json()
 
@@ -57,12 +56,13 @@ class DooverData:
         payload: dict[str, Any] = {
             "data": message,
             "record_log": record_log,
+            "is_diff": True,
         }
         if timestamp is not None:
             payload["timestamp"] = int(timestamp.timestamp())
 
         return await self._request(
             "POST",
-            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}",
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
             data=payload,
         )

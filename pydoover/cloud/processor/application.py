@@ -143,12 +143,21 @@ class Application:
         self.app_key: str = event.get("app_key", os.environ.get("APP_KEY"))
         self.agent_id: int = event["agent_id"]
 
+        s = time.perf_counter()
         await self._setup()
+        log.info(f"Setup took {time.perf_counter() - s} seconds.")
 
+        s = time.perf_counter()
         try:
             await self.setup()
         except Exception as e:
             log.error(f"Error attempting to setup processor: {e} ", exc_info=e)
+        log.info(f"user Setup took {time.perf_counter() - s} seconds.")
+
+        log.info("Fetching UI state...")
+        s = time.perf_counter()
+        await self.ui_manager.pull_async()
+        log.info(f"UI state fetched in {time.perf_counter() - s} seconds.")
 
         func = None
         payload = None
@@ -164,7 +173,9 @@ class Application:
             log.error(f"Unknown event type: {event['EVENT_TYPE']}")
         else:
             try:
+                s = time.perf_counter()
                 await func(payload)
+                log.info(f"Processing event took {time.perf_counter() - s} seconds.")
             except Exception as e:
                 log.error(f"Error attempting to process event: {e} ", exc_info=e)
 
@@ -172,11 +183,15 @@ class Application:
             await self.api.publish_message(self.agent_id, "tag_values", self._tags)
 
         try:
+            s = time.perf_counter()
             await self.close()
+            log.info(f"user Close took {time.perf_counter() - s} seconds.")
         except Exception as e:
             log.error(f"Error attempting to close processor: {e} ", exc_info=e)
 
+        s = time.perf_counter()
         await self._close()
+        log.info(f"Close took {time.perf_counter() - s} seconds.")
 
         end_time = time.time()
         log.info(
@@ -217,6 +232,15 @@ class Application:
     async def set_tag(self, key: str, value: Any):
         if not self._has_fetched_tags:
             self._tags = await self.api.get_channel(self.agent_id, "tag_values")
+
+        try:
+            current = self._tags[self.app_key][key]
+        except KeyError:
+            current = None
+
+        if current == value:
+            # don't publish if it hasn't changed
+            return
 
         try:
             self._tags[self.app_key][key] = value
