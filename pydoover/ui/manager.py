@@ -769,6 +769,8 @@ class UIManager:
         if self._has_persistent_connection:
             if not self._check_dda_ready():
                 return False
+        elif getattr(self.client, "is_processor_v2", False):
+            await self.pull_async()
         else:
             self.pull()  # do a pull before HTTP client pushes anything...
 

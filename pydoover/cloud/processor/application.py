@@ -205,8 +205,8 @@ class Application:
 
     async def get_tag(self, key: str, default: Any = None):
         if not self._has_fetched_tags:
-            tags = await self.api.get_channel(self.agent_id, "tag_values")
-            self._tags = tags.get(self.app_key, {})
+            channel = await self.api.get_channel(self.agent_id, "tag_values")
+            self._tags = channel.aggregate.get(self.app_key, {})
             self._has_fetched_tags = True
 
         try:
