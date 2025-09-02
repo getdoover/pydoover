@@ -66,3 +66,8 @@ class DooverData:
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
             data=payload,
         )
+
+    async def fetch_processor_info(self, subscription_id: str):
+        return await self._request(
+            "GET", f"{self.base_url}/processors/subscriptions/{subscription_id}"
+        )

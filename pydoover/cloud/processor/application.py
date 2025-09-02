@@ -12,23 +12,7 @@ from ...config import Schema
 
 log = logging.getLogger()
 
-try:
-    import boto3
-except ImportError:
-    boto3 = None
-    AWS_BOTO3_SUPPORT = False
-else:
-    AWS_BOTO3_SUPPORT = True
 
-if AWS_BOTO3_SUPPORT:
-    from botocore.auth import SigV4Auth
-    from botocore.awsrequest import AWSRequest
-
-    session = boto3.Session()
-    credentials = session.get_credentials()
-
-
-DEFAULT_TOKEN_ENDPOINT = "https://proc-auth.u.sandbox.udoover.com/token"
 DEFAULT_DATA_ENDPOINT = "https://data.sandbox.udoover.com/api"
 
 
@@ -36,9 +20,6 @@ class Application:
     def __init__(self, config: Schema | None):
         self.config = config
 
-        self._token_endpoint = (
-            os.environ.get("DOOVER_TOKEN_ENDPOINT") or DEFAULT_TOKEN_ENDPOINT
-        )
         self._api_endpoint = (
             os.environ.get("DOOVER_DATA_ENDPOINT") or DEFAULT_DATA_ENDPOINT
         )
@@ -47,6 +28,7 @@ class Application:
 
         # set per-task
         self.agent_id: int = None
+        self._initial_token: str = None
         self.ui_manager: UIManager = None
         self._tags: dict[str, Any] = None
 
@@ -63,27 +45,32 @@ class Application:
         #     }
 
     async def _setup(self):
-        self._has_fetched_tags = False
         self._publish_tags = False
-        self._tags = None
+
+        # this is essentially an oauth2 "upgrade" request with some more niceties.
+        # we give it a minimal token provisioned from doover data, along with our subscription (uuid) ID
+        # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
+        # tag values and deployment config.
+        data = await self.api.fetch_processor_info(
+            self.subscription_id, self._initial_token
+        )
 
         # this is ok to setup because it doesn't store any state
-        await self.api.setup(self.agent_id)
-        token = await self.fetch_token()
-        self.api.set_token(token)
+        await self.api.setup(data["agent_id"])
+        self.api.set_token(data["token"])
+
+        self.app_key = data["app_key"]
+        self._tag_values = data["tag_values"]
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
+        await self.ui_manager._processor_set_ui_channels(
+            data["ui_state"], data["ui_cmds"]
+        )
 
         if self.config is not None:
-            # if there's no config defined this can legitimately be None in which case don't bother fetching it.
-            channel = await self.api.get_channel(self.agent_id, "deployment_config")
-            try:
-                data = channel.data["applications"][self.app_key]
-            except KeyError:
-                log.info("No config found for application.")
-            else:
-                self.config._inject_deployment_config(data)
+            # if there's no config defined this can legitimately be None in which case don't bother.
+            self.config._inject_deployment_config(data["deployment_config"])
 
     async def _close(self):
         await self.api.close()
@@ -106,42 +93,21 @@ class Application:
         """
         return NotImplemented
 
-    async def fetch_token(self):
-        if not AWS_BOTO3_SUPPORT:
-            raise RuntimeError("AWS Boto3 support not available")
-
-        endpoint = f"{self._token_endpoint}/{self.agent_id}"
-        # Prepare the request
-        request = AWSRequest(method="GET", url=endpoint)
-
-        # Sign the request
-        region = os.environ.get("AWS_REGION") or "ap-southeast-2"
-        SigV4Auth(credentials, "execute-api", region).add_auth(request)
-
-        # Convert to requests format and execute
-        prepared_request = request.prepare()
-
-        async with self.api.session.get(
-            endpoint, headers=prepared_request.headers
-        ) as resp:
-            resp.raise_for_status()
-            data = await resp.json()
-
-        return data["token"]
-
     async def on_message_create(self, event: MessageCreateEvent):
         pass
 
     async def on_deployment(self, event: DeploymentEvent):
         pass
 
-    async def _handle_event(self, event: dict[str, Any], context):
+    async def _handle_event(self, event: dict[str, Any], subscription_id: str):
         start_time = time.time()
         log.info("Initialising processor task")
         log.info(f"Started at {start_time}.")
 
-        self.app_key: str = event.get("app_key", os.environ.get("APP_KEY"))
-        self.agent_id: int = event["agent_id"]
+        # self.app_key: str = event.get("app_key", os.environ.get("APP_KEY"))
+        # self.agent_id: int = event["agent_id"]
+        self.subscription_id = subscription_id
+        self._initial_token = event["token"]
 
         s = time.perf_counter()
         await self._setup()
@@ -219,20 +185,12 @@ class Application:
         return await self.api.get_channel(self.agent_id, channel_name)
 
     async def get_tag(self, key: str, default: Any = None):
-        if not self._has_fetched_tags:
-            channel = await self.api.get_channel(self.agent_id, "tag_values")
-            self._tags = channel.aggregate.get(self.app_key, {})
-            self._has_fetched_tags = True
-
         try:
-            return self._tags[key]
+            return self._tag_values[self.app_key][key]
         except KeyError:
             return default
 
     async def set_tag(self, key: str, value: Any):
-        if not self._has_fetched_tags:
-            self._tags = await self.api.get_channel(self.agent_id, "tag_values")
-
         try:
             current = self._tags[self.app_key][key]
         except KeyError:

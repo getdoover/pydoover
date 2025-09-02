@@ -4,6 +4,7 @@ import logging
 import re
 import time
 import json
+from contextlib import suppress
 from datetime import datetime
 
 from typing import Union, Any, Optional, TypeVar, TYPE_CHECKING
@@ -666,6 +667,15 @@ class UIManager:
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
         await self.on_command_update_async(None, ui_cmds_agg)
+
+    async def _processor_set_ui_channels(
+        self, ui_state: dict[str, Any], ui_cmds: dict[str, Any]
+    ):
+        with suppress(KeyError):
+            ui_cmds = ui_cmds["cmds"]
+
+        self._set_new_ui_state(ui_state)
+        await self.on_command_update_async(None, ui_cmds)
 
     def _check_dda_ready(self):
         if not self._is_conn_ready():

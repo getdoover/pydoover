@@ -7,7 +7,7 @@ from .application import Application
 
 
 def run_app(
-    app: Application, event: dict[str, Any], context, setup_logging: bool = True
+    app: Application, event: dict[str, Any], _context, setup_logging: bool = True
 ):
     if setup_logging:
         logging.basicConfig(level=logging.INFO)
@@ -22,6 +22,7 @@ def run_app(
 
     for record in event["Records"]:
         data = json.loads(record["Sns"]["Message"])
+        subscription_id = record["EventSubscriptionArn"].split(":")[-1]
 
-        task = loop.create_task(app._handle_event(data, context))
+        task = loop.create_task(app._handle_event(data, subscription_id))
         loop.run_until_complete(task)
