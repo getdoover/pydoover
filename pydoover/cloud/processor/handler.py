@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from typing import Any
 
@@ -19,5 +20,8 @@ def run_app(
     except RuntimeError:
         loop = asyncio.new_event_loop()
 
-    task = loop.create_task(app._handle_event(event, context))
-    loop.run_until_complete(task)
+    for record in event["Records"]:
+        data = json.loads(record["Sns"]["Message"])
+
+        task = loop.create_task(app._handle_event(data, context))
+        loop.run_until_complete(task)
