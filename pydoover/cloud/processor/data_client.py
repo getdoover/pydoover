@@ -33,7 +33,7 @@ class DooverData:
             self.session = None
 
     async def _request(self, method, endpoint, data: dict | str = None):
-        async with self.session.request(method, endpoint, json=data) as resp:
+        async with self.session.request(method, endpoint, json=data or {}) as resp:
             resp.raise_for_status()
             return await resp.json()
 
@@ -67,5 +67,6 @@ class DooverData:
 
     async def fetch_processor_info(self, subscription_id: str):
         return await self._request(
-            "GET", f"{self.base_url}/processors/subscriptions/{subscription_id}"
+            "POST",
+            f"{self.base_url}/processors/subscriptions/{subscription_id}",
         )

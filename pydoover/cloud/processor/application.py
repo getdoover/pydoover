@@ -30,7 +30,7 @@ class Application:
         self.agent_id: int = None
         self._initial_token: str = None
         self.ui_manager: UIManager = None
-        self._tags: dict[str, Any] = None
+        self._tag_values: dict[str, Any] = None
 
         ### kwarg
         #     'agent_id' : The Doover agent id invoking the task e.g. '9843b273-6580-4520-bdb0-0afb7bfec049'
@@ -57,7 +57,7 @@ class Application:
         self.api.set_token(self._initial_token)
         data = await self.api.fetch_processor_info(self.subscription_id)
 
-        self.api.agent_id = data["agent_id"]
+        self.agent_id = self.api.agent_id = data["agent_id"]
         self.api.set_token(data["token"])
 
         self.app_key = data["app_key"]
@@ -65,9 +65,7 @@ class Application:
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
-        await self.ui_manager._processor_set_ui_channels(
-            data["ui_state"], data["ui_cmds"]
-        )
+        self._ui_to_set = (data["ui_state"], data["ui_cmds"])
 
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
@@ -123,7 +121,8 @@ class Application:
 
         log.info("Fetching UI state...")
         s = time.perf_counter()
-        await self.ui_manager.pull_async()
+        await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
+        # await self.ui_manager.pull_async()
         log.info(f"UI state fetched in {time.perf_counter() - s} seconds.")
 
         func = None
@@ -147,7 +146,9 @@ class Application:
                 log.error(f"Error attempting to process event: {e} ", exc_info=e)
 
         if self._publish_tags:
-            await self.api.publish_message(self.agent_id, "tag_values", self._tags)
+            await self.api.publish_message(
+                self.agent_id, "tag_values", self._tag_values
+            )
 
         try:
             s = time.perf_counter()
@@ -193,7 +194,7 @@ class Application:
 
     async def set_tag(self, key: str, value: Any):
         try:
-            current = self._tags[self.app_key][key]
+            current = self._tag_values[self.app_key][key]
         except KeyError:
             current = None
 
@@ -202,8 +203,8 @@ class Application:
             return
 
         try:
-            self._tags[self.app_key][key] = value
+            self._tag_values[self.app_key][key] = value
         except KeyError:
-            self._tags[self.app_key] = {key: value}
+            self._tag_values[self.app_key] = {key: value}
 
         self._publish_tags = True
