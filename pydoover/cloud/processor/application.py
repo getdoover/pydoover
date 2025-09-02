@@ -121,11 +121,7 @@ class Application:
             log.error(f"Error attempting to setup processor: {e} ", exc_info=e)
         log.info(f"user Setup took {time.perf_counter() - s} seconds.")
 
-        log.info("Fetching UI state...")
-        s = time.perf_counter()
         await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
-        # await self.ui_manager.pull_async()
-        log.info(f"UI state fetched in {time.perf_counter() - s} seconds.")
 
         func = None
         payload = None
@@ -133,6 +129,8 @@ class Application:
             case "on_message_create":
                 func = self.on_message_create
                 payload = MessageCreateEvent.from_dict(event["d"])
+                # prevent infinite loops
+                self.api._invoking_channel_name = payload.channel_name
             case "on_deployment":
                 func = self.on_deployment
                 payload = DeploymentEvent.from_dict(event["d"])
@@ -153,15 +151,11 @@ class Application:
             )
 
         try:
-            s = time.perf_counter()
             await self.close()
-            log.info(f"user Close took {time.perf_counter() - s} seconds.")
         except Exception as e:
             log.error(f"Error attempting to close processor: {e} ", exc_info=e)
 
-        s = time.perf_counter()
         await self._close()
-        log.info(f"Close took {time.perf_counter() - s} seconds.")
 
         end_time = time.time()
         log.info(

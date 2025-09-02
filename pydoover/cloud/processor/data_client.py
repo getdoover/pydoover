@@ -18,6 +18,11 @@ class DooverData:
         self.has_persistent_connection = lambda: False
         self.is_processor_v2 = True
 
+        # for onmessagecreate events this is set to the trigger channel
+        # so that we don't publish to the same channel we're receiving from
+        # and get in an infinite loop
+        self._invoking_channel_name = None
+
     async def setup(self):
         if self.session:
             await self.close()
@@ -51,13 +56,16 @@ class DooverData:
         timestamp: datetime | None = None,
         record_log: bool = True,
     ):
+        if channel_name == self._invoking_channel_name:
+            raise RuntimeError("Cannot publish to the invoking channel.")
+
         payload: dict[str, Any] = {
             "data": message,
             "record_log": record_log,
             "is_diff": True,
         }
         if timestamp is not None:
-            payload["timestamp"] = int(timestamp.timestamp())
+            payload["ts"] = int(timestamp.timestamp())
 
         return await self._request(
             "POST",
