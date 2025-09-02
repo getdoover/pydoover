@@ -78,8 +78,6 @@ class UIManager:
         # to keep track of which interactions / ui_cmds to change
         self._changed_interactions = set()
 
-        self.agent_id = None
-
         if auto_start:
             self.start_comms()
 
@@ -582,7 +580,7 @@ class UIManager:
     ):
         # this purely exists to provide cross-compatibility between clients (hence private method).
         if isinstance(self.client, Client):
-            channel = self.client.get_channel_named(channel_name, self.agent_id)
+            channel = self.client.get_channel_named(channel_name, self.client.agent_id)
             return channel.publish(
                 data, save_log=record_log, timestamp=timestamp, **kwargs
             )
@@ -609,7 +607,7 @@ class UIManager:
 
         elif getattr(self.client, "is_processor_v2", False):
             return await self.client.publish_message(
-                self.agent_id,
+                self.client.agent_id,
                 channel_name,
                 data,
                 timestamp=timestamp,
@@ -624,8 +622,8 @@ class UIManager:
     def pull(self):
         print("pulling...")
         if isinstance(self.client, Client):
-            ui_cmds = self.client.get_channel_named("ui_cmds", self.agent_id)
-            ui_state = self.client.get_channel_named("ui_state", self.agent_id)
+            ui_cmds = self.client.get_channel_named("ui_cmds", self.client.agent_id)
+            ui_state = self.client.get_channel_named("ui_state", self.client.agent_id)
 
             ui_cmds_agg = ui_cmds.fetch_aggregate()
             ui_state_agg = ui_state.fetch_aggregate()
@@ -650,8 +648,8 @@ class UIManager:
         if isinstance(self.client, Client):
             raise RuntimeError("Cannot pull async with a Client object")
         elif getattr(self.client, "is_processor_v2", False):
-            ui_cmds = await self.client.get_channel(self.agent_id, "ui_cmds")
-            ui_state = await self.client.get_channel(self.agent_id, "ui_state")
+            ui_cmds = await self.client.get_channel(self.client.agent_id, "ui_cmds")
+            ui_state = await self.client.get_channel(self.client.agent_id, "ui_state")
 
             ui_cmds_agg = ui_cmds.aggregate
             ui_state_agg = ui_state.aggregate

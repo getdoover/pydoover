@@ -44,7 +44,6 @@ class Application:
         )
 
         self.api = DooverData(self._api_endpoint)
-        self.is_processor_v2 = True
 
         # set per-task
         self.agent_id: int = None
@@ -78,8 +77,13 @@ class Application:
 
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother fetching it.
-            config = await self.api.get_channel(self.agent_id, "deployment_config")
-            self.config._inject_deployment_config(config.get(self.app_key, {}))
+            channel = await self.api.get_channel(self.agent_id, "deployment_config")
+            try:
+                data = channel.data["applications"][self.app_key]
+            except KeyError:
+                log.info("No config found for application.")
+            else:
+                self.config._inject_deployment_config(data)
 
     async def _close(self):
         await self.api.close()
