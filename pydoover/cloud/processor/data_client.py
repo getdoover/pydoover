@@ -18,9 +18,7 @@ class DooverData:
         self.has_persistent_connection = lambda: False
         self.is_processor_v2 = True
 
-    async def setup(self, agent_id: int):
-        self.agent_id = agent_id
-
+    async def setup(self):
         if self.session:
             await self.close()
 

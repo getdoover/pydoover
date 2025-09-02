@@ -47,16 +47,17 @@ class Application:
     async def _setup(self):
         self._publish_tags = False
 
+        # this is ok to setup because it doesn't store any state
+        await self.api.setup()
+
         # this is essentially an oauth2 "upgrade" request with some more niceties.
         # we give it a minimal token provisioned from doover data, along with our subscription (uuid) ID
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
-        data = await self.api.fetch_processor_info(
-            self.subscription_id, self._initial_token
-        )
+        self.api.set_token(self._initial_token)
+        data = await self.api.fetch_processor_info(self.subscription_id)
 
-        # this is ok to setup because it doesn't store any state
-        await self.api.setup(data["agent_id"])
+        self.api.agent_id = data["agent_id"]
         self.api.set_token(data["token"])
 
         self.app_key = data["app_key"]
