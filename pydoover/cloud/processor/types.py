@@ -36,6 +36,7 @@ class Channel:
         self.last_updated = last_updated or datetime.now(tz=timezone.utc).timestamp()
         self.last_message = last_message
         self.data = data
+        self.aggregate = data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
