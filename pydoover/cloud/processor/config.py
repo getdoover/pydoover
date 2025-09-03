@@ -10,6 +10,7 @@ class SubscriptionConfig(String):
         **kwargs,
     ):
         super().__init__(display_name, description=description, **kwargs)
+        self._name = "dv_proc_subscriptions"
 
 
 class ScheduleConfig(Integer):
@@ -24,3 +25,4 @@ class ScheduleConfig(Integer):
         super().__init__(
             display_name, minimum=minimum, description=description, **kwargs
         )
+        self._name = "dv_proc_schedules"
