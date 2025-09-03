@@ -38,7 +38,7 @@ class DooverData:
             self.session = None
 
     async def _request(self, method, endpoint, data: dict | str = None):
-        async with self.session.request(method, endpoint, json=data or {}) as resp:
+        async with self.session.request(method, endpoint, json=data) as resp:
             resp.raise_for_status()
             return await resp.json()
 
@@ -80,4 +80,9 @@ class DooverData:
             data = {}
         return await self._request(
             "POST", f"{self.base_url}/processors/subscriptions/{subscription_id}", data
+        )
+
+    async def fetch_schedule_info(self, schedule_id: int):
+        return await self._request(
+            "GET", f"{self.base_url}/processors/schedules/{schedule_id}"
         )

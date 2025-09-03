@@ -118,6 +118,11 @@ class Application:
         # self.agent_id: int = event["agent_id"]
         self.subscription_id = subscription_id
 
+        try:
+            self.schedule_id = event["d"]["schedule_id"]
+        except KeyError:
+            self.schedule_id = None
+
         # this is the initial token provided. For a subscription, it will be a temporary token.
         # For a schedule, it will be a long-lived token.
         # Both have permission to access the info endpoint, only.
@@ -140,7 +145,6 @@ class Application:
 
         func = None
         payload = None
-        self.schedule_id = None
         match event["op"]:
             case "on_message_create":
                 func = self.on_message_create
@@ -153,7 +157,6 @@ class Application:
             case "on_schedule":
                 func = self.on_schedule
                 payload = ScheduleEvent.from_dict(event["d"])
-                self.schedule_id = payload.schedule_id
 
         if func is None:
             log.error(f"Unknown event type: {event['op']}")
