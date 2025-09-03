@@ -21,9 +21,21 @@ def run_app(
         logging.basicConfig(level=logging.INFO)
         logging.getLogger().setLevel("INFO")
 
-    for record in event["Records"]:
-        data = json.loads(record["Sns"]["Message"])
-        subscription_id = record["EventSubscriptionArn"].split(":")[-1]
+    # 2 sources are valid, SNS for subscriptions, EventBridge for schedules
+    # in reality anything that isn't an AWS (SNS) payload will be passed through as-is
+    try:
+        source = event["Records"][0]["EventSource"]
+    except KeyError:
+        data = event
+        subscription_id = None
+    else:
+        if source == "aws:sns":
+            data = json.loads(event["Records"][0]["Sns"]["Message"])
+            subscription_id = event["Records"][0]["EventSubscriptionArn"].split(":")[-1]
+        else:
+            raise ValueError(
+                "Unknown event. Must originate from SNS or EventBridge Schedules"
+            )
 
-        task = loop.create_task(app._handle_event(data, subscription_id))
-        loop.run_until_complete(task)
+    task = loop.create_task(app._handle_event(data, subscription_id))
+    loop.run_until_complete(task)

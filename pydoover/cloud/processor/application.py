@@ -4,7 +4,7 @@ import time
 
 from typing import Any
 
-from .types import MessageCreateEvent, Channel, DeploymentEvent
+from .types import MessageCreateEvent, Channel, DeploymentEvent, ScheduleEvent
 from .data_client import DooverData
 from ...ui import UIManager
 from ...config import Schema
@@ -55,7 +55,15 @@ class Application:
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
         self.api.set_token(self._initial_token)
-        data = await self.api.fetch_processor_info(self.subscription_id, self.agent_id)
+
+        if self.subscription_id:
+            data = await self.api.fetch_processor_info(
+                self.subscription_id, self.agent_id
+            )
+        elif self.schedule_id:
+            data = await self.api.fetch_schedule_info(self.schedule_id)
+        else:
+            raise ValueError("No subscription or schedule ID provided.")
 
         self.agent_id = self.api.agent_id = data["agent_id"]
         self.api.set_token(data["token"])
@@ -98,7 +106,10 @@ class Application:
     async def on_deployment(self, event: DeploymentEvent):
         pass
 
-    async def _handle_event(self, event: dict[str, Any], subscription_id: str):
+    async def on_schedule(self, event: ScheduleEvent):
+        pass
+
+    async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
         log.info("Initialising processor task")
         log.info(f"Started at {start_time}.")
@@ -106,6 +117,10 @@ class Application:
         # self.app_key: str = event.get("app_key", os.environ.get("APP_KEY"))
         # self.agent_id: int = event["agent_id"]
         self.subscription_id = subscription_id
+
+        # this is the initial token provided. For a subscription, it will be a temporary token.
+        # For a schedule, it will be a long-lived token.
+        # Both have permission to access the info endpoint, only.
         self._initial_token = event["token"]
         # this can be set during testing. during normal operation it's signed in the JWT.
         self.agent_id = event.get("agent_id")
@@ -125,6 +140,7 @@ class Application:
 
         func = None
         payload = None
+        self.schedule_id = None
         match event["op"]:
             case "on_message_create":
                 func = self.on_message_create
@@ -134,6 +150,10 @@ class Application:
             case "on_deployment":
                 func = self.on_deployment
                 payload = DeploymentEvent.from_dict(event["d"])
+            case "on_schedule":
+                func = self.on_schedule
+                payload = ScheduleEvent.from_dict(event["d"])
+                self.schedule_id = payload.schedule_id
 
         if func is None:
             log.error(f"Unknown event type: {event['op']}")

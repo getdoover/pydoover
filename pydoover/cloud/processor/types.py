@@ -110,3 +110,14 @@ class DeploymentEvent:
             data["app_id"],
             data["app_install_id"],
         )
+
+
+class ScheduleEvent:
+    def __init__(self, schedule_id: int):
+        self.schedule_id = schedule_id
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["schedule_id"],
+        )
