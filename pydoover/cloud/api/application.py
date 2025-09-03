@@ -40,7 +40,7 @@ class Application:
 
     def __init__(
         self,
-        key: str,
+        id: str,
         name: str,
         display_name: str,
         app_type: Type,
@@ -55,11 +55,13 @@ class Application:
         image_name: str,
         build_args: str,
         container_registry_profile: Object,
+        lambda_arn: str,
+        lambda_config: dict[str, Any],
         config_schema: dict[str, Any],
         staging_config: dict[str, Any],
         app_base: Path,
     ):
-        self.key = key
+        self.id = id
 
         self.name = name  # mandatory field
         self.display_name = display_name  # mandatory field
@@ -78,13 +80,16 @@ class Application:
         else:
             self.long_description = long_description or ""
 
-        self.owner_org = owner_org or Object(key=None)
-        self.code_repo = code_repo or Object(key=None)
+        self.owner_org = owner_org or Object(id=None)
+        self.code_repo = code_repo or Object(id=None)
         self.repo_branch = repo_branch or "main"
 
-        self.container_registry_profile = container_registry_profile or Object(key=None)
+        self.container_registry_profile = container_registry_profile or Object(id=None)
         self.image_name = image_name
         self.build_args = build_args
+
+        self.lambda_arn = lambda_arn
+        self.lambda_config = lambda_config
 
         self.config_schema = config_schema or {}
         self.staging_config = staging_config
@@ -102,7 +107,7 @@ class Application:
     @classmethod
     def from_config(cls, data: dict, app_base: Path) -> "Application":
         return cls(
-            data.get("key"),
+            data.get("id"),
             data.get("name"),
             data.get("display_name"),
             data.get("type"),
@@ -110,16 +115,18 @@ class Application:
             data.get("allow_many", False),
             data.get("description"),
             data.get("long_description"),
-            [Object(key=d) for d in data.get("depends_on", [])],
-            Object(key=data.get("owner_org") or data.get("owner_org_key")),
-            Object(key=data.get("code_repo") or data.get("code_repo_key")),
+            [Object(id=d) for d in data.get("depends_on", [])],
+            Object(id=data.get("owner_org") or data.get("owner_org_id")),
+            Object(id=data.get("code_repo") or data.get("code_repo_id")),
             data.get("repo_branch"),
             data.get("image_name"),
             data.get("build_args"),
             Object(
-                key=data.get("container_registry_profile")
-                or data.get("container_registry_profile_key")
+                id=data.get("container_registry_profile")
+                or data.get("container_registry_profile_id")
             ),
+            data.get("lambda_arn"),
+            data.get("lambda_config"),
             data.get("config_schema"),
             data.get("staging_config", {}),
             app_base,
@@ -130,19 +137,21 @@ class Application:
     ) -> dict[str, Any]:
         data = {
             "name": self.name,
-            "key": self.key,
+            "id": self.id,
             "display_name": self.display_name,
             "type": self.type,
             "visibility": self.visibility,
             "allow_many": self.allow_many,
             "description": self.description,
             "long_description": self.long_description,
-            "depends_on": [dep.key for dep in self.depends_on],
-            "owner_org_key": self.owner_org.key,
-            "code_repo_key": self.code_repo.key,
-            "container_registry_profile_key": self.container_registry_profile.key,
+            "depends_on": [dep.id for dep in self.depends_on],
+            "owner_org_id": self.owner_org.id,
+            "code_repo_id": self.code_repo.id,
+            "container_registry_profile_id": self.container_registry_profile.id,
             "repo_branch": self.repo_branch,
             "image_name": self.image_name,
+            "lambda_arn": self.lambda_arn,
+            "lambda_config": self.lambda_config,
             "config_schema": self.config_schema,
         }
 
@@ -179,9 +188,9 @@ class Application:
 
         upstream = self.to_dict()
         upstream.pop("long_description", None)
-        # upstream.pop("owner_org_key", None)
-        # upstream.pop("code_repo_key", None)
-        # upstream.pop("container_registry_profile_key", None)
+        # upstream.pop("owner_org_id", None)
+        # upstream.pop("code_repo_id", None)
+        # upstream.pop("container_registry_profile_id", None)
 
         data[self.name].update(**upstream)
         config_path.write_text(json.dumps(data, indent=4))

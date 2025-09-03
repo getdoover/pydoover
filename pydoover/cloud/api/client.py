@@ -619,8 +619,19 @@ class Client:
             include_deployment_data=True, is_staging=is_staging
         )
         return self.request(
-            Route("PATCH", "/apps/api/v1/applications/{}/", payload["key"]),
+            Route("PATCH", "/apps/api/v1/applications/{}/", payload["id"]),
             json=payload,
+        )
+
+    def publish_processor_source(self, app_id: int, content: bytes):
+        return self.request(
+            Route("PUT", "/apps/api/v1/applications/{}/processor_source/", app_id),
+            data=content,
+        )
+
+    def create_processor_version(self, app_id: int):
+        return self.request(
+            Route("POST", "/apps/api/v1/applications/{}/processor_version/", app_id)
         )
 
     # login methods
