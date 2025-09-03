@@ -81,6 +81,10 @@ class Schema:
             self.add_element(value)
         super().__setattr__(key, value)
 
+    @classmethod
+    def clear_elements(cls):
+        cls.__element_map.clear()
+
     def to_dict(self):
         return {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
