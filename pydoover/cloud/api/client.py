@@ -604,7 +604,7 @@ class Client:
             include_deployment_data=True, is_staging=is_staging
         )
         data = self.request(Route("POST", "/applications/"), json=payload)
-        return data["key"]
+        return data["id"]
 
     def get_application(self, key: str) -> Application:
         """Get a specific application by its key."""
@@ -626,7 +626,7 @@ class Client:
     def publish_processor_source(self, app_id: int, content: bytes):
         return self.request(
             Route("PUT", "/applications/{}/processor_source/", app_id),
-            data=content,
+            files={"file": content},
         )
 
     def create_processor_version(self, app_id: int):

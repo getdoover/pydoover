@@ -133,7 +133,10 @@ class Application:
         )
 
     def to_dict(
-        self, include_deployment_data: bool = False, is_staging: bool = False
+        self,
+        include_deployment_data: bool = False,
+        is_staging: bool = False,
+        include_cloud_only: bool = False,
     ) -> dict[str, Any]:
         data = {
             "name": self.name,
@@ -150,7 +153,6 @@ class Application:
             "container_registry_profile_id": self.container_registry_profile.id,
             "repo_branch": self.repo_branch,
             "image_name": self.image_name,
-            "lambda_arn": self.lambda_arn,
             "lambda_config": self.lambda_config,
             "config_schema": self.config_schema,
         }
@@ -172,6 +174,9 @@ class Application:
         else:
             data["staging_config"] = self.staging_config
 
+        if include_cloud_only:
+            data["lambda_arn"] = self.lambda_arn
+
         return data
 
     def save_to_disk(self):
@@ -186,7 +191,7 @@ class Application:
             else {self.name: {}}
         )
 
-        upstream = self.to_dict()
+        upstream = self.to_dict(include_cloud_only=True)
         upstream.pop("long_description", None)
         # upstream.pop("owner_org_id", None)
         # upstream.pop("code_repo_id", None)
