@@ -19,7 +19,7 @@ class ScheduleConfig(Integer):
         display_name: str = "Schedule",
         *,
         minimum: int = 0,
-        description: str = "The interval in seconds to run the task. 0 to disable.",
+        description: str = "The interval in minutes to run the task. 0 to disable.",
         **kwargs,
     ):
         super().__init__(

@@ -31,7 +31,7 @@ def run_app(
     else:
         if source == "aws:sns":
             data = json.loads(event["Records"][0]["Sns"]["Message"])
-            subscription_id = event["Records"][0]["EventSubscriptionArn"].split(":")[-1]
+            subscription_id = event["Records"][0]["EventSubscriptionArn"]
         else:
             raise ValueError(
                 "Unknown event. Must originate from SNS or EventBridge Schedules"

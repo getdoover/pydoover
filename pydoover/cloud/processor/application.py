@@ -57,9 +57,7 @@ class Application:
         self.api.set_token(self._initial_token)
 
         if self.subscription_id:
-            data = await self.api.fetch_processor_info(
-                self.subscription_id, self.agent_id
-            )
+            data = await self.api.fetch_processor_info(self.subscription_id)
         elif self.schedule_id:
             data = await self.api.fetch_schedule_info(self.schedule_id)
         else:
