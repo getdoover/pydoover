@@ -69,7 +69,7 @@ class Schema:
             # this is the first element, so create the map
             elem_map = self.__element_map = dict()
 
-        element._name = transform_key(element.display_name)
+        # element._name = transform_key(element.display_name)
         if element._name in elem_map:
             raise ValueError(f"Duplicate element name {element._name} not allowed.")
 
