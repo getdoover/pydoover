@@ -10,6 +10,14 @@ from .object import Object
 log = logging.getLogger(__name__)
 
 
+def get_id_or_key(data: dict[str, Any], key: str) -> Any:
+    """Small helper function to allow a user to set `None` for the key_id field."""
+    try:
+        return data[f"{key}_id"]
+    except KeyError:
+        return data.get(key)
+
+
 class Type:
     device = "DEV"
     processor = "PRO"
@@ -116,15 +124,12 @@ class Application:
             data.get("description"),
             data.get("long_description"),
             [Object(id=d) for d in data.get("depends_on", [])],
-            Object(id=data.get("owner_org_id") or data.get("owner_org")),
-            Object(id=data.get("code_repo_id") or data.get("code_repo")),
+            Object(id=get_id_or_key(data, "owner_org")),
+            Object(id=get_id_or_key(data, "code_repo_id")),
             data.get("repo_branch"),
             data.get("image_name"),
             data.get("build_args"),
-            Object(
-                id=data.get("container_registry_profile_id")
-                or data.get("container_registry_profile")
-            ),
+            Object(id=get_id_or_key(data, "container_registry_profile")),
             data.get("lambda_arn"),
             data.get("lambda_config"),
             data.get("config_schema"),
