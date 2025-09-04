@@ -116,14 +116,14 @@ class Application:
             data.get("description"),
             data.get("long_description"),
             [Object(id=d) for d in data.get("depends_on", [])],
-            Object(id=data.get("owner_org") or data.get("owner_org_id")),
-            Object(id=data.get("code_repo") or data.get("code_repo_id")),
+            Object(id=data.get("owner_org_id") or data.get("owner_org")),
+            Object(id=data.get("code_repo_id") or data.get("code_repo")),
             data.get("repo_branch"),
             data.get("image_name"),
             data.get("build_args"),
             Object(
-                id=data.get("container_registry_profile")
-                or data.get("container_registry_profile_id")
+                id=data.get("container_registry_profile_id")
+                or data.get("container_registry_profile")
             ),
             data.get("lambda_arn"),
             data.get("lambda_config"),
