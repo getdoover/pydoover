@@ -65,7 +65,9 @@ class DooverData:
             "is_diff": True,
         }
         if timestamp is not None:
-            payload["ts"] = int(timestamp.timestamp())
+            payload["ts"] = (
+                int(timestamp.timestamp()) * 1000
+            )  # milliseconds since epoch
 
         return await self._request(
             "POST",
