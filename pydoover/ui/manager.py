@@ -4,7 +4,6 @@ import logging
 import re
 import time
 import json
-from contextlib import suppress
 from datetime import datetime
 
 from typing import Union, Any, Optional, TypeVar, TYPE_CHECKING
@@ -179,6 +178,10 @@ class UIManager:
         self.last_ui_state_wss_connections_update = time.time()
 
     def _on_command_update_common(self, aggregate: dict[str, Any]):
+        # we're scrapping the inner "cmds" key in doover 2.0, but continue to support both for now...
+        inner_cmds = aggregate.pop("cmds", {})
+        aggregate.update(**inner_cmds)
+
         aggregate = self._set_new_ui_cmds(aggregate)
 
         # add commands that don't currently exist
@@ -258,11 +261,6 @@ class UIManager:
             except json.JSONDecodeError:
                 log.error(f"Failed to decode UI commands: {payload}")
                 payload = {}
-
-        try:
-            payload = payload["cmds"]
-        except KeyError:
-            pass
 
         self.last_ui_cmds = copy.deepcopy(payload)
         self.last_ui_cmds_update = time.time()
@@ -635,13 +633,7 @@ class UIManager:
             ui_state_agg = self.client.get_channel_aggregate("ui_state")
 
         self._set_new_ui_state(ui_state_agg)
-
         # self._set_new_ui_cmds(ui_cmds_agg)
-        try:
-            ui_cmds_agg = ui_cmds_agg["cmds"]
-        except Exception as e:
-            log.warning(f"Failed to get UI commands: {e}")
-            ui_cmds_agg = ui_cmds_agg
 
         self.on_command_update(None, ui_cmds_agg)
 
@@ -658,12 +650,6 @@ class UIManager:
             ui_cmds_agg = await self.client.get_channel_aggregate_async("ui_cmds")
             ui_state_agg = await self.client.get_channel_aggregate_async("ui_state")
 
-        try:
-            ui_cmds_agg = ui_cmds_agg["cmds"]
-        except Exception as e:
-            log.warning(f"Failed to get UI commands: {e}")
-            ui_cmds_agg = ui_cmds_agg
-
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
         await self.on_command_update_async(None, ui_cmds_agg)
@@ -671,9 +657,6 @@ class UIManager:
     async def _processor_set_ui_channels(
         self, ui_state: dict[str, Any], ui_cmds: dict[str, Any]
     ):
-        with suppress(KeyError):
-            ui_cmds = ui_cmds["cmds"]
-
         self._set_new_ui_state(ui_state)
         await self.on_command_update_async(None, ui_cmds)
 
@@ -733,7 +716,7 @@ class UIManager:
         ):
             self._publish_to_channel(
                 "ui_cmds",
-                {"cmds": commands_update},
+                commands_update,
                 timestamp=timestamp,
                 max_age=1,
                 record_log=True,
@@ -794,7 +777,7 @@ class UIManager:
             log.debug("Pushing UI commands")
             await self._publish_to_channel_async(
                 "ui_cmds",
-                {"cmds": commands_update},
+                commands_update,
                 timestamp=timestamp,
                 max_age=1,
                 record_log=True,
