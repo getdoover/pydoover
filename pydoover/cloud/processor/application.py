@@ -71,7 +71,7 @@ class Application:
 
         self.app_key = data["app_key"]
         self._tag_values = data["tag_values"]
-        self._connection_config = data["connection_config"]
+        self._connection_config = data["connection_data"].get("config", {})
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
