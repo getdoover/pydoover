@@ -122,18 +122,20 @@ class ChannelSubscriptionResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., channel: _Optional[_Union[ChannelDetails, _Mapping]] = ..., message: _Optional[_Union[MessageDetails, _Mapping]] = ...) -> None: ...
 
 class ChannelWriteRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "message_payload", "save_log", "max_age")
+    __slots__ = ("header", "channel_name", "message_payload", "save_log", "max_age", "max_age_f")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_PAYLOAD_FIELD_NUMBER: _ClassVar[int]
     SAVE_LOG_FIELD_NUMBER: _ClassVar[int]
     MAX_AGE_FIELD_NUMBER: _ClassVar[int]
+    MAX_AGE_F_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     message_payload: str
     save_log: bool
     max_age: int
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., message_payload: _Optional[str] = ..., save_log: bool = ..., max_age: _Optional[int] = ...) -> None: ...
+    max_age_f: float
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., message_payload: _Optional[str] = ..., save_log: bool = ..., max_age: _Optional[int] = ..., max_age_f: _Optional[float] = ...) -> None: ...
 
 class DebugInfoRequest(_message.Message):
     __slots__ = ("header",)

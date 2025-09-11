@@ -92,6 +92,7 @@ message ChannelWriteRequest {
     string message_payload = 2;
     optional bool save_log = 3;
     optional int32 max_age = 4;
+    optional float max_age_f = 6;
 }
 
 message DebugInfoRequest {

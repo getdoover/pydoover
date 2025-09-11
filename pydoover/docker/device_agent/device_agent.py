@@ -375,7 +375,7 @@ class DeviceAgentInterface(GRPCInterface):
         channel_name: str,
         message: dict | str,
         record_log: bool = True,
-        max_age: int = None,
+        max_age: float = None,
     ) -> bool:
         """Publish a message to a channel.
 
@@ -414,7 +414,7 @@ class DeviceAgentInterface(GRPCInterface):
             The data to send either in a dictionary or string format
         record_log :
             Whether to save to the log
-        max_age : int
+        max_age : float
             The maximum age of the message before publishing to the cloud
 
         Returns
@@ -430,7 +430,7 @@ class DeviceAgentInterface(GRPCInterface):
             channel_name=channel_name,
             message_payload=message,
             save_log=record_log,
-            max_age=max_age,
+            max_age_f=max_age,
         )
         resp = self.make_request("WriteToChannel", req)
         return resp and resp.response_header.success or False
@@ -440,7 +440,7 @@ class DeviceAgentInterface(GRPCInterface):
         channel_name: str,
         message: dict | str,
         record_log: bool = True,
-        max_age: int = None,
+        max_age: float = None,
     ):
         if isinstance(message, dict):
             message = json.dumps(message)
@@ -450,7 +450,7 @@ class DeviceAgentInterface(GRPCInterface):
             channel_name=channel_name,
             message_payload=message,
             save_log=record_log,
-            max_age=max_age,
+            max_age_f=max_age,
         )
         resp = await self.make_request_async("WriteToChannel", req)
         return resp and resp.response_header.success or False
