@@ -116,9 +116,11 @@ class UIManager:
 
         # channel format is {"agent_id": "last_ping_ms"} for any non-default connections.
         # basically just check if there's any active connections, where active is defined as
-        # having a heartbeat within the last 2min.
+        # having a heartbeat within the last 2min. (120 seconds -> milliseconds)
         now = datetime.now(tz=timezone.utc).timestamp() * 1000
-        return any((now - v) < 120 for v in self.last_ui_state_wss_connections.values())
+        return any(
+            (now - v) < 120_000 for v in self.last_ui_state_wss_connections.values()
+        )
 
     def has_been_connected(self):
         if self._has_persistent_connection and self.client is not None:
