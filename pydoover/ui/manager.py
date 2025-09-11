@@ -4,7 +4,7 @@ import logging
 import re
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from typing import Union, Any, Optional, TypeVar, TYPE_CHECKING
 
@@ -114,22 +114,11 @@ class UIManager:
         if not self.last_ui_state_wss_connections:
             return False
 
-        try:
-            if not isinstance(self.last_ui_state_wss_connections, dict):
-                self.last_ui_state_wss_connections = json.loads(
-                    self.last_ui_state_wss_connections
-                )
-            connections = set(self.last_ui_state_wss_connections["connections"].keys())
-
-            # agent ID will get set on startup in processor Client and on config load in apps.
-            if self.client.agent_id and len(connections - {self.client.agent_id}) > 0:
-                return True
-
-            # if there is more than one connection, then we are being observed
-            return len(connections) > 1
-        except Exception as e:
-            log.error(f"Error checking if being observed: {e}")
-            return False
+        # channel format is {"agent_id": "last_ping_ms"} for any non-default connections.
+        # basically just check if there's any active connections, where active is defined as
+        # having a heartbeat within the last 2min.
+        now = datetime.now(tz=timezone.utc).timestamp() * 1000
+        return any((now - v) < 120 for v in self.last_ui_state_wss_connections.values())
 
     def has_been_connected(self):
         if self._has_persistent_connection and self.client is not None:
@@ -151,9 +140,7 @@ class UIManager:
 
         log.info("Setting up dda subscriptions")
         self.client.add_subscription("ui_state", self.on_state_update)
-        self.client.add_subscription(
-            "ui_state@wss_connections", self.on_state_wss_update
-        )
+        self.client.add_subscription("doover_ui_fastmode", self.on_state_wss_update)
         self.client.add_subscription("ui_cmds", self.on_command_update_async)
 
         self._subscriptions_ready = True
