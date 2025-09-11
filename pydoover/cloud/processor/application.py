@@ -1,11 +1,12 @@
 import logging
 import os
 import time
+from datetime import datetime, timedelta, timezone
 
 from typing import Any
 
 from .types import MessageCreateEvent, Channel, DeploymentEvent, ScheduleEvent
-from .data_client import DooverData
+from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
 from ...config import Schema
 
@@ -14,6 +15,7 @@ log = logging.getLogger()
 
 
 DEFAULT_DATA_ENDPOINT = "https://data.sandbox.udoover.com/api"
+DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
 
 
 class Application:
@@ -31,6 +33,7 @@ class Application:
         self._initial_token: str = None
         self.ui_manager: UIManager = None
         self._tag_values: dict[str, Any] = None
+        self._connection_config: dict[str, Any] = None
 
         ### kwarg
         #     'agent_id' : The Doover agent id invoking the task e.g. '9843b273-6580-4520-bdb0-0afb7bfec049'
@@ -68,6 +71,7 @@ class Application:
 
         self.app_key = data["app_key"]
         self._tag_values = data["tag_values"]
+        self._connection_config = data["connection_config"]
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
@@ -225,3 +229,23 @@ class Application:
             self._tag_values[self.app_key] = {key: value}
 
         self._publish_tags = True
+
+    async def ping_connection(self, online_at: datetime = None):
+        if online_at:
+            online_at = online_at.replace(tzinfo=timezone.utc)
+        else:
+            online_at = datetime.now(tz=timezone.utc)
+
+        if datetime.now(tz=timezone.utc) - online_at > timedelta(
+            seconds=self._connection_config.get("offline_after", DEFAULT_OFFLINE_AFTER)
+        ):
+            determination = ConnectionDetermination.offline
+        else:
+            determination = ConnectionDetermination.online
+
+        await self.api.ping_connection_at(
+            self.agent_id,
+            online_at,
+            connection_status=ConnectionStatus.periodic_unknown,
+            determination=determination,
+        )

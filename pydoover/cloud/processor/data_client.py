@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import aiohttp
@@ -7,6 +7,20 @@ import aiohttp
 from .types import Channel
 
 log = logging.getLogger(__name__)
+
+
+class ConnectionDetermination:
+    online = "Online"
+    offline = "Offline"
+
+
+class ConnectionStatus:
+    continuous_online = "ContinuousOnline"
+    continuous_offline = "ContinuousOffline"
+    continuous_pending = "ContinuousPending"
+
+    periodic_unknown = "PeriodicUnknown"
+    unknown = "Unknown"
 
 
 class DooverData:
@@ -83,4 +97,26 @@ class DooverData:
     async def fetch_schedule_info(self, schedule_id: int):
         return await self._request(
             "GET", f"{self.base_url}/processors/schedules/{schedule_id}"
+        )
+
+    async def ping_connection_at(
+        self,
+        agent_id: int,
+        online_at: datetime,
+        connection_status: str,
+        determination: str,
+        ping_at: datetime = None,
+    ):
+        ping_at = ping_at or datetime.now(tz=timezone.utc)
+        return await self.publish_message(
+            agent_id,
+            "__doover_connection",
+            {
+                "status": {
+                    "status": connection_status,
+                    "last_online": int(online_at.timestamp() * 1000),
+                    "last_ping": int(ping_at.timestamp() * 1000),
+                },
+                "determination": determination,
+            },
         )
