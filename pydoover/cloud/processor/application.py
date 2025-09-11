@@ -248,4 +248,5 @@ class Application:
             online_at,
             connection_status=ConnectionStatus.periodic_unknown,
             determination=determination,
+            user_agent=f"pydoover-processor,app_key={self.app_key}",
         )

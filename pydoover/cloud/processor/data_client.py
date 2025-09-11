@@ -36,6 +36,7 @@ class DooverData:
         # so that we don't publish to the same channel we're receiving from
         # and get in an infinite loop
         self._invoking_channel_name = None
+        self.lookup_ip = True
 
     async def setup(self):
         if self.session:
@@ -106,16 +107,25 @@ class DooverData:
         connection_status: str,
         determination: str,
         ping_at: datetime = None,
+        user_agent: str = None,
+        ip_address: str = None,
     ):
+        user_agent = user_agent or "pydoover-processor, aiohttp"
+        if not ip_address and self.lookup_ip:
+            async with self.session.get("https://checkip.amazonaws.com") as resp:
+                ip_address = await resp.text()
+
         ping_at = ping_at or datetime.now(tz=timezone.utc)
         return await self.publish_message(
             agent_id,
-            "__doover_connection",
+            "doover_connection",
             {
                 "status": {
                     "status": connection_status,
                     "last_online": int(online_at.timestamp() * 1000),
                     "last_ping": int(ping_at.timestamp() * 1000),
+                    "user_agent": user_agent,
+                    "ip": ip_address,
                 },
                 "determination": determination,
             },
