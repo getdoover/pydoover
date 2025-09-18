@@ -182,6 +182,7 @@ class DeviceAgentInterface(GRPCInterface):
                     exc_info=e,
                 )
                 sys.stdout.flush()
+                sys.stderr.flush()
                 await asyncio.sleep(self.time_between_connection_attempts)
 
     async def _subscribe_receive_channel_updates(self, channel_name):
