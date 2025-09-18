@@ -3,6 +3,10 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.16
+-------
+- Fix issue with `listen_channel` not outputting to stdout correctly on connection error
+
 v0.4.15
 -------
 - `RemoteComponent` now inherits from `Container` to support adding `children`.
