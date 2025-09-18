@@ -699,7 +699,7 @@ wheels = [
 
 [[package]]
 name = "pydoover"
-version = "0.4.13"
+version = "0.4.15"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },

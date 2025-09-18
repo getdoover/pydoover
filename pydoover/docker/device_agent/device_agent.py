@@ -181,6 +181,7 @@ class DeviceAgentInterface(GRPCInterface):
                     f"Error starting subscription listener for {channel_name}: {e}",
                     exc_info=e,
                 )
+                sys.stdout.flush()
                 await asyncio.sleep(self.time_between_connection_attempts)
 
     async def _subscribe_receive_channel_updates(self, channel_name):
