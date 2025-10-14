@@ -14,7 +14,7 @@ from ...config import Schema
 log = logging.getLogger()
 
 
-DEFAULT_DATA_ENDPOINT = "https://data.sandbox.udoover.com/api"
+DEFAULT_DATA_ENDPOINT = "https://data.udoover.com/api"
 DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
 
 
