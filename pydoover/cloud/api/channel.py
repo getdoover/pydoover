@@ -41,28 +41,48 @@ class Channel:
         The agent that owns the channel.
     """
 
-    def __init__(self, *, client, data):
+    def __init__(self, key, name, agent_id, aggregate, is_v2, *, client):
+        self.id = self.key = key
+        self.name = name
+        self.agent_id = agent_id
+        self._aggregate = aggregate
+
+        self._agent = None
+
         self.client: "Client" = client
-        self._aggregate = None
         self._messages = None
 
-        self._from_data(data)
+        self.is_v2 = is_v2
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.id == other.id
 
-    def _from_data(self, data):
-        self.id = data["channel"]
-        self.key = data["channel"]
-        self.name = data["name"]
-        # from the get_agent endpoint this is `agent`, from the get_channel endpoint this is `owner`.
-        self.agent_id = data.get("owner") or data.get("agent")
-        self._agent = None
+    @classmethod
+    def from_data_v2(cls, data: dict[str, Any], client):
+        return cls(
+            f"{data['owner_id']}:{data['name']}",
+            data["name"],
+            data["owner_id"],
+            data["data"],
+            True,
+            client=client,
+        )
 
+    @classmethod
+    def from_data_v1(cls, data: dict[str, Any], client):
         try:
-            self._aggregate = data["aggregate"]["payload"]
+            aggregate = data["aggregate"]["payload"]
         except KeyError:
-            self._aggregate = None
+            aggregate = None
+
+        return cls(
+            data["channel"],
+            data["name"],
+            data.get("owner") or data.get("agent"),
+            aggregate,
+            False,
+            client=client,
+        )
 
     @property
     def aggregate(self) -> Any:
@@ -71,8 +91,15 @@ class Channel:
 
     def update(self):
         """Updates the channel data from the server."""
-        res = self.client._get_channel_raw(self.id)
-        self._from_data(res)
+        if self.is_v2:
+            res = self.client._get_channel_raw(f"{self.agent_id}:{self.name}")
+            self._aggregate = res["data"]
+        else:
+            res = self.client._get_channel_raw(self.id)
+            try:
+                self._aggregate = res["aggregate"]["payload"]
+            except KeyError:
+                self._aggregate = None
 
     def get_tunnel_url(self, address: str) -> str | None:
         """Returns the tunnel URL for a given address if it exists in the channel's aggregate.

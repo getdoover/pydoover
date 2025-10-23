@@ -19,7 +19,13 @@ class ConfigEntry:
         r"TOKEN=(?P<token>.*)\n"
         r"TOKEN_EXPIRES=(?P<token_expires>.*)\n"
         r"AGENT_ID=(?P<agent_id>.*)\n"
-        r"BASE_URL=(?P<base_url>.*)"
+        r"BASE_URL=(?P<base_url>.*)(\n?)"
+        r"(?:IS_DOOVER2=(?P<is_doover2>.*)\n)?"
+        r"(?:REFRESH_TOKEN=(?P<refresh_token>.*)\n)?"
+        r"(?:REFRESH_TOKEN_ID=(?P<refresh_token_id>.*)\n)?"
+        r"(?:BASE_DATA_URL=(?P<base_data_url>.*)\n)?"
+        r"(?:AUTH_SERVER_URL=(?P<auth_server_url>.*)\n)?"
+        r"(?:AUTH_SERVER_CLIENT_ID=(?P<auth_server_client_id>.*)\n)?"
     )
 
     def __init__(
@@ -31,6 +37,12 @@ class ConfigEntry:
         token_expires: datetime = None,
         agent_id: str = None,
         base_url: str = None,
+        is_doover2: bool = None,
+        refresh_token: str = None,
+        refresh_token_id: str = None,
+        base_data_url: str = None,
+        auth_server_url: str = None,
+        auth_server_client_id: str = None,
     ):
         self.profile = profile
 
@@ -39,6 +51,13 @@ class ConfigEntry:
 
         self.token = token or None
         self.token_expires = token_expires or None
+
+        self.is_doover2 = is_doover2 or False
+        self.refresh_token = refresh_token
+        self.refresh_token_id = refresh_token_id
+        self.base_data_url = base_data_url
+        self.auth_server_url = auth_server_url
+        self.auth_server_client_id = auth_server_client_id
 
         self.agent_id = agent_id or None
         self.base_url = base_url or None
@@ -67,6 +86,12 @@ class ConfigEntry:
             token_expires,
             match["agent_id"],
             match["base_url"],
+            True if match["is_doover2"] == "True" else False,
+            match["refresh_token"],
+            match["refresh_token_id"],
+            match["base_data_url"],
+            match["auth_server_url"],
+            match["auth_server_client_id"],
         )
 
     def format(self):
@@ -79,6 +104,12 @@ class ConfigEntry:
             f"TOKEN_EXPIRES={self.token_expires and self.token_expires.timestamp() or ''}\n"
             f"AGENT_ID={self.agent_id or ''}\n"
             f"BASE_URL={self.base_url or ''}\n"
+            f"IS_DOOVER2={self.is_doover2}\n"
+            f"REFRESH_TOKEN={self.refresh_token or ''}\n"
+            f"REFRESH_TOKEN_ID={self.refresh_token_id or ''}\n"
+            f"BASE_DATA_URL={self.base_data_url or ''}\n"
+            f"AUTH_SERVER_URL={self.auth_server_url or ''}\n"
+            f"AUTH_SERVER_CLIENT_ID={self.auth_server_client_id or ''}\n"
         )
 
 
