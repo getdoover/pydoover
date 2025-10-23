@@ -2,6 +2,7 @@ from .application import Application as Application
 from .base import ProcessorBase as ProcessorBase
 from .config import (
     SubscriptionConfig as SubscriptionConfig,
+    ManySubscriptionConfig as ManySubscriptionConfig,
     ScheduleConfig as ScheduleConfig,
 )
 from .types import (
