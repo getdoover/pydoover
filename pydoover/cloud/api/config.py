@@ -25,7 +25,7 @@ class ConfigEntry:
         r"(?:REFRESH_TOKEN_ID=(?P<refresh_token_id>.*)\n)?"
         r"(?:BASE_DATA_URL=(?P<base_data_url>.*)\n)?"
         r"(?:AUTH_SERVER_URL=(?P<auth_server_url>.*)\n)?"
-        r"(?:AUTH_SERVER_CLIENT_ID=(?P<auth_server_client_id>.*)\n)?"
+        r"(?:AUTH_SERVER_CLIENT_ID=(?P<auth_server_client_id>.*)(\n?))?"
     )
 
     def __init__(

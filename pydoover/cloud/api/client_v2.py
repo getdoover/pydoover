@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Callable
 
 import requests
@@ -558,11 +558,14 @@ class Client:
         if resp.ok:
             data = resp.json()
             log.info("Refreshed access token.")
-            self.access_token = AccessToken(data["access_token"], data["expires_in"])
+            self.access_token = AccessToken(
+                data["access_token"],
+                datetime.now(timezone.utc) + timedelta(seconds=data["expires_in"]),
+            )
             self.update_headers()
             self.login_callback()
         else:
-            print("Failed to refresh access token.")
+            print(f"Failed to refresh access token: {resp.text}.")
             resp.raise_for_status()
 
     def login(self):
