@@ -569,4 +569,10 @@ class Client:
             resp.raise_for_status()
 
     def login(self):
+        if self.access_token.expires_at and self.access_token.expires_at < datetime.now(
+            timezone.utc
+        ):
+            logging.info("Token expired, attempting to refresh token.")
+            self.do_refresh_token()
+
         return True
