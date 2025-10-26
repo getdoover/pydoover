@@ -26,6 +26,7 @@ class ConnectionStatus:
 class DooverData:
     def __init__(self, base_url: str):
         self.agent_id = None
+        self.organisation_id = None
         self.base_url = base_url
         self.session: aiohttp.ClientSession = None
 
@@ -52,14 +53,23 @@ class DooverData:
             await self.session.close()
             self.session = None
 
-    async def _request(self, method, endpoint, data: dict | str = None):
-        async with self.session.request(method, endpoint, json=data) as resp:
+    async def _request(
+        self, method, endpoint, data: dict | str = None, organisation_id: int = None
+    ):
+        org_id = organisation_id or self.organisation_id
+        async with self.session.request(
+            method, endpoint, json=data, headers={"X-Doover-Organisation": str(org_id)}
+        ) as resp:
             resp.raise_for_status()
             return await resp.json()
 
-    async def get_channel(self, agent_id: int, channel_name: str):
+    async def get_channel(
+        self, agent_id: int, channel_name: str, organisation_id: int = None
+    ):
         data = await self._request(
-            "GET", f"{self.base_url}/agents/{agent_id}/channels/{channel_name}"
+            "GET",
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}",
+            organisation_id=organisation_id,
         )
         return Channel.from_dict(data)
 
@@ -70,6 +80,7 @@ class DooverData:
         message: dict | str,
         timestamp: datetime | None = None,
         record_log: bool = True,
+        organisation_id: int = None,
     ):
         if channel_name == self._invoking_channel_name:
             raise RuntimeError("Cannot publish to the invoking channel.")
@@ -88,16 +99,23 @@ class DooverData:
             "POST",
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
             data=payload,
+            organisation_id=organisation_id,
         )
 
-    async def fetch_processor_info(self, subscription_id: str):
+    async def fetch_processor_info(
+        self, subscription_id: str, organisation_id: int = None
+    ):
         return await self._request(
-            "GET", f"{self.base_url}/processors/subscriptions/{subscription_id}"
+            "GET",
+            f"{self.base_url}/processors/subscriptions/{subscription_id}",
+            organisation_id=organisation_id,
         )
 
-    async def fetch_schedule_info(self, schedule_id: int):
+    async def fetch_schedule_info(self, schedule_id: int, organisation_id: int = None):
         return await self._request(
-            "GET", f"{self.base_url}/processors/schedules/{schedule_id}"
+            "GET",
+            f"{self.base_url}/processors/schedules/{schedule_id}",
+            organisation_id=organisation_id,
         )
 
     async def ping_connection_at(
@@ -109,6 +127,7 @@ class DooverData:
         ping_at: datetime = None,
         user_agent: str = None,
         ip_address: str = None,
+        organisation_id: int = None,
     ):
         user_agent = user_agent or "pydoover-processor, aiohttp"
         if not ip_address and self.lookup_ip:
@@ -129,4 +148,5 @@ class DooverData:
                 },
                 "determination": determination,
             },
+            organisation_id=organisation_id,
         )

@@ -69,6 +69,10 @@ class Application:
         self.agent_id = self.api.agent_id = data["agent_id"]
         self.api.set_token(data["token"])
 
+        # this should match the original organisation ID, but in case it doesn't, this should
+        # probably be the source of truth
+        self.api.organisation_id = data["organisation_id"]
+
         self.app_key = data["app_key"]
         self._tag_values = data["tag_values"]
         self._connection_config = data["connection_data"].get("config", {})
@@ -124,6 +128,12 @@ class Application:
             self.schedule_id = event["d"]["schedule_id"]
         except KeyError:
             self.schedule_id = None
+
+        try:
+            # org ID should be set in both schedules and subscriptions, but just in case it isn't...
+            self.organisation_id = event["d"]["organisation_id"]
+        except KeyError:
+            self.organisation_id = None
 
         # this is the initial token provided. For a subscription, it will be a temporary token.
         # For a schedule, it will be a long-lived token.
