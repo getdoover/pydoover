@@ -57,8 +57,13 @@ class DooverData:
         self, method, endpoint, data: dict | str = None, organisation_id: int = None
     ):
         org_id = organisation_id or self.organisation_id
+        if org_id:
+            headers = {"X-Doover-Organisation": str(org_id)}
+        else:
+            headers = {}
+
         async with self.session.request(
-            method, endpoint, json=data, headers={"X-Doover-Organisation": str(org_id)}
+            method, endpoint, json=data, headers=headers
         ) as resp:
             resp.raise_for_status()
             return await resp.json()
