@@ -3,16 +3,21 @@ from typing import Any
 
 
 class Message:
-    def __init__(self, id: int, author_id: int, data: str, timestamp: int):
+    def __init__(self, id: int, author_id: int, data: dict, diff: dict, timestamp: int):
         self.id = id
         self.author_id = author_id
         self.data = data
+        self.diff = (diff,)
         self.timestamp = timestamp
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
         return cls(
-            data["id"], data.get("author_id"), data.get("data"), data.get("timestamp")
+            data["id"],
+            data.get("author_id"),
+            data.get("data"),
+            data.get("diff"),
+            data.get("timestamp"),
         )
 
 
