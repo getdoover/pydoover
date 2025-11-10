@@ -95,6 +95,8 @@ class ProcessorBase:
             agent_id=self.agent_id,
         )
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
+        self.ui_manager.agent_id = self.agent_id
+        self.ui_manager.app_wrap_ui = False
 
         self.deployment_config: dict[str, Any] = kwargs["agent_settings"].get(
             "deployment_config", {}

@@ -3,6 +3,11 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+v0.4.18
+-------
+- Add `MockDeviceAgentInterface` for testing purposes
+- Fix issue with `wait_for_interval` not working correctly
+
 v0.4.17
 -------
 - Fix issue with `listen_channel` not outputting to stderr correctly on connection error

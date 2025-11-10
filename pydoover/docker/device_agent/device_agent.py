@@ -580,3 +580,66 @@ class DeviceAgentInterface(GRPCInterface):
 
 
 device_agent_iface = DeviceAgentInterface
+
+
+class MockDeviceAgentInterface(DeviceAgentInterface):
+    """
+    This interface is used to test the Device Agent Interface without relying on a real Device Agent service.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.channels = {}
+
+        self.is_dda_online = True
+        self.is_dda_available = True
+        self.has_dda_been_online = True
+
+    async def wait_for_channels_sync_async(
+        self, channel_names: list[str], timeout: int = 5, inter_wait: float = 0.2
+    ):
+        for channel in channel_names:
+            await self.recv_update_callback(
+                channel,
+                device_agent_pb2.ChannelSubscriptionResponse(
+                    channel=device_agent_pb2.ChannelDetails(
+                        channel_name=channel,
+                        aggregate=json.dumps(self.channels.get(channel, {})),
+                    )
+                ),
+            )
+        return True
+
+    async def recv_update_callback(self, channel_name: str, response):
+        if channel_name not in self._aggregates:
+            self._aggregates[channel_name] = {}
+        super(MockDeviceAgentInterface, self).recv_update_callback(
+            channel_name, response
+        )
+
+    async def start_subscription_listener(self, channel_name):
+        return True
+
+    def get_channel_aggregate(self, channel_name):
+        return self.channels.get(channel_name, {})
+
+    async def await_dda_available_async(self, timeout):
+        return True
+
+    async def make_request_async(self, *args, **kwargs):
+        raise NotImplementedError("make_request_async is not implemented")
+
+    def make_request(self, *args, **kwargs):
+        raise NotImplementedError("make_request is not implemented")
+
+    async def publish_to_channel_async(self, *args, **kwargs):
+        return self.publish_to_channel(*args, **kwargs)
+
+    def publish_to_channel(
+        self,
+        channel_name: str,
+        message: dict | str,
+        record_log: bool = True,
+        max_age: int = None,
+    ):
+        self.channels[channel_name] = message
