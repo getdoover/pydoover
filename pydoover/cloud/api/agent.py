@@ -52,7 +52,8 @@ class Agent:
             self.deployment_config = data["settings"]["deployment_config"]
 
         self.channels = [
-            Channel(data=c, client=self.client) for c in data.get("channels", [])
+            Channel.from_data_v1(data=c, client=self.client)
+            for c in data.get("channels", [])
         ]
 
     @property
