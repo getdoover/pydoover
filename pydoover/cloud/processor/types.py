@@ -20,6 +20,15 @@ class Message:
             data.get("timestamp"),
         )
         
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "author_id": self.author_id,
+            "data": self.data,
+            "diff": self.diff,
+            "timestamp": self.timestamp,
+        }
+        
 class Messages:
     def __init__(self, messages: list[Message]):
         self.messages = messages
@@ -27,8 +36,19 @@ class Messages:
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
         return cls(
-            [Message.from_dict(m) for m in data["messages"]]
+            [Message.from_dict(m) for m in data]
         )
+        
+    def __str__(self):
+        return str(self.messages)
+    
+    def __repr__(self):
+        return f"Messages({self.messages!r})"
+    
+    def to_dict(self):
+        return [m.to_dict() for m in self.messages]
+    
+    
 
 class Channel:
     def __init__(

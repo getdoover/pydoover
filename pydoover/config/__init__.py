@@ -621,6 +621,7 @@ class Array(ConfigElement):
         return self._elements
 
     def load_data(self, data):
+        print("array load data", data)
         self._elements.clear()
         for row in data:
             elem = copy.deepcopy(self.element)

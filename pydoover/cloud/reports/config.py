@@ -10,7 +10,7 @@ SCHEDULE_FREQUENCIES = [
 ]
 
 class ReportConfig(Object):
-    def __init__(self, display_name: str = "Multiplot Config"):
+    def __init__(self, display_name: str = "Report Config"):
         super().__init__(display_name)
         
         self.devices = Array(
@@ -20,7 +20,7 @@ class ReportConfig(Object):
         )
         
         self.schedule_id = String(
-            "Schedule",
+            "Schedule Id",
             description="The name of the schedule to generate reports for.",
             default=None,
         )
@@ -34,6 +34,7 @@ class ReportConfig(Object):
         self.period_end = Integer(
             "Period To",
             description="The end of the period to generate reports for.",
+            default=None,
         )
         
         self.report_id = String(
@@ -42,4 +43,4 @@ class ReportConfig(Object):
             description="The Id of the report to generate.",
         )
         
-        self.schedule_frequency = Enum("Colour", choices=SCHEDULE_FREQUENCIES, default="Never")
+        self.schedule_frequency = Enum("Schedule Frequency", choices=SCHEDULE_FREQUENCIES, default="Never")

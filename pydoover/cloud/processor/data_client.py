@@ -98,16 +98,22 @@ class DooverData:
         
         if chunk_size is not None and before is not None and after is not None:
             
+            all_messages = []
+            
             while True:
                 messages = await self._get_channel_messages(
                     agent_id, channel_name, organisation_id, limit=chunk_size, after=after
                 )
+                print(f"Got {len(messages.messages)} messages")
+                all_messages.extend(messages.messages)
                 if not messages.messages or len(messages.messages) < chunk_size:
                     break
                 last_message = messages.messages[-1]
                 if last_message.id >= before:
                     break
                 after = messages.messages[-1].id
+            
+            return Messages(all_messages)
             
         return await self._get_channel_messages(
             agent_id, channel_name, organisation_id, limit, before, after
@@ -134,6 +140,8 @@ class DooverData:
         url = (
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages{query}"
         )
+        
+        print(f"Running get_channel_messages: {url}")
 
         data = await self._request(
             "GET",
