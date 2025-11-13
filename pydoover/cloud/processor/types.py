@@ -19,7 +19,16 @@ class Message:
             data.get("diff"),
             data.get("timestamp"),
         )
+        
+class Messages:
+    def __init__(self, messages: list[Message]):
+        self.messages = messages
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            [Message.from_dict(m) for m in data["messages"]]
+        )
 
 class Channel:
     def __init__(

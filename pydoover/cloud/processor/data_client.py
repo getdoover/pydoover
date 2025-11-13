@@ -3,8 +3,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 import aiohttp
+from urllib.parse import urlencode
 
-from .types import Channel
+from pydoover.utils.snowflake import generate_snowflake_id_at
+
+
+from .types import Channel, Messages
 
 log = logging.getLogger(__name__)
 
@@ -77,6 +81,67 @@ class DooverData:
             organisation_id=organisation_id,
         )
         return Channel.from_dict(data)
+
+    async def get_channel_messages(
+        self,
+        agent_id: int,
+        channel_name: str,
+        organisation_id: int = None,
+        limit: int = None,
+        before: int = None,
+        after: int = None,
+        chunk_size: int = None,
+    ):
+        
+        before = generate_snowflake_id_at(before) if before else None
+        after = generate_snowflake_id_at(after) if after else None
+        
+        if chunk_size is not None and before is not None and after is not None:
+            
+            while True:
+                messages = await self._get_channel_messages(
+                    agent_id, channel_name, organisation_id, limit=chunk_size, after=after
+                )
+                if not messages.messages or len(messages.messages) < chunk_size:
+                    break
+                last_message = messages.messages[-1]
+                if last_message.id >= before:
+                    break
+                after = messages.messages[-1].id
+            
+        return await self._get_channel_messages(
+            agent_id, channel_name, organisation_id, limit, before, after
+        )
+
+    async def _get_channel_messages(
+        self,
+        agent_id: int,
+        channel_name: str,
+        organisation_id: int = None,
+        limit: int = None,
+        before: datetime = None,
+        after: datetime = None,
+    ) -> Messages:
+        params = {}
+        if limit:
+            params["limit"] = limit
+        if before:
+            params["before"] = before
+        if after:
+            params["after"] = after
+
+        query = f"?{urlencode(params)}" if params else ""
+        url = (
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages{query}"
+        )
+
+        data = await self._request(
+            "GET",
+            url,
+            organisation_id=organisation_id,
+        )
+
+        return Messages.from_dict(data)
 
     async def publish_message(
         self,
