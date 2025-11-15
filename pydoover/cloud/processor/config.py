@@ -1,4 +1,4 @@
-from ...config import String, Integer, Array
+from ...config import String, Integer, Array, Object
 
 
 class ManySubscriptionConfig(Array):
@@ -42,3 +42,38 @@ class ScheduleConfig(Integer):
             display_name, minimum=minimum, description=description, **kwargs
         )
         self._name = "dv_proc_schedules"
+
+
+class IntegrationConfig(Object):
+    def __init__(
+        self,
+        display_name: str = "Integration",
+        *,
+        description: str = "Integration configuration",
+        **kwargs,
+    ):
+        super().__init__(display_name, description=description, **kwargs)
+
+        self._name = "dv_proc_integration"
+
+        self.authorization = String(
+            display_name="Authorization",
+            description="Authorization token for the integration. "
+            "While not recommended, this may be `None` if no authentication is required.",
+        )
+        self.cidr_ranges = Array(
+            element=String("IP Range, e.g. 1.234.56.78/24 or 110.220.120.1/32"),
+            display_name="CIDR Ranges",
+            description="Accepted CIDR ranges for incoming requests",
+        )
+        self.signing_key = String(
+            display_name="Signing Key",
+            description="Private SHA256 signing key for the request. "
+            "While not recommended, this may be `None` if no signed hash verification is required.",
+        )
+
+        self.signing_key_hash_header = String(
+            display_name="SHA256 Hash Header",
+            description="Header key for the hash of the signed payload (defaults to x-hmac-sha256 if signing_key is present)",
+            default="x-hmac-sha256",
+        )

@@ -5,7 +5,13 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Any
 
-from .types import MessageCreateEvent, Channel, DeploymentEvent, ScheduleEvent
+from .types import (
+    MessageCreateEvent,
+    Channel,
+    DeploymentEvent,
+    ScheduleEvent,
+    IntegrationEvent,
+)
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
 from ...config import Schema
@@ -14,7 +20,7 @@ from ...config import Schema
 log = logging.getLogger()
 
 
-DEFAULT_DATA_ENDPOINT = "https://data.udoover.com/api"
+DEFAULT_DATA_ENDPOINT = "https://data.doover.com/api"
 DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
 
 
@@ -34,18 +40,6 @@ class Application:
         self.ui_manager: UIManager = None
         self._tag_values: dict[str, Any] = None
         self._connection_config: dict[str, Any] = None
-
-        ### kwarg
-        #     'agent_id' : The Doover agent id invoking the task e.g. '9843b273-6580-4520-bdb0-0afb7bfec049'
-        #     'access_token' : A temporary token that can be used to interact with the Doover API .e.g 'ABCDEFGHJKLMNOPQRSTUVWXYZ123456890',
-        #     'api_endpoint' : The API endpoint to interact with e.g. "https://my.doover.com",
-        #     'package_config' : A dictionary object with configuration for the task - as stored in the task channel in Doover,
-        #     'msg_obj' : A dictionary object of the msg that has invoked this task,
-        #     'task_id' : The identifier string of the task channel used to run this processor,
-        #     'log_channel' : The identifier string of the channel to publish any logs to
-        #     'agent_settings' : {
-        #       'deployment_config' : {} # a dictionary of the deployment config for this agent
-        #     }
 
     async def _setup(self):
         self._publish_tags = False
@@ -115,6 +109,9 @@ class Application:
     async def on_schedule(self, event: ScheduleEvent):
         pass
 
+    async def on_integration(self, event: IntegrationEvent):
+        pass
+
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
         log.info("Initialising processor task")
@@ -169,6 +166,9 @@ class Application:
             case "on_schedule":
                 func = self.on_schedule
                 payload = ScheduleEvent.from_dict(event["d"])
+            case "on_integration":
+                func = self.on_integration
+                payload = IntegrationEvent.from_dict(event["d"])
 
         if func is None:
             log.error(f"Unknown event type: {event['op']}")

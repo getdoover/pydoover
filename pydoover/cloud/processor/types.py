@@ -126,3 +126,16 @@ class ScheduleEvent:
         return cls(
             data["schedule_id"],
         )
+
+
+class IntegrationEvent:
+    def __init__(self, integration_id: int, data: dict[str, Any]):
+        self.integration_id = integration_id
+        self.data = data
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["integration_id"],
+            data["payload"],
+        )
