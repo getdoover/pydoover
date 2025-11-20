@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -58,7 +59,11 @@ class DooverData:
             self.session = None
 
     async def _request(
-        self, method, endpoint, data: dict | str = None, organisation_id: int = None
+        self,
+        method,
+        endpoint,
+        data: dict | str | aiohttp.FormData | None = None,
+        organisation_id: int = None,
     ):
         org_id = organisation_id or self.organisation_id
         if org_id:
@@ -66,11 +71,19 @@ class DooverData:
         else:
             headers = {}
 
+        if isinstance(data, aiohttp.FormData):
+            kwargs = {"data": data}
+        else:
+            kwargs = {"json": data}
+
         async with self.session.request(
-            method, endpoint, json=data, headers=headers
+            method, endpoint, **kwargs, headers=headers
         ) as resp:
+            print("resp", resp)
             resp.raise_for_status()
-            return await resp.json()
+            jsondata = await resp.json()
+            print("jsondata", jsondata)
+            return jsondata
 
     async def get_channel(
         self, agent_id: int, channel_name: str, organisation_id: int = None
@@ -92,17 +105,19 @@ class DooverData:
         after: int = None,
         chunk_size: int = None,
     ):
-        
         before = generate_snowflake_id_at(before) if before else None
         after = generate_snowflake_id_at(after) if after else None
-        
+
         if chunk_size is not None and before is not None and after is not None:
-            
             all_messages = []
-            
+
             while True:
                 messages = await self._get_channel_messages(
-                    agent_id, channel_name, organisation_id, limit=chunk_size, after=after
+                    agent_id,
+                    channel_name,
+                    organisation_id,
+                    limit=chunk_size,
+                    after=after,
                 )
                 print(f"Got {len(messages.messages)} messages")
                 all_messages.extend(messages.messages)
@@ -112,9 +127,9 @@ class DooverData:
                 if last_message.id >= before:
                     break
                 after = messages.messages[-1].id
-            
+
             return Messages(all_messages)
-            
+
         return await self._get_channel_messages(
             agent_id, channel_name, organisation_id, limit, before, after
         )
@@ -140,7 +155,7 @@ class DooverData:
         url = (
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages{query}"
         )
-        
+
         print(f"Running get_channel_messages: {url}")
 
         data = await self._request(
@@ -159,6 +174,7 @@ class DooverData:
         timestamp: datetime | None = None,
         record_log: bool = True,
         organisation_id: int = None,
+        files: list[tuple[str, bytes, str]] = None,
     ):
         if channel_name == self._invoking_channel_name:
             raise RuntimeError("Cannot publish to the invoking channel.")
@@ -166,16 +182,85 @@ class DooverData:
         payload: dict[str, Any] = {
             "data": message,
             "record_log": record_log,
-            "is_diff": True,
+            "is_diff": files is None,
         }
         if timestamp is not None:
             payload["ts"] = (
                 int(timestamp.timestamp()) * 1000
             )  # milliseconds since epoch
 
+        if files is not None:
+            file = files
+            if type(file) is list:
+                if len(file) != 0:
+                    file = file[0]
+                else:
+                    file = None
+            print(file)
+            form = aiohttp.FormData()
+            form.add_field("json_payload", json.dumps(payload), content_type="application/json")
+            form.add_field("attachment", file[1], filename=file[0], content_type=file[2])
+            print(form.__dict__)
+            return await self._request(
+                "POST",
+                f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
+                data=form,
+                organisation_id=organisation_id,
+            )
+
         return await self._request(
             "POST",
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
+            data=payload,
+            organisation_id=organisation_id,
+        )
+        
+    async def update_message(
+        self,
+        agent_id: int,
+        channel_name: str,
+        message_id: str,
+        message: dict | str,
+        timestamp: datetime | None = None,
+        record_log: bool = True,
+        organisation_id: int = None,
+        files: list[tuple[str, bytes, str]] = None,
+    ):
+        if channel_name == self._invoking_channel_name:
+            raise RuntimeError("Cannot publish to the invoking channel.")
+
+        payload: dict[str, Any] = {
+            "data": message,
+            "record_log": record_log,
+            "is_diff": files is None,
+        }
+        if timestamp is not None:
+            payload["ts"] = (
+                int(timestamp.timestamp()) * 1000
+            )  # milliseconds since epoch
+
+        if files is not None:
+            file = files
+            if type(file) is list:
+                if len(file) != 0:
+                    file = file[0]
+                else:
+                    file = None
+            print(file)
+            form = aiohttp.FormData()
+            form.add_field("json_payload", json.dumps(payload), content_type="application/json")
+            form.add_field("attachment", file[1], filename=file[0], content_type=file[2])
+            print(form.__dict__)
+            return await self._request(
+                "PATCH",
+                f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
+                data=form,
+                organisation_id=organisation_id,
+            )
+
+        return await self._request(
+            "PATCH",
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
             data=payload,
             organisation_id=organisation_id,
         )

@@ -1,9 +1,12 @@
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import io
+from zoneinfo import ZoneInfo
 import logging
 import os
 import time
+import croniter
 
 from typing import Any
 
@@ -35,6 +38,10 @@ class Application:
         self._initial_token: str = None
         self._tag_values: dict[str, Any] = None
         self._connection_config: dict[str, Any] = None
+        
+        self.period_start = None
+        self.period_end = None
+        self.devices = None
 
 
     async def _setup(self):
@@ -98,50 +105,43 @@ class Application:
         pass
     
     async def _on_schedule(self, event: ScheduleEvent):
-        if self.config.report_config.schedule_id.value is None:
-            log.error("No schedule ID provided")
-            return
         
-        if len(self.config.report_config.devices.elements) == 0:
-            log.error("No Devices provided")
-            return
+        schedule: str = self.config.dv_proc_schedules.value
+                
+        if type(schedule) is not str:
+            log.error(f"Schedule must be a string: {schedule}")
         
-        # Calculate the period for the schedule report
-        self.config.report_config.period_end.value = end_time = datetime.now()
-        
-        schedule_ferquency = self.config.report_config.schedule_frequency.value
-        match schedule_ferquency:
-            case "Hourly":
-                self.config.report_config.period_start.value = end_time - timedelta(hours=1)
-            case "Daily":
-                self.config.report_config.period_start.value = end_time - timedelta(days=1)
-            case "Weekly":
-                self.config.report_config.period_start.value = end_time - timedelta(weeks=1)
-            case "Monthly":
-                self.config.report_config.period_start.value = end_time - timedelta(months=1)
-            case "Quarterly":
-                self.config.report_config.period_start.value = end_time - timedelta(months=3)
-            case "Never":
-                log.error("Subscription frequency is Never")
-                return
-            case _:
-                log.error(f"Unknown schedule frequency {schedule_ferquency}")
-                return
-        
-        devices = [device.value for device in self.config.report_config.devices.elements]
+        if not schedule.startswith("cron("):
+            log.error(f"Schedule must be a cron expression: {schedule}")
             
+        if not schedule.endswith(")"):
+            log.error(f"Schedule must be a cron expression: {schedule}")
+            
+        cron = schedule[5:-1]
+        
+        execution_time = datetime.now(tz=ZoneInfo("Australia/Sydney"))-timedelta(minutes=5)
+        
+        iter = croniter.croniter(cron, execution_time)
+        
+        self.period_start = iter.get_prev(datetime)
+        self.period_end = iter.get_next(datetime)
+        
+        self.devices = [device.value for device in self.config.dv_rprt_devices.elements]
+        
+        print(self.period_start, self.period_end)
+        
         self._report_metadata = {
-            "devices": devices,
-            "period_start": int(self.config.report_config.period_start.value.timestamp() * 1000),
-            "period_end": int(self.config.report_config.period_end.value.timestamp() * 1000),
-            "schedule_id": str(self.config.report_config.schedule_id.value),
+            "devices": self.devices,
+            "period_start": int(self.period_start.timestamp() * 1000),
+            "period_end": int(self.period_end.timestamp() * 1000),
             "report_genertator": "TODO",
             "status": "Generating",
             "logs": "",
         }
-
+        
         try:
             data = await self.api.publish_message(self.agent_id, "reports", self._report_metadata, organisation_id=self.agent_id)
+            print(data)
         except Exception as e:
             log.error(f"Error creating report message: {e}")
             return
@@ -150,11 +150,12 @@ class Application:
             log.error("Error creating report message: cannot find id in response")
             return
         
-        self._report_metadata["id"] = data["id"]
         self._report_id = data["id"]
         self.report_id = data["id"]
+        
+        print(self.report_id)
 
-        await self._generate(devices, self.config.report_config.period_start.value, self.config.report_config.period_end.value)
+        await self._generate(self.devices, self.period_start, self.period_end)
         
     
     async def _on_single_execute(self, event: ScheduleEvent):
@@ -179,7 +180,16 @@ class Application:
     
     async def _generate(self, agent_ids: list[int], period_start: datetime, period_end: datetime):
 
-        await self.generate(agent_ids, period_start, period_end)
+        files = await self.generate(agent_ids, period_start, period_end)
+        
+        self._report_metadata["status"] = "Complete"
+        
+        try:
+            data = await self.api.update_message(self.agent_id, "reports", self._report_id, self._report_metadata, organisation_id=self.agent_id, files=files)
+            print("updaing message", data)
+        except Exception as e:
+            log.error(f"Error creating report message: {e}")
+            return
         
     async def generate(self, agent_ids: list[int], period_start: datetime, period_end: datetime):
         """Override this method to specify how a report should be generated.
