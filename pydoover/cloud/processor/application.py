@@ -10,7 +10,7 @@ from .types import (
     Channel,
     DeploymentEvent,
     ScheduleEvent,
-    IntegrationEvent,
+    IngestionEndpointEvent,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
@@ -41,7 +41,7 @@ class Application:
         self._tag_values: dict[str, Any] = None
         self._connection_config: dict[str, Any] = None
 
-    async def _setup(self):
+    async def _setup(self, initial_payload: dict[str, Any]):
         self._publish_tags = False
 
         # this is ok to setup because it doesn't store any state
@@ -57,6 +57,9 @@ class Application:
             data = await self.api.fetch_processor_info(self.subscription_id)
         elif self.schedule_id:
             data = await self.api.fetch_schedule_info(self.schedule_id)
+        elif self.ingestion_id:
+            # doover data invokes this directly so we can pre-load all required info here to save a call...
+            data = initial_payload
         else:
             raise ValueError("No subscription or schedule ID provided.")
 
@@ -109,7 +112,7 @@ class Application:
     async def on_schedule(self, event: ScheduleEvent):
         pass
 
-    async def on_integration(self, event: IntegrationEvent):
+    async def on_ingestion_endpoint(self, event: IngestionEndpointEvent):
         pass
 
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
@@ -127,6 +130,11 @@ class Application:
             self.schedule_id = None
 
         try:
+            self.ingestion_id = event["d"]["ingestion_id"]
+        except KeyError:
+            self.ingestion_id = None
+
+        try:
             # org ID should be set in both schedules and subscriptions, but just in case it isn't...
             self.organisation_id = event["d"]["organisation_id"]
         except KeyError:
@@ -140,7 +148,7 @@ class Application:
         self.agent_id = event.get("agent_id")
 
         s = time.perf_counter()
-        await self._setup()
+        await self._setup(event)
         log.info(f"Setup took {time.perf_counter() - s} seconds.")
 
         s = time.perf_counter()
@@ -166,9 +174,9 @@ class Application:
             case "on_schedule":
                 func = self.on_schedule
                 payload = ScheduleEvent.from_dict(event["d"])
-            case "on_integration":
-                func = self.on_integration
-                payload = IntegrationEvent.from_dict(event["d"])
+            case "on_ingestion_endpoint":
+                func = self.on_ingestion_endpoint
+                payload = IngestionEndpointEvent.from_dict(event["d"])
 
         if func is None:
             log.error(f"Unknown event type: {event['op']}")

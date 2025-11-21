@@ -128,14 +128,24 @@ class ScheduleEvent:
         )
 
 
-class IntegrationEvent:
-    def __init__(self, integration_id: int, data: dict[str, Any]):
-        self.integration_id = integration_id
-        self.data = data
+class IngestionEndpointEvent:
+    def __init__(
+        self,
+        ingestion_id: int,
+        agent_id: int,
+        organisation_id: int,
+        payload: dict[str, Any],
+    ):
+        self.ingestion_id = ingestion_id
+        self.agent_id = agent_id
+        self.organisation_id = organisation_id
+        self.payload = payload
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
         return cls(
             data["integration_id"],
+            data["agent_id"],
+            data["organisation_id"],
             data["payload"],
         )

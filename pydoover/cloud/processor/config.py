@@ -56,11 +56,6 @@ class IntegrationConfig(Object):
 
         self._name = "dv_proc_integration"
 
-        self.authorization = String(
-            display_name="Authorization",
-            description="Authorization token for the integration. "
-            "While not recommended, this may be `None` if no authentication is required.",
-        )
         self.cidr_ranges = Array(
             element=String("IP Range, e.g. 1.234.56.78/24 or 110.220.120.1/32"),
             display_name="CIDR Ranges",
@@ -71,9 +66,14 @@ class IntegrationConfig(Object):
             description="Private SHA256 signing key for the request. "
             "While not recommended, this may be `None` if no signed hash verification is required.",
         )
-
         self.signing_key_hash_header = String(
             display_name="SHA256 Hash Header",
             description="Header key for the hash of the signed payload (defaults to x-hmac-sha256 if signing_key is present)",
             default="x-hmac-sha256",
+        )
+        self.throttle = Integer(
+            display_name="Throttle",
+            description="The number of requests to allow per second. Due to internal limits, this cannot exceed 30.",
+            default=10,
+            maximum=30,
         )
