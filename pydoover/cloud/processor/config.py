@@ -54,7 +54,7 @@ class IngestionEndpointConfig(Object):
     ):
         super().__init__(display_name, description=description, **kwargs)
 
-        self._name = "dv_proc_integration"
+        self._name = "dv_proc_ingestion"
 
         self.cidr_ranges = Array(
             element=String("IP Range, e.g. 1.234.56.78/24 or 110.220.120.1/32"),
