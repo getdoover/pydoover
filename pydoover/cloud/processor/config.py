@@ -29,16 +29,15 @@ class SubscriptionConfig(String):
         self._name = "dv_proc_subscriptions"
 
 
-class ScheduleConfig(Integer):
+class ScheduleConfig(String):
     def __init__(
         self,
         display_name: str = "Schedule",
         *,
-        minimum: int = 0,
         description: str = "The interval in minutes to run the task. 0 to disable.",
         **kwargs,
     ):
         super().__init__(
-            display_name, minimum=minimum, description=description, **kwargs
+            display_name, description=description, **kwargs
         )
         self._name = "dv_proc_schedules"
