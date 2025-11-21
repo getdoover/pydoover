@@ -3,6 +3,7 @@ from .config import (
     SubscriptionConfig as SubscriptionConfig,
     ManySubscriptionConfig as ManySubscriptionConfig,
     ScheduleConfig as ScheduleConfig,
+    IngestionEndpointConfig as IngestionEndpointConfig,
 )
 from .types import (
     Channel as Channel,

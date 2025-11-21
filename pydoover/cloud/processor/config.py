@@ -44,12 +44,12 @@ class ScheduleConfig(Integer):
         self._name = "dv_proc_schedules"
 
 
-class IntegrationConfig(Object):
+class IngestionEndpointConfig(Object):
     def __init__(
         self,
-        display_name: str = "Integration",
+        display_name: str = "Ingestion Endpoint",
         *,
-        description: str = "Integration configuration",
+        description: str = "Ingestion Endpoint configuration",
         **kwargs,
     ):
         super().__init__(display_name, description=description, **kwargs)
