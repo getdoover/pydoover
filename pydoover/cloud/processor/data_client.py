@@ -76,13 +76,12 @@ class DooverData:
         else:
             kwargs = {"json": data}
 
+        print("request", method, endpoint)
         async with self.session.request(
             method, endpoint, **kwargs, headers=headers
         ) as resp:
-            print("resp", resp)
             resp.raise_for_status()
             jsondata = await resp.json()
-            print("jsondata", jsondata)
             return jsondata
 
     async def get_channel(
@@ -124,9 +123,9 @@ class DooverData:
                 if not messages.messages or len(messages.messages) < chunk_size:
                     break
                 last_message = messages.messages[-1]
-                if last_message.id >= before:
+                if int(last_message.id) >= before:
                     break
-                after = messages.messages[-1].id
+                after = int(messages.messages[-1].id)
 
             return Messages(all_messages)
 
@@ -190,17 +189,13 @@ class DooverData:
             )  # milliseconds since epoch
 
         if files is not None:
-            file = files
-            if type(file) is list:
-                if len(file) != 0:
-                    file = file[0]
-                else:
-                    file = None
-            print(file)
+            if type(files) is not list:
+                files = [files]
             form = aiohttp.FormData()
             form.add_field("json_payload", json.dumps(payload), content_type="application/json")
-            form.add_field("attachment", file[1], filename=file[0], content_type=file[2])
-            print(form.__dict__)
+            for i in range(len(files)):
+                file = files[i]
+                form.add_field(f"attachment-{i+1}", file[1], filename=file[0], content_type=file[2])
             return await self._request(
                 "POST",
                 f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
@@ -227,12 +222,12 @@ class DooverData:
         files: list[tuple[str, bytes, str]] = None,
     ):
         if channel_name == self._invoking_channel_name:
-            raise RuntimeError("Cannot publish to the invoking channel.")
+            raise RuntimeError("Cannot update to the invoking channel.")
 
         payload: dict[str, Any] = {
             "data": message,
             "record_log": record_log,
-            "is_diff": files is None,
+            "is_diff": False,
         }
         if timestamp is not None:
             payload["ts"] = (
@@ -240,17 +235,13 @@ class DooverData:
             )  # milliseconds since epoch
 
         if files is not None:
-            file = files
-            if type(file) is list:
-                if len(file) != 0:
-                    file = file[0]
-                else:
-                    file = None
-            print(file)
+            if type(files) is not list:
+                files = [files]
             form = aiohttp.FormData()
             form.add_field("json_payload", json.dumps(payload), content_type="application/json")
-            form.add_field("attachment", file[1], filename=file[0], content_type=file[2])
-            print(form.__dict__)
+            for i in range(len(files)):
+                file = files[i]
+                form.add_field(f"attachment-{i+1}", file[1], filename=file[0], content_type=file[2])
             return await self._request(
                 "PATCH",
                 f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",

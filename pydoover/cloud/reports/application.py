@@ -106,6 +106,7 @@ class Application:
     
     async def _on_schedule(self, event: ScheduleEvent):
         
+        execution_timezone: str = self.config.dv_proc_timezone.value
         schedule: str = self.config.dv_proc_schedules.value
                 
         if type(schedule) is not str:
@@ -119,7 +120,7 @@ class Application:
             
         cron = schedule[5:-1]
         
-        execution_time = datetime.now(tz=ZoneInfo("Australia/Sydney"))-timedelta(minutes=5)
+        execution_time = datetime.now(tz=ZoneInfo(execution_timezone))-timedelta(minutes=5)
         
         iter = croniter.croniter(cron, execution_time)
         
@@ -128,7 +129,7 @@ class Application:
         
         self.devices = [device.value for device in self.config.dv_rprt_devices.elements]
         
-        print(self.period_start, self.period_end)
+        print("period", self.period_start, self.period_end)
         
         self._report_metadata = {
             "devices": self.devices,
