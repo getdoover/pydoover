@@ -1,5 +1,4 @@
 from .application import Application as Application
-from .base import ProcessorBase as ProcessorBase
 from .config import (
     SubscriptionConfig as SubscriptionConfig,
     ManySubscriptionConfig as ManySubscriptionConfig,
@@ -10,5 +9,6 @@ from .types import (
     MessageCreateEvent as MessageCreateEvent,
     DeploymentEvent as DeploymentEvent,
     Message as Message,
+    IngestionEndpointEvent as IngestionEndpointEvent,
 )
 from .handler import run_app as run_app
