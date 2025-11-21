@@ -59,7 +59,7 @@ class Application:
             data = await self.api.fetch_schedule_info(self.schedule_id)
         elif self.ingestion_id:
             # doover data invokes this directly so we can pre-load all required info here to save a call...
-            data = initial_payload
+            data = initial_payload["d"]["upgrade"]
         else:
             raise ValueError("No subscription or schedule ID provided.")
 
@@ -72,11 +72,20 @@ class Application:
 
         self.app_key = data["app_key"]
         self._tag_values = data["tag_values"]
-        self._connection_config = data["connection_data"].get("config", {})
+
+        if data["connection_data"]:
+            self._connection_config = data["connection_data"].get("config", {})
+        else:
+            # connection config isn't valid for org processors
+            self._connection_config = None
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
-        self._ui_to_set = (data["ui_state"], data["ui_cmds"])
+
+        if data["ui_state"] is not None and data["ui_cmds"] is not None:
+            self._ui_to_set = (data["ui_state"], data["ui_cmds"])
+        else:
+            self._ui_to_set = None
 
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
@@ -158,7 +167,9 @@ class Application:
             log.error(f"Error attempting to setup processor: {e} ", exc_info=e)
         log.info(f"user Setup took {time.perf_counter() - s} seconds.")
 
-        await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
+        if self._ui_to_set:
+            # not valid for org apps
+            await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
 
         func = None
         payload = None
