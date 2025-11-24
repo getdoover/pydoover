@@ -76,7 +76,8 @@ class DooverData:
         else:
             kwargs = {"json": data}
 
-        print("request", method, endpoint)
+        log.debug(f"request {method} {endpoint}")
+        
         async with self.session.request(
             method, endpoint, **kwargs, headers=headers
         ) as resp:
@@ -108,9 +109,11 @@ class DooverData:
         after = generate_snowflake_id_at(after) if after else None
 
         if chunk_size is not None and before is not None and after is not None:
+            log.debug(f"Splitting messages into chunks of {chunk_size}")
             all_messages = []
 
             while True:
+                log.debug(f"Fetching messages from {after} with limit {chunk_size}")
                 messages = await self._get_channel_messages(
                     agent_id,
                     channel_name,
@@ -118,8 +121,10 @@ class DooverData:
                     limit=chunk_size,
                     after=after,
                 )
-                print(f"Got {len(messages.messages)} messages")
-                all_messages.extend(messages.messages)
+                log.debug(f"Received {len(messages.messages)} messages")
+                for message in messages.messages:
+                    if int(message.id) <= before:
+                        all_messages.append(message)
                 if not messages.messages or len(messages.messages) < chunk_size:
                     break
                 last_message = messages.messages[-1]
@@ -154,8 +159,6 @@ class DooverData:
         url = (
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages{query}"
         )
-
-        print(f"Running get_channel_messages: {url}")
 
         data = await self._request(
             "GET",
