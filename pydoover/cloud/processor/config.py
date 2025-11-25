@@ -81,6 +81,7 @@ class IngestionEndpointConfig(Object):
         self.never_replace_token = Boolean(
             display_name="Never Replace Token",
             description="Set this to `True` if the token is difficult to change and must never change. "
-            "This is not recommended from a security standpoint, however may be necessary in some situations.",
+            "This is not recommended from a security standpoint, however may be necessary in some situations."
+            "If this option is disabled and then enabled, a new token will be generated at that point.",
             default=False,
         )
