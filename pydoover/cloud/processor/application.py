@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 import os
 import time
@@ -124,6 +126,14 @@ class Application:
     async def on_ingestion_endpoint(self, event: IngestionEndpointEvent):
         pass
 
+    def parse_ingestion_event_payload(self, payload: str):
+        # by default, this **should** be base64 encoded json bytes
+        # but it's not required to be, and the user should override this if e.g. it's a C-packed struct.
+        # the important thing to note, however, is that doover data wraps the binary in b64 so you must decode that
+        # first, and every time.
+        as_bytes = base64.b64decode(payload)
+        return json.loads(as_bytes)
+
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
         log.info("Initialising processor task")
@@ -187,7 +197,9 @@ class Application:
                 payload = ScheduleEvent.from_dict(event["d"])
             case "on_ingestion_endpoint":
                 func = self.on_ingestion_endpoint
-                payload = IngestionEndpointEvent.from_dict(event["d"])
+                payload = IngestionEndpointEvent.from_dict(
+                    event["d"], parser=self.parse_ingestion_event_payload
+                )
 
         if func is None:
             log.error(f"Unknown event type: {event['op']}")
