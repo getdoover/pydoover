@@ -1,4 +1,4 @@
-from ...config import String, Integer, Array, Object
+from ...config import String, Integer, Array, Object, Boolean
 
 
 class ManySubscriptionConfig(Array):
@@ -76,4 +76,11 @@ class IngestionEndpointConfig(Object):
             description="The number of requests to allow per second. Due to internal limits, this cannot exceed 30.",
             default=10,
             maximum=30,
+        )
+
+        self.never_replace_token = Boolean(
+            display_name="Never Replace Token",
+            description="Set this to `True` if the token is difficult to change and must never change. "
+            "This is not recommended from a security standpoint, however may be necessary in some situations.",
+            default=False,
         )
