@@ -506,8 +506,8 @@ class Client:
         )
 
         headers = {}
-        if payload["owner_org_id"]:
-            headers["X-Doover-Organisation"] = str(payload["owner_org_id"])
+        if payload["organisation_id"]:
+            headers["X-Doover-Organisation"] = str(payload["organisation_id"])
 
         data = self.request(
             Route("POST", "/applications/"),
