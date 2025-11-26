@@ -145,7 +145,7 @@ class IngestionEndpointEvent:
     @classmethod
     def from_dict(cls, data: dict[str, Any], parser: Callable[[str], Any]):
         return cls(
-            data["integration_id"],
+            data["ingestion_id"],
             data["agent_id"],
             data["organisation_id"],
             data["payload"],
