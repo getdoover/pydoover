@@ -79,7 +79,8 @@ class Application:
             self._connection_config = data["connection_data"].get("config", {})
         else:
             # connection config isn't valid for org processors
-            self._connection_config = None
+            # but fresh-ly created devices also won't have connection config...
+            self._connection_config = {}
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
@@ -210,6 +211,8 @@ class Application:
                 log.info(f"Processing event took {time.perf_counter() - s} seconds.")
             except Exception as e:
                 log.error(f"Error attempting to process event: {e} ", exc_info=e)
+
+        # fixme: publish UI if needed
 
         if self._publish_tags:
             await self.api.publish_message(
