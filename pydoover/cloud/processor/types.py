@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 
 class Message:
@@ -154,4 +154,29 @@ class ScheduleEvent:
     def from_dict(cls, data: dict[str, Any]):
         return cls(
             data["schedule_id"],
+        )
+
+
+class IngestionEndpointEvent:
+    def __init__(
+        self,
+        ingestion_id: int,
+        agent_id: int,
+        organisation_id: int,
+        payload: str,
+        parser: Callable[[str], Any],
+    ):
+        self.ingestion_id = ingestion_id
+        self.agent_id = agent_id
+        self.organisation_id = organisation_id
+        self.payload = parser(payload)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any], parser: Callable[[str], Any]):
+        return cls(
+            data["ingestion_id"],
+            data["agent_id"],
+            data["organisation_id"],
+            data["payload"],
+            parser,
         )

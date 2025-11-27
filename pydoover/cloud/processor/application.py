@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 import os
 import time
@@ -5,7 +7,13 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Any
 
-from .types import MessageCreateEvent, Channel, DeploymentEvent, ScheduleEvent
+from .types import (
+    MessageCreateEvent,
+    Channel,
+    DeploymentEvent,
+    ScheduleEvent,
+    IngestionEndpointEvent,
+)
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
 from ...config import Schema
@@ -14,7 +22,7 @@ from ...config import Schema
 log = logging.getLogger()
 
 
-DEFAULT_DATA_ENDPOINT = "https://data.udoover.com/api"
+DEFAULT_DATA_ENDPOINT = "https://data.doover.com/api"
 DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
 
 
@@ -35,19 +43,7 @@ class Application:
         self._tag_values: dict[str, Any] = None
         self._connection_config: dict[str, Any] = None
 
-        ### kwarg
-        #     'agent_id' : The Doover agent id invoking the task e.g. '9843b273-6580-4520-bdb0-0afb7bfec049'
-        #     'access_token' : A temporary token that can be used to interact with the Doover API .e.g 'ABCDEFGHJKLMNOPQRSTUVWXYZ123456890',
-        #     'api_endpoint' : The API endpoint to interact with e.g. "https://my.doover.com",
-        #     'package_config' : A dictionary object with configuration for the task - as stored in the task channel in Doover,
-        #     'msg_obj' : A dictionary object of the msg that has invoked this task,
-        #     'task_id' : The identifier string of the task channel used to run this processor,
-        #     'log_channel' : The identifier string of the channel to publish any logs to
-        #     'agent_settings' : {
-        #       'deployment_config' : {} # a dictionary of the deployment config for this agent
-        #     }
-
-    async def _setup(self):
+    async def _setup(self, initial_payload: dict[str, Any]):
         self._publish_tags = False
 
         # this is ok to setup because it doesn't store any state
@@ -63,6 +59,9 @@ class Application:
             data = await self.api.fetch_processor_info(self.subscription_id)
         elif self.schedule_id:
             data = await self.api.fetch_schedule_info(self.schedule_id)
+        elif self.ingestion_id:
+            # doover data invokes this directly so we can pre-load all required info here to save a call...
+            data = initial_payload["d"]["upgrade"]
         else:
             raise ValueError("No subscription or schedule ID provided.")
 
@@ -75,11 +74,21 @@ class Application:
 
         self.app_key = data["app_key"]
         self._tag_values = data["tag_values"]
-        self._connection_config = data["connection_data"].get("config", {})
+
+        if data["connection_data"]:
+            self._connection_config = data["connection_data"].get("config", {})
+        else:
+            # connection config isn't valid for org processors
+            # but fresh-ly created devices also won't have connection config...
+            self._connection_config = {}
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
-        self._ui_to_set = (data["ui_state"], data["ui_cmds"])
+
+        if data["ui_state"] is not None and data["ui_cmds"] is not None:
+            self._ui_to_set = (data["ui_state"], data["ui_cmds"])
+        else:
+            self._ui_to_set = None
 
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
@@ -115,6 +124,17 @@ class Application:
     async def on_schedule(self, event: ScheduleEvent):
         pass
 
+    async def on_ingestion_endpoint(self, event: IngestionEndpointEvent):
+        pass
+
+    def parse_ingestion_event_payload(self, payload: str):
+        # by default, this **should** be base64 encoded json bytes
+        # but it's not required to be, and the user should override this if e.g. it's a C-packed struct.
+        # the important thing to note, however, is that doover data wraps the binary in b64 so you must decode that
+        # first, and every time.
+        as_bytes = base64.b64decode(payload)
+        return json.loads(as_bytes)
+
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
         log.info("Initialising processor task")
@@ -130,6 +150,11 @@ class Application:
             self.schedule_id = None
 
         try:
+            self.ingestion_id = event["d"]["ingestion_id"]
+        except KeyError:
+            self.ingestion_id = None
+
+        try:
             # org ID should be set in both schedules and subscriptions, but just in case it isn't...
             self.organisation_id = event["d"]["organisation_id"]
         except KeyError:
@@ -143,7 +168,7 @@ class Application:
         self.agent_id = event.get("agent_id")
 
         s = time.perf_counter()
-        await self._setup()
+        await self._setup(event)
         log.info(f"Setup took {time.perf_counter() - s} seconds.")
 
         s = time.perf_counter()
@@ -153,7 +178,9 @@ class Application:
             log.error(f"Error attempting to setup processor: {e} ", exc_info=e)
         log.info(f"user Setup took {time.perf_counter() - s} seconds.")
 
-        await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
+        if self._ui_to_set:
+            # not valid for org apps
+            await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
 
         func = None
         payload = None
@@ -169,6 +196,11 @@ class Application:
             case "on_schedule":
                 func = self.on_schedule
                 payload = ScheduleEvent.from_dict(event["d"])
+            case "on_ingestion_endpoint":
+                func = self.on_ingestion_endpoint
+                payload = IngestionEndpointEvent.from_dict(
+                    event["d"], parser=self.parse_ingestion_event_payload
+                )
 
         if func is None:
             log.error(f"Unknown event type: {event['op']}")
@@ -179,6 +211,8 @@ class Application:
                 log.info(f"Processing event took {time.perf_counter() - s} seconds.")
             except Exception as e:
                 log.error(f"Error attempting to process event: {e} ", exc_info=e)
+
+        # fixme: publish UI if needed
 
         if self._publish_tags:
             await self.api.publish_message(

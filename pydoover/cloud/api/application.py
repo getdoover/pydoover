@@ -124,7 +124,10 @@ class Application:
             data.get("description"),
             data.get("long_description"),
             [Object(id=d) for d in data.get("depends_on", [])],
-            Object(id=get_id_or_key(data, "owner_org")),
+            Object(
+                id=get_id_or_key(data, "owner_org")
+                or get_id_or_key(data, "organisation")
+            ),
             Object(id=get_id_or_key(data, "code_repo_id")),
             data.get("repo_branch"),
             data.get("image_name"),
@@ -154,6 +157,8 @@ class Application:
             "long_description": self.long_description,
             "depends_on": [dep.id for dep in self.depends_on],
             "owner_org_id": self.owner_org.id,
+            # duplicate these fields for now...
+            "organisation_id": self.owner_org.id,
             "code_repo_id": self.code_repo.id,
             "container_registry_profile_id": self.container_registry_profile.id,
             "repo_branch": self.repo_branch,
