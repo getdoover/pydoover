@@ -34,10 +34,15 @@ class ScheduleConfig(String):
         self,
         display_name: str = "Schedule",
         *,
-        description: str = "The interval in minutes to run the task. 0 to disable.",
+        description: str = "Specify a schedule to run this task.",
+        allowed_modes=["cron", "rate", "disabled"],
         **kwargs,
     ):
+        if len(allowed_modes) >= 3:
+            format = "doover-schedule"
+        else:
+            format = "doover-schedule-" + "-".join(allowed_modes)
         super().__init__(
-            display_name, description=description, **kwargs
+            display_name, description=description, format=format, **kwargs
         )
         self._name = "dv_proc_schedules"

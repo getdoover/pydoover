@@ -188,6 +188,7 @@ class ConfigElement:
         description: str = None,
         deprecated: bool = None,
         hidden: bool = False,
+        format: str = None,
     ):
         self._name = transform_key(display_name)
         self.display_name = display_name
@@ -195,6 +196,7 @@ class ConfigElement:
         self.description = description
         self.hidden = hidden
         self.deprecated = deprecated
+        self.format = format
 
         self._value = NotSet
 
@@ -240,6 +242,9 @@ class ConfigElement:
             "x-name": self._name,
             "x-hidden": self.hidden,
         }
+
+        if self.format is not None:
+            payload["format"] = self.format
 
         if self._type is not None:
             payload["type"] = self._type

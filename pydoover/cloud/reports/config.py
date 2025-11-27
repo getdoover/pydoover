@@ -9,7 +9,7 @@ class DevicesConfig(Array):
         description: str = "A list of devices to generate reports for.",
         **kwargs,
     ):
-        element = String("Device", pattern="\d+")
+        element = String("Device", pattern="\d+", format="doover-device")
         element._name = "dv_proc_devices"
         super().__init__(
             display_name, element=element, description=description, **kwargs
