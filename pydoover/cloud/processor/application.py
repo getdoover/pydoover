@@ -29,6 +29,8 @@ DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
 class Application:
     def __init__(self, config: Schema | None):
         self.config = config
+        
+        self.received_deployment_config = None
 
         self._api_endpoint = (
             os.environ.get("DOOVER_DATA_ENDPOINT") or DEFAULT_DATA_ENDPOINT
@@ -93,6 +95,9 @@ class Application:
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
             self.config._inject_deployment_config(data["deployment_config"])
+
+        # Store the deployment config for later use
+        self.received_deployment_config = data["deployment_config"]
 
     async def _close(self):
         await self.api.close()
