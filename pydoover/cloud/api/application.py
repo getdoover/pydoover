@@ -65,6 +65,8 @@ class Application:
         container_registry_profile: Object,
         lambda_arn: str,
         lambda_config: dict[str, Any],
+        export_config_command: str | None,
+        run_command: str | None,
         config_schema: dict[str, Any],
         staging_config: dict[str, Any],
         app_base: Path,
@@ -98,6 +100,9 @@ class Application:
 
         self.lambda_arn = lambda_arn
         self.lambda_config = lambda_config
+
+        self.export_config_command = export_config_command
+        self.run_command = run_command
 
         self.config_schema = config_schema or {}
         self.staging_config = staging_config
@@ -135,6 +140,8 @@ class Application:
             Object(id=get_id_or_key(data, "container_registry_profile")),
             data.get("lambda_arn"),
             data.get("lambda_config"),
+            data.get("export_config_command"),
+            data.get("run_command"),
             data.get("config_schema"),
             data.get("staging_config", {}),
             app_base,
@@ -183,6 +190,8 @@ class Application:
                 data["deployment_data"] = None
         else:
             data["staging_config"] = self.staging_config
+            data["export_config_command"] = self.export_config_command
+            data["run_command"] = self.run_command
 
         if include_cloud_only:
             data["lambda_arn"] = self.lambda_arn
