@@ -85,6 +85,7 @@ class DooverData:
         message: dict | str,
         timestamp: datetime | None = None,
         record_log: bool = True,
+        is_diff: bool = True,
         organisation_id: int = None,
     ):
         if channel_name == self._invoking_channel_name:
@@ -93,7 +94,7 @@ class DooverData:
         payload: dict[str, Any] = {
             "data": message,
             "record_log": record_log,
-            "is_diff": True,
+            "is_diff": is_diff,
         }
         if timestamp is not None:
             payload["ts"] = (
