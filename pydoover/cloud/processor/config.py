@@ -80,8 +80,17 @@ class IngestionEndpointConfig(Object):
 
         self.never_replace_token = Boolean(
             display_name="Never Replace Token",
-            description="Set this to `True` if the token is difficult to change and must never change. "
+            description="Enable this if the token is difficult to change and must never change. "
             "This is not recommended from a security standpoint, however may be necessary in some situations."
             "If this option is disabled and then enabled, a new token will be generated at that point.",
             default=False,
+        )
+
+        self.mini_token = Boolean(
+            display_name="Mini Token",
+            description="Enable this to generate a mini token for use with the ingestion endpoint. "
+            "Mini tokens are ~70 bytes, compared with the ~900 bytes of a regular token. "
+            "Generally, this is not advised as it adds complexity and latency to ingestion calls, "
+            "however may be desirable in especially low-bandwidth and embedded environments. "
+            "There is no security difference in the two tokens.",
         )
