@@ -135,6 +135,15 @@ class Application:
         as_bytes = base64.b64decode(payload)
         return json.loads(as_bytes)
 
+    async def pre_hook_filter(self, event):
+        """This is an early filter that can be used to reject events before they are processed.
+
+        This is intended to be fast and cheap; to quickly discard unwanted events based on their payload.
+
+        This is run before `setup` and any API setup.
+        """
+        return True
+
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
         log.info("Initialising processor task")
@@ -167,21 +176,6 @@ class Application:
         # this can be set during testing. during normal operation it's signed in the JWT.
         self.agent_id = event.get("agent_id")
 
-        s = time.perf_counter()
-        await self._setup(event)
-        log.info(f"Setup took {time.perf_counter() - s} seconds.")
-
-        s = time.perf_counter()
-        try:
-            await self.setup()
-        except Exception as e:
-            log.error(f"Error attempting to setup processor: {e} ", exc_info=e)
-        log.info(f"user Setup took {time.perf_counter() - s} seconds.")
-
-        if self._ui_to_set:
-            # not valid for org apps
-            await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
-
         func = None
         payload = None
         match event["op"]:
@@ -201,6 +195,25 @@ class Application:
                 payload = IngestionEndpointEvent.from_dict(
                     event["d"], parser=self.parse_ingestion_event_payload
                 )
+
+        if not await self.pre_hook_filter(payload):
+            log.info("Pre-hook filter rejected event.")
+            return
+
+        s = time.perf_counter()
+        await self._setup(event)
+        log.info(f"Setup took {time.perf_counter() - s} seconds.")
+
+        s = time.perf_counter()
+        try:
+            await self.setup()
+        except Exception as e:
+            log.error(f"Error attempting to setup processor: {e} ", exc_info=e)
+        log.info(f"user Setup took {time.perf_counter() - s} seconds.")
+
+        if self._ui_to_set:
+            # not valid for org apps
+            await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
 
         if func is None:
             log.error(f"Unknown event type: {event['op']}")
