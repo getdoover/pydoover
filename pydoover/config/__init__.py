@@ -769,7 +769,6 @@ class Device(String):
             format="doover-device",
             **kwargs,
         )
-        self._name = "dv_proc_device"
 
 
 class DevicesConfig(Array):
@@ -786,7 +785,6 @@ class DevicesConfig(Array):
             description=description,
             **kwargs,
         )
-        self._name = "dv_proc_devices"
 
 
 class Group(String):
@@ -800,7 +798,6 @@ class Group(String):
             format="doover-group",
             **kwargs,
         )
-        self._name = "dv_proc_group"
 
 
 class GroupsConfig(Array):
@@ -817,4 +814,3 @@ class GroupsConfig(Array):
             description=description,
             **kwargs,
         )
-        self._name = "dv_proc_groups"
