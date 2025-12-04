@@ -123,7 +123,7 @@ class GroupsConfig(Array):
             description=description,
             **kwargs,
         )
-        self._name = "dv_proc_devices"
+        self._name = "dv_proc_groups"
 
 
 class ExtendedPermissionsConfig(Object):
