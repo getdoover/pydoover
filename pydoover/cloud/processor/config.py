@@ -97,8 +97,16 @@ class IngestionEndpointConfig(Object):
 
 
 class Group(String):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, pattern=r"\d+", format="doover-group")
+    def __init__(
+        self, display_name: str = "Group", *, description: str = "Group ID", **kwargs
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            pattern=r"\d+",
+            format="doover-group",
+            **kwargs,
+        )
 
 
 class GroupsConfig(Array):
