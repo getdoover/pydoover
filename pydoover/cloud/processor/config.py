@@ -74,6 +74,7 @@ class IngestionEndpointConfig(Object):
             display_name="Signing Key",
             description="Private SHA256 signing key for the request. "
             "While not recommended, this may be `None` if no signed hash verification is required.",
+            default="",
         )
         self.signing_key_hash_header = String(
             display_name="SHA256 Hash Header",
@@ -102,6 +103,7 @@ class IngestionEndpointConfig(Object):
             "Generally, this is not advised as it adds complexity and latency to ingestion calls, "
             "however may be desirable in especially low-bandwidth and embedded environments. "
             "There is no security difference in the two tokens.",
+            default=False,
         )
 
 
