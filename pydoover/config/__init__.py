@@ -769,6 +769,7 @@ class Device(String):
             format="doover-device",
             **kwargs,
         )
+        self._name = "dv_proc_device"
 
 
 class DevicesConfig(Array):
@@ -776,7 +777,7 @@ class DevicesConfig(Array):
         self,
         display_name: str = "Devices",
         *,
-        description: str = "List of device IDs to grant permissions to.",
+        description: str = "List of devices to grant permissions to.",
         **kwargs,
     ):
         super().__init__(
@@ -786,3 +787,34 @@ class DevicesConfig(Array):
             **kwargs,
         )
         self._name = "dv_proc_devices"
+
+
+class Group(String):
+    def __init__(
+        self, display_name: str = "Group", *, description: str = "Group ID", **kwargs
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            pattern=r"\d+",
+            format="doover-group",
+            **kwargs,
+        )
+        self._name = "dv_proc_group"
+
+
+class GroupsConfig(Array):
+    def __init__(
+        self,
+        display_name: str = "Groups",
+        *,
+        description: str = "List of groups to grant permissions to.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            element=Group(),
+            description=description,
+            **kwargs,
+        )
+        self._name = "dv_proc_groups"

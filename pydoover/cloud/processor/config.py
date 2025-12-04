@@ -1,4 +1,13 @@
-from ...config import String, Integer, Array, Object, Boolean, DevicesConfig
+from ...config import (
+    String,
+    Integer,
+    Array,
+    Object,
+    Boolean,
+    DevicesConfig,
+    Application,
+    GroupsConfig,
+)
 
 
 class ManySubscriptionConfig(Array):
@@ -96,36 +105,6 @@ class IngestionEndpointConfig(Object):
         )
 
 
-class Group(String):
-    def __init__(
-        self, display_name: str = "Group", *, description: str = "Group ID", **kwargs
-    ):
-        super().__init__(
-            display_name,
-            description=description,
-            pattern=r"\d+",
-            format="doover-group",
-            **kwargs,
-        )
-
-
-class GroupsConfig(Array):
-    def __init__(
-        self,
-        display_name: str = "Groups",
-        *,
-        description: str = "List of group IDs to grant permissions to.",
-        **kwargs,
-    ):
-        super().__init__(
-            display_name,
-            element=Group(),
-            description=description,
-            **kwargs,
-        )
-        self._name = "dv_proc_groups"
-
-
 class ExtendedPermissionsConfig(Object):
     def __init__(self):
         super().__init__(
@@ -136,12 +115,12 @@ class ExtendedPermissionsConfig(Object):
         self._name = "dv_proc_extended_permissions"
 
         self.devices = DevicesConfig(
-            description="List of device IDs to grant extended permissions to."
+            description="List of devices to grant extended permissions to."
         )
         self.groups = GroupsConfig()
 
         self.apps_installed = Array(
-            element=String("App ID"),
+            element=Application("Application"),
             display_name="Apps Installed",
             description="Permission will be given to any devices which have any of the apps listed installed.",
         )
