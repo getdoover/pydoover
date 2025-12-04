@@ -188,6 +188,7 @@ class ConfigElement:
         description: str = None,
         deprecated: bool = None,
         hidden: bool = False,
+        format: str = None,
     ):
         self._name = transform_key(display_name)
         self.display_name = display_name
@@ -195,6 +196,7 @@ class ConfigElement:
         self.description = description
         self.hidden = hidden
         self.deprecated = deprecated
+        self.format = format
 
         self._value = NotSet
 
@@ -254,6 +256,9 @@ class ConfigElement:
 
         if self.deprecated is not None:
             payload["deprecated"] = self.deprecated
+
+        if self.format is not None:
+            payload["format"] = self.format
 
         return payload
 
@@ -751,3 +756,33 @@ class Application(ConfigElement):
 
     def to_dict(self):
         return {"format": "doover-application", **super().to_dict()}
+
+
+class Device(String):
+    def __init__(
+        self, display_name: str = "Device", *, description: str = "Device ID", **kwargs
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            pattern=r"\d+",
+            format="doover-device",
+            **kwargs,
+        )
+
+
+class DevicesConfig(Array):
+    def __init__(
+        self,
+        display_name: str = "Devices",
+        *,
+        description: str = "List of device IDs to grant permissions to.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            element=Device(),
+            description=description,
+            **kwargs,
+        )
+        self._name = "dv_proc_devices"

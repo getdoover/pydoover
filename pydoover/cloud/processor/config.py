@@ -1,4 +1,4 @@
-from ...config import String, Integer, Array, Object, Boolean
+from ...config import String, Integer, Array, Object, Boolean, DevicesConfig
 
 
 class ManySubscriptionConfig(Array):
@@ -93,4 +93,53 @@ class IngestionEndpointConfig(Object):
             "Generally, this is not advised as it adds complexity and latency to ingestion calls, "
             "however may be desirable in especially low-bandwidth and embedded environments. "
             "There is no security difference in the two tokens.",
+        )
+
+
+class Group(String):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, pattern=r"\d+", format="doover-group")
+
+
+class GroupsConfig(Array):
+    def __init__(
+        self,
+        display_name: str = "Groups",
+        *,
+        description: str = "List of group IDs to grant permissions to.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            element=Group(),
+            description=description,
+            **kwargs,
+        )
+        self._name = "dv_proc_devices"
+
+
+class ExtendedPermissionsConfig(Object):
+    def __init__(self):
+        super().__init__(
+            "Extended Permissions",
+            description="Enable extended permissions and access to other devices.",
+        )
+
+        self._name = "dv_proc_extended_permissions"
+
+        self.devices = DevicesConfig(
+            description="List of device IDs to grant extended permissions to."
+        )
+        self.groups = GroupsConfig()
+
+        self.apps_installed = Array(
+            element=String("App ID"),
+            display_name="Apps Installed",
+            description="Permission will be given to any devices which have any of the apps listed installed.",
+        )
+
+        self.all_devices = Boolean(
+            display_name="All Devices",
+            description="Permission will be given for all devices in this organisation. This is a very far-reaching permission to grant!",
+            default=False,
         )
