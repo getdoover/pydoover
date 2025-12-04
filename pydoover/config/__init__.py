@@ -739,6 +739,38 @@ class Application(ConfigElement):
 
     This is used to reference other Doover applications in the configuration schema.
 
+    This is rendered as a dropdown in the UI, allowing the user to select an available application.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    """
+
+    def __init__(
+        self,
+        display_name: str = "Application",
+        *,
+        description: str = "Application",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            format="doover-application",
+            **kwargs,
+        )
+
+
+class ApplicationInstall(String):
+    """Represents a Doover application (installation) configuration element.
+
+    This is used to reference other Doover applications in the configuration schema.
+
     This is rendered as a dropdown in the UI, allowing the user to select an installed application.
 
     Attributes
@@ -751,11 +783,19 @@ class Application(ConfigElement):
         Whether the config element should be hidden in the UI.
     """
 
-    _type = "string"
-    value: str
-
-    def to_dict(self):
-        return {"format": "doover-application", **super().to_dict()}
+    def __init__(
+        self,
+        display_name: str = "ApplicationInstall",
+        *,
+        description: str = "Application Installation",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            format="doover-application-install",
+            **kwargs,
+        )
 
 
 class Device(String):
