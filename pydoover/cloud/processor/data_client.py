@@ -175,6 +175,7 @@ class DooverData:
         message: dict | str,
         timestamp: datetime | None = None,
         record_log: bool = True,
+        is_diff: bool = None,
         organisation_id: int = None,
         files: list[tuple[str, bytes, str]] = None,
     ):
@@ -184,7 +185,7 @@ class DooverData:
         payload: dict[str, Any] = {
             "data": message,
             "record_log": record_log,
-            "is_diff": files is None,
+            "is_diff": is_diff or (files is None),
         }
         if timestamp is not None:
             payload["ts"] = (

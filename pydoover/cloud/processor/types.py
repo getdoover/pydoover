@@ -7,7 +7,7 @@ class Message:
         self.id = id
         self.author_id = author_id
         self.data = data
-        self.diff = (diff,)
+        self.diff = diff
         self.timestamp = timestamp
 
     @classmethod

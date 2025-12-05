@@ -4,6 +4,7 @@ from .config import (
     ManySubscriptionConfig as ManySubscriptionConfig,
     ScheduleConfig as ScheduleConfig,
     IngestionEndpointConfig as IngestionEndpointConfig,
+    ExtendedPermissionsConfig as ExtendedPermissionsConfig,
 )
 from .types import (
     Channel as Channel,

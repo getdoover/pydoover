@@ -1,4 +1,13 @@
-from ...config import String, Integer, Array, Object, Boolean
+from ...config import (
+    String,
+    Integer,
+    Array,
+    Object,
+    Boolean,
+    DevicesConfig,
+    Application,
+    GroupsConfig,
+)
 
 
 class ManySubscriptionConfig(Array):
@@ -69,6 +78,7 @@ class IngestionEndpointConfig(Object):
             display_name="Signing Key",
             description="Private SHA256 signing key for the request. "
             "While not recommended, this may be `None` if no signed hash verification is required.",
+            default="",
         )
         self.signing_key_hash_header = String(
             display_name="SHA256 Hash Header",
@@ -84,8 +94,45 @@ class IngestionEndpointConfig(Object):
 
         self.never_replace_token = Boolean(
             display_name="Never Replace Token",
-            description="Set this to `True` if the token is difficult to change and must never change. "
+            description="Enable this if the token is difficult to change and must never change. "
             "This is not recommended from a security standpoint, however may be necessary in some situations."
             "If this option is disabled and then enabled, a new token will be generated at that point.",
+            default=False,
+        )
+
+        self.mini_token = Boolean(
+            display_name="Mini Token",
+            description="Enable this to generate a mini token for use with the ingestion endpoint. "
+            "Mini tokens are ~70 bytes, compared with the ~900 bytes of a regular token. "
+            "Generally, this is not advised as it adds complexity and latency to ingestion calls, "
+            "however may be desirable in especially low-bandwidth and embedded environments. "
+            "There is no security difference in the two tokens.",
+            default=False,
+        )
+
+
+class ExtendedPermissionsConfig(Object):
+    def __init__(self):
+        super().__init__(
+            "Extended Permissions",
+            description="Enable extended permissions and access to other devices.",
+        )
+
+        self._name = "dv_proc_extended_permissions"
+
+        self.devices = DevicesConfig(
+            description="List of devices to grant extended permissions to."
+        )
+        self.groups = GroupsConfig()
+
+        self.apps_installed = Array(
+            element=Application("Application"),
+            display_name="Apps Installed",
+            description="Permission will be given to any devices which have any of the apps listed installed.",
+        )
+
+        self.all_devices = Boolean(
+            display_name="All Devices",
+            description="Permission will be given for all devices in this organisation. This is a very far-reaching permission to grant!",
             default=False,
         )

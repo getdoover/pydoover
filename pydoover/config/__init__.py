@@ -260,6 +260,9 @@ class ConfigElement:
         if self.deprecated is not None:
             payload["deprecated"] = self.deprecated
 
+        if self.format is not None:
+            payload["format"] = self.format
+
         return payload
 
     def load_data(self, data):
@@ -764,6 +767,38 @@ class Application(ConfigElement):
 
     This is used to reference other Doover applications in the configuration schema.
 
+    This is rendered as a dropdown in the UI, allowing the user to select an available application.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    """
+
+    def __init__(
+        self,
+        display_name: str = "Application",
+        *,
+        description: str = "Application",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            format="doover-application",
+            **kwargs,
+        )
+
+
+class ApplicationInstall(String):
+    """Represents a Doover application (installation) configuration element.
+
+    This is used to reference other Doover applications in the configuration schema.
+
     This is rendered as a dropdown in the UI, allowing the user to select an installed application.
 
     Attributes
@@ -776,8 +811,74 @@ class Application(ConfigElement):
         Whether the config element should be hidden in the UI.
     """
 
-    _type = "string"
-    value: str
+    def __init__(
+        self,
+        display_name: str = "ApplicationInstall",
+        *,
+        description: str = "Application Installation",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            format="doover-application-install",
+            **kwargs,
+        )
 
-    def to_dict(self):
-        return {"format": "doover-application", **super().to_dict()}
+
+class Device(String):
+    def __init__(
+        self, display_name: str = "Device", *, description: str = "Device ID", **kwargs
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            pattern=r"\d+",
+            format="doover-device",
+            **kwargs,
+        )
+
+
+class DevicesConfig(Array):
+    def __init__(
+        self,
+        display_name: str = "Devices",
+        *,
+        description: str = "List of devices to grant permissions to.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            element=Device(),
+            description=description,
+            **kwargs,
+        )
+
+
+class Group(String):
+    def __init__(
+        self, display_name: str = "Group", *, description: str = "Group ID", **kwargs
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            pattern=r"\d+",
+            format="doover-group",
+            **kwargs,
+        )
+
+
+class GroupsConfig(Array):
+    def __init__(
+        self,
+        display_name: str = "Groups",
+        *,
+        description: str = "List of groups to grant permissions to.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            element=Group(),
+            description=description,
+            **kwargs,
+        )
