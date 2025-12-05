@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .types import (
+    ManualInvokeEvent,
     MessageCreateEvent,
     Channel,
     DeploymentEvent,
@@ -56,16 +57,20 @@ class Application:
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
         self.api.set_token(self._initial_token)
-
-        if self.subscription_id:
-            data = await self.api.fetch_processor_info(self.subscription_id)
-        elif self.schedule_id:
-            data = await self.api.fetch_schedule_info(self.schedule_id)
-        elif self.ingestion_id:
-            # doover data invokes this directly so we can pre-load all required info here to save a call...
+        
+        # Always prioritise the upgrade payload, other get it from the normal method
+        if initial_payload["d"]["upgrade"] is not None:
             data = initial_payload["d"]["upgrade"]
         else:
-            raise ValueError("No subscription or schedule ID provided.")
+            if self.subscription_id:
+                data = await self.api.fetch_processor_info(self.subscription_id)
+            elif self.schedule_id:
+                data = await self.api.fetch_schedule_info(self.schedule_id)
+            elif self.ingestion_id:
+                # doover data invokes this directly so we can pre-load all required info here to save a call...
+                data = initial_payload["d"]["upgrade"]
+            else:
+                raise ValueError("No subscription or schedule ID provided.")
 
         self.agent_id = self.api.agent_id = data["agent_id"]
         self.api.set_token(data["token"])
@@ -130,6 +135,9 @@ class Application:
         pass
 
     async def on_ingestion_endpoint(self, event: IngestionEndpointEvent):
+        pass
+    
+    async def on_manual_invoke(self, event: ManualInvokeEvent):
         pass
 
     def parse_ingestion_event_payload(self, payload: str):
@@ -200,6 +208,9 @@ class Application:
                 payload = IngestionEndpointEvent.from_dict(
                     event["d"], parser=self.parse_ingestion_event_payload
                 )
+            case "on_manual_invoke":
+                func = self.on_manual_invoke
+                payload = ManualInvokeEvent.from_dict(event["d"])
 
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")

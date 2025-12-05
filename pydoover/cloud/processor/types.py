@@ -180,3 +180,20 @@ class IngestionEndpointEvent:
             data["payload"],
             parser,
         )
+
+
+class ManualInvokeEvent:
+    def __init__(
+        self,
+        organisation_id: int,
+        payload: str,
+    ):
+        self.organisation_id = organisation_id
+        self.payload = payload
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["organisation_id"],
+            data["payload"],
+        )
