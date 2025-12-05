@@ -5,7 +5,7 @@ import logging
 import time
 import croniter
 
-from ..processor.types import MessageCreateEvent, DeploymentEvent, ScheduleEvent
+from ..processor.types import ManualInvokeEvent, MessageCreateEvent, DeploymentEvent, ScheduleEvent
 from ..processor.application import Application as ApplicationBase
 from ...config import Schema
 
@@ -72,7 +72,7 @@ class Application(ApplicationBase):
             "devices": self.devices,
             "period_start": int(self.period_start.timestamp() * 1000),
             "period_end": int(self.period_end.timestamp() * 1000),
-            "report_genertator": "TODO",
+            "report_generator": "TODO",
             "status": "Generating",
             "logs": "",
         }
@@ -104,31 +104,33 @@ class Application(ApplicationBase):
 
         await self._generate(self.devices, self.period_start, self.period_end)
 
-    async def on_single_execute(self, event: ScheduleEvent):
-        if len(self.config.report_config.devices.elements) == 0:
-            log.error("No Devices provided")
-            return
-
-        if self.config.report_config.period_start.value is None:
-            log.error("No Period Start provided")
-            return
-
-        if self.config.report_config.period_end.value is None:
-            log.error("No Period End provided")
-            return
-
-        if self.config.report_config.report_id.value is None:
+    async def on_manual_invoke(self, event: ManualInvokeEvent):
+        
+        if "report_id" not in event.payload:
             log.error("No Report Id provided")
             return
-
-        devices = [
-            device.value for device in self.config.report_config.devices.elements
-        ]
-        self._generate(
-            devices,
-            self.config.report_config.period_start.value,
-            self.config.report_config.period_end.value,
-        )
+        
+        self._report_id = event.payload["report_id"]
+        self.report_id = event.payload["report_id"]
+        
+        try:
+            data = await self.api.get_channel_message(
+                self.agent_id,
+                "reports",
+                self.report_id,
+                organisation_id=self.agent_id,
+            )
+        except Exception as e:
+            log.error(f"Error getting report message: {e}")
+            return
+        
+        self._report_metadata = data["data"]
+        
+        self.period_start = datetime.fromtimestamp(self._report_metadata["period_start"] / 1000.0)
+        self.period_end = datetime.fromtimestamp(self._report_metadata["period_end"] / 1000.0)
+        self.devices = [device.value for device in self.config.dv_rprt_devices.elements]
+        
+        await self._generate(self.devices, self.period_start, self.period_end) 
 
     async def _generate(
         self, agent_ids: list[int], period_start: datetime, period_end: datetime

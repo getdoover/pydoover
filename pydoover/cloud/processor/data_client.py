@@ -308,3 +308,16 @@ class DooverData:
             },
             organisation_id=organisation_id,
         )
+        
+    async def get_channel_message(
+        self,
+        agent_id: int,
+        channel_name: str,
+        message_id: str,
+        organisation_id: int = None,
+    ):
+        return await self._request(
+            "GET",
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
+            organisation_id=organisation_id,
+        )

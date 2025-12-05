@@ -77,12 +77,12 @@ class Application:
 
         # this should match the original organisation ID, but in case it doesn't, this should
         # probably be the source of truth
-        self.api.organisation_id = data["organisation_id"]
+        self.api.organisation_id = data.get("organisation_id", None) or self.organisation_id
 
-        self.app_key = data["app_key"]
-        self._tag_values = data["tag_values"]
+        self.app_key = data.get("app_key", None)
+        self._tag_values = data.get("tag_values", None)
 
-        if data["connection_data"]:
+        if data.get("connection_data", None):
             self._connection_config = data["connection_data"].get("config", {})
         else:
             # connection config isn't valid for org processors
@@ -92,7 +92,7 @@ class Application:
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
 
-        if data["ui_state"] is not None and data["ui_cmds"] is not None:
+        if data.get("ui_state", None) is not None and data.get("ui_cmds", None) is not None:
             self._ui_to_set = (data["ui_state"], data["ui_cmds"])
         else:
             self._ui_to_set = None
