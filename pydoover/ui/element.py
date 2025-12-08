@@ -48,7 +48,7 @@ class Element:
     """
 
     type = "uiElement"
-    __global_position_counter = 0
+    __global_position_counter = 51
 
     def __init__(
         self,
@@ -80,9 +80,9 @@ class Element:
         self.layout = layout
         self.component_url = component_url
 
-        self.__global_position_counter += 1
+        self.__class__.__global_position_counter += 1
         if position is NotSet:
-            self.position = self.__global_position_counter
+            self.position = self.__class__.__global_position_counter
         else:
             self.position = position
 
