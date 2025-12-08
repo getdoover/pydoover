@@ -70,6 +70,9 @@ class Schema:
             elem_map = self.__element_map = dict()
 
         element._name = transform_key(element.display_name)
+        if element._position is NotSet:
+            element._position = len(elem_map)
+
         if element._name in elem_map:
             raise ValueError(f"Duplicate element name {element._name} not allowed.")
 
@@ -184,8 +187,10 @@ class ConfigElement:
         description: str = None,
         deprecated: bool = None,
         hidden: bool = False,
+        position: int = NotSet,
     ):
         self._name = transform_key(display_name)
+        self._position = position
         self.display_name = display_name
         self.default = default
         self.description = description
@@ -235,6 +240,7 @@ class ConfigElement:
             "title": self.display_name,
             "x-name": self._name,
             "x-hidden": self.hidden,
+            "x-position": self._position,
         }
 
         if self._type is not None:
