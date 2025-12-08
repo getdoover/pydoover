@@ -70,7 +70,7 @@ class Schema:
             elem_map = self.__element_map = dict()
 
         element._name = transform_key(element.display_name)
-        if element._position is NotSet:
+        if element._position is None:
             element._position = len(elem_map)
 
         if element._name in elem_map:
@@ -187,7 +187,7 @@ class ConfigElement:
         description: str = None,
         deprecated: bool = None,
         hidden: bool = False,
-        position: int = NotSet,
+        position: int = None,
     ):
         self._name = transform_key(display_name)
         self._position = position
@@ -240,7 +240,6 @@ class ConfigElement:
             "title": self.display_name,
             "x-name": self._name,
             "x-hidden": self.hidden,
-            "x-position": self._position,
         }
 
         if self._type is not None:
@@ -253,6 +252,9 @@ class ConfigElement:
             payload["default"] = str(self.default)
         elif self.default is not NotSet:
             payload["default"] = self.default
+
+        if self._position is not None:
+            payload["x-position"] = self._position
 
         if self.deprecated is not None:
             payload["deprecated"] = self.deprecated
@@ -650,6 +652,8 @@ class Object(ConfigElement):
         display_name,
         *,
         additional_elements: bool | dict[str, Any] = True,
+        collapsible: bool = True,
+        default_collapsed: bool = False,
         **kwargs,
     ):
         if "default" in kwargs:
@@ -657,9 +661,14 @@ class Object(ConfigElement):
                 "Default value not allowed for Object elements. It's confusing."
             )
 
+        if default_collapsed and not collapsible:
+            raise ValueError("default_collapsed is not allowed if collapsible is False")
+
         super().__init__(display_name, **kwargs)
         self._elements = {}
         self.additional_elements = additional_elements
+        self.collapsible = collapsible
+        self.default_collapsed = default_collapsed
 
     def __setattr__(self, key, value):
         if isinstance(value, ConfigElement):
@@ -680,6 +689,9 @@ class Object(ConfigElement):
                 raise ValueError(f"Duplicate element name {element._name} not allowed.")
             self._elements[element._name] = element
 
+            if element._position is None:
+                element._position = len(self._elements)
+
     def to_dict(self):
         res = super().to_dict()
         res["properties"] = {
@@ -689,6 +701,8 @@ class Object(ConfigElement):
         res["required"] = [
             elem._name for elem in self._elements.values() if elem.required is True
         ]
+        res["x-collapsible"] = self.collapsible
+        res["x-defaultCollapsed"] = self.default_collapsed
         return res
 
     def load_data(self, data):
