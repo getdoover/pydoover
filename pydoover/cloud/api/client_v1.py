@@ -580,7 +580,7 @@ class Client:
     # applications. only supports operations on apps, not installs / deployments at the moment.
     def get_applications(self):
         """Get the list of applications available to the current agent."""
-        return self.request(Route("GET", "/applications/"))
+        return self.request(Route("GET", "/apps/api/v1/applications/"))
 
     def create_application(
         self, application: Application, is_staging: bool = False
@@ -589,12 +589,12 @@ class Client:
         payload = application.to_dict(
             include_deployment_data=True, is_staging=is_staging
         )
-        data = self.request(Route("POST", "/applications/"), json=payload)
-        return data["id"]
+        data = self.request(Route("POST", "/apps/api/v1/applications/"), json=payload)
+        return data["key"]
 
     def get_application(self, key: str) -> Application:
         """Get a specific application by its key."""
-        data = self.request(Route("GET", "/applications/{}/", key))
+        data = self.request(Route("GET", "/apps/api/v1/applications/{}/", key))
         return Application.from_data(data=data)
 
     def update_application(
@@ -605,20 +605,15 @@ class Client:
             include_deployment_data=True, is_staging=is_staging
         )
         return self.request(
-            Route("PATCH", "/applications/{}/", payload["id"]),
+            Route("PATCH", "/apps/api/v1/applications/{}/", payload["key"]),
             json=payload,
         )
 
     def publish_processor_source(self, app_id: int, content: bytes):
-        return self.request(
-            Route("PUT", "/applications/{}/processor_source/", app_id),
-            files={"file": content},
-        )
+        raise RuntimeError("Publishing processor source not supported on doover 1.0")
 
     def create_processor_version(self, app_id: int):
-        return self.request(
-            Route("POST", "/applications/{}/processor_version/", app_id)
-        )
+        raise RuntimeError("Creating processor versions not supported on doover 1.0")
 
     # login methods
 

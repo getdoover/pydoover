@@ -49,6 +49,7 @@ class Application:
     def __init__(
         self,
         id: str,
+        key: str,
         name: str,
         display_name: str,
         app_type: Type,
@@ -72,6 +73,7 @@ class Application:
         app_base: Path,
     ):
         self.id = id
+        self.key = key
 
         self.name = name  # mandatory field
         self.display_name = display_name  # mandatory field
@@ -121,6 +123,7 @@ class Application:
     def from_config(cls, data: dict, app_base: Path) -> "Application":
         return cls(
             data.get("id"),
+            data.get("key"),
             data.get("name"),
             data.get("display_name"),
             data.get("type"),
@@ -156,6 +159,7 @@ class Application:
         data = {
             "name": self.name,
             "id": self.id,
+            "key": self.key,
             "display_name": self.display_name,
             "type": self.type,
             "visibility": self.visibility,
