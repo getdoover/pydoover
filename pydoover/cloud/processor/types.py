@@ -2,6 +2,24 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 
+class ConnectionType:
+    continuous = "Continuous"
+    periodic_continuous = "PeriodicContinuous"
+    periodic = "periodic"
+
+    @classmethod
+    def from_v1(cls, data):
+        match data:
+            case "constant":
+                return cls.continuous
+            case "periodic":
+                return cls.periodic
+            case "periodic_continuous":
+                return cls.periodic_continuous
+            case _:
+                raise ValueError(f"Unknown connection type: {data}")
+
+
 class Message:
     def __init__(self, id: int, author_id: int, data: dict, diff: dict, timestamp: int):
         self.id = id
