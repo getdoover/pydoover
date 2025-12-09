@@ -4,7 +4,7 @@ from typing import Any
 
 import aiohttp
 
-from .types import Channel
+from .types import Channel, ConnectionConfig
 
 log = logging.getLogger(__name__)
 
@@ -154,5 +154,18 @@ class DooverData:
                 },
                 "determination": determination,
             },
+            organisation_id=organisation_id,
+        )
+
+    async def update_connection_config(
+        self,
+        agent_id: int,
+        config: ConnectionConfig,
+        organisation_id: int = None,
+    ):
+        return await self.publish_message(
+            agent_id,
+            "doover_connection",
+            {"config": config.to_dict()},
             organisation_id=organisation_id,
         )
