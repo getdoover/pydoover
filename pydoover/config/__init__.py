@@ -734,7 +734,7 @@ class Variable:
         return f"${self._scope}.{self._name}"
 
 
-class Application(ConfigElement):
+class Application(String):
     """Represents a Doover application configuration element.
 
     This is used to reference other Doover applications in the configuration schema.
