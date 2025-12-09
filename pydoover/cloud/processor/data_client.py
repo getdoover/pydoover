@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -54,7 +55,11 @@ class DooverData:
             self.session = None
 
     async def _request(
-        self, method, endpoint, data: dict | str = None, organisation_id: int = None
+        self,
+        method,
+        endpoint,
+        data: dict | str | aiohttp.FormData | None = None,
+        organisation_id: int = None,
     ):
         org_id = organisation_id or self.organisation_id
         if org_id:
@@ -62,8 +67,15 @@ class DooverData:
         else:
             headers = {}
 
+        if isinstance(data, aiohttp.FormData):
+            kwargs = {"data": data}
+        else:
+            kwargs = {"json": data}
+
+        log.debug(f"request {method} {endpoint}")
+
         async with self.session.request(
-            method, endpoint, json=data, headers=headers
+            method, endpoint, **kwargs, headers=headers
         ) as resp:
             resp.raise_for_status()
             return await resp.json()
@@ -85,11 +97,15 @@ class DooverData:
         message: dict | str,
         timestamp: datetime | None = None,
         record_log: bool = True,
-        is_diff: bool = True,
+        is_diff: bool = None,
+        files: list[tuple[str, bytes, str]] = None,
         organisation_id: int = None,
     ):
         if channel_name == self._invoking_channel_name:
             raise RuntimeError("Cannot publish to the invoking channel.")
+
+        if is_diff is None:
+            is_diff = files is None
 
         payload: dict[str, Any] = {
             "data": message,
@@ -100,6 +116,28 @@ class DooverData:
             payload["ts"] = (
                 int(timestamp.timestamp()) * 1000
             )  # milliseconds since epoch
+
+        if files is not None:
+            if not isinstance(files, list):
+                files = [files]
+            form = aiohttp.FormData()
+            form.add_field(
+                "json_payload", json.dumps(payload), content_type="application/json"
+            )
+            for i, (filename, data, content_type) in enumerate(files, start=1):
+                form.add_field(
+                    f"attachment-{i}",
+                    data,
+                    filename=filename,
+                    content_type=content_type,
+                )
+
+            return await self._request(
+                "POST",
+                f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
+                data=form,
+                organisation_id=organisation_id,
+            )
 
         return await self._request(
             "POST",
