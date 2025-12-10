@@ -5,23 +5,9 @@ from typing import Any
 
 import aiohttp
 
-from .types import Channel, ConnectionConfig
+from .types import Channel, ConnectionConfig, ConnectionStatus, ConnectionDetermination
 
 log = logging.getLogger(__name__)
-
-
-class ConnectionDetermination:
-    online = "Online"
-    offline = "Offline"
-
-
-class ConnectionStatus:
-    continuous_online = "ContinuousOnline"
-    continuous_offline = "ContinuousOffline"
-    continuous_pending = "ContinuousPending"
-
-    periodic_unknown = "PeriodicUnknown"
-    unknown = "Unknown"
 
 
 class DooverData:
@@ -166,8 +152,8 @@ class DooverData:
         self,
         agent_id: int,
         online_at: datetime,
-        connection_status: str,
-        determination: str,
+        connection_status: ConnectionStatus,
+        determination: ConnectionDetermination,
         ping_at: datetime = None,
         user_agent: str = None,
         ip_address: str = None,
@@ -184,13 +170,13 @@ class DooverData:
             "doover_connection",
             {
                 "status": {
-                    "status": connection_status,
+                    "status": connection_status.value,
                     "last_online": int(online_at.timestamp() * 1000),
                     "last_ping": int(ping_at.timestamp() * 1000),
                     "user_agent": user_agent,
                     "ip": ip_address,
                 },
-                "determination": determination,
+                "determination": determination.value,
             },
             organisation_id=organisation_id,
         )

@@ -3,6 +3,21 @@ from enum import Enum
 from typing import Any, Callable
 
 
+class ConnectionDetermination(Enum):
+    online = "Online"
+    offline = "Offline"
+
+
+class ConnectionStatus(Enum):
+    continuous_online = "ContinuousOnline"
+    continuous_online_no_ping = "ContinuousOnlineNoPing"
+    continuous_offline = "ContinuousOffline"
+    continuous_pending = "ContinuousPending"
+
+    periodic_unknown = "PeriodicUnknown"
+    unknown = "Unknown"
+
+
 class ConnectionType(Enum):
     continuous = "Continuous"
     periodic_continuous = "PeriodicContinuous"
