@@ -14,6 +14,7 @@ from .types import (
     DeploymentEvent,
     ScheduleEvent,
     IngestionEndpointEvent,
+    ConnectionConfig,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
@@ -84,10 +85,12 @@ class Application:
 
         if data.get("connection_data", None):
             self._connection_config = data["connection_data"].get("config", {})
+            self.connection_config = ConnectionConfig.from_dict(self._connection_config)
         else:
             # connection config isn't valid for org processors
             # but fresh-ly created devices also won't have connection config...
             self._connection_config = {}
+            self.connection_config = None
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)

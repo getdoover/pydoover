@@ -1,5 +1,104 @@
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Callable
+
+
+class ConnectionDetermination(Enum):
+    online = "Online"
+    offline = "Offline"
+
+
+class ConnectionStatus(Enum):
+    continuous_online = "ContinuousOnline"
+    continuous_online_no_ping = "ContinuousOnlineNoPing"
+    continuous_offline = "ContinuousOffline"
+    continuous_pending = "ContinuousPending"
+
+    periodic_unknown = "PeriodicUnknown"
+    unknown = "Unknown"
+
+
+class ConnectionType(Enum):
+    continuous = "Continuous"
+    periodic_continuous = "PeriodicContinuous"
+    periodic = "Periodic"
+
+    @classmethod
+    def from_v1(cls, data):
+        match data:
+            case "constant":
+                return cls.continuous
+            case "periodic":
+                return cls.periodic
+            case "periodic_continuous":
+                return cls.periodic_continuous
+            case _:
+                raise ValueError(f"Unknown connection type: {data}")
+
+
+class ConnectionConfig:
+    # pub struct ConnectionConfig {
+    #     pub connection_type: Option<ConnectionType>,
+    #     pub expected_interval: Option<u64>, // in seconds
+    #     pub offline_after: Option<u64>,     // in seconds
+    #     pub sleep_time: Option<u64>,
+    #     pub next_wake_time: Option<u64>,
+    # }
+    def __init__(
+        self,
+        connection_type: ConnectionType,
+        expected_interval: float | None,
+        offline_after: float | None,
+        sleep_time: float | None,
+        next_wake_time: float | None,
+    ):
+        self.connection_type = connection_type
+        self.expected_interval = expected_interval
+        self.offline_after = offline_after
+        self.sleep_time = sleep_time
+        self.next_wake_time = next_wake_time
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            data.get("connection_type"),
+            data.get("expected_interval"),
+            data.get("offline_after"),
+            data.get("sleep_time"),
+            data.get("next_wake_time"),
+        )
+
+    @classmethod
+    def from_v1(cls, data):
+        return cls(
+            ConnectionType.from_v1(data["connectionType"]),
+            data.get("connectionPeriod"),
+            data.get("offlineAfter"),
+            data.get("connectionPeriod"),  # not 100% accurate but close enough?
+            # as above... although I think the original intention was for this timestamp
+            data.get("nextConnection"),
+        )
+
+    def to_dict(self):
+        return {
+            "connection_type": self.connection_type.value,
+            "expected_interval": self.expected_interval,
+            "offline_after": self.offline_after,
+            "sleep_time": self.sleep_time,
+            "next_wake_time": self.next_wake_time,
+        }
+
+    def __eq__(self, other):
+        if not isinstance(other, ConnectionConfig):
+            return False
+
+        return (
+            self.connection_type == other.connection_type
+            and self.expected_interval == other.expected_interval
+            and self.offline_after == other.offline_after
+            and self.sleep_time == other.sleep_time
+            and self.next_wake_time == other.next_wake_time
+        )
 
 
 class Message:

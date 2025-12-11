@@ -8,24 +8,15 @@ from urllib.parse import urlencode
 
 from pydoover.utils.snowflake import generate_snowflake_id_at
 
-
-from .types import Channel, Messages
+from .types import (
+    Channel,
+    Messages,
+    ConnectionConfig,
+    ConnectionStatus,
+    ConnectionDetermination,
+)
 
 log = logging.getLogger(__name__)
-
-
-class ConnectionDetermination:
-    online = "Online"
-    offline = "Offline"
-
-
-class ConnectionStatus:
-    continuous_online = "ContinuousOnline"
-    continuous_offline = "ContinuousOffline"
-    continuous_pending = "ContinuousPending"
-
-    periodic_unknown = "PeriodicUnknown"
-    unknown = "Unknown"
 
 
 class DooverData:
@@ -77,7 +68,6 @@ class DooverData:
             kwargs = {"json": data}
 
         log.debug(f"request {method} {endpoint}")
-        
         async with self.session.request(
             method, endpoint, **kwargs, headers=headers
         ) as resp:
@@ -176,11 +166,14 @@ class DooverData:
         timestamp: datetime | None = None,
         record_log: bool = True,
         is_diff: bool = None,
-        organisation_id: int = None,
         files: list[tuple[str, bytes, str]] = None,
+        organisation_id: int = None,
     ):
         if channel_name == self._invoking_channel_name:
             raise RuntimeError("Cannot publish to the invoking channel.")
+
+        if is_diff is None:
+            is_diff = files is None
 
         payload: dict[str, Any] = {
             "data": message,
@@ -193,13 +186,20 @@ class DooverData:
             )  # milliseconds since epoch
 
         if files is not None:
-            if type(files) is not list:
+            if not isinstance(files, list):
                 files = [files]
             form = aiohttp.FormData()
-            form.add_field("json_payload", json.dumps(payload), content_type="application/json")
-            for i in range(len(files)):
-                file = files[i]
-                form.add_field(f"attachment-{i+1}", file[1], filename=file[0], content_type=file[2])
+            form.add_field(
+                "json_payload", json.dumps(payload), content_type="application/json"
+            )
+            for i, (filename, data, content_type) in enumerate(files, start=1):
+                form.add_field(
+                    f"attachment-{i}",
+                    data,
+                    filename=filename,
+                    content_type=content_type,
+                )
+
             return await self._request(
                 "POST",
                 f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
@@ -213,7 +213,7 @@ class DooverData:
             data=payload,
             organisation_id=organisation_id,
         )
-        
+
     async def update_message(
         self,
         agent_id: int,
@@ -242,10 +242,17 @@ class DooverData:
             if type(files) is not list:
                 files = [files]
             form = aiohttp.FormData()
-            form.add_field("json_payload", json.dumps(payload), content_type="application/json")
+            form.add_field(
+                "json_payload", json.dumps(payload), content_type="application/json"
+            )
             for i in range(len(files)):
                 file = files[i]
-                form.add_field(f"attachment-{i+1}", file[1], filename=file[0], content_type=file[2])
+                form.add_field(
+                    f"attachment-{i + 1}",
+                    file[1],
+                    filename=file[0],
+                    content_type=file[2],
+                )
             return await self._request(
                 "PATCH",
                 f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
@@ -280,8 +287,8 @@ class DooverData:
         self,
         agent_id: int,
         online_at: datetime,
-        connection_status: str,
-        determination: str,
+        connection_status: ConnectionStatus,
+        determination: ConnectionDetermination,
         ping_at: datetime = None,
         user_agent: str = None,
         ip_address: str = None,
@@ -298,17 +305,17 @@ class DooverData:
             "doover_connection",
             {
                 "status": {
-                    "status": connection_status,
+                    "status": connection_status.value,
                     "last_online": int(online_at.timestamp() * 1000),
                     "last_ping": int(ping_at.timestamp() * 1000),
                     "user_agent": user_agent,
                     "ip": ip_address,
                 },
-                "determination": determination,
+                "determination": determination.value,
             },
             organisation_id=organisation_id,
         )
-        
+
     async def get_channel_message(
         self,
         agent_id: int,
@@ -319,5 +326,18 @@ class DooverData:
         return await self._request(
             "GET",
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
+            organisation_id=organisation_id,
+        )
+
+    async def update_connection_config(
+        self,
+        agent_id: int,
+        config: ConnectionConfig,
+        organisation_id: int = None,
+    ):
+        return await self.publish_message(
+            agent_id,
+            "doover_connection",
+            {"config": config.to_dict()},
             organisation_id=organisation_id,
         )
