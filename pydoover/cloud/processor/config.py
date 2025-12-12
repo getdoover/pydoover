@@ -1,3 +1,4 @@
+import zoneinfo
 from ...config import (
     String,
     Integer,
@@ -7,6 +8,7 @@ from ...config import (
     DevicesConfig,
     Application,
     GroupsConfig,
+    Enum,
 )
 
 
@@ -38,17 +40,21 @@ class SubscriptionConfig(String):
         self._name = "dv_proc_subscriptions"
 
 
-class ScheduleConfig(Integer):
+class ScheduleConfig(String):
     def __init__(
         self,
         display_name: str = "Schedule",
         *,
-        minimum: int = 0,
-        description: str = "The interval in minutes to run the task. 0 to disable.",
+        description: str = "Specify a schedule to run this task.",
+        allowed_modes=["cron", "rate", "disabled"],
         **kwargs,
     ):
+        if len(allowed_modes) >= 3:
+            format = "doover-schedule"
+        else:
+            format = "doover-schedule-" + "-".join(allowed_modes)
         super().__init__(
-            display_name, minimum=minimum, description=description, **kwargs
+            display_name, description=description, format=format, **kwargs
         )
         self._name = "dv_proc_schedules"
 
@@ -132,3 +138,17 @@ class ExtendedPermissionsConfig(Object):
             description="Permission will be given for all devices in this organisation. This is a very far-reaching permission to grant!",
             default=False,
         )
+
+class TimezoneConfig(Enum):
+    
+    def __init__(
+        self,
+        display_name: str = "Timezone",
+        *,
+        description: str = "The timezone to use for the report.",
+        default="Australia/Brisbane",
+        **kwargs,
+    ):
+        choices = list(zoneinfo.available_timezones())
+        super().__init__(display_name, choices=choices, description=description, default=default, **kwargs)
+        self._name = "dv_proc_timezone"

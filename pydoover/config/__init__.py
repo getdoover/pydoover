@@ -243,6 +243,9 @@ class ConfigElement:
             "x-hidden": self.hidden,
         }
 
+        if self.format is not None:
+            payload["format"] = self.format
+
         if self._type is not None:
             payload["type"] = self._type
 
@@ -364,6 +367,7 @@ class Boolean(ConfigElement):
 
     _type = "boolean"
     value: bool
+    
 
 
 class String(ConfigElement):
@@ -402,6 +406,29 @@ class String(ConfigElement):
         if self.pattern is not None:
             res["pattern"] = self.pattern
 
+        return res
+
+class DateTime(ConfigElement):
+    """Represents a JSON Number type, for any numeric type. Internally represented as a float.
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    default: float
+        The default value for the integer. If NotSet, the value is required.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    """
+
+    _type = "string"
+    value: str
+    
+    def to_dict(self):
+        res = super().to_dict()
+        res["format"] = "date-time"
         return res
 
 
@@ -761,7 +788,7 @@ class Application(String):
         super().__init__(
             display_name,
             description=description,
-            format="doover-application",
+            format="doover-resource-application",
             **kwargs,
         )
 
@@ -793,7 +820,7 @@ class ApplicationInstall(String):
         super().__init__(
             display_name,
             description=description,
-            format="doover-application-install",
+            format="doover-application",
             **kwargs,
         )
 
@@ -806,7 +833,7 @@ class Device(String):
             display_name,
             description=description,
             pattern=r"\d+",
-            format="doover-device",
+            format="doover-resource-device",
             **kwargs,
         )
 
@@ -835,7 +862,7 @@ class Group(String):
             display_name,
             description=description,
             pattern=r"\d+",
-            format="doover-group",
+            format="doover-resource-group",
             **kwargs,
         )
 

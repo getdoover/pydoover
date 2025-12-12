@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .types import (
+    ManualInvokeEvent,
     MessageCreateEvent,
     Channel,
     DeploymentEvent,
@@ -20,7 +21,7 @@ from ...ui import UIManager
 from ...config import Schema
 
 
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 
 
 DEFAULT_DATA_ENDPOINT = "https://data.doover.com/api"
@@ -30,6 +31,8 @@ DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
 class Application:
     def __init__(self, config: Schema | None):
         self.config = config
+        
+        self.received_deployment_config = None
 
         self._api_endpoint = (
             os.environ.get("DOOVER_DATA_ENDPOINT") or DEFAULT_DATA_ENDPOINT
@@ -55,28 +58,32 @@ class Application:
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
         self.api.set_token(self._initial_token)
-
-        if self.subscription_id:
-            data = await self.api.fetch_processor_info(self.subscription_id)
-        elif self.schedule_id:
-            data = await self.api.fetch_schedule_info(self.schedule_id)
-        elif self.ingestion_id:
-            # doover data invokes this directly so we can pre-load all required info here to save a call...
+        
+        # Always prioritise the upgrade payload, other get it from the normal method
+        if initial_payload["d"].get("upgrade", None) is not None:
             data = initial_payload["d"]["upgrade"]
         else:
-            raise ValueError("No subscription or schedule ID provided.")
+            if self.subscription_id:
+                data = await self.api.fetch_processor_info(self.subscription_id)
+            elif self.schedule_id:
+                data = await self.api.fetch_schedule_info(self.schedule_id)
+            elif self.ingestion_id:
+                # doover data invokes this directly so we can pre-load all required info here to save a call...
+                data = initial_payload["d"]["upgrade"]
+            else:
+                raise ValueError("No subscription or schedule ID provided.")
 
         self.agent_id = self.api.agent_id = data["agent_id"]
         self.api.set_token(data["token"])
 
         # this should match the original organisation ID, but in case it doesn't, this should
         # probably be the source of truth
-        self.api.organisation_id = data["organisation_id"]
+        self.api.organisation_id = data.get("organisation_id", None) or self.organisation_id
 
-        self.app_key = data["app_key"]
-        self._tag_values = data["tag_values"]
+        self.app_key = data.get("app_key", None)
+        self._tag_values = data.get("tag_values", None)
 
-        if data["connection_data"]:
+        if data.get("connection_data", None):
             self._connection_config = data["connection_data"].get("config", {})
             self.connection_config = ConnectionConfig.from_dict(self._connection_config)
         else:
@@ -88,7 +95,7 @@ class Application:
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
 
-        if data["ui_state"] is not None and data["ui_cmds"] is not None:
+        if data.get("ui_state", None) is not None and data.get("ui_cmds", None) is not None:
             self._ui_to_set = (data["ui_state"], data["ui_cmds"])
         else:
             self._ui_to_set = None
@@ -96,6 +103,9 @@ class Application:
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
             self.config._inject_deployment_config(data["deployment_config"])
+
+        # Store the deployment config for later use
+        self.received_deployment_config = data["deployment_config"]
 
     async def _close(self):
         await self.api.close()
@@ -128,6 +138,9 @@ class Application:
         pass
 
     async def on_ingestion_endpoint(self, event: IngestionEndpointEvent):
+        pass
+    
+    async def on_manual_invoke(self, event: ManualInvokeEvent):
         pass
 
     def parse_ingestion_event_payload(self, payload: str):
@@ -198,6 +211,9 @@ class Application:
                 payload = IngestionEndpointEvent.from_dict(
                     event["d"], parser=self.parse_ingestion_event_payload
                 )
+            case "on_manual_invoke":
+                func = self.on_manual_invoke
+                payload = ManualInvokeEvent.from_dict(event["d"])
 
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")

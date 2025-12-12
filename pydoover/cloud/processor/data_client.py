@@ -4,8 +4,17 @@ from datetime import datetime, timezone
 from typing import Any
 
 import aiohttp
+from urllib.parse import urlencode
 
-from .types import Channel, ConnectionConfig, ConnectionStatus, ConnectionDetermination
+from ...utils.snowflake import generate_snowflake_id_at
+
+from .types import (
+    Channel,
+    ConnectionConfig,
+    ConnectionStatus,
+    ConnectionDetermination,
+    Message,
+)
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +68,6 @@ class DooverData:
             kwargs = {"json": data}
 
         log.debug(f"request {method} {endpoint}")
-
         async with self.session.request(
             method, endpoint, **kwargs, headers=headers
         ) as resp:
@@ -75,6 +83,79 @@ class DooverData:
             organisation_id=organisation_id,
         )
         return Channel.from_dict(data)
+
+    async def get_channel_messages(
+        self,
+        agent_id: int,
+        channel_name: str,
+        organisation_id: int = None,
+        limit: int = None,
+        before: datetime | None = None,
+        after: datetime | None = None,
+        chunk_size: int | None = None,
+    ) -> list[Message]:
+        before = generate_snowflake_id_at(before) if before else None
+        after = generate_snowflake_id_at(after) if after else None
+
+        if chunk_size is not None and before is not None and after is not None:
+            log.debug(f"Splitting messages into chunks of {chunk_size}")
+            all_messages = []
+
+            while True:
+                log.debug(f"Fetching messages from {after} with limit {chunk_size}")
+                messages = await self._get_channel_messages(
+                    agent_id,
+                    channel_name,
+                    organisation_id,
+                    limit=chunk_size,
+                    after=after,
+                )
+                log.debug(f"Received {len(messages)} messages")
+                for message in messages:
+                    if int(message.id) <= before:
+                        all_messages.append(message)
+                if not messages or len(messages) < chunk_size:
+                    break
+                last_message = messages[-1]
+                if int(last_message.id) >= before:
+                    break
+                after = int(messages[-1].id)
+
+            return [Message.from_dict(m) for m in all_messages]
+
+        return await self._get_channel_messages(
+            agent_id, channel_name, organisation_id, limit, before, after
+        )
+
+    async def _get_channel_messages(
+        self,
+        agent_id: int,
+        channel_name: str,
+        organisation_id: int = None,
+        limit: int = None,
+        before: datetime = None,
+        after: datetime = None,
+    ) -> list[Message]:
+        params = {}
+        if limit:
+            params["limit"] = limit
+        if before:
+            params["before"] = before
+        if after:
+            params["after"] = after
+
+        query = f"?{urlencode(params)}" if params else ""
+        url = (
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages{query}"
+        )
+
+        data = await self._request(
+            "GET",
+            url,
+            organisation_id=organisation_id,
+        )
+
+        return [Message.from_dict(m) for m in data]
 
     async def publish_message(
         self,
@@ -96,7 +177,7 @@ class DooverData:
         payload: dict[str, Any] = {
             "data": message,
             "record_log": record_log,
-            "is_diff": is_diff,
+            "is_diff": is_diff or (files is None),
         }
         if timestamp is not None:
             payload["ts"] = (
@@ -128,6 +209,58 @@ class DooverData:
         return await self._request(
             "POST",
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
+            data=payload,
+            organisation_id=organisation_id,
+        )
+
+    async def update_message(
+        self,
+        agent_id: int,
+        channel_name: str,
+        message_id: str,
+        message: dict | str,
+        timestamp: datetime | None = None,
+        record_log: bool = True,
+        organisation_id: int = None,
+        files: list[tuple[str, bytes, str]] = None,
+    ):
+        if channel_name == self._invoking_channel_name:
+            raise RuntimeError("Cannot update to the invoking channel.")
+
+        payload: dict[str, Any] = {
+            "data": message,
+            "record_log": record_log,
+            "is_diff": False,
+        }
+        if timestamp is not None:
+            payload["ts"] = (
+                int(timestamp.timestamp()) * 1000
+            )  # milliseconds since epoch
+
+        if files is not None:
+            if not isinstance(files, list):
+                files = [files]
+            form = aiohttp.FormData()
+            form.add_field(
+                "json_payload", json.dumps(payload), content_type="application/json"
+            )
+            for i, (filename, data, content_type) in enumerate(files):
+                form.add_field(
+                    f"attachment-{i + 1}",
+                    data,
+                    filename=filename,
+                    content_type=content_type,
+                )
+            return await self._request(
+                "PATCH",
+                f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
+                data=form,
+                organisation_id=organisation_id,
+            )
+
+        return await self._request(
+            "PATCH",
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
             data=payload,
             organisation_id=organisation_id,
         )
@@ -178,6 +311,19 @@ class DooverData:
                 },
                 "determination": determination.value,
             },
+            organisation_id=organisation_id,
+        )
+
+    async def get_channel_message(
+        self,
+        agent_id: int,
+        channel_name: str,
+        message_id: str,
+        organisation_id: int = None,
+    ):
+        return await self._request(
+            "GET",
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
             organisation_id=organisation_id,
         )
 

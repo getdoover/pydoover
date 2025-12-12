@@ -119,6 +119,15 @@ class Message:
             data.get("timestamp"),
         )
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "author_id": self.author_id,
+            "data": self.data,
+            "diff": self.diff,
+            "timestamp": self.timestamp,
+        }
+
 
 class Channel:
     def __init__(
@@ -249,4 +258,21 @@ class IngestionEndpointEvent:
             data["organisation_id"],
             data["payload"],
             parser,
+        )
+
+
+class ManualInvokeEvent:
+    def __init__(
+        self,
+        organisation_id: int,
+        payload: str,
+    ):
+        self.organisation_id = organisation_id
+        self.payload = payload
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["organisation_id"],
+            data["payload"],
         )

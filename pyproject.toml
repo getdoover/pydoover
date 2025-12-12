@@ -1,7 +1,7 @@
 [project]
 name = "pydoover"
 authors = [{ name = "Doover Team", email = "developers@doover.com" }]
-version = "0.4.15"
+version = "0.4.16"
 description = "Python package for interacting with Doover"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,6 +27,7 @@ reports = [
     "pytz>=2025.2",
     "tzlocal>=5.3.1",
     "xlsxwriter>=3.2.2",
+    "croniter>=6.0.0",
 ]
 test = [
     "jsonschema>=4.23.0",
