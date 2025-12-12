@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
+import re
 from zoneinfo import ZoneInfo
 import logging
 import time
@@ -7,8 +8,6 @@ import croniter
 
 from ..processor.types import ManualInvokeEvent, MessageCreateEvent, DeploymentEvent, ScheduleEvent
 from ..processor.application import Application as ApplicationBase
-from ...config import Schema
-
 
 log = logging.getLogger()
 
@@ -16,16 +15,15 @@ SPLIT_MESSAGES_LIMIT = 100  # 1 hour
 
 
 class Application(ApplicationBase):
-    def __init__(self, config: Schema | None):
-        super().__init__(config)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.period_start = None
         self.period_end = None
         self.devices = None
         
     async def on_message_create(self, event: MessageCreateEvent):
-        log.error("Report Genertator does not support message create events")
-        pass
+        raise RuntimeError("Report Genertator does not support message create events")
 
     async def on_deployment(self, event: DeploymentEvent):
         pass
@@ -36,19 +34,16 @@ class Application(ApplicationBase):
         execution_timezone: str = self.config.dv_proc_timezone.value
         schedule: str = self.config.dv_proc_schedules.value
 
-        if type(schedule) is not str:
-            log.error(f"Schedule must be a string: {schedule}")
+        if not isinstance(schedule, str):
+            log.error(f"Schedule must be a string: {schedule}, not '{type(schedule)}'")
             return
 
-        if not schedule.startswith("cron("):
+        m = re.fullmatch(r"cron\((.*)\)", schedule)
+        if not m:
             log.error(f"Schedule must be a cron expression: {schedule}")
             return
 
-        if not schedule.endswith(")"):
-            log.error(f"Schedule must be a cron expression: {schedule}")
-            return
-
-        cron = schedule[5:-1]
+        cron = m.group(1)
 
         execution_time = datetime.now(tz=ZoneInfo(execution_timezone)) - timedelta(
             minutes=5
@@ -140,7 +135,7 @@ class Application(ApplicationBase):
         
         files = await self.generate(agent_ids, period_start, period_end)
         
-        if type(files) is not list:
+        if not isinstance(files, list):
             files = [files]
         
         log.info(
@@ -174,7 +169,7 @@ class Application(ApplicationBase):
         """
         return NotImplemented
 
-    async def fetch_device_in_window(
+    async def fetch_channel_in_window(
         self,
         agent_id: int,
         channel_name: str,
@@ -213,7 +208,7 @@ class Application(ApplicationBase):
             organisation_id=self.agent_id,
         )
 
-    async def fetch_devices_in_window(
+    async def fetch_channels_in_window(
         self,
         agent_ids: list[int],
         channel_name: str,
@@ -245,13 +240,7 @@ class Application(ApplicationBase):
         """
 
         # Start the tasks
-        tasks = []
-        for agent_id in agent_ids:
-            tasks.append(
-                self.fetch_device_in_window(
-                    agent_id, channel_name, period_start, period_end
-                )
-            )
+        tasks = [self.fetch_channel_in_window(agent_id, channel_name, period_start, period_end) for agent_id in agent_ids]
 
         # Collect the results
         results = await asyncio.gather(*tasks)

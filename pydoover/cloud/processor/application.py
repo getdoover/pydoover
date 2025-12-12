@@ -21,7 +21,7 @@ from ...ui import UIManager
 from ...config import Schema
 
 
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 
 
 DEFAULT_DATA_ENDPOINT = "https://data.doover.com/api"

@@ -6,7 +6,7 @@ from typing import Any
 import aiohttp
 from urllib.parse import urlencode
 
-from pydoover.utils.snowflake import generate_snowflake_id_at
+from ...utils.snowflake import generate_snowflake_id_at
 
 from .types import (
     Channel,
@@ -72,8 +72,7 @@ class DooverData:
             method, endpoint, **kwargs, headers=headers
         ) as resp:
             resp.raise_for_status()
-            jsondata = await resp.json()
-            return jsondata
+            return await resp.json()
 
     async def get_channel(
         self, agent_id: int, channel_name: str, organisation_id: int = None
@@ -239,19 +238,18 @@ class DooverData:
             )  # milliseconds since epoch
 
         if files is not None:
-            if type(files) is not list:
+            if not isinstance(files, list):
                 files = [files]
             form = aiohttp.FormData()
             form.add_field(
                 "json_payload", json.dumps(payload), content_type="application/json"
             )
-            for i in range(len(files)):
-                file = files[i]
+            for i, (filename, data, content_type) in enumerate(files):
                 form.add_field(
                     f"attachment-{i + 1}",
-                    file[1],
-                    filename=file[0],
-                    content_type=file[2],
+                    data,
+                    filename=filename,
+                    content_type=content_type,
                 )
             return await self._request(
                 "PATCH",
