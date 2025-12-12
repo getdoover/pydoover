@@ -1,3 +1,4 @@
+import zoneinfo
 from ...config import (
     String,
     Integer,
@@ -7,6 +8,7 @@ from ...config import (
     DevicesConfig,
     Application,
     GroupsConfig,
+    Enum,
 )
 
 
@@ -136,3 +138,17 @@ class ExtendedPermissionsConfig(Object):
             description="Permission will be given for all devices in this organisation. This is a very far-reaching permission to grant!",
             default=False,
         )
+
+class TimezoneConfig(Enum):
+    
+    def __init__(
+        self,
+        display_name: str = "Timezone",
+        *,
+        description: str = "The timezone to use for the report.",
+        default="Australia/Brisbane",
+        **kwargs,
+    ):
+        choices = list(zoneinfo.available_timezones())
+        super().__init__(display_name, choices=choices, description=description, default=default, **kwargs)
+        self._name = "dv_proc_timezone"

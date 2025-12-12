@@ -789,7 +789,7 @@ class Application(String):
         super().__init__(
             display_name,
             description=description,
-            format="doover-application",
+            format="doover-resource-application",
             **kwargs,
         )
 
@@ -821,7 +821,7 @@ class ApplicationInstall(String):
         super().__init__(
             display_name,
             description=description,
-            format="doover-application-install",
+            format="doover-application",
             **kwargs,
         )
 
@@ -834,7 +834,7 @@ class Device(String):
             display_name,
             description=description,
             pattern=r"\d+",
-            format="doover-device",
+            format="doover-resource-device",
             **kwargs,
         )
 
@@ -863,7 +863,7 @@ class Group(String):
             display_name,
             description=description,
             pattern=r"\d+",
-            format="doover-group",
+            format="doover-resource-group",
             **kwargs,
         )
 

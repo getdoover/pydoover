@@ -65,7 +65,7 @@ class Application(ApplicationBase):
             time_string = self.period_end.strftime("%d-%m-%Y")
 
         name = f"{self.received_deployment_config['APP_DISPLAY_NAME']} - {time_string}"
-        self.devices = [device.value for device in self.config.dv_rprt_devices.elements]
+        self.devices = self.received_deployment_config.get("DEVICE_LIST", [])
 
         self._report_metadata = {
             "name": name,
@@ -128,7 +128,7 @@ class Application(ApplicationBase):
         
         self.period_start = datetime.fromtimestamp(self._report_metadata["period_start"] / 1000.0)
         self.period_end = datetime.fromtimestamp(self._report_metadata["period_end"] / 1000.0)
-        self.devices = [device.value for device in self.config.dv_rprt_devices.elements]
+        self.devices = self.received_deployment_config.get("DEVICE_LIST", [])
         
         await self._generate(self.devices, self.period_start, self.period_end) 
 

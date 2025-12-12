@@ -60,7 +60,7 @@ class Application:
         self.api.set_token(self._initial_token)
         
         # Always prioritise the upgrade payload, other get it from the normal method
-        if initial_payload["d"]["upgrade"] is not None:
+        if initial_payload["d"].get("upgrade", None) is not None:
             data = initial_payload["d"]["upgrade"]
         else:
             if self.subscription_id:

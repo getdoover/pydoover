@@ -5,6 +5,7 @@ from .config import (
     ScheduleConfig as ScheduleConfig,
     IngestionEndpointConfig as IngestionEndpointConfig,
     ExtendedPermissionsConfig as ExtendedPermissionsConfig,
+    TimezoneConfig as TimezoneConfig,
 )
 from .types import (
     Channel as Channel,
