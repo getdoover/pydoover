@@ -10,10 +10,10 @@ from ...utils.snowflake import generate_snowflake_id_at
 
 from .types import (
     Channel,
-    Messages,
     ConnectionConfig,
     ConnectionStatus,
     ConnectionDetermination,
+    Message,
 )
 
 log = logging.getLogger(__name__)
@@ -90,10 +90,10 @@ class DooverData:
         channel_name: str,
         organisation_id: int = None,
         limit: int = None,
-        before: int = None,
-        after: int = None,
-        chunk_size: int = None,
-    ):
+        before: datetime | None = None,
+        after: datetime | None = None,
+        chunk_size: int | None = None,
+    ) -> list[Message]:
         before = generate_snowflake_id_at(before) if before else None
         after = generate_snowflake_id_at(after) if after else None
 
@@ -110,18 +110,18 @@ class DooverData:
                     limit=chunk_size,
                     after=after,
                 )
-                log.debug(f"Received {len(messages.messages)} messages")
-                for message in messages.messages:
+                log.debug(f"Received {len(messages)} messages")
+                for message in messages:
                     if int(message.id) <= before:
                         all_messages.append(message)
-                if not messages.messages or len(messages.messages) < chunk_size:
+                if not messages or len(messages) < chunk_size:
                     break
-                last_message = messages.messages[-1]
+                last_message = messages[-1]
                 if int(last_message.id) >= before:
                     break
-                after = int(messages.messages[-1].id)
+                after = int(messages[-1].id)
 
-            return Messages(all_messages)
+            return [Message.from_dict(m) for m in all_messages]
 
         return await self._get_channel_messages(
             agent_id, channel_name, organisation_id, limit, before, after
@@ -135,7 +135,7 @@ class DooverData:
         limit: int = None,
         before: datetime = None,
         after: datetime = None,
-    ) -> Messages:
+    ) -> list[Message]:
         params = {}
         if limit:
             params["limit"] = limit
@@ -155,7 +155,7 @@ class DooverData:
             organisation_id=organisation_id,
         )
 
-        return Messages.from_dict(data)
+        return [Message.from_dict(m) for m in data]
 
     async def publish_message(
         self,
