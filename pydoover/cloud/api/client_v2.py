@@ -1,3 +1,4 @@
+import json
 import logging
 
 from datetime import datetime, timezone, timedelta
@@ -365,6 +366,55 @@ class Client:
         """
         return self._maybe_subscribe_to_channel(channel_id, task_id, False)
 
+    def _publish_message(
+        self,
+        agent_id: int,
+        channel_name: str,
+        message: dict | str,
+        timestamp: datetime | None = None,
+        record_log: bool = True,
+        is_diff: bool = None,
+        files: list[tuple[str, bytes, str]] = None,
+        organisation_id: int = None,
+    ):
+        if is_diff is None:
+            is_diff = files is None
+
+        payload: dict[str, Any] = {
+            "data": message,
+            "record_log": record_log,
+            "is_diff": is_diff or (files is None),
+        }
+        if timestamp is not None:
+            payload["ts"] = (
+                int(timestamp.timestamp()) * 1000
+            )  # milliseconds since epoch
+
+        if files is not None:
+            if not isinstance(files, list):
+                files = [files]
+
+            form_files = [("json_payload", json.dumps(payload))]
+            for i, (filename, data, content_type) in enumerate(files, start=1):
+                form_files.append((f"attachment-{i}", (filename, data, content_type)))
+
+            return self.request(
+                Route(
+                    "POST", "/agents/{}/channels/{}/messages", agent_id, channel_name
+                ),
+                # data=payload,
+                files=form_files,
+                data_url=True,
+                # organisation_id=organisation_id,
+            )
+
+        return self.request(
+            Route("POST", "/agents/{}/channels/{}/messages", agent_id, channel_name),
+            json=payload,
+            data_url=True,
+            # organisation_id=organisation_id,
+        )
+
     def publish_to_channel(
         self,
         channel_id: str,
@@ -373,6 +423,7 @@ class Client:
         log_aggregate: bool = False,
         override_aggregate: bool = False,
         timestamp: Optional[datetime] = None,
+        files: list[tuple[str, str, str]] = None,
     ):
         """Publish data to a channel.
 
@@ -393,22 +444,14 @@ class Client:
         """
         agent_id, name = self._parse_channel_id(channel_id)
 
-        #     pub data: Value,
-        #     pub record_log: bool,
-        #     pub is_diff: bool,
-        #     pub ts: Option<u64>,
-        data = {
-            "data": data,
-            "record_log": save_log,
-            "is_diff": False if override_aggregate is True else True,
-        }
-        if timestamp:
-            data["ts"] = int(timestamp.timestamp() * 1000)
-
-        return self.request(
-            Route("POST", "/agents/{}/channels/{}/messages", agent_id, name),
-            json=data,
-            data_url=True,
+        return self._publish_message(
+            agent_id,
+            name,
+            data,
+            timestamp,
+            save_log,
+            False if override_aggregate else True,
+            files,
         )
 
     def publish_to_channel_name(
@@ -420,6 +463,7 @@ class Client:
         log_aggregate: bool = False,
         override_aggregate: bool = False,
         timestamp: Optional[datetime] = None,
+        files=None,
     ):
         """Publish data to a channel by its name.
 
@@ -447,6 +491,7 @@ class Client:
             log_aggregate,
             override_aggregate,
             timestamp,
+            files,
         )
 
     def create_tunnel_endpoints(self, agent_id: str, endpoint_type: str, amount: int):

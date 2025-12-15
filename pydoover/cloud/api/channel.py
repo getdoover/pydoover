@@ -8,6 +8,7 @@ import sys
 import importlib
 from datetime import datetime
 from os import PathLike
+from pathlib import Path
 
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -217,6 +218,7 @@ class Channel:
         log_aggregate: bool = False,
         override_aggregate: bool = False,
         timestamp: Optional[datetime] = None,
+        files: list[tuple[str, str, str]] = None,
     ):
         """Publishes data to the channel.
 
@@ -235,7 +237,7 @@ class Channel:
 
         """
         return self.client.publish_to_channel(
-            self.id, data, save_log, log_aggregate, override_aggregate, timestamp
+            self.id, data, save_log, log_aggregate, override_aggregate, timestamp, files
         )
 
     @property
@@ -266,16 +268,22 @@ class Channel:
         mime_type : str, optional
             The MIME type of the file. If not provided, it will be guessed based on the file extension.
         """
-
         if mime_type is None:
             mime_type, _ = mimetypes.guess_type(file_path)
             # mime_type = "application/octet-stream"
 
-        with open(file_path, "rb") as f:
-            b64_data = base64.b64encode(f.read()).decode()
+        path = Path(file_path)
 
-        msg = {"output_type": mime_type, "output": b64_data}
-        self.publish(msg)
+        if self.is_v2:
+            msg = {"output_type": mime_type}
+            files = [(str(file_path), path.read_bytes(), mime_type)]
+        else:
+            with open(file_path, "rb") as f:
+                b64_data = base64.b64encode(f.read()).decode()
+            msg = {"output_type": mime_type, "output": b64_data}
+            files = None
+
+        self.publish(msg, files=files)
 
 
 class Processor(Channel):
