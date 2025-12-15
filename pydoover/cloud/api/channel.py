@@ -283,7 +283,7 @@ class Channel:
             msg = {"output_type": mime_type, "output": b64_data}
             files = None
 
-        self.publish(msg, files=files)
+        self.publish(msg, save_log=True, override_aggregate=True, files=files)
 
 
 class Processor(Channel):
