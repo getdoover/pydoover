@@ -15,6 +15,7 @@ from .types import (
     ScheduleEvent,
     IngestionEndpointEvent,
     ConnectionConfig,
+    ConnectionType,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
@@ -31,7 +32,7 @@ DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
 class Application:
     def __init__(self, config: Schema | None):
         self.config = config
-        
+
         self.received_deployment_config = None
 
         self._api_endpoint = (
@@ -58,7 +59,7 @@ class Application:
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
         self.api.set_token(self._initial_token)
-        
+
         # Always prioritise the upgrade payload, other get it from the normal method
         if initial_payload["d"].get("upgrade", None) is not None:
             data = initial_payload["d"]["upgrade"]
@@ -78,7 +79,9 @@ class Application:
 
         # this should match the original organisation ID, but in case it doesn't, this should
         # probably be the source of truth
-        self.api.organisation_id = data.get("organisation_id", None) or self.organisation_id
+        self.api.organisation_id = (
+            data.get("organisation_id", None) or self.organisation_id
+        )
 
         self.app_key = data.get("app_key", None)
         self._tag_values = data.get("tag_values", None)
@@ -95,7 +98,10 @@ class Application:
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
 
-        if data.get("ui_state", None) is not None and data.get("ui_cmds", None) is not None:
+        if (
+            data.get("ui_state", None) is not None
+            and data.get("ui_cmds", None) is not None
+        ):
             self._ui_to_set = (data["ui_state"], data["ui_cmds"])
         else:
             self._ui_to_set = None
@@ -139,7 +145,7 @@ class Application:
 
     async def on_ingestion_endpoint(self, event: IngestionEndpointEvent):
         pass
-    
+
     async def on_manual_invoke(self, event: ManualInvokeEvent):
         pass
 
@@ -306,15 +312,28 @@ class Application:
 
         self._publish_tags = True
 
-    async def ping_connection(self, online_at: datetime = None):
+    async def ping_connection(
+        self,
+        online_at: datetime = None,
+        connection_status: ConnectionStatus = ConnectionStatus.periodic_unknown,
+        connection_type: ConnectionType = ConnectionType.periodic,
+        next_online: datetime = None,
+        offline_at: datetime = None,
+    ):
         if online_at:
             online_at = online_at.replace(tzinfo=timezone.utc)
         else:
             online_at = datetime.now(tz=timezone.utc)
 
-        if datetime.now(tz=timezone.utc) - online_at > timedelta(
-            seconds=self._connection_config.get("offline_after", DEFAULT_OFFLINE_AFTER)
-        ):
+        # prefer the user's settings if they've set it.
+        if offline_at:
+            offline_after = (offline_at - online_at).total_seconds()
+        else:
+            offline_after = self._connection_config.get(
+                "offline_after", DEFAULT_OFFLINE_AFTER
+            )
+
+        if datetime.now(tz=timezone.utc) - online_at > timedelta(seconds=offline_after):
             determination = ConnectionDetermination.offline
         else:
             determination = ConnectionDetermination.online
@@ -322,7 +341,10 @@ class Application:
         await self.api.ping_connection_at(
             self.agent_id,
             online_at,
-            connection_status=ConnectionStatus.periodic_unknown,
+            connection_status=connection_status,
             determination=determination,
+            connection_type=connection_type,
+            next_online=next_online,
+            offline_at=offline_at,
             user_agent=f"pydoover-processor,app_key={self.app_key}",
         )

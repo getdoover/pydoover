@@ -14,6 +14,7 @@ from .types import (
     ConnectionStatus,
     ConnectionDetermination,
     Message,
+    ConnectionType,
 )
 
 log = logging.getLogger(__name__)
@@ -287,6 +288,9 @@ class DooverData:
         online_at: datetime,
         connection_status: ConnectionStatus,
         determination: ConnectionDetermination,
+        connection_type: ConnectionType = None,
+        next_online: datetime = None,
+        offline_at: datetime = None,
         ping_at: datetime = None,
         user_agent: str = None,
         ip_address: str = None,
@@ -298,19 +302,32 @@ class DooverData:
                 ip_address = await resp.text()
 
         ping_at = ping_at or datetime.now(tz=timezone.utc)
+
+        payload = {
+            "status": {
+                "status": connection_status.value,
+                "last_online": int(online_at.timestamp() * 1000),
+                "last_ping": int(ping_at.timestamp() * 1000),
+                "user_agent": user_agent,
+                "ip": ip_address,
+            },
+            "config": {},
+            "determination": determination.value,
+        }
+
+        if connection_type:
+            payload["config"]["connection_type"] = connection_type.value
+        if next_online:
+            payload["config"]["next_wake_time"] = int(next_online.timestamp() * 1000)
+        if offline_at:
+            payload["config"]["offline_after"] = int(
+                (offline_at - ping_at).total_seconds()
+            )
+
         return await self.publish_message(
             agent_id,
             "doover_connection",
-            {
-                "status": {
-                    "status": connection_status.value,
-                    "last_online": int(online_at.timestamp() * 1000),
-                    "last_ping": int(ping_at.timestamp() * 1000),
-                    "user_agent": user_agent,
-                    "ip": ip_address,
-                },
-                "determination": determination.value,
-            },
+            payload,
             organisation_id=organisation_id,
         )
 
