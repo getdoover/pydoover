@@ -26,7 +26,7 @@ class ConnectionType(Enum):
     @classmethod
     def from_v1(cls, data):
         match data:
-            case "constant":
+            case "constant" | "continuous":
                 return cls.continuous
             case "periodic":
                 return cls.periodic
