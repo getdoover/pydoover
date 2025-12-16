@@ -76,7 +76,7 @@ class ConnectionConfig:
             data.get("offlineAfter"),
             data.get("connectionPeriod"),  # not 100% accurate but close enough?
             # as above... although I think the original intention was for this timestamp
-            data.get("nextConnection"),
+            None,  # this is a seconds value in doover 1.0 but should be a timestamp in doover 2.0
         )
 
     def to_dict(self):
