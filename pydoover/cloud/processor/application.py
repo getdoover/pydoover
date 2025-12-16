@@ -320,9 +320,7 @@ class Application:
         next_online: datetime = None,
         offline_at: datetime = None,
     ):
-        if online_at:
-            online_at = online_at.replace(tzinfo=timezone.utc)
-        else:
+        if not online_at:
             online_at = datetime.now(tz=timezone.utc)
 
         # prefer the user's settings if they've set it.
