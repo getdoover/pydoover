@@ -133,7 +133,22 @@ class Application(ApplicationBase):
         log.info(f"Start Report Generation from {period_start} to {period_end}")
         s = time.perf_counter()
         
-        files = await self.generate(agent_ids, period_start, period_end)
+        try:
+            files = await self.generate(agent_ids, period_start, period_end)
+        except Exception as e:
+            log.error(f"Error generating report: {e}")
+            
+            self._report_metadata["logs"] = self.log_capture_string.getvalue()
+            
+            await self.api.update_message(
+                self.agent_id,
+                "reports",
+                self._report_id,
+                self._report_metadata,
+                organisation_id=self.agent_id,
+                files=files,
+            )
+            return
         
         if not isinstance(files, list):
             files = [files]
@@ -146,6 +161,9 @@ class Application(ApplicationBase):
 
         log.info("Uploading Report to Doover")
         s = time.perf_counter()
+        
+        self._report_metadata["logs"] = self.log_capture_string.getvalue()
+
         try:
             await self.api.update_message(
                 self.agent_id,
@@ -156,7 +174,18 @@ class Application(ApplicationBase):
                 files=files,
             )
         except Exception as e:
-            log.error(f"Error creating report message: {e}")
+            log.error(f"Error updating report message: {e}")
+            try:
+                self._report_metadata["status"] = "Failed"
+                await self.api.update_message(
+                    self.agent_id,
+                    "reports",
+                    self._report_id,
+                    self._report_metadata,
+                    organisation_id=self.agent_id,
+                )
+            except Exception as e:
+                log.error(f"Error updating report message without files: {e}")
             return
         log.info(f"Report Upload took {time.perf_counter() - s} seconds.")
 

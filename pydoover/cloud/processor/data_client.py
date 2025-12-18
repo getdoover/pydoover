@@ -72,7 +72,15 @@ class DooverData:
             method, endpoint, **kwargs, headers=headers
         ) as resp:
             resp.raise_for_status()
-            return await resp.json()
+            response = await resp.json()
+            if response is None:
+                log.debug(f"Response: {response}")
+                return None
+            if "error" in response:
+                log.error(f"Error response: {response['error']}")
+            else:
+                log.debug(f"Response: {response}")
+            return response
 
     async def get_channel(
         self, agent_id: int, channel_name: str, organisation_id: int = None
