@@ -82,6 +82,7 @@ class Client:
                 data_base_url = config.base_data_url
                 auth_server_url = config.auth_server_url
                 auth_server_client_id = config.auth_server_client_id
+                base_url = config.base_url
             else:
                 username = config.username
                 password = config.password
@@ -93,7 +94,7 @@ class Client:
             self.is_doover2 = config.is_doover2
 
         access_token = AccessToken(token, token_expires)
-        if is_doover2:
+        if self.is_doover2:
             refresh_token = RefreshToken(refresh_token, refresh_token_id)
             # cyclic imports
             from .client_v2 import Client as ClientV2

@@ -47,6 +47,7 @@ class Application:
         self.ui_manager: UIManager = None
         self._tag_values: dict[str, Any] = None
         self._connection_config: dict[str, Any] = None
+        self._record_tag_update: bool = True
 
     async def _setup(self, initial_payload: dict[str, Any]):
         self._publish_tags = False
@@ -254,7 +255,10 @@ class Application:
 
         if self._publish_tags:
             await self.api.publish_message(
-                self.agent_id, "tag_values", self._tag_values
+                self.agent_id,
+                "tag_values",
+                self._tag_values,
+                record_log=self._record_tag_update,
             )
 
         try:

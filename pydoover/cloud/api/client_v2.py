@@ -608,14 +608,16 @@ class Client:
                 datetime.now(timezone.utc) + timedelta(seconds=data["expires_in"]),
             )
             self.update_headers()
-            self.login_callback()
+            if self.login_callback:
+                self.login_callback()
         else:
             print(f"Failed to refresh access token: {resp.text}.")
             resp.raise_for_status()
 
     def login(self):
-        if self.access_token.expires_at and self.access_token.expires_at < datetime.now(
-            timezone.utc
+        if (
+            self.access_token.expires_at is None
+            or self.access_token.expires_at < datetime.now(timezone.utc)
         ):
             logging.info("Token expired, attempting to refresh token.")
             self.do_refresh_token()
