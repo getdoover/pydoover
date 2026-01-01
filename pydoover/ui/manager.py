@@ -543,7 +543,7 @@ class UIManager:
 
     async def record_activity_async(self, message: str):
         await self._publish_to_channel_async(
-            "activity_log",
+            "activity_logs",
             {
                 "action_string": message,
             },
