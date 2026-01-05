@@ -604,6 +604,7 @@ class UIManager:
                     self.client.agent_id,
                     channel_name,
                     data,
+                    timestamp=timestamp,
                 )
             return None
 
