@@ -158,27 +158,64 @@ class DooverData:
 
         return [Message.from_dict(m) for m in data]
 
+    async def update_aggregate(
+        self,
+        agent_id: int,
+        channel_name: str,
+        data: dict[str, Any],
+        files: list[tuple[str, bytes, str]] = None,
+        replace: bool = False,
+        organisation_id: int = None,
+    ):
+        if channel_name == self._invoking_channel_name:
+            raise RuntimeError("Cannot publish to the invoking channel.")
+
+        operation = "PUT" if replace else "PATCH"
+        url = f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/aggregate"
+
+        if files is not None:
+            if not isinstance(files, list):
+                files = [files]
+            form = aiohttp.FormData()
+            form.add_field(
+                "json_payload", json.dumps(data), content_type="application/json"
+            )
+            for i, (filename, data, content_type) in enumerate(files, start=1):
+                form.add_field(
+                    f"attachment-{i}",
+                    data,
+                    filename=filename,
+                    content_type=content_type,
+                )
+
+            return await self._request(
+                operation,
+                url,
+                data=form,
+                organisation_id=organisation_id,
+            )
+
+        return await self._request(
+            operation,
+            url,
+            data=data,
+            organisation_id=organisation_id,
+        )
+
     async def publish_message(
         self,
         agent_id: int,
         channel_name: str,
         message: dict | str,
         timestamp: datetime | None = None,
-        record_log: bool = True,
-        is_diff: bool = None,
         files: list[tuple[str, bytes, str]] = None,
         organisation_id: int = None,
     ):
         if channel_name == self._invoking_channel_name:
             raise RuntimeError("Cannot publish to the invoking channel.")
 
-        if is_diff is None:
-            is_diff = files is None
-
         payload: dict[str, Any] = {
             "data": message,
-            "record_log": record_log,
-            "is_diff": is_diff or (files is None),
         }
         if timestamp is not None:
             payload["ts"] = (
@@ -200,12 +237,7 @@ class DooverData:
                     content_type=content_type,
                 )
 
-            return await self._request(
-                "POST",
-                f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
-                data=form,
-                organisation_id=organisation_id,
-            )
+            payload = form
 
         return await self._request(
             "POST",
@@ -219,24 +251,15 @@ class DooverData:
         agent_id: int,
         channel_name: str,
         message_id: str,
-        message: dict | str,
-        timestamp: datetime | None = None,
-        record_log: bool = True,
+        data: dict | str,
         organisation_id: int = None,
         files: list[tuple[str, bytes, str]] = None,
+        replace: bool = True,
     ):
         if channel_name == self._invoking_channel_name:
             raise RuntimeError("Cannot update to the invoking channel.")
 
-        payload: dict[str, Any] = {
-            "data": message,
-            "record_log": record_log,
-            "is_diff": False,
-        }
-        if timestamp is not None:
-            payload["ts"] = (
-                int(timestamp.timestamp()) * 1000
-            )  # milliseconds since epoch
+        payload: dict[str, Any] = {"data": data}
 
         if files is not None:
             if not isinstance(files, list):
@@ -252,15 +275,10 @@ class DooverData:
                     filename=filename,
                     content_type=content_type,
                 )
-            return await self._request(
-                "PATCH",
-                f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
-                data=form,
-                organisation_id=organisation_id,
-            )
+            payload = form
 
         return await self._request(
-            "PATCH",
+            "PUT" if replace else "PATCH",
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
             data=payload,
             organisation_id=organisation_id,
@@ -324,11 +342,16 @@ class DooverData:
                 (offline_at - ping_at).total_seconds()
             )
 
-        return await self.publish_message(
+        # fixme: work out what to do here...
+        await self.publish_message(
             agent_id,
             "doover_connection",
             payload,
             organisation_id=organisation_id,
+        )
+
+        await self.update_aggregate(
+            agent_id, "doover_connection", payload, organisation_id=organisation_id
         )
 
     async def get_channel_message(

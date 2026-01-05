@@ -254,12 +254,18 @@ class Application:
         # fixme: publish UI if needed
 
         if self._publish_tags:
-            await self.api.publish_message(
+            await self.api.update_aggregate(
                 self.agent_id,
                 "tag_values",
                 self._tag_values,
-                record_log=self._record_tag_update,
             )
+
+            if self._record_tag_update:
+                await self.api.publish_message(
+                    self.agent_id,
+                    "tag_values",
+                    self._tag_values,
+                )
 
         try:
             await self.close()

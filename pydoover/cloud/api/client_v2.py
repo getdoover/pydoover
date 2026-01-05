@@ -380,28 +380,34 @@ class Client:
         if is_diff is None:
             is_diff = files is None
 
-        payload: dict[str, Any] = {
-            "data": message,
-            "record_log": record_log,
-            "is_diff": is_diff or (files is None),
-        }
+        if not isinstance(message, dict):
+            raise ValueError("message must be a dictionary")
+
         if timestamp is not None:
-            payload["ts"] = (
-                int(timestamp.timestamp()) * 1000
-            )  # milliseconds since epoch
+            raise RuntimeError("timestamps not supported in pydoover yet")
+            # payload["ts"] = (
+            #     int(timestamp.timestamp()) * 1000
+            # )  # milliseconds since epoch
+
+        if is_diff:
+            operation = "PATCH"
+        else:
+            operation = "PUT"
+
+        url = "/agents/{}/channels/{}/aggregate"
+        if record_log:
+            url += "?log_update=true"
 
         if files is not None:
             if not isinstance(files, list):
                 files = [files]
 
-            form_files = [("json_payload", json.dumps(payload))]
+            form_files = [("json_payload", json.dumps(message))]
             for i, (filename, data, content_type) in enumerate(files, start=1):
                 form_files.append((f"attachment-{i}", (filename, data, content_type)))
 
             return self.request(
-                Route(
-                    "POST", "/agents/{}/channels/{}/messages", agent_id, channel_name
-                ),
+                Route(operation, url, agent_id, channel_name),
                 # data=payload,
                 files=form_files,
                 data_url=True,
@@ -409,8 +415,8 @@ class Client:
             )
 
         return self.request(
-            Route("POST", "/agents/{}/channels/{}/messages", agent_id, channel_name),
-            json=payload,
+            Route(operation, url, agent_id, channel_name),
+            json=message,
             data_url=True,
             # organisation_id=organisation_id,
         )
