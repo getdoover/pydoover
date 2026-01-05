@@ -15,6 +15,7 @@ from .types import (
     ConnectionDetermination,
     Message,
     ConnectionType,
+    Aggregate,
 )
 
 log = logging.getLogger(__name__)
@@ -84,6 +85,13 @@ class DooverData:
             organisation_id=organisation_id,
         )
         return Channel.from_dict(data)
+
+    async def get_channel_aggregate(self, agent_id: int, channel_name: str):
+        data = await self._request(
+            "GET",
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/aggregate",
+        )
+        return Aggregate.from_dict(data)
 
     async def get_channel_messages(
         self,

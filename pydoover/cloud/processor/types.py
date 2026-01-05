@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import Any, Callable
 
@@ -102,11 +102,10 @@ class ConnectionConfig:
 
 
 class Message:
-    def __init__(self, id: int, author_id: int, data: dict, diff: dict, timestamp: int):
+    def __init__(self, id: int, author_id: int, data: dict, timestamp: int):
         self.id = id
         self.author_id = author_id
         self.data = data
-        self.diff = diff
         self.timestamp = timestamp
 
     @classmethod
@@ -115,7 +114,6 @@ class Message:
             data["id"],
             data.get("author_id"),
             data.get("data"),
-            data.get("diff"),
             data.get("timestamp"),
         )
 
@@ -124,9 +122,49 @@ class Message:
             "id": self.id,
             "author_id": self.author_id,
             "data": self.data,
-            "diff": self.diff,
             "timestamp": self.timestamp,
         }
+
+
+class Attachment:
+    #     pub filename: String,
+    #     pub content_type: Option<String>,
+    #     pub size: u64,
+    #     pub url: String,
+    def __init__(self, filename: str, content_type: str, size: int, url: str):
+        self.filename = filename
+        self.content_type = content_type
+        self.size = size
+        self.url = url
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]):
+        return cls(
+            payload["filename"],
+            payload.get("content_type"),
+            payload["size"],
+            payload["url"],
+        )
+
+
+class Aggregate:
+    def __init__(
+        self,
+        data: dict[str, Any],
+        attachments: list[Attachment],
+        last_updated: datetime | None,
+    ):
+        self.data: dict[str, Any] = data
+        self.attachments = attachments
+        self.last_updated: datetime | None = last_updated
+
+    @classmethod
+    def from_dict(cls, payload):
+        return cls(
+            payload["data"],
+            [Attachment.from_dict(a) for a in payload.get("attachments", [])],
+            payload.get("last_updated"),
+        )
 
 
 class Channel:
@@ -136,49 +174,41 @@ class Channel:
         name: str,
         owner_id: int,
         is_private: bool,
-        type_: str,
-        last_updated: int,
-        last_message: Message | None,
-        data: dict,
+        aggregate_schema: dict[str, Any],
+        message_schema: dict[str, Any],
+        aggregate: Aggregate,
     ):
         self.id = int(id)
         self.name = name
         self.owner_id = int(owner_id)
         self.is_private = is_private
-        self.type = type_
-        self.last_updated = last_updated or datetime.now(tz=timezone.utc).timestamp()
-        self.last_message = last_message
-        self.data = data
-        self.aggregate = data
+        self.aggregate_schema = aggregate_schema
+        self.message_schema = message_schema
+        self.aggregate = aggregate
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
         # #[derive(Serialize)]
         # pub struct Channel {
-        #     id: SnowflakeID,
         #     pub name: String,
         #     pub owner_id: SnowflakeID,
-        #     is_private: bool,
-        #     channel_type: ChannelType,
-        #     last_message: Option<LastMessage>,
-        #     data: Value,
+        #     pub is_private: bool,
+        #     pub aggregate_schema: Option<Value>,
+        #     pub message_schema: Option<Value>,
+        #     // pub last_updated: Option<u64>,
+        #     #[serde(skip_serializing_if = "Option::is_none")]
+        #     pub aggregate: Option<ChannelAggregate>,
+        #     #[serde(skip_serializing_if = "Option::is_none")]
+        #     pub daily_message_summaries: Option<Vec<ChannelMessageSummary>>,
         # }
-        try:
-            last_message = data["last_message"] and Message.from_dict(
-                data["last_message"]
-            )
-        except KeyError:
-            last_message = None
-
         return cls(
             data["id"],
             data["name"],
             data["owner_id"],
             data["is_private"],
-            data["channel_type"],
-            data.get("last_updated"),
-            last_message,
-            data["data"],
+            data["aggregate_schema"],
+            data["message_schema"],
+            Aggregate.from_dict(data["aggregate"]),
         )
 
 
@@ -186,15 +216,22 @@ class MessageCreateEvent:
     owner_id: int
     channel_name: str
     author_id: int
+    organisation_id: int
     message: Message
 
     def __init__(
-        self, owner_id: int, channel_name: str, author_id: int, message: Message
+        self,
+        owner_id: int,
+        channel_name: str,
+        author_id: int,
+        message: Message,
+        organisation_id: int,
     ):
         self.owner_id = owner_id
         self.channel_name = channel_name
         self.author_id = author_id
         self.message = message
+        self.organisation_id = organisation_id
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -203,6 +240,7 @@ class MessageCreateEvent:
             data["channel_name"],
             data["author_id"],
             Message.from_dict(data["message"]),
+            data["organisation_id"],
         )
 
 

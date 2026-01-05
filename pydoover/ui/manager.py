@@ -594,13 +594,18 @@ class UIManager:
             raise RuntimeError("Cannot push async with a Client object")
 
         elif getattr(self.client, "is_processor_v2", False):
-            return await self.client.publish_message(
+            await self.client.update_aggregate(
                 self.client.agent_id,
                 channel_name,
                 data,
-                timestamp=timestamp,
-                record_log=record_log,
             )
+            if record_log:
+                await self.client.publish_message(
+                    self.client.agent_id,
+                    channel_name,
+                    data,
+                )
+            return None
 
         return await self.client.publish_to_channel_async(
             channel_name, data, record_log=record_log, max_age=max_age
@@ -630,11 +635,15 @@ class UIManager:
         if isinstance(self.client, Client):
             raise RuntimeError("Cannot pull async with a Client object")
         elif getattr(self.client, "is_processor_v2", False):
-            ui_cmds = await self.client.get_channel(self.client.agent_id, "ui_cmds")
-            ui_state = await self.client.get_channel(self.client.agent_id, "ui_state")
+            ui_cmds = await self.client.get_channel_aggregate(
+                self.client.agent_id, "ui_cmds"
+            )
+            ui_state = await self.client.get_channel_aggregate(
+                self.client.agent_id, "ui_state"
+            )
 
-            ui_cmds_agg = ui_cmds.aggregate
-            ui_state_agg = ui_state.aggregate
+            ui_cmds_agg = ui_cmds.data
+            ui_state_agg = ui_state.data
         else:
             ui_cmds_agg = await self.client.get_channel_aggregate_async("ui_cmds")
             ui_state_agg = await self.client.get_channel_aggregate_async("ui_state")
