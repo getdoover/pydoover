@@ -101,6 +101,19 @@ class ConnectionConfig:
         )
 
 
+class ChannelID:
+    def __init__(self, agent_id: int, name: str):
+        self.agent_id = agent_id
+        self.name = name
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["agent_id"],
+            data["name"],
+        )
+
+
 class Message:
     def __init__(self, id: int, author_id: int, data: dict, timestamp: int):
         self.id = id
@@ -313,4 +326,37 @@ class ManualInvokeEvent:
         return cls(
             data["organisation_id"],
             data["payload"],
+        )
+
+
+class AggregateUpdateEvent:
+    # pub struct AggregateUpdatePayload {
+    #     pub author_id: SnowflakeID,
+    #     pub channel: ChannelID,
+    #     pub aggregate: ChannelAggregate,
+    #     pub request_data: ChannelAggregate,
+    #     pub organisation_id: SnowflakeID,
+    # }
+    def __init__(
+        self,
+        author_id: int,
+        channel: ChannelID,
+        aggregate: Aggregate,
+        request_data: Aggregate,
+        organisation_id: int,
+    ):
+        self.author_id = author_id
+        self.channel = channel
+        self.aggregate = aggregate
+        self.request_data = request_data
+        self.organisation_id = organisation_id
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["author_id"],
+            ChannelID.from_dict(data["channel"]),
+            Aggregate.from_dict(data["aggregate"]),
+            Aggregate.from_dict(data["request_data"]),
+            data["organisation_id"],
         )

@@ -16,6 +16,7 @@ from .types import (
     IngestionEndpointEvent,
     ConnectionConfig,
     ConnectionType,
+    AggregateUpdateEvent,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
@@ -138,6 +139,9 @@ class Application:
     async def on_message_create(self, event: MessageCreateEvent):
         pass
 
+    async def on_aggregate_update(self, event: AggregateUpdateEvent):
+        pass
+
     async def on_deployment(self, event: DeploymentEvent):
         pass
 
@@ -221,6 +225,9 @@ class Application:
             case "on_manual_invoke":
                 func = self.on_manual_invoke
                 payload = ManualInvokeEvent.from_dict(event["d"])
+            case "on_aggregate_update":
+                func = self.on_aggregate_update
+                payload = AggregateUpdateEvent.from_dict(event["d"])
 
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")
