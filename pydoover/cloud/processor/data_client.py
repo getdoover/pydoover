@@ -381,9 +381,14 @@ class DooverData:
         config: ConnectionConfig,
         organisation_id: int = None,
     ):
-        return await self.publish_message(
+        data = {"config": config.to_dict()}
+        await self.publish_message(
             agent_id,
             "doover_connection",
-            {"config": config.to_dict()},
+            data,
             organisation_id=organisation_id,
+        )
+
+        await self.update_aggregate(
+            agent_id, "doover_connection", data, organisation_id=organisation_id
         )
