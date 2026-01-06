@@ -247,7 +247,12 @@ class ConfigElement:
             payload["format"] = self.format
 
         if self._type is not None:
-            payload["type"] = self._type
+            if self.required:
+                payload["type"] = self._type
+            else:
+                payload["type"] = [self._type, "null"]
+
+        payload["x-required"] = self.required
 
         if self.description is not None:
             payload["description"] = self.description
@@ -367,7 +372,6 @@ class Boolean(ConfigElement):
 
     _type = "boolean"
     value: bool
-    
 
 
 class String(ConfigElement):
@@ -408,6 +412,7 @@ class String(ConfigElement):
 
         return res
 
+
 class DateTime(ConfigElement):
     """Represents a JSON Number type, for any numeric type. Internally represented as a float.
 
@@ -425,7 +430,7 @@ class DateTime(ConfigElement):
 
     _type = "string"
     value: str
-    
+
     def to_dict(self):
         res = super().to_dict()
         res["format"] = "date-time"
