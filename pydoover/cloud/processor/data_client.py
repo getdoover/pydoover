@@ -14,7 +14,6 @@ from .types import (
     ConnectionStatus,
     ConnectionDetermination,
     Message,
-    ConnectionType,
     Aggregate,
 )
 
@@ -314,9 +313,6 @@ class DooverData:
         online_at: datetime,
         connection_status: ConnectionStatus,
         determination: ConnectionDetermination,
-        connection_type: ConnectionType = None,
-        next_online: datetime = None,
-        offline_at: datetime = None,
         ping_at: datetime = None,
         user_agent: str = None,
         ip_address: str = None,
@@ -337,20 +333,9 @@ class DooverData:
                 "user_agent": user_agent,
                 "ip": ip_address,
             },
-            "config": {},
             "determination": determination.value,
         }
 
-        if connection_type:
-            payload["config"]["connection_type"] = connection_type.value
-        if next_online:
-            payload["config"]["next_wake_time"] = int(next_online.timestamp() * 1000)
-        if offline_at:
-            payload["config"]["offline_after"] = int(
-                (offline_at - ping_at).total_seconds()
-            )
-
-        # fixme: work out what to do here...
         await self.publish_message(
             agent_id,
             "doover_connection",
@@ -358,6 +343,17 @@ class DooverData:
             organisation_id=organisation_id,
         )
 
+        await self.update_aggregate(
+            agent_id, "doover_connection", payload, organisation_id=organisation_id
+        )
+
+    async def update_connection_config(
+        self, agent_id: int, config: ConnectionConfig, organisation_id: int = None
+    ):
+        payload = {"config": config.to_dict()}
+        await self.publish_message(
+            agent_id, "doover_connection", payload, organisation_id=organisation_id
+        )
         await self.update_aggregate(
             agent_id, "doover_connection", payload, organisation_id=organisation_id
         )
@@ -373,22 +369,4 @@ class DooverData:
             "GET",
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
             organisation_id=organisation_id,
-        )
-
-    async def update_connection_config(
-        self,
-        agent_id: int,
-        config: ConnectionConfig,
-        organisation_id: int = None,
-    ):
-        data = {"config": config.to_dict()}
-        await self.publish_message(
-            agent_id,
-            "doover_connection",
-            data,
-            organisation_id=organisation_id,
-        )
-
-        await self.update_aggregate(
-            agent_id, "doover_connection", data, organisation_id=organisation_id
         )

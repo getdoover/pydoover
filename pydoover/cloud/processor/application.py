@@ -15,7 +15,6 @@ from .types import (
     ScheduleEvent,
     IngestionEndpointEvent,
     ConnectionConfig,
-    ConnectionType,
     AggregateUpdateEvent,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
@@ -333,8 +332,6 @@ class Application:
         self,
         online_at: datetime = None,
         connection_status: ConnectionStatus = ConnectionStatus.periodic_unknown,
-        connection_type: ConnectionType = ConnectionType.periodic,
-        next_online: datetime = None,
         offline_at: datetime = None,
     ):
         if not online_at:
@@ -358,8 +355,5 @@ class Application:
             online_at,
             connection_status=connection_status,
             determination=determination,
-            connection_type=connection_type,
-            next_online=next_online,
-            offline_at=offline_at,
             user_agent=f"pydoover-processor,app_key={self.app_key}",
         )
