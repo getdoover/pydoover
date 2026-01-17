@@ -16,6 +16,7 @@ from .types import (
     IngestionEndpointEvent,
     ConnectionConfig,
     AggregateUpdateEvent,
+    DooverConnectionStatus,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
@@ -87,14 +88,20 @@ class Application:
         self.app_key = data.get("app_key", None)
         self._tag_values = data.get("tag_values", None)
 
-        if data.get("connection_data", None):
-            self._connection_config = data["connection_data"].get("config", {})
-            self.connection_config = ConnectionConfig.from_dict(self._connection_config)
-        else:
+        try:
+            connection_data = data["connection_data"]
+        except KeyError:
             # connection config isn't valid for org processors
             # but fresh-ly created devices also won't have connection config...
             self._connection_config = {}
             self.connection_config = None
+        else:
+            self._connection_config = connection_data.get("config", {})
+            self._connection_status = connection_data.get("status", {})
+            self.connection_config = ConnectionConfig.from_dict(self._connection_config)
+            self.connection_status = DooverConnectionStatus.from_dict(
+                self._connection_status
+            )
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)

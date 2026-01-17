@@ -101,6 +101,74 @@ class ConnectionConfig:
         )
 
 
+class DooverConnectionStatus:
+    # pub struct DooverConnectionStatus {
+    #     pub status: ConnectionStatus,
+    #     pub last_online: u64,
+    #     pub last_ping: u64,
+    #     #[serde(skip_serializing_if = "Option::is_none")]
+    #     pub user_agent: Option<String>,
+    #     #[serde(skip_serializing_if = "Option::is_none")]
+    #     pub ip: Option<String>,
+    #     #[serde(skip_serializing_if = "Option::is_none")]
+    #     pub latency_ms: Option<u64>,
+    # }
+    def __init__(
+        self,
+        status: ConnectionStatus,  # Or use an enum if you have ConnectionStatus defined
+        last_online: float,
+        last_ping: float,
+        user_agent: str | None = None,
+        ip: str | None = None,
+        latency_ms: int | None = None,
+    ):
+        self.status = status
+        self.last_online = last_online
+        self.last_ping = last_ping
+        self.user_agent = user_agent
+        self.ip = ip
+        self.latency_ms = latency_ms
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            ConnectionStatus(data.get("status")),
+            data.get("last_online"),
+            data.get("last_ping"),
+            data.get("user_agent"),
+            data.get("ip"),
+            data.get("latency_ms"),
+        )
+
+    def to_dict(self):
+        result = {
+            "status": self.status.value,
+            "last_online": self.last_online,
+            "last_ping": self.last_ping,
+        }
+        # Only include optional fields if they're not None (matching Rust's skip_serializing_if)
+        if self.user_agent is not None:
+            result["user_agent"] = self.user_agent
+        if self.ip is not None:
+            result["ip"] = self.ip
+        if self.latency_ms is not None:
+            result["latency_ms"] = self.latency_ms
+        return result
+
+    def __eq__(self, other):
+        if not isinstance(other, DooverConnectionStatus):
+            return False
+
+        return (
+            self.status == other.status
+            and self.last_online == other.last_online
+            and self.last_ping == other.last_ping
+            and self.user_agent == other.user_agent
+            and self.ip == other.ip
+            and self.latency_ms == other.latency_ms
+        )
+
+
 class ChannelID:
     def __init__(self, agent_id: int, name: str):
         self.agent_id = agent_id
