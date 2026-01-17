@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable
 
@@ -116,8 +116,8 @@ class DooverConnectionStatus:
     def __init__(
         self,
         status: ConnectionStatus,  # Or use an enum if you have ConnectionStatus defined
-        last_online: float,
-        last_ping: float,
+        last_online: datetime,
+        last_ping: datetime,
         user_agent: str | None = None,
         ip: str | None = None,
         latency_ms: int | None = None,
@@ -131,10 +131,13 @@ class DooverConnectionStatus:
 
     @classmethod
     def from_dict(cls, data):
+        last_ping = data.get("last_ping")
+        last_online = data.get("last_online")
         return cls(
             ConnectionStatus(data.get("status")),
-            data.get("last_online"),
-            data.get("last_ping"),
+            last_online
+            and datetime.fromtimestamp(last_online / 1000.0, tz=timezone.utc),
+            last_ping and datetime.fromtimestamp(last_ping / 1000.0, tz=timezone.utc),
             data.get("user_agent"),
             data.get("ip"),
             data.get("latency_ms"),
@@ -143,8 +146,8 @@ class DooverConnectionStatus:
     def to_dict(self):
         result = {
             "status": self.status.value,
-            "last_online": self.last_online,
-            "last_ping": self.last_ping,
+            "last_online": self.last_online.timestamp() * 1000,
+            "last_ping": self.last_ping.timestamp() * 1000,
         }
         # Only include optional fields if they're not None (matching Rust's skip_serializing_if)
         if self.user_agent is not None:
