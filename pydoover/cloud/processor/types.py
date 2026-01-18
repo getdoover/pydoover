@@ -60,8 +60,9 @@ class ConnectionConfig:
 
     @classmethod
     def from_dict(cls, data):
+        connection_type = data.get("connection_type")
         return cls(
-            ConnectionType(data.get("connection_type")),
+            connection_type and ConnectionType(connection_type),
             data.get("expected_interval"),
             data.get("offline_after"),
             data.get("sleep_time"),
@@ -81,7 +82,7 @@ class ConnectionConfig:
 
     def to_dict(self):
         return {
-            "connection_type": self.connection_type.value,
+            "connection_type": self.connection_type and self.connection_type.value,
             "expected_interval": self.expected_interval,
             "offline_after": self.offline_after,
             "sleep_time": self.sleep_time,
