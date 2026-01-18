@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -52,28 +53,92 @@ class DooverData:
 
     async def _request(
         self,
-        method,
-        endpoint,
+        method: str,
+        endpoint: str,
         data: dict | str | aiohttp.FormData | None = None,
-        organisation_id: int = None,
+        organisation_id: int | None = None,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
     ):
         org_id = organisation_id or self.organisation_id
-        if org_id:
-            headers = {"X-Doover-Organisation": str(org_id)}
-        else:
-            headers = {}
+        headers = {"X-Doover-Organisation": str(org_id)} if org_id else {}
 
-        if isinstance(data, aiohttp.FormData):
-            kwargs = {"data": data}
-        else:
-            kwargs = {"json": data}
+        kwargs = (
+            {"data": data} if isinstance(data, aiohttp.FormData) else {"json": data}
+        )
 
-        log.debug(f"request {method} {endpoint}")
-        async with self.session.request(
-            method, endpoint, **kwargs, headers=headers
-        ) as resp:
-            resp.raise_for_status()
-            return await resp.json()
+        log.debug(f"Starting request: {method} {endpoint} (org_id={org_id})")
+
+        for attempt in range(max_retries):
+            try:
+                async with self.session.request(
+                    method, endpoint, **kwargs, headers=headers
+                ) as resp:
+                    status = resp.status
+
+                    log.debug(
+                        f"Response received: {method} {endpoint} "
+                        f"status={status} attempt={attempt + 1}/{max_retries}"
+                    )
+
+                    if status >= 500:
+                        response_text = await resp.text()
+                        log.info(
+                            f"Server error {status} on {method} {endpoint}: "
+                            f"{response_text[:200]} attempt={attempt + 1}/{max_retries}"
+                        )
+                        if attempt == max_retries - 1:
+                            resp.raise_for_status()
+                        continue  # Retry
+
+                    elif 400 <= status < 500:
+                        # Client errors - don't retry
+                        response_text = await resp.text()
+                        log.error(
+                            f"Client error {status} on {method} {endpoint}: "
+                            f"{response_text[:200]}"
+                        )
+                        resp.raise_for_status()
+
+                    elif 200 <= status < 300:
+                        # Success
+                        result = await resp.json()
+                        log.debug(
+                            f"Request successful: {method} {endpoint} "
+                            f"status={status} attempt={attempt + 1}"
+                        )
+                        return result
+
+                    else:
+                        log.warning(
+                            f"Unexpected status {status} on {method} {endpoint}"
+                        )
+                        resp.raise_for_status()
+
+            except aiohttp.ClientError as e:
+                log.info(
+                    f"Client error on {method} {endpoint}: "
+                    f"{str(e)} attempt={attempt + 1}/{max_retries}",
+                    exc_info=e,
+                )
+
+            except asyncio.TimeoutError:
+                log.info(
+                    f"Timeout on {method} {endpoint} attempt={attempt + 1}/{max_retries}"
+                )
+
+            except Exception as e:
+                log.info(
+                    f"Unexpected error on {method} {endpoint}: {str(e)} attempt={attempt + 1}/{max_retries}",
+                    exc_info=e,
+                )
+
+            if attempt < max_retries - 1:
+                delay = retry_delay * (2**attempt)
+                log.info(f"Retrying {method} {endpoint} in {delay}s...")
+                await asyncio.sleep(delay)
+
+        raise
 
     async def get_channel(
         self, agent_id: int, channel_name: str, organisation_id: int = None
