@@ -109,7 +109,7 @@ class Schema:
             try:
                 elem = self.__element_map[name]
             except KeyError:
-                log.info(f"Skipping unknown config key {name} ({value})")
+                log.debug(f"Skipping unknown config key {name} ({value})")
             else:
                 elem.load_data(value)
 
