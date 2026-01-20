@@ -255,7 +255,6 @@ class Aggregate:
 class Channel:
     def __init__(
         self,
-        id: int,
         name: str,
         owner_id: int,
         is_private: bool,
@@ -263,7 +262,6 @@ class Channel:
         message_schema: dict[str, Any],
         aggregate: Aggregate,
     ):
-        self.id = int(id)
         self.name = name
         self.owner_id = int(owner_id)
         self.is_private = is_private
@@ -287,7 +285,6 @@ class Channel:
         #     pub daily_message_summaries: Option<Vec<ChannelMessageSummary>>,
         # }
         return cls(
-            data["id"],
             data["name"],
             data["owner_id"],
             data["is_private"],
