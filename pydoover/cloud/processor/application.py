@@ -96,12 +96,20 @@ class Application:
             self._connection_config = {}
             self.connection_config = None
         else:
-            self._connection_config = connection_data.get("config", {})
-            self._connection_status = connection_data.get("status", {})
-            self.connection_config = ConnectionConfig.from_dict(self._connection_config)
-            self.connection_status = DooverConnectionStatus.from_dict(
-                self._connection_status
-            )
+            if connection_data is None:
+                # bit of a weird case? we probably shouldn't give any connection data, not a null value
+                # in this case maybe we don't need the try/catch?
+                self._connection_config = {}
+                self.connection_config = None
+            else:
+                self._connection_config = connection_data.get("config", {})
+                self._connection_status = connection_data.get("status", {})
+                self.connection_config = ConnectionConfig.from_dict(
+                    self._connection_config
+                )
+                self.connection_status = DooverConnectionStatus.from_dict(
+                    self._connection_status
+                )
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
