@@ -243,6 +243,8 @@ class Application:
                 func = self.on_aggregate_update
                 payload = AggregateUpdateEvent.from_dict(event["d"])
 
+        self._payload = payload
+
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")
             return
