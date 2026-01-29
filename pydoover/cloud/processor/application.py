@@ -96,8 +96,8 @@ class Application:
             self._connection_config = {}
             self.connection_config = None
         else:
-            if connection_data is None:
-                # bit of a weird case? we probably shouldn't give any connection data, not a null value
+            if not connection_data:
+                # bit of a weird case? we probably shouldn't give any connection data, not a null / empty dict value
                 # in this case maybe we don't need the try/catch?
                 self._connection_config = {}
                 self.connection_config = None
