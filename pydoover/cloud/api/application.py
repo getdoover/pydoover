@@ -70,6 +70,8 @@ class Application:
         run_command: str | None,
         config_schema: dict[str, Any],
         staging_config: dict[str, Any],
+        icon_url: str | None,
+        app_key: str | None,
         app_base: Path,
     ):
         self.id = id
@@ -97,6 +99,8 @@ class Application:
         self.repo_branch = repo_branch or "main"
 
         self.container_registry_profile = container_registry_profile or Object(id=None)
+        self.icon_url = icon_url
+        self.app_key = app_key
         self.image_name = image_name
         self.build_args = build_args
 
@@ -147,6 +151,8 @@ class Application:
             data.get("run_command"),
             data.get("config_schema"),
             data.get("staging_config", {}),
+            data.get("icon_url", None),
+            data.get("app_key", None),
             app_base,
         )
 
@@ -176,6 +182,8 @@ class Application:
             "image_name": self.image_name,
             "lambda_config": self.lambda_config,
             "config_schema": self.config_schema,
+            "icon_url": self.icon_url,
+            "app_key": self.app_key,
         }
 
         if include_deployment_data:
