@@ -48,6 +48,7 @@ class Element:
     """
 
     type = "uiElement"
+    __global_position_counter = 50
 
     def __init__(
         self,
@@ -61,7 +62,7 @@ class Element:
         graphic: str = None,  # not sure of type
         layout: str = None,  # not sure of type
         component_url: str = None,  # not sure of type
-        position: Optional[int] = None,  # 100,
+        position: int = None,  # 100,
         conditions: Optional[dict] = None,
         hidden: bool = False,
         **kwargs,
@@ -78,7 +79,13 @@ class Element:
         self.graphic = graphic
         self.layout = layout
         self.component_url = component_url
-        self.position = position
+
+        Element.__global_position_counter += 1
+        if position is None:
+            self.position = Element.__global_position_counter
+        else:
+            self.position = position
+
         self.conditions = conditions
         self.hidden = hidden
 
@@ -337,4 +344,3 @@ class Multiplot(Element):
                 result["earliestDataDate"] = self.earliest_data_time
 
         return result
-

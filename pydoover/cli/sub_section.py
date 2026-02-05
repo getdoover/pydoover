@@ -70,14 +70,18 @@ class SubSection:
                 )
 
                 # Run the method on the interface class
-                result = func_to_run(
-                    object_instance,
-                    **{
-                        k: v
-                        for k, v in kwargs.items()
-                        if k in inspect.signature(func_to_run).parameters.keys()
-                    },
-                )
+                try:
+                    result = func_to_run(
+                        object_instance,
+                        **{
+                            k: v
+                            for k, v in kwargs.items()
+                            if k in inspect.signature(func_to_run).parameters.keys()
+                        },
+                    )
+                except Exception as e:
+                    print(f"An error occurred while running {func_to_run.__name__}: {e}")
+                    return
 
                 if result is not None:
                     print(result)

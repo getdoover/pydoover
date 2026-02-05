@@ -325,6 +325,8 @@ class Application:
         Waits for the necessary amount of time to maintain a consistent interval
         of `target_time` seconds between calls to this method.
         """
+        if target_time is None or target_time <= 0:
+            return
 
         current_time = time.time()
         if self._last_interval_time is None:
@@ -921,8 +923,12 @@ class Application:
         self.ui_manager.register_callbacks(self)
         self.ui_manager.set_display_name(self.app_display_name)
         self.device_agent.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
-        await self.ui_manager.clear_ui_async()
 
+        if self.test_mode:
+            ## Quit out of setup if we are in test mode.
+            return
+
+        await self.ui_manager.clear_ui_async()
         try:
             # wait for tag values to sync from DDA - but only for 10sec.
             await asyncio.wait_for(self._tag_ready.wait(), timeout=10.0)
