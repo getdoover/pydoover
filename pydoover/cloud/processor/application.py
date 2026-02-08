@@ -300,7 +300,7 @@ class Application:
 
         end_time = time.time()
         log.info(
-            f"Finished at {end_time}. Process took {end_time - start_time} seconds."
+            f"Finished at {end_time}. Process took {end_time - start_time} seconds. result: {result}"
         )
 
         return result
