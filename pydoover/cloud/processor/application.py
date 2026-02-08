@@ -264,12 +264,13 @@ class Application:
             # not valid for org apps
             await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
 
+        result = None
         if func is None:
             log.error(f"Unknown event type: {event['op']}")
         else:
             try:
                 s = time.perf_counter()
-                await func(payload)
+                result = await func(payload)
                 log.info(f"Processing event took {time.perf_counter() - s} seconds.")
             except Exception as e:
                 log.error(f"Error attempting to process event: {e} ", exc_info=e)
@@ -301,6 +302,8 @@ class Application:
         log.info(
             f"Finished at {end_time}. Process took {end_time - start_time} seconds."
         )
+
+        return result
 
     async def fetch_channel(self, channel_name: str) -> Channel:
         """Helper method to fetch a channel by its name.
