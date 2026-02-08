@@ -49,6 +49,10 @@ class DooverData:
     async def close(self):
         if self.session:
             await self.session.close()
+            # Allow the event loop to process the underlying connection
+            # cleanup (SSL transports, connectors, etc.) that session.close()
+            # schedules but doesn't complete synchronously.
+            await asyncio.sleep(0.05)
             self.session = None
 
     async def _request(
