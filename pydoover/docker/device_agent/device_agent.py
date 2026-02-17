@@ -12,6 +12,7 @@ from typing import Any
 import grpc
 
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
+from .models import TurnCredentials, File, Message
 from ..grpc_interface import GRPCInterface
 from ...utils import apply_diff, call_maybe_async, maybe_async, maybe_load_json
 from ...cli.decorators import command as cli_command
@@ -501,6 +502,48 @@ class DeviceAgentInterface(GRPCInterface):
             "GetTempAPIToken", device_agent_pb2.TempAPITokenRequest()
         )
         return self._parse_get_token_response(resp)
+
+    async def get_turn_credentials(
+        self,
+    ) -> TurnCredentials:
+        resp = await self.make_request_async(
+            "GetTurnCredentials",
+            device_agent_pb2.TurnCredentialRequest(
+                header=device_agent_pb2.RequestHeader(app_id=self.app_key)
+            ),
+        )
+        return TurnCredentials.from_proto(resp)
+
+    async def create_message(
+        self, channel_name: str, data: dict[str, Any], files: list[File]
+    ) -> int:
+        req = device_agent_pb2.CreateMessageRequest(
+            header=device_agent_pb2.RequestHeader(app_id=self.app_key),
+            channel_name=channel_name,
+            data=data,
+            files=[file.to_proto() for file in files],
+        )
+        resp = await self.make_request_async("CreateMessage", req)
+        return resp.message_id
+
+    async def update_message(
+        self,
+        channel_name: str,
+        message_id: int,
+        data: dict[str, Any],
+        files: list[File],
+        clear_attachments: bool = False,
+    ) -> Message:
+        req = device_agent_pb2.UpdateMessageRequest(
+            header=device_agent_pb2.RequestHeader(app_id=self.app_key),
+            channel_name=channel_name,
+            message_id=message_id,
+            data=data,
+            files=[file.to_proto() for file in files],
+            clear_attachments=clear_attachments,
+        )
+        resp = await self.make_request_async("UpdateMessage", req)
+        return Message.from_proto(resp)
 
     async def close(self):
         for listener in self._listeners.values():

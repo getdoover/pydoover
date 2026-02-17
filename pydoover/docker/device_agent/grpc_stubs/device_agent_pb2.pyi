@@ -1,3 +1,4 @@
+from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -238,3 +239,91 @@ class TurnCredentialResponse(_message.Message):
     expires_at: int
     uris: _containers.RepeatedScalarFieldContainer[str]
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., username: _Optional[str] = ..., credential: _Optional[str] = ..., ttl: _Optional[int] = ..., expires_at: _Optional[int] = ..., uris: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class File(_message.Message):
+    __slots__ = ("filename", "content_type", "data", "size_bytes")
+    FILENAME_FIELD_NUMBER: _ClassVar[int]
+    CONTENT_TYPE_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    SIZE_BYTES_FIELD_NUMBER: _ClassVar[int]
+    filename: str
+    content_type: str
+    data: bytes
+    size_bytes: int
+    def __init__(self, filename: _Optional[str] = ..., content_type: _Optional[str] = ..., data: _Optional[bytes] = ..., size_bytes: _Optional[int] = ...) -> None: ...
+
+class Attachment(_message.Message):
+    __slots__ = ("filename", "content_type", "size_bytes", "url")
+    FILENAME_FIELD_NUMBER: _ClassVar[int]
+    CONTENT_TYPE_FIELD_NUMBER: _ClassVar[int]
+    SIZE_BYTES_FIELD_NUMBER: _ClassVar[int]
+    URL_FIELD_NUMBER: _ClassVar[int]
+    filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    def __init__(self, filename: _Optional[str] = ..., content_type: _Optional[str] = ..., size_bytes: _Optional[int] = ..., url: _Optional[str] = ...) -> None: ...
+
+class ChannelID(_message.Message):
+    __slots__ = ("agent_id", "name")
+    AGENT_ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    agent_id: int
+    name: str
+    def __init__(self, agent_id: _Optional[int] = ..., name: _Optional[str] = ...) -> None: ...
+
+class Message(_message.Message):
+    __slots__ = ("message_id", "author_id", "channel", "data", "attachments")
+    MESSAGE_ID_FIELD_NUMBER: _ClassVar[int]
+    AUTHOR_ID_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    ATTACHMENTS_FIELD_NUMBER: _ClassVar[int]
+    message_id: int
+    author_id: int
+    channel: ChannelID
+    data: _struct_pb2.Struct
+    attachments: _containers.RepeatedCompositeFieldContainer[Attachment]
+    def __init__(self, message_id: _Optional[int] = ..., author_id: _Optional[int] = ..., channel: _Optional[_Union[ChannelID, _Mapping]] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[_Union[Attachment, _Mapping]]] = ...) -> None: ...
+
+class CreateMessageRequest(_message.Message):
+    __slots__ = ("header", "channel_name", "data", "files")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    FILES_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    channel_name: str
+    data: _struct_pb2.Struct
+    files: _containers.RepeatedCompositeFieldContainer[File]
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ...) -> None: ...
+
+class CreateMessageResponse(_message.Message):
+    __slots__ = ("response_header", "message_id")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_ID_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    message_id: str
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message_id: _Optional[str] = ...) -> None: ...
+
+class UpdateMessageRequest(_message.Message):
+    __slots__ = ("header", "channel_name", "message_id", "data", "files", "clear_attachments")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_ID_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    FILES_FIELD_NUMBER: _ClassVar[int]
+    CLEAR_ATTACHMENTS_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    channel_name: str
+    message_id: str
+    data: _struct_pb2.Struct
+    files: _containers.RepeatedCompositeFieldContainer[File]
+    clear_attachments: bool
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., message_id: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ...) -> None: ...
+
+class UpdateMessageResponse(_message.Message):
+    __slots__ = ("response_header",)
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ...) -> None: ...
