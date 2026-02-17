@@ -712,11 +712,10 @@ wheels = [
 
 [[package]]
 name = "pydoover"
-version = "0.4.16a10"
+version = "0.4.18"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
-    { name = "croniter" },
     { name = "requests" },
 ]
 
@@ -726,6 +725,7 @@ grpc = [
     { name = "protobuf" },
 ]
 reports = [
+    { name = "croniter" },
     { name = "pytz" },
     { name = "tzlocal" },
     { name = "xlsxwriter" },
@@ -750,7 +750,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.12.13" },
-    { name = "croniter", specifier = ">=6.0.0" },
+    { name = "croniter", marker = "extra == 'reports'", specifier = ">=6.0.0" },
     { name = "grpcio", marker = "extra == 'grpc'", specifier = "==1.65.1" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.23.0" },
     { name = "protobuf", marker = "extra == 'grpc'", specifier = "==5.28.2" },

@@ -214,3 +214,27 @@ class TempAPITokenResponse(_message.Message):
     valid_until: str
     endpoint: str
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., token: _Optional[str] = ..., valid_until: _Optional[str] = ..., endpoint: _Optional[str] = ...) -> None: ...
+
+class TurnCredentialRequest(_message.Message):
+    __slots__ = ("header", "camera_name")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CAMERA_NAME_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    camera_name: str
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., camera_name: _Optional[str] = ...) -> None: ...
+
+class TurnCredentialResponse(_message.Message):
+    __slots__ = ("response_header", "username", "credential", "ttl", "expires_at", "uris")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    USERNAME_FIELD_NUMBER: _ClassVar[int]
+    CREDENTIAL_FIELD_NUMBER: _ClassVar[int]
+    TTL_FIELD_NUMBER: _ClassVar[int]
+    EXPIRES_AT_FIELD_NUMBER: _ClassVar[int]
+    URIS_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    username: str
+    credential: str
+    ttl: int
+    expires_at: int
+    uris: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., username: _Optional[str] = ..., credential: _Optional[str] = ..., ttl: _Optional[int] = ..., expires_at: _Optional[int] = ..., uris: _Optional[_Iterable[str]] = ...) -> None: ...

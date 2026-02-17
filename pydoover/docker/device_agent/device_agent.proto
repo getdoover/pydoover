@@ -13,6 +13,7 @@ service deviceAgent {
     rpc WriteToChannel (ChannelWriteRequest) returns (ChannelWriteResponse) {}
     rpc GetDebugInfo (DebugInfoRequest) returns (DebugInfoResponse) {}
     rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
+    rpc GetTurnCredentials (TurnCredentialRequest) returns (TurnCredentialResponse) {}
 }
 
 message RequestHeader {
@@ -139,4 +140,18 @@ message TempAPITokenResponse {
     string token = 2;
     string valid_until = 3;
     string endpoint = 4;
+}
+
+message TurnCredentialRequest {
+    RequestHeader header = 1;
+    string camera_name = 2;
+}
+
+message TurnCredentialResponse {
+    ResponseHeader response_header = 1;
+    string username = 2;
+    string credential = 3;
+    uint64 ttl = 4;
+    uint64 expires_at = 5;
+    repeated string uris = 6;
 }
