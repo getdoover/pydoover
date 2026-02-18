@@ -224,21 +224,27 @@ class TurnCredentialRequest(_message.Message):
     camera_name: str
     def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., camera_name: _Optional[str] = ...) -> None: ...
 
-class TurnCredentialResponse(_message.Message):
-    __slots__ = ("response_header", "username", "credential", "ttl", "expires_at", "uris")
-    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+class TurnCredential(_message.Message):
+    __slots__ = ("username", "credential", "ttl", "expires_at", "uris")
     USERNAME_FIELD_NUMBER: _ClassVar[int]
     CREDENTIAL_FIELD_NUMBER: _ClassVar[int]
     TTL_FIELD_NUMBER: _ClassVar[int]
     EXPIRES_AT_FIELD_NUMBER: _ClassVar[int]
     URIS_FIELD_NUMBER: _ClassVar[int]
-    response_header: ResponseHeader
     username: str
     credential: str
     ttl: int
     expires_at: int
     uris: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., username: _Optional[str] = ..., credential: _Optional[str] = ..., ttl: _Optional[int] = ..., expires_at: _Optional[int] = ..., uris: _Optional[_Iterable[str]] = ...) -> None: ...
+    def __init__(self, username: _Optional[str] = ..., credential: _Optional[str] = ..., ttl: _Optional[int] = ..., expires_at: _Optional[int] = ..., uris: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class TurnCredentialResponse(_message.Message):
+    __slots__ = ("response_header", "turn_credential")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    TURN_CREDENTIAL_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    turn_credential: TurnCredential
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., turn_credential: _Optional[_Union[TurnCredential, _Mapping]] = ...) -> None: ...
 
 class File(_message.Message):
     __slots__ = ("filename", "content_type", "data", "size_bytes")
@@ -307,23 +313,27 @@ class CreateMessageResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message_id: _Optional[str] = ...) -> None: ...
 
 class UpdateMessageRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "message_id", "data", "files", "clear_attachments")
+    __slots__ = ("header", "channel_name", "message_id", "data", "files", "clear_attachments", "replace_data")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_ID_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
     FILES_FIELD_NUMBER: _ClassVar[int]
     CLEAR_ATTACHMENTS_FIELD_NUMBER: _ClassVar[int]
+    REPLACE_DATA_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     message_id: str
     data: _struct_pb2.Struct
     files: _containers.RepeatedCompositeFieldContainer[File]
     clear_attachments: bool
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., message_id: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ...) -> None: ...
+    replace_data: bool
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., message_id: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ..., replace_data: bool = ...) -> None: ...
 
 class UpdateMessageResponse(_message.Message):
-    __slots__ = ("response_header",)
+    __slots__ = ("response_header", "message")
     RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
     response_header: ResponseHeader
-    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ...) -> None: ...
+    message: Message
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message: _Optional[_Union[Message, _Mapping]] = ...) -> None: ...

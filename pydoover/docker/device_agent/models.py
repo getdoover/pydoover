@@ -6,7 +6,11 @@ from .grpc_stubs.device_agent_pb2 import (
     Attachment as ProtoAttachment,
     Message as ProtoMessage,
     ChannelID as ProtoChannelID,
+    TurnCredential as ProtoTurnCredential,
 )
+
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Struct
 
 
 class Attachment:
@@ -32,6 +36,14 @@ class Attachment:
             response.content_type,
             response.size_bytes,
             response.url,
+        )
+
+    def to_proto(self):
+        return ProtoAttachment(
+            filename=self.filename,
+            content_type=self.content_type,
+            size_bytes=self.size,
+            url=self.url,
         )
 
 
@@ -79,6 +91,12 @@ class ChannelID:
             response.name,
         )
 
+    def to_proto(self):
+        return ProtoChannelID(
+            agent_id=self.agent_id,
+            name=self.name,
+        )
+
 
 class Message:
     def __init__(
@@ -115,8 +133,20 @@ class Message:
             [Attachment.from_proto(a) for a in response.attachments],
         )
 
+    def to_proto(self):
+        data = Struct()
+        json_format.ParseDict(self.data, data)
 
-class TurnCredentials:
+        return ProtoMessage(
+            message_id=self.id,
+            author_id=self.author_id,
+            channel=self.channel.to_proto(),
+            data=data,
+            attachments=[a.to_proto() for a in self.attachments],
+        )
+
+
+class TurnCredential:
     # pub struct TurnTokenResponse {
     #     username: String,
     #     credential: String,
@@ -145,10 +175,20 @@ class TurnCredentials:
 
     @classmethod
     def from_proto(cls, response: TurnCredentialResponse):
+        creds = response.turn_credential
         return cls(
-            response.username,
-            response.credential,
-            response.ttl,
-            response.expires_at,
-            list(response.uris),
+            creds.username,
+            creds.credential,
+            creds.ttl,
+            creds.expires_at,
+            list(creds.uris),
+        )
+
+    def to_proto(self):
+        return ProtoTurnCredential(
+            username=self.username,
+            credential=self.credential,
+            ttl=self.ttl,
+            expires_at=self.expires_at,
+            uris=self.uris,
         )

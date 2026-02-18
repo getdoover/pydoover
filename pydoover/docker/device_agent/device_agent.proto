@@ -151,13 +151,17 @@ message TurnCredentialRequest {
   string camera_name = 2;
 }
 
+message TurnCredential {
+  string username = 1;
+  string credential = 2;
+  uint64 ttl = 3;
+  uint64 expires_at = 4;
+  repeated string uris = 5;
+}
+
 message TurnCredentialResponse {
   ResponseHeader response_header = 1;
-  string username = 2;
-  string credential = 3;
-  uint64 ttl = 4;
-  uint64 expires_at = 5;
-  repeated string uris = 6;
+  TurnCredential turn_credential = 2;
 }
 
 message File {
@@ -208,8 +212,10 @@ message UpdateMessageRequest {
   google.protobuf.Struct data = 4;
   repeated File files = 5;
   optional bool clear_attachments = 6;
+  optional bool replace_data = 7;
 }
 
 message UpdateMessageResponse {
   ResponseHeader response_header = 1;
+  Message message = 2;
 }
