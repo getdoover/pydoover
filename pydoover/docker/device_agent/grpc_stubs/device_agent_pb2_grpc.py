@@ -70,8 +70,8 @@ class deviceAgentStub(object):
                 request_serializer=grpc__stubs_dot_device__agent__pb2.TempAPITokenRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_device__agent__pb2.TempAPITokenResponse.FromString,
                 _registered_method=True)
-        self.GetTurnCredentials = channel.unary_unary(
-                '/device_agent.deviceAgent/GetTurnCredentials',
+        self.GetTurnCredential = channel.unary_unary(
+                '/device_agent.deviceAgent/GetTurnCredential',
                 request_serializer=grpc__stubs_dot_device__agent__pb2.TurnCredentialRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_device__agent__pb2.TurnCredentialResponse.FromString,
                 _registered_method=True)
@@ -127,7 +127,7 @@ class deviceAgentServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetTurnCredentials(self, request, context):
+    def GetTurnCredential(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -178,8 +178,8 @@ def add_deviceAgentServicer_to_server(servicer, server):
                     request_deserializer=grpc__stubs_dot_device__agent__pb2.TempAPITokenRequest.FromString,
                     response_serializer=grpc__stubs_dot_device__agent__pb2.TempAPITokenResponse.SerializeToString,
             ),
-            'GetTurnCredentials': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetTurnCredentials,
+            'GetTurnCredential': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTurnCredential,
                     request_deserializer=grpc__stubs_dot_device__agent__pb2.TurnCredentialRequest.FromString,
                     response_serializer=grpc__stubs_dot_device__agent__pb2.TurnCredentialResponse.SerializeToString,
             ),
@@ -368,7 +368,7 @@ class deviceAgent(object):
             _registered_method=True)
 
     @staticmethod
-    def GetTurnCredentials(request,
+    def GetTurnCredential(request,
             target,
             options=(),
             channel_credentials=None,
@@ -381,7 +381,7 @@ class deviceAgent(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/device_agent.deviceAgent/GetTurnCredentials',
+            '/device_agent.deviceAgent/GetTurnCredential',
             grpc__stubs_dot_device__agent__pb2.TurnCredentialRequest.SerializeToString,
             grpc__stubs_dot_device__agent__pb2.TurnCredentialResponse.FromString,
             options,

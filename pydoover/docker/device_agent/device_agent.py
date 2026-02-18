@@ -503,7 +503,7 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return self._parse_get_token_response(resp)
 
-    async def get_turn_credentials(
+    async def get_turn_credential(
         self,
     ) -> TurnCredential:
         resp = await self.make_request_async(

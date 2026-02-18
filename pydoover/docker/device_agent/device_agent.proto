@@ -15,7 +15,7 @@ service deviceAgent {
   rpc WriteToChannel (ChannelWriteRequest) returns (ChannelWriteResponse) {}
   rpc GetDebugInfo (DebugInfoRequest) returns (DebugInfoResponse) {}
   rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
-  rpc GetTurnCredentials (TurnCredentialRequest) returns (TurnCredentialResponse) {}
+  rpc GetTurnCredential (TurnCredentialRequest) returns (TurnCredentialResponse) {}
   rpc CreateMessage (CreateMessageRequest) returns (CreateMessageResponse) {}
   rpc UpdateMessage (UpdateMessageRequest) returns (UpdateMessageResponse) {}
 }
