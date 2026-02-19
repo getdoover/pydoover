@@ -1,5 +1,7 @@
 from typing import Any
 
+from google.protobuf.json_format import MessageToDict
+
 from .grpc_stubs.device_agent_pb2 import (
     TurnCredentialResponse,
     File as ProtoFile,
@@ -129,7 +131,7 @@ class Message:
             response.message_id,
             response.author_id,
             ChannelID.from_proto(response.channel),
-            response.data.MessageToDict(),
+            MessageToDict(response.data),
             [Attachment.from_proto(a) for a in response.attachments],
         )
 

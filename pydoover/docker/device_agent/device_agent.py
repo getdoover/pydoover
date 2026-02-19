@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 import grpc
+from google.protobuf.json_format import MessageToDict
 
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
 from .models import TurnCredential, File, Message
@@ -242,9 +243,13 @@ class DeviceAgentInterface(GRPCInterface):
 
                         match response.event_name:
                             case "MessageCreate":
-                                yield MessageCreateEvent.from_dict(response.data)
+                                yield MessageCreateEvent.from_dict(
+                                    MessageToDict(response.data)
+                                )
                             case "AggregateUpdate":
-                                yield AggregateUpdateEvent.from_dict(response.data)
+                                yield AggregateUpdateEvent.from_dict(
+                                    MessageToDict(response.data)
+                                )
 
                     except StopAsyncIteration:
                         log.debug("Channel stream ended.")
