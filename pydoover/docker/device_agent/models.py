@@ -148,6 +148,32 @@ class Message:
         )
 
 
+class MessageCreateEvent:
+    # #[derive(Serialize, Event)]
+    # pub struct MessageCreate {
+    #     pub id: Option<SnowflakeID>,
+    #     pub author_id: SnowflakeID,
+    #     pub channel: ChannelID,
+    #     pub data: Value,
+    # }
+    def __init__(
+        self, id: int, author_id: int, channel: ChannelID, data: dict[str, Any]
+    ):
+        self.id = id
+        self.author_id = author_id
+        self.channel = channel
+        self.data = data
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            data["id"],
+            data["author_id"],
+            ChannelID.from_dict(data["channel"]),
+            data["data"],
+        )
+
+
 class TurnCredential:
     # pub struct TurnTokenResponse {
     #     username: String,

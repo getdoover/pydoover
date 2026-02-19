@@ -13,9 +13,8 @@ import grpc
 from google.protobuf.json_format import MessageToDict
 
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
-from .models import TurnCredential, File, Message
+from .models import TurnCredential, File, Message, MessageCreateEvent
 from ..grpc_interface import GRPCInterface
-from ...cloud.processor import MessageCreateEvent
 from ...cloud.processor.types import AggregateUpdateEvent
 from ...utils import apply_diff, call_maybe_async, maybe_async, maybe_load_json
 from ...cli.decorators import command as cli_command
