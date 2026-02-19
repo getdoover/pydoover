@@ -14,6 +14,8 @@ import grpc
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
 from .models import TurnCredential, File, Message
 from ..grpc_interface import GRPCInterface
+from ...cloud.processor import MessageCreateEvent
+from ...cloud.processor.types import AggregateUpdateEvent
 from ...utils import apply_diff, call_maybe_async, maybe_async, maybe_load_json
 from ...cli.decorators import command as cli_command
 
@@ -214,6 +216,43 @@ class DeviceAgentInterface(GRPCInterface):
                 except StopAsyncIteration:
                     log.debug("Channel stream ended.")
                     break
+
+    async def stream_channel_events(self, channel_name: str):
+        while True:
+            async with grpc.aio.insecure_channel(self.uri) as channel:
+                pl = device_agent_pb2.ChannelEventSubscriptionRequest(
+                    channel_name=channel_name
+                )
+                channel_stream = device_agent_pb2_grpc.deviceAgentStub(
+                    channel
+                ).ChannelEventSubscription(pl)
+
+                while True:
+                    try:
+                        response: device_agent_pb2.ChannelEventSubscriptionResponse = (
+                            await channel_stream.read()
+                        )
+                        log.debug(
+                            f"Received event response from subscription request on {channel_name}: {str(response)[:120]}"
+                        )
+                        if not response.response_header.success:
+                            raise RuntimeError(
+                                f"Failed to subscribe to channel {channel_name}: {response.response_header.response_message}"
+                            )
+
+                        match response.event_name:
+                            case "MessageCreate":
+                                yield MessageCreateEvent.from_dict(
+                                    response.data.MessageToDict()
+                                )
+                            case "AggregateUpdate":
+                                yield AggregateUpdateEvent.from_dict(
+                                    response.data.MessageToDict()
+                                )
+
+                    except StopAsyncIteration:
+                        log.debug("Channel stream ended.")
+                        break
 
     async def recv_update_callback(self, channel_name, response):
         log.debug(f"Received response from subscription request: {str(response)[:100]}")

@@ -12,6 +12,7 @@ service deviceAgent {
   rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
 
   rpc GetChannelSubscription (ChannelSubscriptionRequest) returns (stream ChannelSubscriptionResponse) {}
+  rpc ChannelEventSubscription (ChannelEventSubscriptionRequest) returns (stream ChannelEventSubscriptionResponse) {}
   rpc WriteToChannel (ChannelWriteRequest) returns (ChannelWriteResponse) {}
   rpc GetDebugInfo (DebugInfoRequest) returns (DebugInfoResponse) {}
   rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
@@ -218,4 +219,17 @@ message UpdateMessageRequest {
 message UpdateMessageResponse {
   ResponseHeader response_header = 1;
   Message message = 2;
+}
+
+message ChannelEventSubscriptionRequest {
+  RequestHeader header = 2;
+  string channel_name = 1;
+
+}
+
+message ChannelEventSubscriptionResponse {
+  ResponseHeader response_header = 1;
+  string event_name = 2;
+  string channel_name = 3;
+  google.protobuf.Struct data = 4;
 }

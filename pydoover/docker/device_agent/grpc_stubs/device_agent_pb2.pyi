@@ -337,3 +337,23 @@ class UpdateMessageResponse(_message.Message):
     response_header: ResponseHeader
     message: Message
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message: _Optional[_Union[Message, _Mapping]] = ...) -> None: ...
+
+class ChannelEventSubscriptionRequest(_message.Message):
+    __slots__ = ("header", "channel_name")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    channel_name: str
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ...) -> None: ...
+
+class ChannelEventSubscriptionResponse(_message.Message):
+    __slots__ = ("response_header", "event_name", "channel_name", "data")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    EVENT_NAME_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    event_name: str
+    channel_name: str
+    data: _struct_pb2.Struct
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., event_name: _Optional[str] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
