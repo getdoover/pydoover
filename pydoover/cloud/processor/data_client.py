@@ -67,7 +67,7 @@ class DooverData:
         else:
             kwargs = {"json": data}
 
-        log.debug(f"request {method} {endpoint}")
+        log.debug(f"request {method} {endpoint} {kwargs}")
         async with self.session.request(
             method, endpoint, **kwargs, headers=headers
         ) as resp:
@@ -129,7 +129,7 @@ class DooverData:
                     break
                 after = int(messages[-1].id)
 
-            return [Message.from_dict(m) for m in all_messages]
+            return all_messages
 
         return await self._get_channel_messages(
             agent_id, channel_name, organisation_id, limit, before, after

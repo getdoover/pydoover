@@ -4,7 +4,10 @@ import re
 from zoneinfo import ZoneInfo
 import logging
 import time
+import os
 import croniter
+
+from pydoover.utils.files import zip_files
 
 from ..processor.types import ManualInvokeEvent, MessageCreateEvent, DeploymentEvent, ScheduleEvent
 from ..processor.application import Application as ApplicationBase
@@ -67,7 +70,8 @@ class Application(ApplicationBase):
             "devices": self.devices,
             "period_start": int(self.period_start.timestamp() * 1000),
             "period_end": int(self.period_end.timestamp() * 1000),
-            "report_generator": "TODO",
+            "report_generator": os.environ.get("APPLICATION_ID", ""),
+            "config": self.received_deployment_config,
             "status": "Generating",
             "logs": "",
         }
@@ -146,7 +150,6 @@ class Application(ApplicationBase):
                 self._report_id,
                 self._report_metadata,
                 organisation_id=self.agent_id,
-                files=files,
             )
             return
         
@@ -160,6 +163,16 @@ class Application(ApplicationBase):
         self._report_metadata["status"] = "Complete"
 
         log.info("Uploading Report to Doover")
+        
+        total_file_size = 0
+        for _, data, _ in files:
+            total_file_size += len(data.getvalue())
+            data.seek(0)
+            
+        if total_file_size > 4.5e+7:
+            log.info(f"Report is {total_file_size} bytes, which is over the 45MB limit. Zipping files.")
+            files = zip_files(files)
+        
         s = time.perf_counter()
         
         self._report_metadata["logs"] = self.log_capture_string.getvalue()
