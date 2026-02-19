@@ -174,6 +174,11 @@ class MessageCreateEvent:
         )
 
 
+class OneShotMessage(MessageCreateEvent):
+    # just to support isinstance checks and really highlight that this isn't a real message.
+    pass
+
+
 class TurnCredential:
     # pub struct TurnTokenResponse {
     #     username: String,

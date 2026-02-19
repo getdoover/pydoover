@@ -13,7 +13,7 @@ import grpc
 from google.protobuf.json_format import MessageToDict
 
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
-from .models import TurnCredential, File, Message, MessageCreateEvent
+from .models import TurnCredential, File, Message, MessageCreateEvent, OneShotMessage
 from ..grpc_interface import GRPCInterface
 from ...cloud.processor.types import AggregateUpdateEvent
 from ...utils import apply_diff, call_maybe_async, maybe_async, maybe_load_json
@@ -247,6 +247,10 @@ class DeviceAgentInterface(GRPCInterface):
                                 )
                             case "AggregateUpdate":
                                 yield AggregateUpdateEvent.from_dict(
+                                    MessageToDict(response.data)
+                                )
+                            case "OneShotMessage":
+                                yield OneShotMessage.from_dict(
                                     MessageToDict(response.data)
                                 )
 
