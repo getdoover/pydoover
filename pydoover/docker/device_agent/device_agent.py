@@ -242,13 +242,9 @@ class DeviceAgentInterface(GRPCInterface):
 
                         match response.event_name:
                             case "MessageCreate":
-                                yield MessageCreateEvent.from_dict(
-                                    response.data.MessageToDict()
-                                )
+                                yield MessageCreateEvent.from_dict(response.data)
                             case "AggregateUpdate":
-                                yield AggregateUpdateEvent.from_dict(
-                                    response.data.MessageToDict()
-                                )
+                                yield AggregateUpdateEvent.from_dict(response.data)
 
                     except StopAsyncIteration:
                         log.debug("Channel stream ended.")
