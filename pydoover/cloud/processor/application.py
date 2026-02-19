@@ -17,6 +17,8 @@ from .types import (
     ScheduleEvent,
     IngestionEndpointEvent,
     ConnectionConfig,
+    AggregateUpdateEvent,
+    DooverConnectionStatus,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
 from ...ui import UIManager
@@ -34,7 +36,7 @@ console_handler = logging.StreamHandler(sys.stdout)
 class Application:
     def __init__(self, config: Schema | None):
         self.config = config
-        
+
         self.received_deployment_config = None
 
         self._api_endpoint = (
@@ -55,6 +57,7 @@ class Application:
         logging.getLogger().addHandler(self.string_stream_handler)
         logging.getLogger().addHandler(console_handler)
 
+        self._record_tag_update: bool = True
 
     async def _setup(self, initial_payload: dict[str, Any]):
         self._publish_tags = False
@@ -67,7 +70,7 @@ class Application:
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
         self.api.set_token(self._initial_token)
-        
+
         # Always prioritise the upgrade payload, other get it from the normal method
         if initial_payload["d"].get("upgrade", None) is not None:
             data = initial_payload["d"]["upgrade"]
@@ -87,24 +90,43 @@ class Application:
 
         # this should match the original organisation ID, but in case it doesn't, this should
         # probably be the source of truth
-        self.api.organisation_id = data.get("organisation_id", None) or self.organisation_id
+        self.api.organisation_id = (
+            data.get("organisation_id", None) or self.organisation_id
+        )
 
         self.app_key = data.get("app_key", None)
         self._tag_values = data.get("tag_values", None)
 
-        if data.get("connection_data", None):
-            self._connection_config = data["connection_data"].get("config", {})
-            self.connection_config = ConnectionConfig.from_dict(self._connection_config)
-        else:
+        try:
+            connection_data = data["connection_data"]
+        except KeyError:
             # connection config isn't valid for org processors
             # but fresh-ly created devices also won't have connection config...
             self._connection_config = {}
             self.connection_config = None
+        else:
+            if not connection_data:
+                # bit of a weird case? we probably shouldn't give any connection data, not a null / empty dict value
+                # in this case maybe we don't need the try/catch?
+                self._connection_config = {}
+                self.connection_config = None
+            else:
+                self._connection_config = connection_data.get("config", {})
+                self._connection_status = connection_data.get("status", {})
+                self.connection_config = ConnectionConfig.from_dict(
+                    self._connection_config
+                )
+                self.connection_status = DooverConnectionStatus.from_dict(
+                    self._connection_status
+                )
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
 
-        if data.get("ui_state", None) is not None and data.get("ui_cmds", None) is not None:
+        if (
+            data.get("ui_state", None) is not None
+            and data.get("ui_cmds", None) is not None
+        ):
             self._ui_to_set = (data["ui_state"], data["ui_cmds"])
         else:
             self._ui_to_set = None
@@ -140,6 +162,9 @@ class Application:
     async def on_message_create(self, event: MessageCreateEvent):
         pass
 
+    async def on_aggregate_update(self, event: AggregateUpdateEvent):
+        pass
+
     async def on_deployment(self, event: DeploymentEvent):
         pass
 
@@ -148,7 +173,7 @@ class Application:
 
     async def on_ingestion_endpoint(self, event: IngestionEndpointEvent):
         pass
-    
+
     async def on_manual_invoke(self, event: ManualInvokeEvent):
         pass
 
@@ -223,6 +248,11 @@ class Application:
             case "on_manual_invoke":
                 func = self.on_manual_invoke
                 payload = ManualInvokeEvent.from_dict(event["d"])
+            case "on_aggregate_update":
+                func = self.on_aggregate_update
+                payload = AggregateUpdateEvent.from_dict(event["d"])
+
+        self._payload = payload
 
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")
@@ -243,12 +273,13 @@ class Application:
             # not valid for org apps
             await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
 
+        result = None
         if func is None:
             log.error(f"Unknown event type: {event['op']}")
         else:
             try:
                 s = time.perf_counter()
-                await func(payload)
+                result = await func(payload)
                 log.info(f"Processing event took {time.perf_counter() - s} seconds.")
             except Exception as e:
                 log.error(f"Error attempting to process event: {e} ", exc_info=e)
@@ -256,9 +287,18 @@ class Application:
         # fixme: publish UI if needed
 
         if self._publish_tags:
-            await self.api.publish_message(
-                self.agent_id, "tag_values", self._tag_values
+            await self.api.update_aggregate(
+                self.agent_id,
+                "tag_values",
+                self._tag_values,
             )
+
+            if self._record_tag_update:
+                await self.api.publish_message(
+                    self.agent_id,
+                    "tag_values",
+                    self._tag_values,
+                )
 
         try:
             await self.close()
@@ -269,8 +309,10 @@ class Application:
 
         end_time = time.time()
         log.info(
-            f"Finished at {end_time}. Process took {end_time - start_time} seconds."
+            f"Finished at {end_time}. Process took {end_time - start_time} seconds. result: {result}"
         )
+
+        return result
 
     async def fetch_channel(self, channel_name: str) -> Channel:
         """Helper method to fetch a channel by its name.
@@ -315,15 +357,24 @@ class Application:
 
         self._publish_tags = True
 
-    async def ping_connection(self, online_at: datetime = None):
-        if online_at:
-            online_at = online_at.replace(tzinfo=timezone.utc)
-        else:
+    async def ping_connection(
+        self,
+        online_at: datetime = None,
+        connection_status: ConnectionStatus = ConnectionStatus.periodic_unknown,
+        offline_at: datetime = None,
+    ):
+        if not online_at:
             online_at = datetime.now(tz=timezone.utc)
 
-        if datetime.now(tz=timezone.utc) - online_at > timedelta(
-            seconds=self._connection_config.get("offline_after", DEFAULT_OFFLINE_AFTER)
-        ):
+        # prefer the user's settings if they've set it.
+        if offline_at:
+            offline_after = (offline_at - online_at).total_seconds()
+        else:
+            offline_after = self._connection_config.get(
+                "offline_after", DEFAULT_OFFLINE_AFTER
+            )
+
+        if datetime.now(tz=timezone.utc) - online_at > timedelta(seconds=offline_after):
             determination = ConnectionDetermination.offline
         else:
             determination = ConnectionDetermination.online
@@ -331,7 +382,7 @@ class Application:
         await self.api.ping_connection_at(
             self.agent_id,
             online_at,
-            connection_status=ConnectionStatus.periodic_unknown,
+            connection_status=connection_status,
             determination=determination,
             user_agent=f"pydoover-processor,app_key={self.app_key}",
         )

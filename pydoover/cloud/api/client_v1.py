@@ -447,6 +447,7 @@ class Client:
         log_aggregate: bool = False,
         override_aggregate: bool = False,
         timestamp: Optional[datetime] = None,
+        files=None,
     ):
         """Publish data to a channel.
 
@@ -465,6 +466,9 @@ class Client:
         timestamp : datetime, optional
             The timestamp to set for the message. If not provided, the current time will be used.
         """
+        if files is not None:
+            raise ValueError("Files are not supported in Doover 1.0")
+
         # basically we're assuming there's only 2 types of data - dict or string...
         post_data = {"msg": data}
 
@@ -494,6 +498,7 @@ class Client:
         log_aggregate: bool = False,
         override_aggregate: bool = False,
         timestamp: Optional[datetime] = None,
+        files=None,
     ):
         """Publish data to a channel by its name.
 
@@ -514,6 +519,9 @@ class Client:
         timestamp : datetime, optional
             The timestamp to set for the message. If not provided, the current time will be used.
         """
+        if files is not None:
+            raise ValueError("Files are not supported in Doover 1.0")
+
         post_data = {"msg": data}
 
         post_data["record_log"] = save_log

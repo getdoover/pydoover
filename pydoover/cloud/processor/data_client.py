@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -14,6 +15,7 @@ from .types import (
     ConnectionStatus,
     ConnectionDetermination,
     Message,
+    Aggregate,
 )
 
 log = logging.getLogger(__name__)
@@ -47,40 +49,100 @@ class DooverData:
     async def close(self):
         if self.session:
             await self.session.close()
+            # Allow the event loop to process the underlying connection
+            # cleanup (SSL transports, connectors, etc.) that session.close()
+            # schedules but doesn't complete synchronously.
+            await asyncio.sleep(0.05)
             self.session = None
 
     async def _request(
         self,
-        method,
-        endpoint,
+        method: str,
+        endpoint: str,
         data: dict | str | aiohttp.FormData | None = None,
-        organisation_id: int = None,
+        organisation_id: int | None = None,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
     ):
         org_id = organisation_id or self.organisation_id
-        if org_id:
-            headers = {"X-Doover-Organisation": str(org_id)}
-        else:
-            headers = {}
+        headers = {"X-Doover-Organisation": str(org_id)} if org_id else {}
 
-        if isinstance(data, aiohttp.FormData):
-            kwargs = {"data": data}
-        else:
-            kwargs = {"json": data}
+        kwargs = (
+            {"data": data} if isinstance(data, aiohttp.FormData) else {"json": data}
+        )
 
-        log.debug(f"request {method} {endpoint} {kwargs}")
-        async with self.session.request(
-            method, endpoint, **kwargs, headers=headers
-        ) as resp:
-            resp.raise_for_status()
-            response = await resp.json()
-            if response is None:
-                log.debug(f"Response: {response}")
-                return None
-            if "error" in response:
-                log.error(f"Error response: {response['error']}")
-            else:
-                log.debug(f"Response: {response}")
-            return response
+        log.debug(f"Starting request: {method} {endpoint} (org_id={org_id})")
+
+        for attempt in range(max_retries):
+            try:
+                async with self.session.request(
+                    method, endpoint, **kwargs, headers=headers
+                ) as resp:
+                    status = resp.status
+
+                    log.debug(
+                        f"Response received: {method} {endpoint} "
+                        f"status={status} attempt={attempt + 1}/{max_retries}"
+                    )
+
+                    if status >= 500:
+                        response_text = await resp.text()
+                        log.info(
+                            f"Server error {status} on {method} {endpoint}: "
+                            f"{response_text[:200]} attempt={attempt + 1}/{max_retries}"
+                        )
+                        if attempt == max_retries - 1:
+                            resp.raise_for_status()
+                        continue  # Retry
+
+                    elif 400 <= status < 500:
+                        # Client errors - don't retry
+                        response_text = await resp.text()
+                        log.error(
+                            f"Client error {status} on {method} {endpoint}: "
+                            f"{response_text[:200]}"
+                        )
+                        resp.raise_for_status()
+
+                    elif 200 <= status < 300:
+                        # Success
+                        result = await resp.json()
+                        log.debug(
+                            f"Request successful: {method} {endpoint} "
+                            f"status={status} attempt={attempt + 1}"
+                        )
+                        return result
+
+                    else:
+                        log.warning(
+                            f"Unexpected status {status} on {method} {endpoint}"
+                        )
+                        resp.raise_for_status()
+
+            except aiohttp.ClientError as e:
+                log.info(
+                    f"Client error on {method} {endpoint}: "
+                    f"{str(e)} attempt={attempt + 1}/{max_retries}",
+                    exc_info=e,
+                )
+
+            except asyncio.TimeoutError:
+                log.info(
+                    f"Timeout on {method} {endpoint} attempt={attempt + 1}/{max_retries}"
+                )
+
+            except Exception as e:
+                log.info(
+                    f"Unexpected error on {method} {endpoint}: {str(e)} attempt={attempt + 1}/{max_retries}",
+                    exc_info=e,
+                )
+
+            if attempt < max_retries - 1:
+                delay = retry_delay * (2**attempt)
+                log.info(f"Retrying {method} {endpoint} in {delay}s...")
+                await asyncio.sleep(delay)
+
+        raise
 
     async def get_channel(
         self, agent_id: int, channel_name: str, organisation_id: int = None
@@ -91,6 +153,13 @@ class DooverData:
             organisation_id=organisation_id,
         )
         return Channel.from_dict(data)
+
+    async def get_channel_aggregate(self, agent_id: int, channel_name: str):
+        data = await self._request(
+            "GET",
+            f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/aggregate",
+        )
+        return Aggregate.from_dict(data)
 
     async def get_channel_messages(
         self,
@@ -165,27 +234,64 @@ class DooverData:
 
         return [Message.from_dict(m) for m in data]
 
+    async def update_aggregate(
+        self,
+        agent_id: int,
+        channel_name: str,
+        data: dict[str, Any],
+        files: list[tuple[str, bytes, str]] = None,
+        replace: bool = False,
+        organisation_id: int = None,
+    ):
+        if channel_name == self._invoking_channel_name:
+            raise RuntimeError("Cannot publish to the invoking channel.")
+
+        operation = "PUT" if replace else "PATCH"
+        url = f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/aggregate"
+
+        if files is not None:
+            if not isinstance(files, list):
+                files = [files]
+            form = aiohttp.FormData()
+            form.add_field(
+                "json_payload", json.dumps(data), content_type="application/json"
+            )
+            for i, (filename, data, content_type) in enumerate(files, start=1):
+                form.add_field(
+                    f"attachment-{i}",
+                    data,
+                    filename=filename,
+                    content_type=content_type,
+                )
+
+            return await self._request(
+                operation,
+                url,
+                data=form,
+                organisation_id=organisation_id,
+            )
+
+        return await self._request(
+            operation,
+            url,
+            data=data,
+            organisation_id=organisation_id,
+        )
+
     async def publish_message(
         self,
         agent_id: int,
         channel_name: str,
         message: dict | str,
         timestamp: datetime | None = None,
-        record_log: bool = True,
-        is_diff: bool = None,
         files: list[tuple[str, bytes, str]] = None,
         organisation_id: int = None,
     ):
         if channel_name == self._invoking_channel_name:
             raise RuntimeError("Cannot publish to the invoking channel.")
 
-        if is_diff is None:
-            is_diff = files is None
-
         payload: dict[str, Any] = {
             "data": message,
-            "record_log": record_log,
-            "is_diff": is_diff or (files is None),
         }
         if timestamp is not None:
             payload["ts"] = (
@@ -207,12 +313,7 @@ class DooverData:
                     content_type=content_type,
                 )
 
-            return await self._request(
-                "POST",
-                f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages",
-                data=form,
-                organisation_id=organisation_id,
-            )
+            payload = form
 
         return await self._request(
             "POST",
@@ -226,24 +327,15 @@ class DooverData:
         agent_id: int,
         channel_name: str,
         message_id: str,
-        message: dict | str,
-        timestamp: datetime | None = None,
-        record_log: bool = True,
+        data: dict | str,
         organisation_id: int = None,
         files: list[tuple[str, bytes, str]] = None,
+        replace: bool = True,
     ):
         if channel_name == self._invoking_channel_name:
             raise RuntimeError("Cannot update to the invoking channel.")
 
-        payload: dict[str, Any] = {
-            "data": message,
-            "record_log": record_log,
-            "is_diff": False,
-        }
-        if timestamp is not None:
-            payload["ts"] = (
-                int(timestamp.timestamp()) * 1000
-            )  # milliseconds since epoch
+        payload: dict[str, Any] = {"data": data}
 
         if files is not None:
             if not isinstance(files, list):
@@ -259,15 +351,10 @@ class DooverData:
                     filename=filename,
                     content_type=content_type,
                 )
-            return await self._request(
-                "PATCH",
-                f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
-                data=form,
-                organisation_id=organisation_id,
-            )
+            payload = form
 
         return await self._request(
-            "PATCH",
+            "PUT" if replace else "PATCH",
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
             data=payload,
             organisation_id=organisation_id,
@@ -306,20 +393,38 @@ class DooverData:
                 ip_address = await resp.text()
 
         ping_at = ping_at or datetime.now(tz=timezone.utc)
-        return await self.publish_message(
+
+        payload = {
+            "status": {
+                "status": connection_status.value,
+                "last_online": int(online_at.timestamp() * 1000),
+                "last_ping": int(ping_at.timestamp() * 1000),
+                "user_agent": user_agent,
+                "ip": ip_address,
+            },
+            "determination": determination.value,
+        }
+
+        await self.publish_message(
             agent_id,
             "doover_connection",
-            {
-                "status": {
-                    "status": connection_status.value,
-                    "last_online": int(online_at.timestamp() * 1000),
-                    "last_ping": int(ping_at.timestamp() * 1000),
-                    "user_agent": user_agent,
-                    "ip": ip_address,
-                },
-                "determination": determination.value,
-            },
+            payload,
             organisation_id=organisation_id,
+        )
+
+        await self.update_aggregate(
+            agent_id, "doover_connection", payload, organisation_id=organisation_id
+        )
+
+    async def update_connection_config(
+        self, agent_id: int, config: ConnectionConfig, organisation_id: int = None
+    ):
+        payload = {"config": config.to_dict()}
+        await self.publish_message(
+            agent_id, "doover_connection", payload, organisation_id=organisation_id
+        )
+        await self.update_aggregate(
+            agent_id, "doover_connection", payload, organisation_id=organisation_id
         )
 
     async def get_channel_message(
@@ -332,18 +437,5 @@ class DooverData:
         return await self._request(
             "GET",
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
-            organisation_id=organisation_id,
-        )
-
-    async def update_connection_config(
-        self,
-        agent_id: int,
-        config: ConnectionConfig,
-        organisation_id: int = None,
-    ):
-        return await self.publish_message(
-            agent_id,
-            "doover_connection",
-            {"config": config.to_dict()},
             organisation_id=organisation_id,
         )

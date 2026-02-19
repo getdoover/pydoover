@@ -3,6 +3,7 @@ import json
 import copy
 from datetime import datetime, timezone
 from math import floor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from . import json_flatten
 
@@ -166,10 +167,16 @@ class ReportGeneratorDooverDataMixin:
         msgs.reverse()  # Order messages from earliest to latest
         return msgs
 
-    def retrieve_data(self, period_from, period_to, agent_id):
+    def retrieve_data(self, period_from, period_to, agent_id, max_workers=10):
         """
         Retrieve data messages over the specified period by splitting the time window into full days
         and any remaining fraction.
+
+        Args:
+            period_from: Start of the period.
+            period_to: End of the period.
+            agent_id: Agent ID to retrieve data for.
+            max_workers: Maximum number of parallel requests (default: 10).
         """
         curr_server_time = int(self.get_current_server_time(agent_id))
         local_time = int(datetime.now(timezone.utc).timestamp())
@@ -187,16 +194,41 @@ class ReportGeneratorDooverDataMixin:
         num_days = (end_secs - start_secs) / SECS_IN_DAY
         self.add_to_log(f"{num_days} days")
 
-        msgs = []
+        # Collect all windows to fetch
+        windows = []
         for day in range(floor(num_days)):
             temp_start = start_secs + day * SECS_IN_DAY
             temp_end = temp_start + SECS_IN_DAY
-            msgs.extend(self._get_data_for_window(temp_start, temp_end, agent_id))
+            windows.append((temp_start, temp_end, day))
 
         remainder = num_days % 1
         if remainder > 0:
             remainder_secs = int(remainder * SECS_IN_DAY)
-            msgs.extend(
-                self._get_data_for_window(end_secs - remainder_secs, end_secs, agent_id)
-            )
+            windows.append((end_secs - remainder_secs, end_secs, floor(num_days)))
+
+        # Execute requests in parallel
+        msgs_dict = {}  # Use dict to maintain order by day index
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_window = {
+                executor.submit(
+                    self._get_data_for_window, temp_start, temp_end, agent_id
+                ): day_idx
+                for temp_start, temp_end, day_idx in windows
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_window):
+                day_idx = future_to_window[future]
+                try:
+                    msgs_dict[day_idx] = future.result()
+                except Exception as exc:
+                    self.add_to_log(f"Window {day_idx} generated an exception: {exc}")
+                    raise
+
+        # Combine results in chronological order
+        msgs = []
+        for day_idx in sorted(msgs_dict.keys()):
+            msgs.extend(msgs_dict[day_idx])
+
         return msgs

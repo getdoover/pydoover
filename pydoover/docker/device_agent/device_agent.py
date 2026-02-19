@@ -12,6 +12,7 @@ from typing import Any
 import grpc
 
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
+from .models import TurnCredential, File, Message
 from ..grpc_interface import GRPCInterface
 from ...utils import apply_diff, call_maybe_async, maybe_async, maybe_load_json
 from ...cli.decorators import command as cli_command
@@ -181,6 +182,8 @@ class DeviceAgentInterface(GRPCInterface):
                     f"Error starting subscription listener for {channel_name}: {e}",
                     exc_info=e,
                 )
+                sys.stdout.flush()
+                sys.stderr.flush()
                 await asyncio.sleep(self.time_between_connection_attempts)
 
     async def _subscribe_receive_channel_updates(self, channel_name):
@@ -500,6 +503,48 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return self._parse_get_token_response(resp)
 
+    async def get_turn_credential(
+        self,
+    ) -> TurnCredential:
+        resp = await self.make_request_async(
+            "GetTurnCredential",
+            device_agent_pb2.TurnCredentialRequest(
+                header=device_agent_pb2.RequestHeader(app_id=self.app_key)
+            ),
+        )
+        return TurnCredential.from_proto(resp)
+
+    async def create_message(
+        self, channel_name: str, data: dict[str, Any], files: list[File]
+    ) -> int:
+        req = device_agent_pb2.CreateMessageRequest(
+            header=device_agent_pb2.RequestHeader(app_id=self.app_key),
+            channel_name=channel_name,
+            data=data,
+            files=[file.to_proto() for file in files],
+        )
+        resp = await self.make_request_async("CreateMessage", req)
+        return resp.message_id
+
+    async def update_message(
+        self,
+        channel_name: str,
+        message_id: int,
+        data: dict[str, Any],
+        files: list[File],
+        clear_attachments: bool = False,
+    ) -> Message:
+        req = device_agent_pb2.UpdateMessageRequest(
+            header=device_agent_pb2.RequestHeader(app_id=self.app_key),
+            channel_name=channel_name,
+            message_id=message_id,
+            data=data,
+            files=[file.to_proto() for file in files],
+            clear_attachments=clear_attachments,
+        )
+        resp = await self.make_request_async("UpdateMessage", req)
+        return Message.from_proto(resp)
+
     async def close(self):
         for listener in self._listeners.values():
             listener.cancel()
@@ -578,3 +623,66 @@ class DeviceAgentInterface(GRPCInterface):
 
 
 device_agent_iface = DeviceAgentInterface
+
+
+class MockDeviceAgentInterface(DeviceAgentInterface):
+    """
+    This interface is used to test the Device Agent Interface without relying on a real Device Agent service.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.channels = {}
+
+        self.is_dda_online = True
+        self.is_dda_available = True
+        self.has_dda_been_online = True
+
+    async def wait_for_channels_sync_async(
+        self, channel_names: list[str], timeout: int = 5, inter_wait: float = 0.2
+    ):
+        for channel in channel_names:
+            await self.recv_update_callback(
+                channel,
+                device_agent_pb2.ChannelSubscriptionResponse(
+                    channel=device_agent_pb2.ChannelDetails(
+                        channel_name=channel,
+                        aggregate=json.dumps(self.channels.get(channel, {})),
+                    )
+                ),
+            )
+        return True
+
+    async def recv_update_callback(self, channel_name: str, response):
+        if channel_name not in self._aggregates:
+            self._aggregates[channel_name] = {}
+        super(MockDeviceAgentInterface, self).recv_update_callback(
+            channel_name, response
+        )
+
+    async def start_subscription_listener(self, channel_name):
+        return True
+
+    def get_channel_aggregate(self, channel_name):
+        return self.channels.get(channel_name, {})
+
+    async def await_dda_available_async(self, timeout):
+        return True
+
+    async def make_request_async(self, *args, **kwargs):
+        raise NotImplementedError("make_request_async is not implemented")
+
+    def make_request(self, *args, **kwargs):
+        raise NotImplementedError("make_request is not implemented")
+
+    async def publish_to_channel_async(self, *args, **kwargs):
+        return self.publish_to_channel(*args, **kwargs)
+
+    def publish_to_channel(
+        self,
+        channel_name: str,
+        message: dict | str,
+        record_log: bool = True,
+        max_age: int = None,
+    ):
+        self.channels[channel_name] = message

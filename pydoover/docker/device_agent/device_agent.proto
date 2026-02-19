@@ -1,142 +1,221 @@
 syntax = "proto3";
 
+import "google/protobuf/struct.proto";
+
 package device_agent;
 
 // The doover device agent service definition.
 service deviceAgent {
 
-    rpc TestComms (TestCommsRequest) returns (TestCommsResponse) {}
+  rpc TestComms (TestCommsRequest) returns (TestCommsResponse) {}
 
-    rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
+  rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
 
-    rpc GetChannelSubscription (ChannelSubscriptionRequest) returns (stream ChannelSubscriptionResponse) {}
-    rpc WriteToChannel (ChannelWriteRequest) returns (ChannelWriteResponse) {}
-    rpc GetDebugInfo (DebugInfoRequest) returns (DebugInfoResponse) {}
-    rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
+  rpc GetChannelSubscription (ChannelSubscriptionRequest) returns (stream ChannelSubscriptionResponse) {}
+  rpc WriteToChannel (ChannelWriteRequest) returns (ChannelWriteResponse) {}
+  rpc GetDebugInfo (DebugInfoRequest) returns (DebugInfoResponse) {}
+  rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
+  rpc GetTurnCredential (TurnCredentialRequest) returns (TurnCredentialResponse) {}
+  rpc CreateMessage (CreateMessageRequest) returns (CreateMessageResponse) {}
+  rpc UpdateMessage (UpdateMessageRequest) returns (UpdateMessageResponse) {}
 }
 
 message RequestHeader {
-    optional string app_id = 1;
+  optional string app_id = 1;
 }
 
 message ResponseHeader {
-    bool success = 1;
-    bool cloud_synced = 2;
-    bool cloud_ready = 5;
-    optional int32 response_code = 3;
-    optional string response_message = 4;
+  bool success = 1;
+  bool cloud_synced = 2;
+  bool cloud_ready = 5;
+  optional int32 response_code = 3;
+  optional string response_message = 4;
 }
 
 message MessageDetails {
-    string message_id = 1;
-    string channel_name = 2;
-    string payload = 3;
-    string timestamp = 4;
+  string message_id = 1;
+  string channel_name = 2;
+  string payload = 3;
+  string timestamp = 4;
 }
 
 message ChannelDetails {
-    string channel_name = 1;
-    optional string aggregate = 2;
+  string channel_name = 1;
+  optional string aggregate = 2;
 }
 
 message AgentDetails {
-    string agent_id = 1;
-    string agent_name = 2;
-    repeated ChannelDetails channels = 3;
+  string agent_id = 1;
+  string agent_name = 2;
+  repeated ChannelDetails channels = 3;
 }
 
 message TestCommsRequest {
-    RequestHeader header = 2;
-    string message = 1;
+  RequestHeader header = 2;
+  string message = 1;
 }
 
 message TestCommsResponse {
-    ResponseHeader response_header = 1;
-    string response = 2;
+  ResponseHeader response_header = 1;
+  string response = 2;
 }
 
 message MessageDetailsRequest {
-    RequestHeader header = 2;
-    string message_id = 1;
+  RequestHeader header = 2;
+  string message_id = 1;
 }
 
 message MessageDetailsResponse {
-    ResponseHeader response_header = 1;
-    optional MessageDetails message = 2;
+  ResponseHeader response_header = 1;
+  optional MessageDetails message = 2;
 }
 
 message ChannelDetailsRequest {
-    RequestHeader header = 2;
-    string channel_name = 1;
+  RequestHeader header = 2;
+  string channel_name = 1;
 }
 
 message ChannelDetailsResponse {
-    ResponseHeader response_header = 1;
-    optional ChannelDetails channel = 2;
+  ResponseHeader response_header = 1;
+  optional ChannelDetails channel = 2;
 }
 
 message ChannelSubscriptionRequest {
-    RequestHeader header = 2;
-    string channel_name = 1;
+  RequestHeader header = 2;
+  string channel_name = 1;
 }
 
 message ChannelSubscriptionResponse {
-    ResponseHeader response_header = 1;
-    optional ChannelDetails channel = 2;
-    optional MessageDetails message = 3;
+  ResponseHeader response_header = 1;
+  optional ChannelDetails channel = 2;
+  optional MessageDetails message = 3;
 }
 
 message ChannelWriteRequest {
-    RequestHeader header = 5;
-    string channel_name = 1;
-    string message_payload = 2;
-    optional bool save_log = 3;
-    optional int32 max_age = 4;
-    optional float max_age_f = 6;
+  RequestHeader header = 5;
+  string channel_name = 1;
+  string message_payload = 2;
+  optional bool save_log = 3;
+  optional int32 max_age = 4;
+  optional float max_age_f = 6;
 }
 
 message DebugInfoRequest {
-    RequestHeader header = 1;
+  RequestHeader header = 1;
 }
 
 message ChannelWriteResponse {
-    ResponseHeader response_header = 1;
-    string message_id = 2;
+  ResponseHeader response_header = 1;
+  string message_id = 2;
 }
 
 message DebugChannelState {
-    string channel_name = 1;
-    bool active = 2;
-    float local_updated_at = 3;
-    float cloud_updated_at = 4;
+  string channel_name = 1;
+  bool active = 2;
+  float local_updated_at = 3;
+  float cloud_updated_at = 4;
 }
 
 message DebugPendingMessage {
-    string channel_name = 1;
-    string app_key = 2;
-    bool save_log = 3;
-    string payload = 4;
-    int32 publish_in = 5;
+  string channel_name = 1;
+  string app_key = 2;
+  bool save_log = 3;
+  string payload = 4;
+  int32 publish_in = 5;
 }
 
 message DebugInfoResponse {
-    ResponseHeader response_header = 1;
-    repeated string active_callbacks = 2;
-    repeated string wss_callbacks = 3;
-    repeated string wss_aggregates = 4;
-    repeated string wss_subscriptions = 5;
-    repeated DebugChannelState channels = 6;
-    repeated DebugPendingMessage pending_messages = 7;
-    bool wss_connected = 8;
+  ResponseHeader response_header = 1;
+  repeated string active_callbacks = 2;
+  repeated string wss_callbacks = 3;
+  repeated string wss_aggregates = 4;
+  repeated string wss_subscriptions = 5;
+  repeated DebugChannelState channels = 6;
+  repeated DebugPendingMessage pending_messages = 7;
+  bool wss_connected = 8;
 }
 
 message TempAPITokenRequest {
-    RequestHeader header = 1;
+  RequestHeader header = 1;
 }
 
 message TempAPITokenResponse {
-    ResponseHeader response_header = 1;
-    string token = 2;
-    string valid_until = 3;
-    string endpoint = 4;
+  ResponseHeader response_header = 1;
+  string token = 2;
+  string valid_until = 3;
+  string endpoint = 4;
+}
+
+message TurnCredentialRequest {
+  RequestHeader header = 1;
+  string camera_name = 2;
+}
+
+message TurnCredential {
+  string username = 1;
+  string credential = 2;
+  uint64 ttl = 3;
+  uint64 expires_at = 4;
+  repeated string uris = 5;
+}
+
+message TurnCredentialResponse {
+  ResponseHeader response_header = 1;
+  TurnCredential turn_credential = 2;
+}
+
+message File {
+  string  filename = 1;
+  string  content_type = 2;
+  bytes   data = 3;
+  int64   size_bytes = 4;
+}
+
+message Attachment {
+  string  filename = 1;
+  string  content_type = 2;
+  int64   size_bytes = 3;
+  string  url = 4;
+}
+
+message ChannelID {
+  uint64 agent_id = 1;
+  string name = 2;
+}
+
+message Message {
+  uint64 message_id = 1;
+  uint64 author_id = 2;
+  ChannelID channel = 3;
+  google.protobuf.Struct data = 4;
+  repeated Attachment attachments = 5;
+}
+
+message CreateMessageRequest {
+  RequestHeader header = 1;
+
+  string channel_name = 2;
+  google.protobuf.Struct data = 3;
+  repeated File files = 4;
+}
+
+message CreateMessageResponse {
+  ResponseHeader response_header = 1;
+  string message_id = 2;
+}
+
+message UpdateMessageRequest {
+  RequestHeader header = 1;
+
+  string channel_name = 2;
+  string message_id = 3;
+  google.protobuf.Struct data = 4;
+  repeated File files = 5;
+  optional bool clear_attachments = 6;
+  optional bool replace_data = 7;
+}
+
+message UpdateMessageResponse {
+  ResponseHeader response_header = 1;
+  Message message = 2;
 }

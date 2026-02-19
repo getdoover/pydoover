@@ -43,4 +43,4 @@ def run_app(
             )
 
     task = loop.create_task(app._handle_event(data, subscription_id))
-    loop.run_until_complete(task)
+    return loop.run_until_complete(task)

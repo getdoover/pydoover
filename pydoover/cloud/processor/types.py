@@ -26,7 +26,7 @@ class ConnectionType(Enum):
     @classmethod
     def from_v1(cls, data):
         match data:
-            case "constant":
+            case "constant" | "continuous":
                 return cls.continuous
             case "periodic":
                 return cls.periodic
@@ -60,8 +60,9 @@ class ConnectionConfig:
 
     @classmethod
     def from_dict(cls, data):
+        connection_type = data.get("connection_type")
         return cls(
-            data.get("connection_type"),
+            connection_type and ConnectionType(connection_type),
             data.get("expected_interval"),
             data.get("offline_after"),
             data.get("sleep_time"),
@@ -76,12 +77,12 @@ class ConnectionConfig:
             data.get("offlineAfter"),
             data.get("connectionPeriod"),  # not 100% accurate but close enough?
             # as above... although I think the original intention was for this timestamp
-            data.get("nextConnection"),
+            None,  # this is a seconds value in doover 1.0 but should be a timestamp in doover 2.0
         )
 
     def to_dict(self):
         return {
-            "connection_type": self.connection_type.value,
+            "connection_type": self.connection_type and self.connection_type.value,
             "expected_interval": self.expected_interval,
             "offline_after": self.offline_after,
             "sleep_time": self.sleep_time,
@@ -101,12 +102,95 @@ class ConnectionConfig:
         )
 
 
+class DooverConnectionStatus:
+    # pub struct DooverConnectionStatus {
+    #     pub status: ConnectionStatus,
+    #     pub last_online: u64,
+    #     pub last_ping: u64,
+    #     #[serde(skip_serializing_if = "Option::is_none")]
+    #     pub user_agent: Option<String>,
+    #     #[serde(skip_serializing_if = "Option::is_none")]
+    #     pub ip: Option<String>,
+    #     #[serde(skip_serializing_if = "Option::is_none")]
+    #     pub latency_ms: Option<u64>,
+    # }
+    def __init__(
+        self,
+        status: ConnectionStatus,  # Or use an enum if you have ConnectionStatus defined
+        last_online: datetime,
+        last_ping: datetime,
+        user_agent: str | None = None,
+        ip: str | None = None,
+        latency_ms: int | None = None,
+    ):
+        self.status = status
+        self.last_online = last_online
+        self.last_ping = last_ping
+        self.user_agent = user_agent
+        self.ip = ip
+        self.latency_ms = latency_ms
+
+    @classmethod
+    def from_dict(cls, data):
+        last_ping = data.get("last_ping")
+        last_online = data.get("last_online")
+        return cls(
+            ConnectionStatus(data.get("status")),
+            last_online
+            and datetime.fromtimestamp(last_online / 1000.0, tz=timezone.utc),
+            last_ping and datetime.fromtimestamp(last_ping / 1000.0, tz=timezone.utc),
+            data.get("user_agent"),
+            data.get("ip"),
+            data.get("latency_ms"),
+        )
+
+    def to_dict(self):
+        result = {
+            "status": self.status.value,
+            "last_online": self.last_online.timestamp() * 1000,
+            "last_ping": self.last_ping.timestamp() * 1000,
+        }
+        # Only include optional fields if they're not None (matching Rust's skip_serializing_if)
+        if self.user_agent is not None:
+            result["user_agent"] = self.user_agent
+        if self.ip is not None:
+            result["ip"] = self.ip
+        if self.latency_ms is not None:
+            result["latency_ms"] = self.latency_ms
+        return result
+
+    def __eq__(self, other):
+        if not isinstance(other, DooverConnectionStatus):
+            return False
+
+        return (
+            self.status == other.status
+            and self.last_online == other.last_online
+            and self.last_ping == other.last_ping
+            and self.user_agent == other.user_agent
+            and self.ip == other.ip
+            and self.latency_ms == other.latency_ms
+        )
+
+
+class ChannelID:
+    def __init__(self, agent_id: int, name: str):
+        self.agent_id = agent_id
+        self.name = name
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["agent_id"],
+            data["name"],
+        )
+
+
 class Message:
-    def __init__(self, id: int, author_id: int, data: dict, diff: dict, timestamp: int):
+    def __init__(self, id: int, author_id: int, data: dict, timestamp: int):
         self.id = id
         self.author_id = author_id
         self.data = data
-        self.diff = diff
         self.timestamp = timestamp
 
     @classmethod
@@ -115,7 +199,6 @@ class Message:
             data["id"],
             data.get("author_id"),
             data.get("data"),
-            data.get("diff"),
             data.get("timestamp"),
         )
 
@@ -124,61 +207,90 @@ class Message:
             "id": self.id,
             "author_id": self.author_id,
             "data": self.data,
-            "diff": self.diff,
             "timestamp": self.timestamp,
         }
+
+
+class Attachment:
+    #     pub filename: String,
+    #     pub content_type: Option<String>,
+    #     pub size: u64,
+    #     pub url: String,
+    def __init__(self, filename: str, content_type: str, size: int, url: str):
+        self.filename = filename
+        self.content_type = content_type
+        self.size = size
+        self.url = url
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]):
+        return cls(
+            payload["filename"],
+            payload.get("content_type"),
+            payload["size"],
+            payload["url"],
+        )
+
+
+class Aggregate:
+    def __init__(
+        self,
+        data: dict[str, Any],
+        attachments: list[Attachment],
+        last_updated: datetime | None,
+    ):
+        self.data: dict[str, Any] = data
+        self.attachments = attachments
+        self.last_updated: datetime | None = last_updated
+
+    @classmethod
+    def from_dict(cls, payload):
+        return cls(
+            payload["data"],
+            [Attachment.from_dict(a) for a in payload.get("attachments", [])],
+            payload.get("last_updated"),
+        )
 
 
 class Channel:
     def __init__(
         self,
-        id: int,
         name: str,
         owner_id: int,
         is_private: bool,
-        type_: str,
-        last_updated: int,
-        last_message: Message | None,
-        data: dict,
+        aggregate_schema: dict[str, Any],
+        message_schema: dict[str, Any],
+        aggregate: Aggregate,
     ):
-        self.id = int(id)
         self.name = name
         self.owner_id = int(owner_id)
         self.is_private = is_private
-        self.type = type_
-        self.last_updated = last_updated or datetime.now(tz=timezone.utc).timestamp()
-        self.last_message = last_message
-        self.data = data
-        self.aggregate = data
+        self.aggregate_schema = aggregate_schema
+        self.message_schema = message_schema
+        self.aggregate = aggregate
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
         # #[derive(Serialize)]
         # pub struct Channel {
-        #     id: SnowflakeID,
         #     pub name: String,
         #     pub owner_id: SnowflakeID,
-        #     is_private: bool,
-        #     channel_type: ChannelType,
-        #     last_message: Option<LastMessage>,
-        #     data: Value,
+        #     pub is_private: bool,
+        #     pub aggregate_schema: Option<Value>,
+        #     pub message_schema: Option<Value>,
+        #     // pub last_updated: Option<u64>,
+        #     #[serde(skip_serializing_if = "Option::is_none")]
+        #     pub aggregate: Option<ChannelAggregate>,
+        #     #[serde(skip_serializing_if = "Option::is_none")]
+        #     pub daily_message_summaries: Option<Vec<ChannelMessageSummary>>,
         # }
-        try:
-            last_message = data["last_message"] and Message.from_dict(
-                data["last_message"]
-            )
-        except KeyError:
-            last_message = None
-
         return cls(
-            data["id"],
             data["name"],
             data["owner_id"],
             data["is_private"],
-            data["channel_type"],
-            data.get("last_updated"),
-            last_message,
-            data["data"],
+            data["aggregate_schema"],
+            data["message_schema"],
+            Aggregate.from_dict(data["aggregate"]),
         )
 
 
@@ -186,15 +298,22 @@ class MessageCreateEvent:
     owner_id: int
     channel_name: str
     author_id: int
+    organisation_id: int
     message: Message
 
     def __init__(
-        self, owner_id: int, channel_name: str, author_id: int, message: Message
+        self,
+        owner_id: int,
+        channel_name: str,
+        author_id: int,
+        message: Message,
+        organisation_id: int,
     ):
         self.owner_id = owner_id
         self.channel_name = channel_name
         self.author_id = author_id
         self.message = message
+        self.organisation_id = organisation_id
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -203,6 +322,7 @@ class MessageCreateEvent:
             data["channel_name"],
             data["author_id"],
             Message.from_dict(data["message"]),
+            data["organisation_id"],
         )
 
 
@@ -275,4 +395,37 @@ class ManualInvokeEvent:
         return cls(
             data["organisation_id"],
             data["payload"],
+        )
+
+
+class AggregateUpdateEvent:
+    # pub struct AggregateUpdatePayload {
+    #     pub author_id: SnowflakeID,
+    #     pub channel: ChannelID,
+    #     pub aggregate: ChannelAggregate,
+    #     pub request_data: ChannelAggregate,
+    #     pub organisation_id: SnowflakeID,
+    # }
+    def __init__(
+        self,
+        author_id: int,
+        channel: ChannelID,
+        aggregate: Aggregate,
+        request_data: Aggregate,
+        organisation_id: int,
+    ):
+        self.author_id = author_id
+        self.channel = channel
+        self.aggregate = aggregate
+        self.request_data = request_data
+        self.organisation_id = organisation_id
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["author_id"],
+            ChannelID.from_dict(data["channel"]),
+            Aggregate.from_dict(data["aggregate"]),
+            Aggregate.from_dict(data["request_data"]),
+            data["organisation_id"],
         )

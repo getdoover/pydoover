@@ -8,6 +8,7 @@ import sys
 import importlib
 from datetime import datetime
 from os import PathLike
+from pathlib import Path
 
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -15,6 +16,47 @@ if TYPE_CHECKING:
     from .client import Client
     from .agent import Agent
     from .message import Message
+
+
+class Attachment:
+    #     pub filename: String,
+    #     pub content_type: Option<String>,
+    #     pub size: u64,
+    #     pub url: String,
+    def __init__(self, filename: str, content_type: str, size: int, url: str):
+        self.filename = filename
+        self.content_type = content_type
+        self.size = size
+        self.url = url
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]):
+        return cls(
+            payload["filename"],
+            payload.get("content_type"),
+            payload["size"],
+            payload["url"],
+        )
+
+
+class Aggregate:
+    def __init__(
+        self,
+        data: dict[str, Any],
+        attachments: list[Attachment],
+        last_updated: datetime | None,
+    ):
+        self.data: dict[str, Any] = data
+        self.attachments = attachments
+        self.last_updated: datetime | None = last_updated
+
+    @classmethod
+    def from_dict(cls, payload):
+        return cls(
+            payload["data"],
+            [Attachment.from_dict(a) for a in payload.get("attachments", [])],
+            payload.get("last_updated"),
+        )
 
 
 class Channel:
@@ -45,7 +87,12 @@ class Channel:
         self.id = self.key = key
         self.name = name
         self.agent_id = agent_id
-        self._aggregate = aggregate
+        if is_v2:
+            self._aggregate = aggregate and aggregate.data or {}
+            self._aggregate_obj = aggregate
+        else:
+            self._aggregate = aggregate
+            self._aggregate_obj = None
 
         self._agent = None
 
@@ -59,11 +106,18 @@ class Channel:
 
     @classmethod
     def from_data_v2(cls, data: dict[str, Any], client):
+        try:
+            agg_d = data["aggregate"]
+        except KeyError:
+            aggregate = None
+        else:
+            aggregate = Aggregate.from_dict(agg_d)
+
         return cls(
             f"{data['owner_id']}:{data['name']}",
             data["name"],
             data["owner_id"],
-            data["data"],
+            aggregate,
             True,
             client=client,
         )
@@ -86,14 +140,28 @@ class Channel:
 
     @property
     def aggregate(self) -> Any:
-        """Returns the aggregate data for the channel."""
+        """Returns the aggregate data for the channel. For a doover 2.0 channel this will be an `Aggregate` object"""
         return self._aggregate
+
+    @property
+    def aggregate_obj(self):
+        # fixme: this needs redoing for v2
+        return self._aggregate_obj
 
     def update(self):
         """Updates the channel data from the server."""
         if self.is_v2:
             res = self.client._get_channel_raw(f"{self.agent_id}:{self.name}")
-            self._aggregate = res["data"]
+
+            try:
+                agg_d = res["aggregate"]
+            except KeyError:
+                aggregate = None
+            else:
+                aggregate = Aggregate.from_dict(agg_d)
+
+            self._aggregate_obj = aggregate
+            self._aggregate = self._aggregate_obj and self._aggregate_obj.data or {}
         else:
             res = self.client._get_channel_raw(self.id)
             try:
@@ -217,6 +285,7 @@ class Channel:
         log_aggregate: bool = False,
         override_aggregate: bool = False,
         timestamp: Optional[datetime] = None,
+        files: list[tuple[str, str, str]] = None,
     ):
         """Publishes data to the channel.
 
@@ -235,7 +304,7 @@ class Channel:
 
         """
         return self.client.publish_to_channel(
-            self.id, data, save_log, log_aggregate, override_aggregate, timestamp
+            self.id, data, save_log, log_aggregate, override_aggregate, timestamp, files
         )
 
     @property
@@ -266,16 +335,22 @@ class Channel:
         mime_type : str, optional
             The MIME type of the file. If not provided, it will be guessed based on the file extension.
         """
-
         if mime_type is None:
             mime_type, _ = mimetypes.guess_type(file_path)
             # mime_type = "application/octet-stream"
 
-        with open(file_path, "rb") as f:
-            b64_data = base64.b64encode(f.read()).decode()
+        path = Path(file_path)
 
-        msg = {"output_type": mime_type, "output": b64_data}
-        self.publish(msg)
+        if self.is_v2:
+            msg = {"output_type": mime_type}
+            files = [(str(file_path), path.read_bytes(), mime_type)]
+        else:
+            with open(file_path, "rb") as f:
+                b64_data = base64.b64encode(f.read()).decode()
+            msg = {"output_type": mime_type, "output": b64_data}
+            files = None
+
+        self.publish(msg, save_log=True, override_aggregate=True, files=files)
 
 
 class Processor(Channel):
