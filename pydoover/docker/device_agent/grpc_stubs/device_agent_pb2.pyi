@@ -293,16 +293,18 @@ class Message(_message.Message):
     def __init__(self, message_id: _Optional[int] = ..., author_id: _Optional[int] = ..., channel: _Optional[_Union[ChannelID, _Mapping]] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[_Union[Attachment, _Mapping]]] = ...) -> None: ...
 
 class CreateMessageRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "data", "files")
+    __slots__ = ("header", "channel_name", "data", "files", "timestamp")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
     FILES_FIELD_NUMBER: _ClassVar[int]
+    TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     data: _struct_pb2.Struct
     files: _containers.RepeatedCompositeFieldContainer[File]
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ...) -> None: ...
+    timestamp: int
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., timestamp: _Optional[int] = ...) -> None: ...
 
 class CreateMessageResponse(_message.Message):
     __slots__ = ("response_header", "message_id")

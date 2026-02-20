@@ -6,7 +6,7 @@ import time
 import sys
 
 from collections.abc import Coroutine, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import grpc
@@ -558,13 +558,19 @@ class DeviceAgentInterface(GRPCInterface):
         return TurnCredential.from_proto(resp)
 
     async def create_message(
-        self, channel_name: str, data: dict[str, Any], files: list[File]
+        self,
+        channel_name: str,
+        data: dict[str, Any],
+        files: list[File],
+        timestamp: datetime = None,
     ) -> int:
+        timestamp = timestamp or datetime.now(tz=timezone.utc).timestamp() * 1000
         req = device_agent_pb2.CreateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
             data=data,
             files=[file.to_proto() for file in files],
+            timestamp=timestamp,
         )
         resp = await self.make_request_async("CreateMessage", req)
         return resp.message_id

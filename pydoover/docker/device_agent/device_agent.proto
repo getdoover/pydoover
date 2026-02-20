@@ -198,6 +198,7 @@ message CreateMessageRequest {
   string channel_name = 2;
   google.protobuf.Struct data = 3;
   repeated File files = 4;
+  uint64 timestamp = 5;
 }
 
 message CreateMessageResponse {
