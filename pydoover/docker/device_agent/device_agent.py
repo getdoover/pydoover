@@ -564,13 +564,13 @@ class DeviceAgentInterface(GRPCInterface):
         files: list[File],
         timestamp: datetime = None,
     ) -> int:
-        timestamp = timestamp or datetime.now(tz=timezone.utc).timestamp() * 1000
+        timestamp = (timestamp or datetime.now(tz=timezone.utc)).timestamp() * 1000
         req = device_agent_pb2.CreateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
             data=data,
             files=[file.to_proto() for file in files],
-            timestamp=timestamp,
+            timestamp=int(timestamp),
         )
         resp = await self.make_request_async("CreateMessage", req)
         return resp.message_id
