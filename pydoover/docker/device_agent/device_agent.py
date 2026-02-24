@@ -568,9 +568,10 @@ class DeviceAgentInterface(GRPCInterface):
         self,
         channel_name: str,
         data: dict[str, Any],
-        files: list[File],
+        files: list[File] = None,
         timestamp: datetime = None,
     ) -> int:
+        files = files or []
         timestamp = (timestamp or datetime.now(tz=timezone.utc)).timestamp() * 1000
         req = device_agent_pb2.CreateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
@@ -587,10 +588,11 @@ class DeviceAgentInterface(GRPCInterface):
         channel_name: str,
         message_id: int,
         data: dict[str, Any],
-        files: list[File],
+        files: list[File] = None,
         replace_data: bool = False,
         clear_attachments: bool = False,
     ) -> Message:
+        files = files or []
         req = device_agent_pb2.UpdateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
@@ -607,11 +609,12 @@ class DeviceAgentInterface(GRPCInterface):
         self,
         channel_name: str,
         data: dict[str, Any],
-        files: list[File],
+        files: list[File] = None,
         clear_attachments: bool = False,
         replace_data: bool = False,
         max_age_secs: float = None,
     ):
+        files = files or []
         req = device_agent_pb2.UpdateAggregateRequest(
             channel_name=channel_name,
             data=data,
