@@ -236,7 +236,7 @@ class Application:
                 log.info(
                     f"Starting healthcheck server on http://127.0.0.1:{self._healthcheck_port}"
                 )
-                server = Server(self._handle_healthcheck)
+                server = Server(self._handle_healthcheck, access_log=None)
                 runner = ServerRunner(server)
                 await runner.setup()
                 site = TCPSite(runner, "127.0.0.1", self._healthcheck_port)
