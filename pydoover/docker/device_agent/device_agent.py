@@ -636,7 +636,7 @@ class DeviceAgentInterface(GRPCInterface):
             max_age_secs=max_age_secs,
         )
         resp = await self.make_request_async("UpdateAggregate", req)
-        return Aggregate.from_proto(resp)
+        return Aggregate.from_proto(resp.aggregate)
 
     async def close(self):
         for listener in self._listeners.values():
