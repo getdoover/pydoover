@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 import grpc
+
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Struct
 from google.protobuf.json_format import MessageToDict
 
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
@@ -571,12 +574,15 @@ class DeviceAgentInterface(GRPCInterface):
         files: list[File] = None,
         timestamp: datetime = None,
     ) -> int:
+        d = Struct()
+        json_format.ParseDict(data, d)
+
         files = files or []
         timestamp = (timestamp or datetime.now(tz=timezone.utc)).timestamp() * 1000
         req = device_agent_pb2.CreateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
-            data=data,
+            data=d,
             files=[file.to_proto() for file in files],
             timestamp=int(timestamp),
         )
@@ -592,12 +598,15 @@ class DeviceAgentInterface(GRPCInterface):
         replace_data: bool = False,
         clear_attachments: bool = False,
     ) -> Message:
+        d = Struct()
+        json_format.ParseDict(data, d)
+
         files = files or []
         req = device_agent_pb2.UpdateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
             message_id=str(message_id),
-            data=data,
+            data=d,
             files=[file.to_proto() for file in files],
             clear_attachments=clear_attachments,
             replace_data=replace_data,
@@ -614,10 +623,13 @@ class DeviceAgentInterface(GRPCInterface):
         replace_data: bool = False,
         max_age_secs: float = None,
     ):
+        d = Struct()
+        json_format.ParseDict(data, d)
+
         files = files or []
         req = device_agent_pb2.UpdateAggregateRequest(
             channel_name=channel_name,
-            data=data,
+            data=d,
             files=[file.to_proto() for file in files],
             clear_attachments=clear_attachments,
             replace_data=replace_data,
