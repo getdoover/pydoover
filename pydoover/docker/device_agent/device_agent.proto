@@ -19,6 +19,7 @@ service deviceAgent {
   rpc GetTurnCredential (TurnCredentialRequest) returns (TurnCredentialResponse) {}
   rpc CreateMessage (CreateMessageRequest) returns (CreateMessageResponse) {}
   rpc UpdateMessage (UpdateMessageRequest) returns (UpdateMessageResponse) {}
+  rpc UpdateAggregate (UpdateAggregateRequest) returns (UpdateAggregateResponse) {}
 }
 
 message RequestHeader {
@@ -220,6 +221,29 @@ message UpdateMessageRequest {
 message UpdateMessageResponse {
   ResponseHeader response_header = 1;
   Message message = 2;
+}
+
+message Aggregate {
+  google.protobuf.Struct data = 1;
+  repeated Attachment attachments = 2;
+  optional uint64 last_updated = 3;
+}
+
+message UpdateAggregateRequest {
+  RequestHeader header = 1;
+
+  string channel_name = 2;
+  google.protobuf.Struct data = 4;
+  repeated File files = 5;
+  optional bool clear_attachments = 6;
+  optional bool replace_data = 7;
+
+  float max_age_secs = 8;
+}
+
+message UpdateAggregateResponse {
+  ResponseHeader response_header = 1;
+  Aggregate aggregate = 2;
 }
 
 message ChannelEventSubscriptionRequest {

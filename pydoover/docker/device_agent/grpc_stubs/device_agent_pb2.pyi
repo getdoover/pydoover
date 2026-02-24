@@ -340,6 +340,42 @@ class UpdateMessageResponse(_message.Message):
     message: Message
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message: _Optional[_Union[Message, _Mapping]] = ...) -> None: ...
 
+class Aggregate(_message.Message):
+    __slots__ = ("data", "attachments", "last_updated")
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    ATTACHMENTS_FIELD_NUMBER: _ClassVar[int]
+    LAST_UPDATED_FIELD_NUMBER: _ClassVar[int]
+    data: _struct_pb2.Struct
+    attachments: _containers.RepeatedCompositeFieldContainer[Attachment]
+    last_updated: int
+    def __init__(self, data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[_Union[Attachment, _Mapping]]] = ..., last_updated: _Optional[int] = ...) -> None: ...
+
+class UpdateAggregateRequest(_message.Message):
+    __slots__ = ("header", "channel_name", "data", "files", "clear_attachments", "replace_data", "max_age_secs")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    FILES_FIELD_NUMBER: _ClassVar[int]
+    CLEAR_ATTACHMENTS_FIELD_NUMBER: _ClassVar[int]
+    REPLACE_DATA_FIELD_NUMBER: _ClassVar[int]
+    MAX_AGE_SECS_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    channel_name: str
+    data: _struct_pb2.Struct
+    files: _containers.RepeatedCompositeFieldContainer[File]
+    clear_attachments: bool
+    replace_data: bool
+    max_age_secs: float
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ..., replace_data: bool = ..., max_age_secs: _Optional[float] = ...) -> None: ...
+
+class UpdateAggregateResponse(_message.Message):
+    __slots__ = ("response_header", "aggregate")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    AGGREGATE_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    aggregate: Aggregate
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., aggregate: _Optional[_Union[Aggregate, _Mapping]] = ...) -> None: ...
+
 class ChannelEventSubscriptionRequest(_message.Message):
     __slots__ = ("header", "channel_name")
     HEADER_FIELD_NUMBER: _ClassVar[int]

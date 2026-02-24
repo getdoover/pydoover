@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from google.protobuf.json_format import MessageToDict
@@ -9,6 +10,7 @@ from .grpc_stubs.device_agent_pb2 import (
     Message as ProtoMessage,
     ChannelID as ProtoChannelID,
     TurnCredential as ProtoTurnCredential,
+    Aggregate as ProtoAggregate,
 )
 
 from google.protobuf import json_format
@@ -224,4 +226,46 @@ class TurnCredential:
             ttl=self.ttl,
             expires_at=self.expires_at,
             uris=self.uris,
+        )
+
+
+class Aggregate:
+    def __init__(
+        self,
+        data: dict[str, Any],
+        attachments: list[Attachment],
+        last_updated: datetime | None,
+    ):
+        self.data: dict[str, Any] = data
+        self.attachments = attachments
+        self.last_updated: datetime | None = last_updated
+
+    @classmethod
+    def from_dict(cls, payload):
+        ts = payload.get("last_updated")
+        dt = ts and datetime.fromtimestamp(ts / 1000.0)
+        return cls(
+            payload["data"],
+            [Attachment.from_dict(a) for a in payload.get("attachments", [])],
+            dt,
+        )
+
+    @classmethod
+    def from_proto(cls, response: ProtoAggregate):
+        return cls(
+            MessageToDict(response.data),
+            [Attachment.from_proto(a) for a in response.attachments],
+            response.last_updated
+            and datetime.fromtimestamp(response.last_updated / 1000.0),
+        )
+
+    def to_proto(self):
+        data = Struct()
+        json_format.ParseDict(self.data, data)
+
+        return ProtoAggregate(
+            data=data,
+            attachments=[a.to_proto() for a in self.attachments],
+            last_updated=self.last_updated
+            and int(self.last_updated.timestamp() * 1000.0),
         )

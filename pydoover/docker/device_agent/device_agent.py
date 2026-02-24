@@ -13,7 +13,14 @@ import grpc
 from google.protobuf.json_format import MessageToDict
 
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
-from .models import TurnCredential, File, Message, MessageCreateEvent, OneShotMessage
+from .models import (
+    TurnCredential,
+    File,
+    Message,
+    MessageCreateEvent,
+    OneShotMessage,
+    Aggregate,
+)
 from ..grpc_interface import GRPCInterface
 from ...cloud.processor.types import AggregateUpdateEvent
 from ...utils import apply_diff, call_maybe_async, maybe_async, maybe_load_json
@@ -581,18 +588,40 @@ class DeviceAgentInterface(GRPCInterface):
         message_id: int,
         data: dict[str, Any],
         files: list[File],
+        replace_data: bool = False,
         clear_attachments: bool = False,
     ) -> Message:
         req = device_agent_pb2.UpdateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
-            message_id=message_id,
+            message_id=str(message_id),
             data=data,
             files=[file.to_proto() for file in files],
             clear_attachments=clear_attachments,
+            replace_data=replace_data,
         )
         resp = await self.make_request_async("UpdateMessage", req)
         return Message.from_proto(resp)
+
+    async def update_aggregate(
+        self,
+        channel_name: str,
+        data: dict[str, Any],
+        files: list[File],
+        clear_attachments: bool = False,
+        replace_data: bool = False,
+        max_age_secs: float = None,
+    ):
+        req = device_agent_pb2.UpdateAggregateRequest(
+            channel_name=channel_name,
+            data=data,
+            files=[file.to_proto() for file in files],
+            clear_attachments=clear_attachments,
+            replace_data=replace_data,
+            max_age_secs=max_age_secs,
+        )
+        resp = await self.make_request_async("UpdateAggregate", req)
+        return Aggregate.from_proto(resp)
 
     async def close(self):
         for listener in self._listeners.values():
