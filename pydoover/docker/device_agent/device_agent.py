@@ -612,7 +612,11 @@ class DeviceAgentInterface(GRPCInterface):
             replace_data=replace_data,
         )
         resp = await self.make_request_async("UpdateMessage", req)
-        return Message.from_proto(resp)
+        # fixme: some proper error handling
+        if resp:
+            return Message.from_proto(resp)
+        else:
+            log.info(f"Failed to update message: {resp}...")
 
     async def update_aggregate(
         self,
