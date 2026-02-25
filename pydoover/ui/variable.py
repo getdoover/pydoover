@@ -53,7 +53,9 @@ class Variable(Element):
 
         self.var_type = var_type
         self._curr_val = curr_val
-        self.precision = precision or kwargs.pop("dec_precision", None)
+        self.precision = (
+            precision if precision is not None else kwargs.pop("dec_precision", None)
+        )
         self.earliest_data_time = earliest_data_time
         self.default_zoom = default_zoom or kwargs.pop("default_zoom", None)
         self.log_threshold = (
