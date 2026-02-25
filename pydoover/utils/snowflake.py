@@ -46,3 +46,8 @@ def generate_snowflake_id_at(
         rand = 0
 
     return millis << 22 | region_id << 18 | instance_id << 8 | type_id << 4 | rand
+
+
+def get_datetime_from_snowflake(snowflake_id: int) -> datetime:
+    millis = (snowflake_id >> 22) + DOOVER_EPOCH
+    return datetime.fromtimestamp(millis / 1000)
