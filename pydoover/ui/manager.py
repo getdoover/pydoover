@@ -639,6 +639,10 @@ class UIManager:
             raise RuntimeError("Cannot push async with a Client object")
 
         elif getattr(self.client, "is_processor_v2", False):
+            if channel_name == self.client._invoking_channel_name:
+                log.warning(f"Not publishing to invoking channel: {data}")
+                return None
+
             await self.client.update_aggregate(
                 self.client.agent_id,
                 channel_name,
