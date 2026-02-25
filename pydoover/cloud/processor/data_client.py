@@ -247,9 +247,16 @@ class DooverData:
         files: list[tuple[str, bytes, str]] = None,
         replace: bool = False,
         organisation_id: int = None,
+        allow_invoking_channel: bool = False,
     ):
+        # this allow_invoking_channel parameter is pretty dangerous,
         if channel_name == self._invoking_channel_name:
-            raise RuntimeError("Cannot publish to the invoking channel.")
+            if allow_invoking_channel:
+                log.warning(
+                    "Publishing to invoking channel with override to allow. Be careful - this will cause recursion issues if not handled correctly."
+                )
+            else:
+                raise RuntimeError("Cannot publish to the invoking channel.")
 
         operation = "PUT" if replace else "PATCH"
         url = f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/aggregate"
