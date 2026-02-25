@@ -47,6 +47,7 @@ class Interaction(Element):
         callback=None,
         transform_check=None,
         show_activity: bool | None = None,
+        requires_confirm: bool = True,
         **kwargs,
     ):
         super().__init__(name, display_name, **kwargs)
@@ -73,6 +74,7 @@ class Interaction(Element):
         #     self.coerce(self._default_value)
 
         self.show_activity = show_activity
+        self.requires_confirm = requires_confirm
 
     @property
     def current_value(self):
@@ -192,6 +194,7 @@ class Interaction(Element):
 
     def to_dict(self):
         res = super().to_dict()
+        res["requiresConfirm"] = self.requires_confirm
         if self._current_value is not NotSet:
             res["currentValue"] = self._json_safe_current_value()
         if self.show_activity is not None:
@@ -223,19 +226,16 @@ class Action(Interaction):
         name: str,
         display_name: str,
         colour: Colour = Colour.blue,
-        requires_confirm: bool = True,
         disabled: bool = False,
         **kwargs,
     ):
         super().__init__(name, display_name, **kwargs)
         self.colour = colour
-        self.requires_confirm = requires_confirm
         self.disabled = disabled
 
     def to_dict(self):
         result = super().to_dict()
         result["colour"] = str(self.colour)
-        result["requiresConfirm"] = self.requires_confirm
         result["disabled"] = self.disabled
         return result
 
