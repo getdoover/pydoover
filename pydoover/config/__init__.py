@@ -914,7 +914,10 @@ class ApplicationPosition(Number):
         display_name: str = "Position",
         *,
         description: str = "Position of Application in UI Structure. Smaller numbers are closer to the top.",
+        default: int = 50,
         **kwargs,
     ):
-        super().__init__(display_name, description=description, minimum=0, **kwargs)
+        super().__init__(
+            display_name, description=description, minimum=0, default=default, **kwargs
+        )
         self._name = "dv-app-position"
