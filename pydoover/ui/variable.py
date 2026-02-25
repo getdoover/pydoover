@@ -302,7 +302,9 @@ class Timestamp(Variable):
     def __init__(self, name: str, display_name: str, curr_val: int = None, **kwargs):
         # this might do some weird stuff where people think they can have ranges and what not, but yeah...
         # this will do for now...
-        super().__init__(name, display_name, curr_val=curr_val, **kwargs)
+        super().__init__(
+            name, display_name, curr_val=curr_val, var_type="timestamp", **kwargs
+        )
 
     def to_dict(self):
         result = super().to_dict()
