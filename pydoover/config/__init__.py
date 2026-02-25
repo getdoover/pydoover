@@ -908,7 +908,7 @@ class GroupsConfig(Array):
         )
 
 
-class ApplicationPosition(Number):
+class ApplicationPosition(Integer):
     def __init__(
         self,
         display_name: str = "Position",
