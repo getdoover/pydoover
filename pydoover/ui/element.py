@@ -347,16 +347,3 @@ class Multiplot(Element):
                 result["earliestDataDate"] = self.earliest_data_time
 
         return result
-
-
-class TabContainer(Element):
-    type = "uiTabs"
-
-    def __init__(self, children: list[Element], **kwargs):
-        self.children = children
-        super().__init__(**kwargs)
-
-    def to_dict(self):
-        res = super().to_dict()
-        res["children"] = {c.name: c.to_dict() for c in self.children}
-        return res

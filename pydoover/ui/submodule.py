@@ -317,8 +317,8 @@ class Application(Container):
         if self.variant is not None:
             result["variant"] = self.variant
         return result
-    
-    
+
+
 class RemoteComponent(Container):
     """Represents a remote component in the UI.
 
@@ -335,11 +335,12 @@ class RemoteComponent(Container):
     type = "uiRemoteComponent"
 
     def __init__(
-        self, name: str, 
-        display_name: str, 
-        component_url: str, 
-        children: list[Element] = None, 
-        **kwargs
+        self,
+        name: str,
+        display_name: str,
+        component_url: str,
+        children: list[Element] = None,
+        **kwargs,
     ):
         super().__init__(name, display_name, children, **kwargs)
         self.component_url = component_url
@@ -348,4 +349,17 @@ class RemoteComponent(Container):
     def to_dict(self):
         res = super().to_dict()
         res.update(self.kwargs)
+        return res
+
+
+class TabContainer(Element):
+    type = "uiTabs"
+
+    def __init__(self, children: list[Element], **kwargs):
+        self.children = children
+        super().__init__(**kwargs)
+
+    def to_dict(self):
+        res = super().to_dict()
+        res["children"] = {c.name: c.to_dict() for c in self.children}
         return res
