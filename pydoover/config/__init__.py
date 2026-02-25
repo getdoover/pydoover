@@ -906,3 +906,15 @@ class GroupsConfig(Array):
             description=description,
             **kwargs,
         )
+
+
+class ApplicationPosition(Number):
+    def __init__(
+        self,
+        display_name: str = "Position",
+        *,
+        description: str = "Position of Application in UI Structure. Smaller numbers are closer to the top.",
+        **kwargs,
+    ):
+        super().__init__(display_name, description=description, minimum=0, **kwargs)
+        self._name = "dv-app-position"
