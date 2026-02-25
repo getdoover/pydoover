@@ -6,6 +6,7 @@ from .config import (
     IngestionEndpointConfig as IngestionEndpointConfig,
     ExtendedPermissionsConfig as ExtendedPermissionsConfig,
     TimezoneConfig as TimezoneConfig,
+    SerialNumberConfig as SerialNumberConfig,
 )
 from .types import (
     Channel as Channel,
