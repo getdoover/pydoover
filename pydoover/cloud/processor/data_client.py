@@ -224,7 +224,7 @@ class DooverData:
         if after:
             params["after"] = after
         if field_names:
-            params["field_names"] = field_names
+            params["field_name"] = field_names
 
         query = f"?{urlencode(params, doseq=True)}" if params else ""
         url = (
