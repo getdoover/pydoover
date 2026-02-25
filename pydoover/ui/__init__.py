@@ -54,5 +54,6 @@ from .variable import (
     TextVariable as TextVariable,
     BooleanVariable as BooleanVariable,
     DateTimeVariable as DateTimeVariable,
+    Timestamp as Timestamp,
 )
 from .camera import CameraLiveView as CameraLiveView, CameraHistory as CameraHistory
