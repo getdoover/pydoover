@@ -294,3 +294,19 @@ class DateTimeVariable(Variable):
         super().__init__(
             name, display_name, var_type="time", curr_val=curr_val, **kwargs
         )
+
+
+class Timestamp(Variable):
+    type = "uiTimestamp"
+
+    def __init__(self, name: str, display_name: str, curr_val: int = None, **kwargs):
+        # this might do some weird stuff where people think they can have ranges and what not, but yeah...
+        # this will do for now...
+        super().__init__(name, display_name, curr_val=curr_val, **kwargs)
+
+    def to_dict(self):
+        result = super().to_dict()
+        result["current_value"] = self.current_value and int(
+            self.current_value.timestamp() * 1000
+        )
+        return result
