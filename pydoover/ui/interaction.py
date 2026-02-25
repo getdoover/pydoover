@@ -402,6 +402,25 @@ class Slider(Interaction):
         return result
 
 
+class Switch(Interaction):
+    type = "uiSwitch"
+
+    def __init__(self, name: str, icon: str = None, colour: Colour = None, **kwargs):
+        super().__init__(
+            name=name.replace(" ", "_").lower(), display_name=name, **kwargs
+        )
+        self.icon = icon
+        self.colour = colour
+
+    def to_dict(self):
+        res = super().to_dict()
+        if self.icon:
+            res["icon"] = self.icon
+        if self.colour:
+            res["colour"] = self.colour
+        return res
+
+
 def action(
     name: str,
     display_name: str = None,
