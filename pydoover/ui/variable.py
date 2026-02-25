@@ -308,7 +308,7 @@ class Timestamp(Variable):
 
     def to_dict(self):
         result = super().to_dict()
-        result["current_value"] = self.current_value and int(
+        result["currentValue"] = self.current_value and int(
             self.current_value.timestamp() * 1000
         )
         return result
