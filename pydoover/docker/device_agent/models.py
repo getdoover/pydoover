@@ -4,7 +4,6 @@ from typing import Any
 from google.protobuf.json_format import MessageToDict
 
 from .grpc_stubs.device_agent_pb2 import (
-    TurnCredentialResponse,
     File as ProtoFile,
     Attachment as ProtoAttachment,
     Message as ProtoMessage,
@@ -209,14 +208,13 @@ class TurnCredential:
         )
 
     @classmethod
-    def from_proto(cls, response: TurnCredentialResponse):
-        creds = response.turn_credential
+    def from_proto(cls, resp: ProtoTurnCredential):
         return cls(
-            creds.username,
-            creds.credential,
-            creds.ttl,
-            creds.expires_at,
-            list(creds.uris),
+            resp.username,
+            resp.credential,
+            resp.ttl,
+            resp.expires_at,
+            list(resp.uris),
         )
 
     def to_proto(self):

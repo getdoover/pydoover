@@ -565,7 +565,7 @@ class DeviceAgentInterface(GRPCInterface):
                 header=device_agent_pb2.RequestHeader(app_id=self.app_key)
             ),
         )
-        return TurnCredential.from_proto(resp)
+        return TurnCredential.from_proto(resp.turn_credential)
 
     async def create_message(
         self,
@@ -614,7 +614,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request_async("UpdateMessage", req)
         # fixme: some proper error handling
         if resp:
-            return Message.from_proto(resp)
+            return Message.from_proto(resp.message)
         else:
             log.info(f"Failed to update message: {resp}...")
 
