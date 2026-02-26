@@ -78,7 +78,7 @@ class File:
 
 class ChannelID:
     def __init__(self, agent_id: int, name: str):
-        self.agent_id = agent_id
+        self.agent_id = int(agent_id)
         self.name = name
 
     @classmethod
@@ -111,8 +111,8 @@ class Message:
         data: dict,
         attachments: list[Attachment],
     ):
-        self.id = id
-        self.author_id = author_id
+        self.id = int(id)
+        self.author_id = int(author_id)
         self.channel = channel
         self.data = data
         self.attachments = attachments
