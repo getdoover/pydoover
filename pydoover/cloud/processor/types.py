@@ -247,9 +247,9 @@ class Message:
         return cls(
             data["id"],
             data["author_id"],
-            data["channel"],
+            ChannelID.from_dict(data["channel"]),
             data["data"],
-            data["attachments"],
+            [Attachment.from_dict(a) for a in data["attachments"]],
         )
 
     def to_dict(self):
