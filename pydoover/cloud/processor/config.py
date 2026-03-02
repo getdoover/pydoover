@@ -114,8 +114,8 @@ class IngestionEndpointConfig(Object):
 class ExtendedPermissionsConfig(Object):
     def __init__(self):
         super().__init__(
-            "Extended Permissions",
-            description="Enable extended permissions and access to other devices.",
+            "Devices",
+            description="Give Permission to access devices.",
         )
 
         self._name = "dv_proc_extended_permissions"
