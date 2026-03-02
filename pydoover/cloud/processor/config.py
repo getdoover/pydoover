@@ -53,9 +53,7 @@ class ScheduleConfig(String):
             format = "doover-schedule"
         else:
             format = "doover-schedule-" + "-".join(allowed_modes)
-        super().__init__(
-            display_name, description=description, format=format, **kwargs
-        )
+        super().__init__(display_name, description=description, format=format, **kwargs)
         self._name = "dv_proc_schedules"
 
 
@@ -139,8 +137,8 @@ class ExtendedPermissionsConfig(Object):
             default=False,
         )
 
+
 class TimezoneConfig(Enum):
-    
     def __init__(
         self,
         display_name: str = "Timezone",
@@ -150,5 +148,23 @@ class TimezoneConfig(Enum):
         **kwargs,
     ):
         choices = list(zoneinfo.available_timezones())
-        super().__init__(display_name, choices=choices, description=description, default=default, **kwargs)
+        super().__init__(
+            display_name,
+            choices=choices,
+            description=description,
+            default=default,
+            **kwargs,
+        )
         self._name = "dv_proc_timezone"
+
+
+class SerialNumberConfig(String):
+    def __init__(
+        self,
+        display_name: str = "Serial Number",
+        *,
+        description: str = "Device Serial Number",
+        **kwargs,
+    ):
+        super().__init__(display_name, description=description, **kwargs)
+        self._name = "dv_serial_number"

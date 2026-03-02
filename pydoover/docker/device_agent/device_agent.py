@@ -6,14 +6,26 @@ import time
 import sys
 
 from collections.abc import Coroutine, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import grpc
 
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Struct
+from google.protobuf.json_format import MessageToDict
+
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
-from .models import TurnCredential, File, Message
+from .models import (
+    TurnCredential,
+    File,
+    Message,
+    MessageCreateEvent,
+    OneShotMessage,
+    Aggregate,
+)
 from ..grpc_interface import GRPCInterface
+from ...cloud.processor.types import AggregateUpdateEvent
 from ...utils import apply_diff, call_maybe_async, maybe_async, maybe_load_json
 from ...cli.decorators import command as cli_command
 
@@ -214,6 +226,47 @@ class DeviceAgentInterface(GRPCInterface):
                 except StopAsyncIteration:
                     log.debug("Channel stream ended.")
                     break
+
+    async def stream_channel_events(self, channel_name: str):
+        while True:
+            async with grpc.aio.insecure_channel(self.uri) as channel:
+                pl = device_agent_pb2.ChannelEventSubscriptionRequest(
+                    channel_name=channel_name
+                )
+                channel_stream = device_agent_pb2_grpc.deviceAgentStub(
+                    channel
+                ).ChannelEventSubscription(pl)
+
+                while True:
+                    try:
+                        response: device_agent_pb2.ChannelEventSubscriptionResponse = (
+                            await channel_stream.read()
+                        )
+                        log.debug(
+                            f"Received event response from subscription request on {channel_name}: {str(response)[:120]}"
+                        )
+                        if not response.response_header.success:
+                            raise RuntimeError(
+                                f"Failed to subscribe to channel {channel_name}: {response.response_header.response_message}"
+                            )
+
+                        match response.event_name:
+                            case "MessageCreate":
+                                yield MessageCreateEvent.from_dict(
+                                    MessageToDict(response.data)
+                                )
+                            case "AggregateUpdate":
+                                yield AggregateUpdateEvent.from_dict(
+                                    MessageToDict(response.data)
+                                )
+                            case "OneShotMessage":
+                                yield OneShotMessage.from_dict(
+                                    MessageToDict(response.data)
+                                )
+
+                    except StopAsyncIteration:
+                        log.debug("Channel stream ended.")
+                        break
 
     async def recv_update_callback(self, channel_name, response):
         log.debug(f"Received response from subscription request: {str(response)[:100]}")
@@ -512,16 +565,26 @@ class DeviceAgentInterface(GRPCInterface):
                 header=device_agent_pb2.RequestHeader(app_id=self.app_key)
             ),
         )
-        return TurnCredential.from_proto(resp)
+        return TurnCredential.from_proto(resp.turn_credential)
 
     async def create_message(
-        self, channel_name: str, data: dict[str, Any], files: list[File]
+        self,
+        channel_name: str,
+        data: dict[str, Any],
+        files: list[File] = None,
+        timestamp: datetime = None,
     ) -> int:
+        d = Struct()
+        json_format.ParseDict(data, d)
+
+        files = files or []
+        timestamp = (timestamp or datetime.now(tz=timezone.utc)).timestamp() * 1000
         req = device_agent_pb2.CreateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
-            data=data,
+            data=d,
             files=[file.to_proto() for file in files],
+            timestamp=int(timestamp),
         )
         resp = await self.make_request_async("CreateMessage", req)
         return resp.message_id
@@ -531,19 +594,53 @@ class DeviceAgentInterface(GRPCInterface):
         channel_name: str,
         message_id: int,
         data: dict[str, Any],
-        files: list[File],
+        files: list[File] = None,
+        replace_data: bool = False,
         clear_attachments: bool = False,
     ) -> Message:
+        d = Struct()
+        json_format.ParseDict(data, d)
+
+        files = files or []
         req = device_agent_pb2.UpdateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
-            message_id=message_id,
-            data=data,
+            message_id=str(message_id),
+            data=d,
             files=[file.to_proto() for file in files],
             clear_attachments=clear_attachments,
+            replace_data=replace_data,
         )
         resp = await self.make_request_async("UpdateMessage", req)
-        return Message.from_proto(resp)
+        # fixme: some proper error handling
+        if resp:
+            return Message.from_proto(resp.message)
+        else:
+            log.info(f"Failed to update message: {resp}...")
+
+    async def update_aggregate(
+        self,
+        channel_name: str,
+        data: dict[str, Any],
+        files: list[File] = None,
+        clear_attachments: bool = False,
+        replace_data: bool = False,
+        max_age_secs: float = None,
+    ):
+        d = Struct()
+        json_format.ParseDict(data, d)
+
+        files = files or []
+        req = device_agent_pb2.UpdateAggregateRequest(
+            channel_name=channel_name,
+            data=d,
+            files=[file.to_proto() for file in files],
+            clear_attachments=clear_attachments,
+            replace_data=replace_data,
+            max_age_secs=max_age_secs,
+        )
+        resp = await self.make_request_async("UpdateAggregate", req)
+        return Aggregate.from_proto(resp.aggregate)
 
     async def close(self):
         for listener in self._listeners.values():

@@ -55,6 +55,11 @@ class deviceAgentStub(object):
                 request_serializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionResponse.FromString,
                 _registered_method=True)
+        self.ChannelEventSubscription = channel.unary_stream(
+                '/device_agent.deviceAgent/ChannelEventSubscription',
+                request_serializer=grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionRequest.SerializeToString,
+                response_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionResponse.FromString,
+                _registered_method=True)
         self.WriteToChannel = channel.unary_unary(
                 '/device_agent.deviceAgent/WriteToChannel',
                 request_serializer=grpc__stubs_dot_device__agent__pb2.ChannelWriteRequest.SerializeToString,
@@ -85,6 +90,11 @@ class deviceAgentStub(object):
                 request_serializer=grpc__stubs_dot_device__agent__pb2.UpdateMessageRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateMessageResponse.FromString,
                 _registered_method=True)
+        self.UpdateAggregate = channel.unary_unary(
+                '/device_agent.deviceAgent/UpdateAggregate',
+                request_serializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.SerializeToString,
+                response_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.FromString,
+                _registered_method=True)
 
 
 class deviceAgentServicer(object):
@@ -104,6 +114,12 @@ class deviceAgentServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetChannelSubscription(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ChannelEventSubscription(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -145,6 +161,12 @@ class deviceAgentServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def UpdateAggregate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_deviceAgentServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -162,6 +184,11 @@ def add_deviceAgentServicer_to_server(servicer, server):
                     servicer.GetChannelSubscription,
                     request_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionRequest.FromString,
                     response_serializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionResponse.SerializeToString,
+            ),
+            'ChannelEventSubscription': grpc.unary_stream_rpc_method_handler(
+                    servicer.ChannelEventSubscription,
+                    request_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionRequest.FromString,
+                    response_serializer=grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionResponse.SerializeToString,
             ),
             'WriteToChannel': grpc.unary_unary_rpc_method_handler(
                     servicer.WriteToChannel,
@@ -192,6 +219,11 @@ def add_deviceAgentServicer_to_server(servicer, server):
                     servicer.UpdateMessage,
                     request_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateMessageRequest.FromString,
                     response_serializer=grpc__stubs_dot_device__agent__pb2.UpdateMessageResponse.SerializeToString,
+            ),
+            'UpdateAggregate': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateAggregate,
+                    request_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.FromString,
+                    response_serializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -276,6 +308,33 @@ class deviceAgent(object):
             '/device_agent.deviceAgent/GetChannelSubscription',
             grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionRequest.SerializeToString,
             grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ChannelEventSubscription(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/device_agent.deviceAgent/ChannelEventSubscription',
+            grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionRequest.SerializeToString,
+            grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -438,6 +497,33 @@ class deviceAgent(object):
             '/device_agent.deviceAgent/UpdateMessage',
             grpc__stubs_dot_device__agent__pb2.UpdateMessageRequest.SerializeToString,
             grpc__stubs_dot_device__agent__pb2.UpdateMessageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UpdateAggregate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/device_agent.deviceAgent/UpdateAggregate',
+            grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.SerializeToString,
+            grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.FromString,
             options,
             channel_credentials,
             insecure,

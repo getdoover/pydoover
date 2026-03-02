@@ -383,12 +383,6 @@ class Client:
         if not isinstance(message, dict):
             raise ValueError("message must be a dictionary")
 
-        if timestamp is not None:
-            raise RuntimeError("timestamps not supported in pydoover yet")
-            # payload["ts"] = (
-            #     int(timestamp.timestamp()) * 1000
-            # )  # milliseconds since epoch
-
         if is_diff:
             operation = "PATCH"
         else:
@@ -397,6 +391,19 @@ class Client:
         url = "/agents/{}/channels/{}/aggregate"
         if record_log:
             url += "?log_update=true"
+            if timestamp is not None and files is None:
+                payload = {
+                    "data": message,
+                    "ts": int(timestamp.timestamp()) * 1000
+                }
+                url = "/agents/{}/channels/{}/messages"
+            
+                return self.request(
+                    Route("POST", url, agent_id, channel_name),
+                    json=payload,
+                    data_url=True,
+                    # organisation_id=organisation_id,
+                )
 
         if files is not None:
             if not isinstance(files, list):

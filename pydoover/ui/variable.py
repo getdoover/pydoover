@@ -53,7 +53,9 @@ class Variable(Element):
 
         self.var_type = var_type
         self._curr_val = curr_val
-        self.precision = precision or kwargs.pop("dec_precision", None)
+        self.precision = (
+            precision if precision is not None else kwargs.pop("dec_precision", None)
+        )
         self.earliest_data_time = earliest_data_time
         self.default_zoom = default_zoom or kwargs.pop("default_zoom", None)
         self.log_threshold = (
@@ -294,3 +296,21 @@ class DateTimeVariable(Variable):
         super().__init__(
             name, display_name, var_type="time", curr_val=curr_val, **kwargs
         )
+
+
+class Timestamp(Variable):
+    type = "uiTimestamp"
+
+    def __init__(self, name: str, display_name: str, curr_val: int = None, **kwargs):
+        # this might do some weird stuff where people think they can have ranges and what not, but yeah...
+        # this will do for now...
+        super().__init__(
+            name, display_name, curr_val=curr_val, var_type="timestamp", **kwargs
+        )
+
+    def to_dict(self):
+        result = super().to_dict()
+        result["currentValue"] = self.current_value and int(
+            self.current_value.timestamp() * 1000
+        )
+        return result

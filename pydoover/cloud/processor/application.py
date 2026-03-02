@@ -137,6 +137,9 @@ class Application:
 
         # Store the deployment config for later use
         self.received_deployment_config = data["deployment_config"]
+        self.ui_manager.set_display_name(
+            self.received_deployment_config.get("APP_DISPLAY_NAME")
+        )
 
     async def _close(self):
         await self.api.close()

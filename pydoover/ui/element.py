@@ -65,6 +65,9 @@ class Element:
         position: int = None,  # 100,
         conditions: Optional[dict] = None,
         hidden: bool = False,
+        units: str = None,
+        icon: str = None,
+        colour: Colour = None,
         **kwargs,
     ):
         self.name = name
@@ -88,6 +91,9 @@ class Element:
 
         self.conditions = conditions
         self.hidden = hidden
+        self.units = units
+        self.icon = icon
+        self.colour = colour
 
         for k, v in kwargs.items():
             log.debug(f"Setting kwarg {k} to {v}")
@@ -118,6 +124,9 @@ class Element:
             "position": self.position,
             "conditions": self.conditions,
             "hidden": self.hidden,
+            "units": self.units,
+            "icon": self.icon,
+            "colour": self.colour,
         }
         # filter out any null values
         return {k: v for k, v in to_return.items() if v is not None}

@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable
 
+from pydoover.utils.snowflake import get_datetime_from_snowflake
+
 
 class ConnectionDetermination(Enum):
     online = "Online"
@@ -185,29 +187,10 @@ class ChannelID:
             data["name"],
         )
 
-
-class Message:
-    def __init__(self, id: int, author_id: int, data: dict, timestamp: int):
-        self.id = id
-        self.author_id = author_id
-        self.data = data
-        self.timestamp = timestamp
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]):
-        return cls(
-            data["id"],
-            data.get("author_id"),
-            data.get("data"),
-            data.get("timestamp"),
-        )
-
     def to_dict(self):
         return {
-            "id": self.id,
-            "author_id": self.author_id,
-            "data": self.data,
-            "timestamp": self.timestamp,
+            "agent_id": self.agent_id,
+            "name": self.name,
         }
 
 
@@ -230,6 +213,53 @@ class Attachment:
             payload["size"],
             payload["url"],
         )
+
+    def to_dict(self):
+        return {
+            "filename": self.filename,
+            "content_type": self.content_type,
+            "size": self.size,
+            "url": self.url,
+        }
+
+
+class Message:
+    def __init__(
+        self,
+        id: int,
+        author_id: int,
+        channel: ChannelID,
+        data: dict,
+        attachments: list[Attachment],
+    ):
+        self.id = int(id)
+        self.author_id = author_id
+        self.data = data
+        self.channel = channel
+        self.attachments = attachments
+
+    @property
+    def timestamp(self):
+        return get_datetime_from_snowflake(self.id)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["id"],
+            data["author_id"],
+            ChannelID.from_dict(data["channel"]),
+            data["data"],
+            [Attachment.from_dict(a) for a in data["attachments"]],
+        )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "author_id": self.author_id,
+            "channel": self.channel.to_dict(),
+            "data": self.data,
+            "attachments": [a.to_dict() for a in self.attachments],
+        }
 
 
 class Aggregate:

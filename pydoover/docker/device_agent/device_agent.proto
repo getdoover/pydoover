@@ -12,12 +12,14 @@ service deviceAgent {
   rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
 
   rpc GetChannelSubscription (ChannelSubscriptionRequest) returns (stream ChannelSubscriptionResponse) {}
+  rpc ChannelEventSubscription (ChannelEventSubscriptionRequest) returns (stream ChannelEventSubscriptionResponse) {}
   rpc WriteToChannel (ChannelWriteRequest) returns (ChannelWriteResponse) {}
   rpc GetDebugInfo (DebugInfoRequest) returns (DebugInfoResponse) {}
   rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
   rpc GetTurnCredential (TurnCredentialRequest) returns (TurnCredentialResponse) {}
   rpc CreateMessage (CreateMessageRequest) returns (CreateMessageResponse) {}
   rpc UpdateMessage (UpdateMessageRequest) returns (UpdateMessageResponse) {}
+  rpc UpdateAggregate (UpdateAggregateRequest) returns (UpdateAggregateResponse) {}
 }
 
 message RequestHeader {
@@ -197,6 +199,7 @@ message CreateMessageRequest {
   string channel_name = 2;
   google.protobuf.Struct data = 3;
   repeated File files = 4;
+  uint64 timestamp = 5;
 }
 
 message CreateMessageResponse {
@@ -218,4 +221,40 @@ message UpdateMessageRequest {
 message UpdateMessageResponse {
   ResponseHeader response_header = 1;
   Message message = 2;
+}
+
+message Aggregate {
+  google.protobuf.Struct data = 1;
+  repeated Attachment attachments = 2;
+  optional uint64 last_updated = 3;
+}
+
+message UpdateAggregateRequest {
+  RequestHeader header = 1;
+
+  string channel_name = 2;
+  google.protobuf.Struct data = 4;
+  repeated File files = 5;
+  optional bool clear_attachments = 6;
+  optional bool replace_data = 7;
+
+  float max_age_secs = 8;
+}
+
+message UpdateAggregateResponse {
+  ResponseHeader response_header = 1;
+  Aggregate aggregate = 2;
+}
+
+message ChannelEventSubscriptionRequest {
+  RequestHeader header = 2;
+  string channel_name = 1;
+
+}
+
+message ChannelEventSubscriptionResponse {
+  ResponseHeader response_header = 1;
+  string event_name = 2;
+  string channel_name = 3;
+  google.protobuf.Struct data = 4;
 }

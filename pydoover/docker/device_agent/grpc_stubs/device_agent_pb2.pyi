@@ -293,16 +293,18 @@ class Message(_message.Message):
     def __init__(self, message_id: _Optional[int] = ..., author_id: _Optional[int] = ..., channel: _Optional[_Union[ChannelID, _Mapping]] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[_Union[Attachment, _Mapping]]] = ...) -> None: ...
 
 class CreateMessageRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "data", "files")
+    __slots__ = ("header", "channel_name", "data", "files", "timestamp")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
     FILES_FIELD_NUMBER: _ClassVar[int]
+    TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     data: _struct_pb2.Struct
     files: _containers.RepeatedCompositeFieldContainer[File]
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ...) -> None: ...
+    timestamp: int
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., timestamp: _Optional[int] = ...) -> None: ...
 
 class CreateMessageResponse(_message.Message):
     __slots__ = ("response_header", "message_id")
@@ -337,3 +339,59 @@ class UpdateMessageResponse(_message.Message):
     response_header: ResponseHeader
     message: Message
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message: _Optional[_Union[Message, _Mapping]] = ...) -> None: ...
+
+class Aggregate(_message.Message):
+    __slots__ = ("data", "attachments", "last_updated")
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    ATTACHMENTS_FIELD_NUMBER: _ClassVar[int]
+    LAST_UPDATED_FIELD_NUMBER: _ClassVar[int]
+    data: _struct_pb2.Struct
+    attachments: _containers.RepeatedCompositeFieldContainer[Attachment]
+    last_updated: int
+    def __init__(self, data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[_Union[Attachment, _Mapping]]] = ..., last_updated: _Optional[int] = ...) -> None: ...
+
+class UpdateAggregateRequest(_message.Message):
+    __slots__ = ("header", "channel_name", "data", "files", "clear_attachments", "replace_data", "max_age_secs")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    FILES_FIELD_NUMBER: _ClassVar[int]
+    CLEAR_ATTACHMENTS_FIELD_NUMBER: _ClassVar[int]
+    REPLACE_DATA_FIELD_NUMBER: _ClassVar[int]
+    MAX_AGE_SECS_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    channel_name: str
+    data: _struct_pb2.Struct
+    files: _containers.RepeatedCompositeFieldContainer[File]
+    clear_attachments: bool
+    replace_data: bool
+    max_age_secs: float
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ..., replace_data: bool = ..., max_age_secs: _Optional[float] = ...) -> None: ...
+
+class UpdateAggregateResponse(_message.Message):
+    __slots__ = ("response_header", "aggregate")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    AGGREGATE_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    aggregate: Aggregate
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., aggregate: _Optional[_Union[Aggregate, _Mapping]] = ...) -> None: ...
+
+class ChannelEventSubscriptionRequest(_message.Message):
+    __slots__ = ("header", "channel_name")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    channel_name: str
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ...) -> None: ...
+
+class ChannelEventSubscriptionResponse(_message.Message):
+    __slots__ = ("response_header", "event_name", "channel_name", "data")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    EVENT_NAME_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    event_name: str
+    channel_name: str
+    data: _struct_pb2.Struct
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., event_name: _Optional[str] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...

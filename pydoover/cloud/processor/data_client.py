@@ -197,6 +197,7 @@ class DooverData:
         before: datetime | None = None,
         after: datetime | None = None,
         chunk_size: int | None = None,
+        field_names: list[str] = None,
     ) -> list[Message]:
         before = generate_snowflake_id_at(before) if before else None
         after = generate_snowflake_id_at(after) if after else None
@@ -213,6 +214,7 @@ class DooverData:
                     organisation_id,
                     limit=chunk_size,
                     after=after,
+                    field_names=field_names,
                 )
                 log.debug(f"Received {len(messages)} messages")
                 for message in messages:
@@ -228,7 +230,7 @@ class DooverData:
             return all_messages
 
         return await self._get_channel_messages(
-            agent_id, channel_name, organisation_id, limit, before, after
+            agent_id, channel_name, organisation_id, limit, before, after, field_names
         )
 
     async def _get_channel_messages(
@@ -239,6 +241,7 @@ class DooverData:
         limit: int = None,
         before: datetime = None,
         after: datetime = None,
+        field_names: list[str] = None,
     ) -> list[Message]:
         params = {}
         if limit:
@@ -247,8 +250,10 @@ class DooverData:
             params["before"] = before
         if after:
             params["after"] = after
+        if field_names:
+            params["field_name"] = field_names
 
-        query = f"?{urlencode(params)}" if params else ""
+        query = f"?{urlencode(params, doseq=True)}" if params else ""
         url = (
             f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/messages{query}"
         )
@@ -269,9 +274,16 @@ class DooverData:
         files: list[tuple[str, bytes, str]] = None,
         replace: bool = False,
         organisation_id: int = None,
+        allow_invoking_channel: bool = False,
     ):
+        # this allow_invoking_channel parameter is pretty dangerous,
         if channel_name == self._invoking_channel_name:
-            raise RuntimeError("Cannot publish to the invoking channel.")
+            if allow_invoking_channel:
+                log.warning(
+                    "Publishing to invoking channel with override to allow. Be careful - this will cause recursion issues if not handled correctly."
+                )
+            else:
+                raise RuntimeError("Cannot publish to the invoking channel.")
 
         operation = "PUT" if replace else "PATCH"
         url = f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/aggregate"

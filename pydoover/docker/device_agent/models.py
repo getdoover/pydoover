@@ -1,12 +1,15 @@
+from datetime import datetime
 from typing import Any
 
+from google.protobuf.json_format import MessageToDict
+
 from .grpc_stubs.device_agent_pb2 import (
-    TurnCredentialResponse,
     File as ProtoFile,
     Attachment as ProtoAttachment,
     Message as ProtoMessage,
     ChannelID as ProtoChannelID,
     TurnCredential as ProtoTurnCredential,
+    Aggregate as ProtoAggregate,
 )
 
 from google.protobuf import json_format
@@ -74,7 +77,7 @@ class File:
 
 class ChannelID:
     def __init__(self, agent_id: int, name: str):
-        self.agent_id = agent_id
+        self.agent_id = int(agent_id)
         self.name = name
 
     @classmethod
@@ -107,8 +110,8 @@ class Message:
         data: dict,
         attachments: list[Attachment],
     ):
-        self.id = id
-        self.author_id = author_id
+        self.id = int(id)
+        self.author_id = int(author_id)
         self.channel = channel
         self.data = data
         self.attachments = attachments
@@ -129,7 +132,7 @@ class Message:
             response.message_id,
             response.author_id,
             ChannelID.from_proto(response.channel),
-            response.data.MessageToDict(),
+            MessageToDict(response.data),
             [Attachment.from_proto(a) for a in response.attachments],
         )
 
@@ -144,6 +147,37 @@ class Message:
             data=data,
             attachments=[a.to_proto() for a in self.attachments],
         )
+
+
+class MessageCreateEvent:
+    # #[derive(Serialize, Event)]
+    # pub struct MessageCreate {
+    #     pub id: Option<SnowflakeID>,
+    #     pub author_id: SnowflakeID,
+    #     pub channel: ChannelID,
+    #     pub data: Value,
+    # }
+    def __init__(
+        self, id: int, author_id: int, channel: ChannelID, data: dict[str, Any]
+    ):
+        self.id = id
+        self.author_id = author_id
+        self.channel = channel
+        self.data = data
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            data["id"],
+            data["author_id"],
+            ChannelID.from_dict(data["channel"]),
+            data["data"],
+        )
+
+
+class OneShotMessage(MessageCreateEvent):
+    # just to support isinstance checks and really highlight that this isn't a real message.
+    pass
 
 
 class TurnCredential:
@@ -174,14 +208,13 @@ class TurnCredential:
         )
 
     @classmethod
-    def from_proto(cls, response: TurnCredentialResponse):
-        creds = response.turn_credential
+    def from_proto(cls, resp: ProtoTurnCredential):
         return cls(
-            creds.username,
-            creds.credential,
-            creds.ttl,
-            creds.expires_at,
-            list(creds.uris),
+            resp.username,
+            resp.credential,
+            resp.ttl,
+            resp.expires_at,
+            list(resp.uris),
         )
 
     def to_proto(self):
@@ -191,4 +224,46 @@ class TurnCredential:
             ttl=self.ttl,
             expires_at=self.expires_at,
             uris=self.uris,
+        )
+
+
+class Aggregate:
+    def __init__(
+        self,
+        data: dict[str, Any],
+        attachments: list[Attachment],
+        last_updated: datetime | None,
+    ):
+        self.data: dict[str, Any] = data
+        self.attachments = attachments
+        self.last_updated: datetime | None = last_updated
+
+    @classmethod
+    def from_dict(cls, payload):
+        ts = payload.get("last_updated")
+        dt = ts and datetime.fromtimestamp(ts / 1000.0)
+        return cls(
+            payload["data"],
+            [Attachment.from_dict(a) for a in payload.get("attachments", [])],
+            dt,
+        )
+
+    @classmethod
+    def from_proto(cls, response: ProtoAggregate):
+        return cls(
+            MessageToDict(response.data),
+            [Attachment.from_proto(a) for a in response.attachments],
+            response.last_updated
+            and datetime.fromtimestamp(response.last_updated / 1000.0),
+        )
+
+    def to_proto(self):
+        data = Struct()
+        json_format.ParseDict(self.data, data)
+
+        return ProtoAggregate(
+            data=data,
+            attachments=[a.to_proto() for a in self.attachments],
+            last_updated=self.last_updated
+            and int(self.last_updated.timestamp() * 1000.0),
         )

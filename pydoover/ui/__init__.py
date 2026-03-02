@@ -3,7 +3,7 @@ from .element import (
     ConnectionType as ConnectionType,
     ConnectionInfo as ConnectionInfo,
     AlertStream as AlertStream,
-    Multiplot as Multiplot
+    Multiplot as Multiplot,
 )
 from .interaction import (
     Interaction as Interaction,
@@ -13,6 +13,7 @@ from .interaction import (
     SlimCommand as SlimCommand,
     StateCommand as StateCommand,
     Slider as Slider,
+    Switch as Switch,
     action as action,
     warning_indicator as warning_indicator,
     state_command as state_command,
@@ -45,6 +46,7 @@ from .submodule import (
     Submodule as Submodule,
     Application as Application,
     RemoteComponent as RemoteComponent,
+    TabContainer as TabContainer,
 )
 from .variable import (
     Variable as Variable,
@@ -52,5 +54,6 @@ from .variable import (
     TextVariable as TextVariable,
     BooleanVariable as BooleanVariable,
     DateTimeVariable as DateTimeVariable,
+    Timestamp as Timestamp,
 )
-from .camera import Camera as Camera, CameraHistory as CameraHistory
+from .camera import CameraLiveView as CameraLiveView, CameraHistory as CameraHistory

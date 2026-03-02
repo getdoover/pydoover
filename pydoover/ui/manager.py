@@ -539,6 +539,51 @@ class UIManager:
             record_log=True,
         )
 
+    @maybe_async()
+    def update_location(
+        self,
+        lat: float,
+        long: float,
+        alt: Optional[float] = None,
+    ):
+        """Update the device's location on the map.
+
+        Parameters
+        ----------
+        lat : float
+            Latitude in degrees.
+        long : float
+            Longitude in degrees.
+        alt : float, optional
+            Altitude in meters.
+        """
+        payload = {"lat": lat, "long": long}
+        if alt is not None:
+            payload["alt"] = alt
+        self.publish_to_channel("location", payload, record_log=True, max_age=1)
+
+    async def update_location_async(
+        self,
+        lat: float,
+        long: float,
+        alt: Optional[float] = None,
+    ):
+        """Update the device's location on the map (async).
+
+        Parameters
+        ----------
+        lat : float
+            Latitude in degrees.
+        long : float
+            Longitude in degrees.
+        alt : float, optional
+            Altitude in meters.
+        """
+        payload = {"lat": lat, "long": long}
+        if alt is not None:
+            payload["alt"] = alt
+        await self._publish_to_channel_async("location", payload, record_log=True)
+
     def publish_to_channel(
         self,
         channel_name: str,
@@ -594,6 +639,10 @@ class UIManager:
             raise RuntimeError("Cannot push async with a Client object")
 
         elif getattr(self.client, "is_processor_v2", False):
+            if channel_name == self.client._invoking_channel_name:
+                log.warning(f"Not publishing to invoking channel: {data}")
+                return None
+
             await self.client.update_aggregate(
                 self.client.agent_id,
                 channel_name,
