@@ -27,6 +27,7 @@ class DooverData:
         self.organisation_id = None
         self.base_url = base_url
         self.session: aiohttp.ClientSession = None
+        self._token: str | None = None
 
         self.has_persistent_connection = lambda: False
         self.is_processor_v2 = True
@@ -42,9 +43,13 @@ class DooverData:
             await self.close()
 
         self.session = aiohttp.ClientSession()
+        if self._token:
+            self.session.headers["Authorization"] = f"Bearer {self._token}"
 
     def set_token(self, token: str):
-        self.session.headers["Authorization"] = f"Bearer {token}"
+        self._token = token
+        if self.session and not self.session.closed:
+            self.session.headers["Authorization"] = f"Bearer {token}"
 
     async def close(self):
         if self.session:
@@ -73,8 +78,21 @@ class DooverData:
 
         log.debug(f"Starting request: {method} {endpoint} (org_id={org_id})")
 
+        def _session_broken() -> bool:
+            if not self.session or self.session.closed:
+                return True
+            connector = self.session.connector
+            return connector is None or connector.closed
+
         for attempt in range(max_retries):
             try:
+                if _session_broken():
+                    log.warning(
+                        f"Session/connector closed before request. Reinitialising "
+                        f"session for {method} {endpoint} attempt={attempt + 1}/{max_retries}"
+                    )
+                    await self.setup()
+
                 async with self.session.request(
                     method, endpoint, **kwargs, headers=headers
                 ) as resp:
@@ -120,6 +138,15 @@ class DooverData:
                         resp.raise_for_status()
 
             except aiohttp.ClientError as e:
+                if _session_broken() or (
+                    isinstance(e, aiohttp.ClientConnectionError)
+                    and "connector is closed" in str(e).lower()
+                ):
+                    log.warning(
+                        f"Detected closed session/connector during request. "
+                        f"Reinitialising session for {method} {endpoint}."
+                    )
+                    await self.setup()
                 log.info(
                     f"Client error on {method} {endpoint}: "
                     f"{str(e)} attempt={attempt + 1}/{max_retries}",
