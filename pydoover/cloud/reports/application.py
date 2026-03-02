@@ -4,7 +4,10 @@ import re
 from zoneinfo import ZoneInfo
 import logging
 import time
+import os
 import croniter
+
+from pydoover.utils.files import zip_files
 
 from ..processor.types import ManualInvokeEvent, MessageCreateEvent, DeploymentEvent, ScheduleEvent
 from ..processor.application import Application as ApplicationBase
@@ -67,7 +70,8 @@ class Application(ApplicationBase):
             "devices": self.devices,
             "period_start": int(self.period_start.timestamp() * 1000),
             "period_end": int(self.period_end.timestamp() * 1000),
-            "report_generator": "TODO",
+            "report_generator": os.environ.get("APPLICATION_ID", ""),
+            "config": self.received_deployment_config,
             "status": "Generating",
             "logs": "",
         }
@@ -133,7 +137,21 @@ class Application(ApplicationBase):
         log.info(f"Start Report Generation from {period_start} to {period_end}")
         s = time.perf_counter()
         
-        files = await self.generate(agent_ids, period_start, period_end)
+        try:
+            files = await self.generate(agent_ids, period_start, period_end)
+        except Exception as e:
+            log.error(f"Error generating report: {e}")
+            
+            self._report_metadata["logs"] = self.log_capture_string.getvalue()
+            
+            await self.api.update_message(
+                self.agent_id,
+                "reports",
+                self._report_id,
+                self._report_metadata,
+                organisation_id=self.agent_id,
+            )
+            return
         
         if not isinstance(files, list):
             files = [files]
@@ -145,7 +163,20 @@ class Application(ApplicationBase):
         self._report_metadata["status"] = "Complete"
 
         log.info("Uploading Report to Doover")
+        
+        total_file_size = 0
+        for _, data, _ in files:
+            total_file_size += len(data.getvalue())
+            data.seek(0)
+            
+        if total_file_size > 4.5e+7:
+            log.info(f"Report is {total_file_size} bytes, which is over the 45MB limit. Zipping files.")
+            files = zip_files(files)
+        
         s = time.perf_counter()
+        
+        self._report_metadata["logs"] = self.log_capture_string.getvalue()
+
         try:
             await self.api.update_message(
                 self.agent_id,
@@ -156,7 +187,18 @@ class Application(ApplicationBase):
                 files=files,
             )
         except Exception as e:
-            log.error(f"Error creating report message: {e}")
+            log.error(f"Error updating report message: {e}")
+            try:
+                self._report_metadata["status"] = "Failed"
+                await self.api.update_message(
+                    self.agent_id,
+                    "reports",
+                    self._report_id,
+                    self._report_metadata,
+                    organisation_id=self.agent_id,
+                )
+            except Exception as e:
+                log.error(f"Error updating report message without files: {e}")
             return
         log.info(f"Report Upload took {time.perf_counter() - s} seconds.")
 

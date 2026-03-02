@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 from typing import Any
 
 from .application import Application
@@ -19,7 +20,11 @@ def run_app(
 ):
     if setup_logging:
         logging.basicConfig(level=logging.INFO)
-        logging.getLogger().setLevel("INFO")
+        debug = os.environ.get('DEBUG', 'FALSE').upper()
+        if debug == 'TRUE' or debug == '1':
+            logging.getLogger().setLevel("DEBUG")
+        else:
+            logging.getLogger().setLevel("INFO")
 
     # 2 sources are valid, SNS for subscriptions, EventBridge for schedules
     # in reality anything that isn't an AWS (SNS) payload will be passed through as-is
