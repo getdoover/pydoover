@@ -234,6 +234,11 @@ class ConfigElement:
     def value(self):
         """The value of the config element."""
         if self._value is NotSet:
+            if self.default is None:
+                # this is strange, but we can't set None values in channels because None = clear field...
+                # so we need to inject the default here
+                return None
+
             raise ValueError(f"Value for {self._name} not set. Check your config file?")
         return self._value
 
