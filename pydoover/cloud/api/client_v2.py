@@ -218,10 +218,7 @@ class Client:
         if not data:
             return []
 
-        return [
-            Message(client=self, data=m, channel_id=channel_id)
-            for m in data["messages"]
-        ]
+        return [Message(client=self, data=m, channel_id=channel_id) for m in data]
 
     def _get_message_raw(
         self, agent_id: int, channel_name: str, message_id: str
@@ -392,12 +389,9 @@ class Client:
         if record_log:
             url += "?log_update=true"
             if timestamp is not None and files is None:
-                payload = {
-                    "data": message,
-                    "ts": int(timestamp.timestamp()) * 1000
-                }
+                payload = {"data": message, "ts": int(timestamp.timestamp()) * 1000}
                 url = "/agents/{}/channels/{}/messages"
-            
+
                 return self.request(
                     Route("POST", url, agent_id, channel_name),
                     json=payload,
