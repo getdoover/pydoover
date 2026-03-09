@@ -84,7 +84,7 @@ class Schema:
             self.add_element(value)
         super().__setattr__(key, value)
 
-    def __init_subclass__(cls, name: str = "$application__name", **kwargs):
+    def __init_subclass__(cls, name: str = "$default", **kwargs):
         super().__init_subclass__(**kwargs)
         cls.name = name
 
