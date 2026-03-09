@@ -9,6 +9,9 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Any
 
+from pydoover.tags import Tags
+from pydoover.tags.manager import TagsManagerProcessor
+
 from .types import (
     ManualInvokeEvent,
     MessageCreateEvent,
@@ -35,8 +38,9 @@ console_handler = logging.StreamHandler(sys.stdout)
 
 
 class Application:
-    def __init__(self, config: Schema | None):
+    def __init__(self, config: Schema | None, tags: Tags | None = None):
         self.config = config
+        self.tags = tags
 
         self.received_deployment_config = None
 
@@ -50,7 +54,7 @@ class Application:
         self.agent_id: int = None
         self._initial_token: str = None
         self.ui_manager: UIManager = None
-        self._tag_values: dict[str, Any] = None
+        self.tag_manager: TagsManagerProcessor = None
         self._connection_config: dict[str, Any] = None
 
         self.log_capture_string = io.StringIO()
@@ -61,7 +65,6 @@ class Application:
         self._record_tag_update: bool = True
 
     async def _setup(self, initial_payload: dict[str, Any]):
-        self._publish_tags = False
 
         # this is ok to setup because it doesn't store any state
         await self.api.setup()
@@ -96,7 +99,15 @@ class Application:
         )
 
         self.app_key = data.get("app_key", None)
-        self._tag_values = data.get("tag_values", None)
+        self.tag_manager = TagsManagerProcessor(
+            self.app_key,
+            self.api,
+            self.agent_id,
+            data.get("tag_values", None),
+            record_tag_update=self._record_tag_update,
+        )
+        if self.tags is not None:
+            self.tags.register_manager(self.tag_manager)
 
         try:
             connection_data = data["connection_data"]
@@ -289,19 +300,7 @@ class Application:
 
         # fixme: publish UI if needed
 
-        if self._publish_tags:
-            await self.api.update_aggregate(
-                self.agent_id,
-                "tag_values",
-                self._tag_values,
-            )
-
-            if self._record_tag_update:
-                await self.api.publish_message(
-                    self.agent_id,
-                    "tag_values",
-                    self._tag_values,
-                )
+        await self.tag_manager.finalise_tags()
 
         try:
             await self.close()
@@ -338,27 +337,10 @@ class Application:
         return await self.api.get_channel(self.agent_id, channel_name)
 
     async def get_tag(self, key: str, default: Any = None):
-        try:
-            return self._tag_values[self.app_key][key]
-        except KeyError:
-            return default
+        return self.tag_manager.get_tag(key, default)
 
     async def set_tag(self, key: str, value: Any):
-        try:
-            current = self._tag_values[self.app_key][key]
-        except KeyError:
-            current = None
-
-        if current == value:
-            # don't publish if it hasn't changed
-            return
-
-        try:
-            self._tag_values[self.app_key][key] = value
-        except KeyError:
-            self._tag_values[self.app_key] = {key: value}
-
-        self._publish_tags = True
+        self.tag_manager.set_tag(key, value)
 
     async def ping_connection(
         self,
