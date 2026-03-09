@@ -84,6 +84,10 @@ class Schema:
             self.add_element(value)
         super().__setattr__(key, value)
 
+    def __init_subclass__(cls, name: str = "Application", **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.name = name
+
     @classmethod
     def clear_elements(cls):
         cls.__element_map.clear()
@@ -92,7 +96,7 @@ class Schema:
         return {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "",
-            "title": "Application Config",
+            "title": f"{self.__class__.name} Config",
             "type": "object",
             "properties": {
                 name: element.to_dict()
