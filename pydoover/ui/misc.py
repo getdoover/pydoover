@@ -1,5 +1,7 @@
 from typing import Union, Any
 
+from .declarative import normalize_ui_value
+
 
 class NotSet:
     """A sentinel value to indicate that a value has not been set."""
@@ -104,7 +106,7 @@ class Range:
         }
         if self.label:
             to_return["label"] = self.label
-        return to_return
+        return normalize_ui_value(to_return)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -133,11 +135,11 @@ class Option:
         self.display_name = display_name
 
     def to_dict(self):
-        return {
+        return normalize_ui_value({
             "name": self.name,
             "displayString": self.display_name,
             "type": "uiElement",
-        }
+        })
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):

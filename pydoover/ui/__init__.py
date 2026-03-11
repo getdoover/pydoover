@@ -22,6 +22,7 @@ from .interaction import (
     callback as callback,
 )
 from .manager import UIManager as UIManager
+from .declarative import UI as UI, UIFactory as UIFactory
 from .misc import (
     NotSet as NotSet,
     Colour as Colour,

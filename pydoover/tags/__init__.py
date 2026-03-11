@@ -15,6 +15,7 @@ class Tag:
         self.tag_type = tag_type
         self.name = name
         self.default = default
+        self._declared_attr_name: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert this tag definition to its schema-style dictionary form."""
@@ -225,6 +226,7 @@ class Tags:
             if not isinstance(value, Tag):
                 continue
 
+            value._declared_attr_name = attr_name
             declaration = _DeclaredTag(attr_name, value)
             declarations[attr_name] = declaration
             setattr(cls, attr_name, declaration)

@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Any
 
+from .declarative import normalize_ui_value
 from .misc import Colour
 
 
@@ -129,7 +130,7 @@ class Element:
             "colour": self.colour,
         }
         # filter out any null values
-        return {k: v for k, v in to_return.items() if v is not None}
+        return normalize_ui_value({k: v for k, v in to_return.items() if v is not None})
 
     def get_diff(
         self,
@@ -245,7 +246,7 @@ class ConnectionInfo(Element):
         if self.allowed_misses is not None:
             result["allowedMisses"] = self.allowed_misses
 
-        return result
+        return normalize_ui_value(result)
 
 
 class AlertStream(Element):
@@ -352,4 +353,4 @@ class Multiplot(Element):
             else:
                 result["earliestDataDate"] = self.earliest_data_time
 
-        return result
+        return normalize_ui_value(result)

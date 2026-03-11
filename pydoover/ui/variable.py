@@ -2,6 +2,7 @@ from datetime import datetime
 
 from typing import Union, Any
 
+from .declarative import is_tag_reference, normalize_ui_value
 from .element import Element
 from .misc import Range, Widget, NotSet
 
@@ -49,6 +50,7 @@ class Variable(Element):
         **kwargs,
     ):
         # kwargs: verbose_str=verbose_str, show_activity=show_activity, form=form, graphic=graphic, layout=layout
+        curr_val = kwargs.pop("currentValue", curr_val)
         super().__init__(name, display_name, **kwargs)
 
         self.var_type = var_type
@@ -92,7 +94,7 @@ class Variable(Element):
             result["defaultZoom"] = self.default_zoom
 
         result["ranges"] = [r.to_dict() for r in self.ranges]
-        return result
+        return normalize_ui_value(result)
 
     @property
     def current_value(self):
@@ -104,6 +106,7 @@ class Variable(Element):
     @current_value.setter
     def current_value(self, val):
         """Updates the current value of the variable."""
+        self._ensure_current_value_writable()
         self.update(val)
 
     def update(self, new_value: Any, force_log: bool = False) -> None:
@@ -118,6 +121,7 @@ class Variable(Element):
         force_log: bool
             If True, forces a log request to be sent to the server.
         """
+        self._ensure_current_value_writable()
         if force_log:
             self._log_request_pending = True
         elif self.assess_log_threshold(new_value):
@@ -155,6 +159,13 @@ class Variable(Element):
     def recv_ui_state_update(self, state: dict[str, Any]) -> None:
         if self._curr_val is NotSet and "currentValue" in state:
             self.current_value = state["currentValue"]
+
+    def _ensure_current_value_writable(self) -> None:
+        if is_tag_reference(self._curr_val):
+            raise RuntimeError(
+                f"UI element '{self.name}' field 'currentValue' is tag-backed. "
+                "Update the underlying tag instead."
+            )
 
     def add_ranges(self, *range_val: Range):
         """Adds one or more ranges to the variable.
@@ -216,7 +227,7 @@ class NumericVariable(Variable):
         result = super().to_dict()
         if self.form is not None:
             result["form"] = self.form
-        return result
+        return normalize_ui_value(result)
 
 
 class TextVariable(Variable):
@@ -310,7 +321,10 @@ class Timestamp(Variable):
 
     def to_dict(self):
         result = super().to_dict()
-        result["currentValue"] = self.current_value and int(
-            self.current_value.timestamp() * 1000
-        )
-        return result
+        if is_tag_reference(self.current_value):
+            result["currentValue"] = self.current_value
+        else:
+            result["currentValue"] = self.current_value and int(
+                self.current_value.timestamp() * 1000
+            )
+        return normalize_ui_value(result)

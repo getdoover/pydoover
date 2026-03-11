@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
+from .declarative import is_tag_reference, normalize_ui_value
 from .element import Element
 from .misc import Colour, Option, NotSet
 from ..utils import call_maybe_async
@@ -50,8 +51,10 @@ class Interaction(Element):
         requires_confirm: bool = True,
         **kwargs,
     ):
+        current_value = kwargs.pop("currentValue", current_value)
         super().__init__(name, display_name, **kwargs)
         self._current_value = current_value
+        self._last_command_value = NotSet
 
         if default is not None:
             self._default_value = default
@@ -89,6 +92,7 @@ class Interaction(Element):
 
         This will also convert datetime objects to epoch seconds for internal storage.
         """
+        self._ensure_current_value_writable()
         ## Store all datetime objects as epoch seconds internally
         if isinstance(new_val, datetime):
             new_val = int(new_val.timestamp())
@@ -135,6 +139,8 @@ class Interaction(Element):
             return new_value
 
     def _is_new_value(self, new_value: Any) -> bool:
+        if is_tag_reference(self._current_value):
+            return new_value != self._last_command_value
         return new_value != self.current_value
 
     def _handle_new_value_common(self, new_value: Any):
@@ -145,7 +151,10 @@ class Interaction(Element):
             return
 
         log.debug(f"updating new value: {self.name} {new_value}")
-        self.current_value = new_value
+        if is_tag_reference(self._current_value):
+            self._last_command_value = new_value
+        else:
+            self.current_value = new_value
 
     def _handle_new_value(self, new_value: Any):
         self._handle_new_value_common(new_value)
@@ -181,6 +190,8 @@ class Interaction(Element):
         -------
         None
         """
+        self._ensure_current_value_writable()
+
         if critical and self._manager and value != self.current_value:
             self._manager._has_critical_interaction_pending = True
 
@@ -199,7 +210,14 @@ class Interaction(Element):
             res["currentValue"] = self._json_safe_current_value()
         if self.show_activity is not None:
             res["showActivity"] = self.show_activity
-        return res
+        return normalize_ui_value(res)
+
+    def _ensure_current_value_writable(self) -> None:
+        if is_tag_reference(self._current_value):
+            raise RuntimeError(
+                f"UI element '{self.name}' field 'currentValue' is tag-backed. "
+                "Update the underlying tag instead."
+            )
 
 
 class Action(Interaction):
@@ -237,7 +255,7 @@ class Action(Interaction):
         result = super().to_dict()
         result["colour"] = str(self.colour)
         result["disabled"] = self.disabled
-        return result
+        return normalize_ui_value(result)
 
 
 class WarningIndicator(Interaction):
@@ -262,7 +280,7 @@ class WarningIndicator(Interaction):
     def to_dict(self):
         result = super().to_dict()
         result["can_cancel"] = self.can_cancel
-        return result
+        return normalize_ui_value(result)
 
 
 class HiddenValue(Interaction):
@@ -272,10 +290,10 @@ class HiddenValue(Interaction):
         super().__init__(name, display_name=None, **kwargs)
 
     def to_dict(self):
-        return {
+        return normalize_ui_value({
             "name": self.name,
             "type": self.type,
-        }
+        })
 
 
 class SlimCommand(Interaction):
@@ -316,7 +334,7 @@ class StateCommand(SlimCommand):
     def to_dict(self):
         result = super().to_dict()
         result["userOptions"] = {o.name: o.to_dict() for o in self.user_options}
-        return result
+        return normalize_ui_value(result)
 
     def add_user_options(self, *option: Option):
         """Add user options to the state command.
@@ -399,7 +417,7 @@ class Slider(Interaction):
         if self.colours:
             result["colours"] = self.colours
 
-        return result
+        return normalize_ui_value(result)
 
 
 class Switch(Interaction):
@@ -418,7 +436,7 @@ class Switch(Interaction):
             res["icon"] = self.icon
         if self.colour:
             res["colour"] = self.colour
-        return res
+        return normalize_ui_value(res)
 
 
 def action(

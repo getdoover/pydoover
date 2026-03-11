@@ -1,3 +1,4 @@
+from .declarative import normalize_ui_value
 from .element import Element
 
 
@@ -27,7 +28,7 @@ class CameraLiveView(Element):
         res["ptzControl"] = self.allow_ptz_control
         res["presets"] = self.presets
         res["activePreset"] = self.active_preset
-        return res
+        return normalize_ui_value(res)
 
 
 class CameraHistory(Element):
@@ -51,4 +52,4 @@ class CameraHistory(Element):
         res["ptzControl"] = True
         res["presets"] = self.presets
         res["activePreset"] = self.active_preset
-        return res
+        return normalize_ui_value(res)

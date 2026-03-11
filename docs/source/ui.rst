@@ -6,6 +6,55 @@ Client
 .. autoclass:: pydoover.ui.UIManager
     :members:
 
+Declarative UI
+==============
+
+``ui.UI`` is the preferred way to declare application UI structure.
+It mirrors the declarative ``Tags`` API: define elements as class attributes,
+pass the UI class or instance into your application via ``ui=``, and keep
+dynamic values tag-backed where appropriate.
+By default, tag-backed fields serialize to the compact frontend lookup format
+such as ``$tag.voltage:number`` rather than the expanded object form.
+
+.. autoclass:: pydoover.ui.UI
+    :members:
+
+Static declarative UI example::
+
+    from pydoover import ui
+    from pydoover.tags import Tag, Tags
+
+    class MyTags(Tags):
+        voltage = Tag("number")
+
+    class MyUI(ui.UI):
+        voltage = ui.NumericVariable(
+            "voltage",
+            "Voltage",
+            curr_val=MyTags.voltage,
+        )
+
+Config-aware UI example::
+
+    from pydoover import ui
+
+    def build_ui(config, tags):
+        class ConfiguredUI(ui.UI):
+            voltage = ui.NumericVariable(
+                "voltage",
+                "Voltage",
+                curr_val=tags.voltage,
+            )
+
+        ui_obj = ConfiguredUI()
+        if config.show_extra.value:
+            ui_obj.add_element("extra", ui.TextVariable("extra", "Extra"))
+        return ui_obj
+
+Legacy note:
+Existing instance-based UI construction through ``UIManager.add_children()``,
+``set_ui()``, and decorator-generated elements remains supported.
+
 Elements
 ========
 

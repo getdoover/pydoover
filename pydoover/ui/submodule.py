@@ -3,6 +3,7 @@ import re
 
 from typing import Any, Type
 
+from .declarative import normalize_ui_value
 from .element import Element
 
 
@@ -83,7 +84,7 @@ class Container(Element):
             result["statusIcon"] = self.status_icon
 
         result["children"] = {name: c.to_dict() for name, c in self._children.items()}
-        return result
+        return normalize_ui_value(result)
 
     def get_diff(
         self,
@@ -291,7 +292,7 @@ class Submodule(Container):
             result["statusString"] = self.status
         result["defaultOpen"] = not self.collapsed
 
-        return result
+        return normalize_ui_value(result)
 
 
 class Application(Container):
@@ -316,7 +317,7 @@ class Application(Container):
         result = super().to_dict()
         if self.variant is not None:
             result["variant"] = self.variant
-        return result
+        return normalize_ui_value(result)
 
 
 class RemoteComponent(Container):
@@ -349,7 +350,7 @@ class RemoteComponent(Container):
     def to_dict(self):
         res = super().to_dict()
         res.update(self.kwargs)
-        return res
+        return normalize_ui_value(res)
 
 
 class TabContainer(Element):
@@ -362,4 +363,4 @@ class TabContainer(Element):
     def to_dict(self):
         res = super().to_dict()
         res["children"] = {c.name: c.to_dict() for c in self.children}
-        return res
+        return normalize_ui_value(res)

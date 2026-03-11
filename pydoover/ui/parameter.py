@@ -1,6 +1,7 @@
 from typing import Union
 from datetime import datetime
 
+from .declarative import is_tag_reference, normalize_ui_value
 from .interaction import Interaction
 from .misc import NotSet
 
@@ -49,7 +50,7 @@ class NumericParameter(Parameter):
         if self.max is not None:
             result["max"] = self.max
 
-        return result
+        return normalize_ui_value(result)
 
 
 class TextParameter(Parameter):
@@ -76,7 +77,7 @@ class TextParameter(Parameter):
     def to_dict(self):
         result = super().to_dict()
         result["isTextArea"] = self.is_text_area
-        return result
+        return normalize_ui_value(result)
 
 
 class BooleanParameter(Parameter):
@@ -130,6 +131,8 @@ class DateTimeParameter(Parameter):
         """datetime, optional: Returns the current value of the parameter as a datetime object, or `None` if it isn't set."""
         if self._current_value is NotSet or self._current_value is None:
             return None
+        if is_tag_reference(self._current_value):
+            return self._current_value
         if isinstance(self._current_value, datetime):
             return self._current_value
         elif isinstance(self._current_value, (int, float)):
@@ -138,6 +141,7 @@ class DateTimeParameter(Parameter):
 
     @current_value.setter
     def current_value(self, new_val):
+        self._ensure_current_value_writable()
         if isinstance(new_val, datetime):
             new_val = int(new_val.timestamp())
         self._current_value = new_val
@@ -145,7 +149,7 @@ class DateTimeParameter(Parameter):
     def to_dict(self):
         result = super().to_dict()
         result["includeTime"] = self.include_time
-        return result
+        return normalize_ui_value(result)
 
 
 def numeric_parameter(
