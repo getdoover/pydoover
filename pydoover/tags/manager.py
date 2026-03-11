@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from logging import log
+import logging
 from typing import Any, Awaitable, Callable
 
 from pydoover.utils.diff import apply_diff, generate_diff
@@ -11,6 +11,7 @@ from ..utils import get_is_async, maybe_async
 
 TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
 TAG_CHANNEL_NAME = "tag_values"
+log = logging.getLogger(__name__)
 
 
 class KeyPath:

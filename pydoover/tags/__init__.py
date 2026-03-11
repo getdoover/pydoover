@@ -67,7 +67,7 @@ class BoundTag:
 
     async def set_async(self, value: Any) -> None:
         await call_maybe_async(
-            self._tags._set_tag_value,
+            self._tags._set_tag_value_async,
             self._declaration.attr_name,
             value,
         )
@@ -249,6 +249,21 @@ class Tags:
             raise RuntimeError("Tags manager has not been registered.")
 
         self._manager.set_tag(declaration.name, value)
+
+    async def _set_tag_value_async(self, name: str, value: Any) -> None:
+        declaration = self._get_declaration(name)
+        if declaration is None:
+            raise AttributeError(f"Unknown tag '{name}'")
+        if self._manager is None:
+            raise RuntimeError("Tags manager has not been registered.")
+
+        if getattr(self._manager, "_is_async", False) and hasattr(
+            self._manager, "set_tag_async"
+        ):
+            await self._manager.set_tag_async(declaration.name, value)
+            return
+
+        await call_maybe_async(self._manager.set_tag, declaration.name, value)
 
     def get(self, name: str) -> Tag | None:
         return self.get_tag(name)

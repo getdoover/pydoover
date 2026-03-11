@@ -15,6 +15,7 @@ classifiers = [
 ]
 dependencies = [
     "aiohttp>=3.12.13",
+    "pytest-cov>=7.0.0",
     "requests==2.32.3",
 ]
 

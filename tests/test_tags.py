@@ -1,7 +1,38 @@
+import importlib
+import sys
+import types
+
 import pytest
 
 from pydoover.tags import BoundTag, NotSet, Tag, Tags
 from pydoover.tags.manager import TAG_CHANNEL_NAME, KeyPath, TagsManagerDocker
+
+
+def _load_docker_application_class():
+    for module_name, class_names in (
+        (
+            "pydoover.docker.device_agent",
+            ["DeviceAgentInterface", "MockDeviceAgentInterface"],
+        ),
+        (
+            "pydoover.docker.modbus",
+            ["ModbusInterface", "ModbusConfig", "ManyModbusConfig"],
+        ),
+        (
+            "pydoover.docker.platform",
+            ["PlatformInterface", "PulseCounter"],
+        ),
+    ):
+        if module_name not in sys.modules:
+            module = types.ModuleType(module_name)
+            for class_name in class_names:
+                setattr(module, class_name, type(class_name, (), {}))
+            sys.modules[module_name] = module
+
+    return importlib.import_module("pydoover.docker.application").Application
+
+
+DockerApplication = _load_docker_application_class()
 
 
 class FakeTagsManager:
@@ -59,6 +90,56 @@ class FakeTagClient:
                 "record_log": record_log,
             }
         )
+
+
+class FakeDockerAppTagManager:
+    def __init__(self):
+        self.get_calls = []
+        self.set_calls = []
+        self.set_tags_calls = []
+        self.subscribe_calls = []
+        self.values = {}
+
+    def get_tag(self, key, default=None, app_key=None, **kwargs):
+        self.get_calls.append((key, default, app_key, kwargs))
+        if app_key is None:
+            return self.values.get(key, default)
+        return self.values.get((app_key, key), default)
+
+    def set_tag(self, key, value, app_key=None, only_if_changed=True, **kwargs):
+        self.set_calls.append((key, value, app_key, only_if_changed, kwargs))
+        if app_key is None:
+            self.values[key] = value
+        else:
+            self.values[(app_key, key)] = value
+
+    async def set_tag_async(
+        self, key, value, app_key=None, only_if_changed=True, **kwargs
+    ):
+        self.set_tag(
+            key,
+            value,
+            app_key=app_key,
+            only_if_changed=only_if_changed,
+            **kwargs,
+        )
+
+    def set_tags(self, tags, app_key=None, only_if_changed=True, **kwargs):
+        self.set_tags_calls.append((tags, app_key, only_if_changed, kwargs))
+
+    async def set_tags_async(self, tags, app_key=None, only_if_changed=True, **kwargs):
+        self.set_tags(tags, app_key=app_key, only_if_changed=only_if_changed, **kwargs)
+
+    def subscribe_to_tag(self, key, callback, app_key=None, **kwargs):
+        self.subscribe_calls.append((key, callback, app_key, kwargs))
+
+
+def make_docker_app(tag_manager=None, app_key="test_app", is_async=False):
+    app = object.__new__(DockerApplication)
+    app.app_key = app_key
+    app.tag_manager = tag_manager or FakeDockerAppTagManager()
+    app._is_async = is_async
+    return app
 
 
 class MyAppTags(Tags):
@@ -398,3 +479,134 @@ class TestTagsManagerDocker:
             assert manager._tag_ready.is_set() is False
 
         asyncio.run(run_test())
+
+    def test_tags_object_works_with_sync_docker_tag_manager(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client, is_async=False)
+        tags = MyAppTags()
+        tags.register_manager(manager)
+
+        tags.voltage.set(12.7)
+
+        assert tags.voltage.get() == 12.7
+        assert tags.voltage > 10
+        assert client.sync_publishes[-1]["payload"] == {"voltage": 12.7}
+
+    def test_tags_object_works_with_async_docker_tag_manager(self):
+        import asyncio
+
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client, is_async=True)
+        tags = MyAppTags()
+        tags.register_manager(manager)
+
+        async def run_test():
+            await tags.voltage.set(12.7)
+            new_value = await tags.voltage.increment(0.3)
+
+            assert new_value == 13.0
+            assert tags.voltage.get() == 13.0
+            assert tags.to_dict() == {"voltage": 13.0, "speed": 0, "enabled": False}
+
+        asyncio.run(run_test())
+
+        assert client.async_publishes[0]["payload"] == {"voltage": 12.7}
+        assert client.async_publishes[1]["payload"] == {"voltage": 13.0}
+
+
+class TestDockerApplicationTagMethods:
+    def test_get_tag_defaults_to_current_app_key(self):
+        manager = FakeDockerAppTagManager()
+        manager.values[("test_app", "voltage")] = 12.7
+        app = make_docker_app(tag_manager=manager)
+
+        assert app.get_tag("voltage") == 12.7
+        assert manager.get_calls == [("voltage", None, "test_app", {})]
+
+    def test_get_tag_allows_explicit_app_key(self):
+        manager = FakeDockerAppTagManager()
+        manager.values[("other_app", "voltage")] = 8.4
+        app = make_docker_app(tag_manager=manager)
+
+        assert app.get_tag("voltage", app_key="other_app") == 8.4
+        assert manager.get_calls == [("voltage", None, "other_app", {})]
+
+    def test_get_global_tag_uses_none_app_key(self):
+        manager = FakeDockerAppTagManager()
+        manager.values["shutdown_requested"] = True
+        app = make_docker_app(tag_manager=manager)
+
+        assert app.get_global_tag("shutdown_requested") is True
+        assert manager.get_calls == [("shutdown_requested", None, None, {})]
+
+    def test_subscribe_to_tag_defaults_to_current_app_key(self):
+        manager = FakeDockerAppTagManager()
+        app = make_docker_app(tag_manager=manager)
+
+        def callback(key, value):
+            return None
+
+        app.subscribe_to_tag("voltage", callback)
+
+        assert manager.subscribe_calls == [("voltage", callback, "test_app", {})]
+
+    def test_subscribe_to_global_tag_uses_none_app_key(self):
+        manager = FakeDockerAppTagManager()
+        app = make_docker_app(tag_manager=manager)
+
+        def callback(key, value):
+            return None
+
+        app.subscribe_to_tag("shutdown_requested", callback, global_tag=True)
+
+        assert manager.subscribe_calls == [("shutdown_requested", callback, None, {})]
+
+    def test_sync_set_tag_routes_to_manager(self):
+        manager = FakeDockerAppTagManager()
+        app = make_docker_app(tag_manager=manager, is_async=False)
+
+        app.set_tag("voltage", 12.7)
+
+        assert manager.set_calls == [("voltage", 12.7, None, True, {})]
+
+    def test_async_set_tag_routes_to_manager_async(self):
+        import asyncio
+
+        manager = FakeDockerAppTagManager()
+        app = make_docker_app(tag_manager=manager, is_async=True)
+
+        asyncio.run(app.set_tag("voltage", 12.7))
+
+        assert manager.set_calls == [("voltage", 12.7, None, True, {})]
+
+    def test_sync_set_tags_routes_to_manager(self):
+        manager = FakeDockerAppTagManager()
+        app = make_docker_app(tag_manager=manager, is_async=False)
+
+        app.set_tags({"voltage": 12.7})
+
+        assert manager.set_tags_calls == [({"voltage": 12.7}, None, True, {})]
+
+    def test_set_global_tag_routes_to_manager_with_none_app_key(self):
+        manager = FakeDockerAppTagManager()
+        app = make_docker_app(tag_manager=manager, is_async=False)
+
+        app.set_global_tag("system_status", "ok")
+
+        assert manager.set_calls == [("system_status", "ok", None, True, {})]
+
+    def test_request_shutdown_sets_shutdown_requested_tag(self):
+        manager = FakeDockerAppTagManager()
+        app = make_docker_app(tag_manager=manager, is_async=False)
+
+        app.request_shutdown()
+
+        assert manager.set_calls == [("shutdown_requested", True, None, True, {})]
+
+    def test_shutdown_requested_property_reads_from_manager(self):
+        manager = FakeDockerAppTagManager()
+        manager.values["shutdown_requested"] = True
+        app = make_docker_app(tag_manager=manager)
+
+        assert app._shutdown_requested is True
+        assert manager.get_calls == [("shutdown_requested", None, None, {})]
