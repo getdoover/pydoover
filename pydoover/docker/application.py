@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, Awaitable, Callable
 
+from pydoover.tags.manager import TagsManagerDocker
+
 try:
     from aiohttp.web import Response, Server, ServerRunner, TCPSite
 except ImportError:
@@ -37,10 +39,6 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 MaybeAsyncMainLoopMethod = Callable[[], Awaitable[None]] | Callable[[], None]
-
-TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
-TAG_CHANNEL_NAME = "tag_values"
-
 
 class Application:
     """Base class for a Doover application. All apps will inherit from this class, and override the setup and main_loop methods.
@@ -121,16 +119,14 @@ class Application:
             client=self.device_agent,
             is_async=is_async,
         )
+        
+        self.tag_manager = TagsManagerDocker(self)
 
         self.app_key = app_key
         self.app_display_name = ""
 
         self._is_async = get_is_async(is_async)
         self._ready = asyncio.Event()
-
-        self._tag_values = {}
-        self._tag_subscriptions = {}
-        self._tag_ready = asyncio.Event()
 
         self._shutdown_at = None
         self.force_log_on_shutdown = False
@@ -280,11 +276,13 @@ class Application:
         self._ready.set()
 
         try:
-            shutdown_at = self._tag_values["shutdown_at"]
+            shutdown_at = self.tag_manager.get_tag("shutdown_at", raise_key_error=True)
         except KeyError:
             pass
         else:
             await self._check_shutdown_at(shutdown_at)
+
+        self.tag_manager.subscribe_to_tag("shutdown_at", self._on_shutdown_at)
 
         ## allow for other async tasks to run between setup and loop
         await asyncio.sleep(0.2)
@@ -539,25 +537,7 @@ class Application:
 
     @property
     def _shutdown_requested(self):
-        try:
-            return self._tag_values["shutdown_requested"]
-        except (KeyError, TypeError):
-            return False
-
-    async def _on_tag_update(self, _, tag_values: dict[str, Any]):
-        diff = generate_diff(self._tag_values, tag_values, do_delete=False)
-        self._tag_values = tag_values or {}
-        await self.fulfill_tag_subscriptions(diff)
-
-        # signifies the first tag update (or any subsequent tag update) has run and we are ready to start.
-        self._tag_ready.set()
-
-        try:
-            shutdown_at = tag_values["shutdown_at"]
-        except (KeyError, TypeError):
-            pass
-        else:
-            await self._check_shutdown_at(shutdown_at)
+        return self.tag_manager.get_tag("shutdown_requested")
 
     async def _check_shutdown_at(self, shutdown_at):
         if not self.is_ready:
@@ -573,34 +553,6 @@ class Application:
             self._shutdown_at = dt
             await call_maybe_async(self.on_shutdown_at, dt)
 
-    async def fulfill_tag_subscriptions(self, diff):
-        if diff is None or len(diff) == 0:
-            return
-
-        async def _wrap_callback(callback, tag_key, new_value):
-            try:
-                await asyncio.wait_for(
-                    call_maybe_async(callback, tag_key, new_value), timeout=1
-                )
-            except Exception as e:
-                log.exception(f"Error in {callback.__name__}: {e}", exc_info=e)
-
-        for k, callback in self._tag_subscriptions.items():
-            if isinstance(k, tuple):
-                app_key, tag_key = k
-                if app_key in diff and tag_key in diff[app_key]:
-                    new_value = (
-                        self._tag_values[app_key][tag_key]
-                        if app_key in self._tag_values
-                        and tag_key in self._tag_values[app_key]
-                        else None
-                    )
-                    await _wrap_callback(callback, tag_key, new_value)
-            else:
-                if k in diff:
-                    new_value = self._tag_values[k] if k in self._tag_values else None
-                    await _wrap_callback(callback, k, new_value)
-
     def subscribe_to_tag(
         self,
         tag_key: str,
@@ -610,11 +562,9 @@ class Application:
         global_tag: bool = False,
     ):
         if global_tag:
-            self._tag_subscriptions[tag_key] = callback
+            self.tag_manager.subscribe_to_tag(tag_key, callback=callback)
         else:
-            if app_key is None:
-                app_key = self.app_key
-            self._tag_subscriptions[(app_key, tag_key)] = callback
+            self.tag_manager.subscribe_to_tag(tag_key, callback=callback, app_key=app_key or self.app_key)
 
     def get_tag(
         self, tag_key: str, app_key: str = None, default: Any = None
@@ -648,13 +598,8 @@ class Application:
         Any
             The value of the tag, or None if the tag does not exist.
         """
-        try:
-            if app_key is None:
-                app_key = self.app_key
-            return self._tag_values[app_key][tag_key]
-        except (KeyError, TypeError):
-            log.debug(f"Tag {tag_key} not found in current tags")
-            return default
+        
+        return self.tag_manager.get_tag(tag_key, default=default, app_key=app_key or self.app_key)
 
     def get_global_tag(self, tag_key: str, default: Any = None) -> Any | None:
         """Get a global tag value.
@@ -684,11 +629,7 @@ class Application:
         Any
             The value of the global tag, or None if the tag does not exist.
         """
-        try:
-            return self._tag_values[tag_key]
-        except (KeyError, TypeError):
-            log.debug(f"Global tag {tag_key} not found in current tags")
-            return default
+        return self.tag_manager.get_tag(tag_key, default=default, app_key=None)
 
     @maybe_async()
     def set_tag(
@@ -720,9 +661,7 @@ class Application:
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        self._do_set_tags(
-            {tag_key: value}, app_key=app_key, only_if_changed=only_if_changed
-        )
+        self.tag_manager.set_tag(tag_key, value, app_key=app_key, only_if_changed=only_if_changed)
 
     async def set_tag_async(
         self,
@@ -731,23 +670,19 @@ class Application:
         app_key: str = None,
         only_if_changed: bool = True,
     ) -> None:
-        await self._do_set_tags_async(
-            {tag_key: value}, app_key=app_key, only_if_changed=only_if_changed
-        )
+        await self.tag_manager.set_tag_async(tag_key, value, app_key=app_key, only_if_changed=only_if_changed)
 
     @maybe_async()
     def set_tags(
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
         """Set multiple tags at once."""
-        self._do_set_tags(tags, app_key=app_key, only_if_changed=only_if_changed)
+        self.tag_manager.set_tags(tags, app_key=app_key, only_if_changed=only_if_changed)
 
     async def set_tags_async(
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
-        await self._do_set_tags_async(
-            tags, app_key=app_key, only_if_changed=only_if_changed
-        )
+        await self.tag_manager.set_tags_async(tags, app_key=app_key, only_if_changed=only_if_changed)
 
     @maybe_async()
     def set_global_tag(
@@ -773,71 +708,13 @@ class Application:
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        self._do_set_tags(
-            {tag_key: value},
-            app_key=None,
-            is_global=True,
-            only_if_changed=only_if_changed,
-        )
+        self.tag_manager.set_tag(tag_key, value, app_key=None, only_if_changed=only_if_changed)
 
     async def set_global_tag_async(
         self, tag_key: str, value: Any, only_if_changed: bool = True
     ) -> None:
         """Set a global tag value asynchronously. This is a convenience method for setting global tags."""
-        await self._do_set_tags_async(
-            {tag_key: value},
-            app_key=None,
-            is_global=True,
-            only_if_changed=only_if_changed,
-        )
-
-    def _do_set_tags(
-        self,
-        tags: dict[str, Any],
-        app_key: str | None,
-        is_global: bool = False,
-        only_if_changed: bool = True,
-    ):
-        if is_global:
-            data = tags
-        else:
-            if app_key is None:
-                app_key = self.app_key
-            data = {app_key: tags}
-
-        if only_if_changed:
-            diff = generate_diff(self._tag_values, data, do_delete=False)
-            if len(diff) == 0:
-                return
-
-        apply_diff(self._tag_values, data, clone=False)
-        self.device_agent.publish_to_channel(
-            TAG_CHANNEL_NAME, data, max_age=TAG_CLOUD_MAX_AGE, record_log=True
-        )
-
-    async def _do_set_tags_async(
-        self,
-        tags: dict[str, Any],
-        app_key: str | None,
-        is_global: bool = False,
-        only_if_changed: bool = True,
-    ):
-        if is_global:
-            data = tags
-        else:
-            if app_key is None:
-                app_key = self.app_key
-            data = {app_key: tags}
-
-        if only_if_changed:
-            diff = generate_diff(self._tag_values, data, do_delete=False)
-            if len(diff) == 0:
-                return
-
-        apply_diff(self._tag_values, data, clone=False)
-        await self.device_agent.publish_to_channel_async(
-            TAG_CHANNEL_NAME, data, max_age=TAG_CLOUD_MAX_AGE, record_log=True
-        )
+        await self.set_tag_async(tag_key, value, app_key=None, only_if_changed=only_if_changed)
 
     ## Power Manager Functions
 
@@ -922,7 +799,7 @@ class Application:
         log.info(f"Setting up internal app: {self.name}")
         self.ui_manager.register_callbacks(self)
         self.ui_manager.set_display_name(self.app_display_name)
-        self.device_agent.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
+        self.tag_manager.setup()
 
         if self.test_mode:
             ## Quit out of setup if we are in test mode.
@@ -931,7 +808,7 @@ class Application:
         await self.ui_manager.clear_ui_async()
         try:
             # wait for tag values to sync from DDA - but only for 10sec.
-            await asyncio.wait_for(self._tag_ready.wait(), timeout=10.0)
+            await asyncio.wait_for(self.tag_manager.await_tags_ready(), timeout=10.0)
         except TimeoutError:
             log.warning("Timed out waiting for tag values to be set")
 

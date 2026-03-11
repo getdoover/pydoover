@@ -300,7 +300,7 @@ class Application:
 
         # fixme: publish UI if needed
 
-        await self.tag_manager.finalise_tags()
+        await self.tag_manager.commit_tags()
 
         try:
             await self.close()

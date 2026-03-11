@@ -1,6 +1,8 @@
 from collections import OrderedDict
 from typing import Any
 
+from ..utils import call_maybe_async, get_is_async, maybe_async
+
 
 class NotSet:
     """Sentinel used when a tag has not been assigned a value."""
@@ -27,6 +29,137 @@ class Tag:
         return f"Tag(name={self.name!r}, tag_type={self.tag_type!r}, default={self.default!r})"
 
 
+class BoundTag:
+    """Manager-backed runtime view of a declared tag."""
+
+    _NUMERIC_TAG_TYPES = {"number", "integer", "float"}
+
+    def __init__(self, tags: "Tags", declaration: "_DeclaredTag"):
+        self._tags = tags
+        self._declaration = declaration
+
+    @property
+    def _is_async(self) -> bool:
+        return self._tags._is_async
+
+    @property
+    def name(self) -> str:
+        return self._declaration.name
+
+    @property
+    def tag_type(self) -> str:
+        return self._declaration.template.tag_type
+
+    @property
+    def default(self) -> Any:
+        return self._declaration.template.default
+    
+    @property
+    def value(self) -> Any:
+        return self.get()
+
+    def get(self) -> Any:
+        return self._tags._get_tag_value(self._declaration.attr_name)
+
+    @maybe_async()
+    def set(self, value: Any) -> None:
+        self._tags._set_tag_value(self._declaration.attr_name, value)
+
+    async def set_async(self, value: Any) -> None:
+        await call_maybe_async(
+            self._tags._set_tag_value,
+            self._declaration.attr_name,
+            value,
+        )
+
+    @maybe_async()
+    def clear(self) -> None:
+        self.set(self.default)
+
+    async def clear_async(self) -> None:
+        await self.set_async(self.default)
+
+    def is_set(self) -> bool:
+        return self.get() is not NotSet
+
+    @maybe_async()
+    def increment(self, amount: int | float = 1) -> Any:
+        self._validate_numeric("increment")
+        current = self.get()
+        if current is NotSet:
+            raise ValueError(f"Cannot increment unset tag '{self.name}'.")
+        new_value = current + amount
+        self.set(new_value)
+        return new_value
+
+    async def increment_async(self, amount: int | float = 1) -> Any:
+        self._validate_numeric("increment")
+        current = self.get()
+        if current is NotSet:
+            raise ValueError(f"Cannot increment unset tag '{self.name}'.")
+        new_value = current + amount
+        await self.set_async(new_value)
+        return new_value
+
+    @maybe_async()
+    def decrement(self, amount: int | float = 1) -> Any:
+        self._validate_numeric("decrement")
+        current = self.get()
+        if current is NotSet:
+            raise ValueError(f"Cannot decrement unset tag '{self.name}'.")
+        new_value = current - amount
+        self.set(new_value)
+        return new_value
+
+    async def decrement_async(self, amount: int | float = 1) -> Any:
+        self._validate_numeric("decrement")
+        current = self.get()
+        if current is NotSet:
+            raise ValueError(f"Cannot decrement unset tag '{self.name}'.")
+        new_value = current - amount
+        await self.set_async(new_value)
+        return new_value
+
+    def _validate_numeric(self, operation: str) -> None:
+        if self.tag_type not in self._NUMERIC_TAG_TYPES:
+            raise TypeError(
+                f"Cannot {operation} non-numeric tag '{self.name}' of type '{self.tag_type}'."
+            )
+
+    def _compare(self, other: Any, comparator):
+        return comparator(self.get(), other)
+
+    def __repr__(self) -> str:
+        return f"BoundTag(name={self.name!r}, value={self.get()!r})"
+
+    def __str__(self) -> str:
+        return str(self.get())
+
+    def __bool__(self) -> bool:
+        return bool(self.get())
+
+    def __int__(self) -> int:
+        return int(self.get())
+
+    def __float__(self) -> float:
+        return float(self.get())
+
+    def __eq__(self, other: Any) -> bool:
+        return self.get() == other
+
+    def __lt__(self, other: Any) -> bool:
+        return self._compare(other, lambda a, b: a < b)
+
+    def __le__(self, other: Any) -> bool:
+        return self._compare(other, lambda a, b: a <= b)
+
+    def __gt__(self, other: Any) -> bool:
+        return self._compare(other, lambda a, b: a > b)
+
+    def __ge__(self, other: Any) -> bool:
+        return self._compare(other, lambda a, b: a >= b)
+
+
 class _DeclaredTag:
     def __init__(self, attr_name: str, template: Tag):
         self.attr_name = attr_name
@@ -39,9 +172,11 @@ class _DeclaredTag:
     def __get__(self, instance, owner):
         if instance is None:
             return self.template
-        return instance._get_tag_value(self.attr_name)
+        return BoundTag(instance, self)
 
     def __set__(self, instance, value):
+        if isinstance(value, BoundTag):
+            return
         instance._set_tag_value(self.attr_name, value)
 
 
@@ -69,6 +204,7 @@ class Tags:
 
     def __init__(self):
         self._manager = None
+        self._is_async = False
 
     @property
     def definitions(self) -> list[Tag]:
@@ -84,6 +220,7 @@ class Tags:
 
     def register_manager(self, manager) -> None:
         self._manager = manager
+        self._is_async = get_is_async(getattr(manager, "_is_async", None))
 
     def _get_declaration(self, name: str) -> _DeclaredTag | None:
         for attr_name, declaration in self.__tag_declarations__.items():
@@ -114,18 +251,25 @@ class Tags:
         self._manager.set_tag(declaration.name, value)
 
     def get(self, name: str) -> Tag | None:
+        return self.get_tag(name)
+
+    def get_tag(self, name: str) -> BoundTag | None:
+        declaration = self._get_declaration(name)
+        if declaration is None:
+            return None
+        return BoundTag(self, declaration)
+
+    def get_definition(self, name: str) -> Tag | None:
         declaration = self._get_declaration(name)
         if declaration is None:
             return None
         return declaration.template
 
-    get_tag = get
-
     def update(self, values: dict[str, Any]) -> None:
         for key, value in values.items():
-            tag = self.get(key)
+            tag = self.get_tag(key)
             if tag is not None:
-                tag.value = value
+                tag.set(value)
 
     def to_dict(self) -> dict[str, Any]:
         return self.values
@@ -137,13 +281,13 @@ class Tags:
         }
 
     def __iter__(self):
-        return iter(self.definitions)
+        return iter(self.get_tag(name) for name in self.__tag_declarations__)
 
     def __len__(self):
         return len(self.__tag_declarations__)
 
     def __getitem__(self, item: str) -> Tag:
-        tag = self.get(item)
+        tag = self.get_tag(item)
         if tag is None:
             raise KeyError(item)
         return tag
