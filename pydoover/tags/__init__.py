@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any
+from typing import Any, Callable
 
 from ..utils import call_maybe_async, get_is_async, maybe_async
 
@@ -205,16 +205,17 @@ class Tags:
     def __init__(self):
         self._manager = None
         self._is_async = False
+        self._tag_declarations = OrderedDict(self.__class__.__tag_declarations__)
 
     @property
     def definitions(self) -> list[Tag]:
-        return [declaration.template for declaration in self.__tag_declarations__.values()]
+        return [declaration.template for declaration in self._tag_declarations.values()]
 
     @property
     def values(self) -> dict[str, Any]:
         return {
             declaration.name: self._get_tag_value(attr_name)
-            for attr_name, declaration in self.__tag_declarations__.items()
+            for attr_name, declaration in self._tag_declarations.items()
             if self._get_tag_value(attr_name) is not NotSet
         }
 
@@ -223,10 +224,29 @@ class Tags:
         self._is_async = get_is_async(getattr(manager, "_is_async", None))
 
     def _get_declaration(self, name: str) -> _DeclaredTag | None:
-        for attr_name, declaration in self.__tag_declarations__.items():
+        for attr_name, declaration in self._tag_declarations.items():
             if attr_name == name or declaration.name == name:
                 return declaration
         return None
+
+    def add_tag(self, name: str, tag: Tag) -> Tag:
+        if not isinstance(tag, Tag):
+            raise TypeError("add_tag expects a Tag instance.")
+        if self._get_declaration(name) is not None:
+            raise ValueError(f"Tag '{name}' already exists.")
+
+        declaration = _DeclaredTag(name, tag)
+        if self._get_declaration(declaration.name) is not None:
+            raise ValueError(f"Tag '{declaration.name}' already exists.")
+
+        self._tag_declarations[name] = declaration
+        return declaration.template
+
+    def remove_tag(self, name: str) -> None:
+        declaration = self._get_declaration(name)
+        if declaration is None:
+            raise KeyError(name)
+        del self._tag_declarations[declaration.attr_name]
 
     def _get_tag_value(self, name: str):
         declaration = self._get_declaration(name)
@@ -292,14 +312,14 @@ class Tags:
     def to_schema(self) -> dict[str, Any]:
         return {
             declaration.name: declaration.template.to_schema()
-            for declaration in self.__tag_declarations__.values()
+            for declaration in self._tag_declarations.values()
         }
 
     def __iter__(self):
-        return iter(self.get_tag(name) for name in self.__tag_declarations__)
+        return iter(self.get_tag(name) for name in self._tag_declarations)
 
     def __len__(self):
-        return len(self.__tag_declarations__)
+        return len(self._tag_declarations)
 
     def __getitem__(self, item: str) -> Tag:
         tag = self.get_tag(item)
@@ -308,4 +328,7 @@ class Tags:
         return tag
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({list(self.__tag_declarations__)})"
+        return f"{self.__class__.__name__}({list(self._tag_declarations)})"
+
+
+TagsFactory = Callable[[Any], Tags | None]

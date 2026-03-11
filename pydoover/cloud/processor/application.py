@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Any
 
-from pydoover.tags import Tags
+from pydoover.tags import Tags, TagsFactory
 from pydoover.tags.manager import TagsManagerProcessor
 
 from .types import (
@@ -38,9 +38,14 @@ console_handler = logging.StreamHandler(sys.stdout)
 
 
 class Application:
-    def __init__(self, config: Schema | None, tags: Tags | None = None):
+    def __init__(
+        self,
+        config: Schema | None,
+        tags: Tags | TagsFactory | None = None,
+    ):
         self.config = config
-        self.tags = tags
+        self._tags_source = tags
+        self.tags: Tags | None = tags if isinstance(tags, Tags) else None
 
         self.received_deployment_config = None
 
@@ -63,6 +68,18 @@ class Application:
         logging.getLogger().addHandler(console_handler)
 
         self._record_tag_update: bool = True
+
+    def _resolve_tags(self) -> Tags | None:
+        if self._tags_source is None:
+            self.tags = None
+        elif isinstance(self._tags_source, Tags):
+            self.tags = self._tags_source
+        else:
+            self.tags = self._tags_source(self.config)
+
+        if self.tags is not None:
+            self.tags.register_manager(self.tag_manager)
+        return self.tags
 
     async def _setup(self, initial_payload: dict[str, Any]):
 
@@ -106,8 +123,6 @@ class Application:
             data.get("tag_values", None),
             record_tag_update=self._record_tag_update,
         )
-        if self.tags is not None:
-            self.tags.register_manager(self.tag_manager)
 
         try:
             connection_data = data["connection_data"]
@@ -146,6 +161,8 @@ class Application:
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
             self.config._inject_deployment_config(data["deployment_config"])
+
+        self._resolve_tags()
 
         # Store the deployment config for later use
         self.received_deployment_config = data["deployment_config"]

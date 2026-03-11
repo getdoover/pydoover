@@ -35,6 +35,41 @@ def _load_docker_application_class():
 DockerApplication = _load_docker_application_class()
 
 
+def _load_processor_application_class():
+    if "pydoover.cloud.processor.data_client" not in sys.modules:
+        module = types.ModuleType("pydoover.cloud.processor.data_client")
+        module.DooverData = type("DooverData", (), {})
+        module.ConnectionDetermination = type("ConnectionDetermination", (), {})
+        module.ConnectionStatus = type(
+            "ConnectionStatus",
+            (),
+            {"periodic_unknown": object()},
+        )
+        sys.modules["pydoover.cloud.processor.data_client"] = module
+
+    if "pydoover.cloud.processor.types" not in sys.modules:
+        module = types.ModuleType("pydoover.cloud.processor.types")
+        for class_name in (
+            "ManualInvokeEvent",
+            "MessageCreateEvent",
+            "Channel",
+            "Message",
+            "DeploymentEvent",
+            "ScheduleEvent",
+            "IngestionEndpointEvent",
+            "ConnectionConfig",
+            "AggregateUpdateEvent",
+            "DooverConnectionStatus",
+        ):
+            setattr(module, class_name, type(class_name, (), {}))
+        sys.modules["pydoover.cloud.processor.types"] = module
+
+    return importlib.import_module("pydoover.cloud.processor.application").Application
+
+
+ProcessorApplication = _load_processor_application_class()
+
+
 class FakeTagsManager:
     _is_async = False
 
@@ -134,11 +169,38 @@ class FakeDockerAppTagManager:
         self.subscribe_calls.append((key, callback, app_key, kwargs))
 
 
+class FakeSchema:
+    def __init__(self):
+        self.injected = None
+        self.some_flag = False
+
+    def _inject_deployment_config(self, config):
+        self.injected = config
+        self.some_flag = bool(config.get("some_flag"))
+
+
+class FakeProcessorTagManager:
+    _is_async = True
+
+    def __init__(self):
+        self.registered_tags = None
+
+
+
 def make_docker_app(tag_manager=None, app_key="test_app", is_async=False):
     app = object.__new__(DockerApplication)
     app.app_key = app_key
     app.tag_manager = tag_manager or FakeDockerAppTagManager()
     app._is_async = is_async
+    return app
+
+
+def make_processor_app(config=None, tags=None, tag_manager=None):
+    app = object.__new__(ProcessorApplication)
+    app.config = config
+    app._tags_source = tags
+    app.tags = tags if isinstance(tags, Tags) else None
+    app.tag_manager = tag_manager or FakeProcessorTagManager()
     return app
 
 
@@ -235,6 +297,29 @@ class TestTags:
         assert isinstance(voltage, Tag)
         assert voltage.name is None
         assert voltage.tag_type == "number"
+
+    def test_add_tag_adds_runtime_tag(self):
+        tags = MyAppTags()
+
+        tags.add_tag("extra_sensor", Tag("number"))
+
+        assert tags.get_tag("extra_sensor") is not None
+        assert tags.get_definition("extra_sensor").tag_type == "number"
+        assert {tag.name for tag in tags} == {
+            "voltage",
+            "speed",
+            "enabled",
+            "extra_sensor",
+        }
+
+    def test_remove_tag_removes_runtime_tag(self):
+        tags = MyAppTags()
+
+        tags.remove_tag("speed")
+
+        assert tags.get_tag("speed") is None
+        assert tags.get_definition("speed") is None
+        assert {tag.name for tag in tags} == {"voltage", "enabled"}
 
     def test_setting_without_manager_raises(self):
         tags = MyAppTags()
@@ -610,3 +695,147 @@ class TestDockerApplicationTagMethods:
 
         assert app._shutdown_requested is True
         assert manager.get_calls == [("shutdown_requested", None, None, {})]
+
+
+class TestTagFactories:
+    def test_docker_resolve_tags_keeps_prebuilt_instance(self):
+        manager = FakeDockerAppTagManager()
+        tags = MyAppTags()
+        app = make_docker_app(tag_manager=manager)
+        app.config = FakeSchema()
+        app._tags_source = tags
+        app.tags = tags
+
+        resolved = app._resolve_tags()
+
+        assert resolved is tags
+        assert app.tags is tags
+        assert tags._manager is manager
+
+    def test_docker_resolve_tags_calls_factory_with_injected_config(self):
+        manager = FakeDockerAppTagManager()
+        config = FakeSchema()
+        config._inject_deployment_config({"some_flag": True})
+        calls = []
+
+        def build_tags(resolved_config):
+            calls.append(resolved_config)
+            tags = MyAppTags()
+            if resolved_config.some_flag:
+                return tags
+            return None
+
+        app = make_docker_app(tag_manager=manager)
+        app.config = config
+        app._tags_source = build_tags
+        app.tags = None
+
+        resolved = app._resolve_tags()
+
+        assert isinstance(resolved, MyAppTags)
+        assert calls == [config]
+        assert resolved._manager is manager
+
+    def test_docker_factory_can_change_available_tags_based_on_config(self):
+        manager = FakeDockerAppTagManager()
+        config = FakeSchema()
+        config._inject_deployment_config({"some_flag": True})
+
+        def build_tags(resolved_config):
+            tags = MyAppTags()
+            tags.remove_tag("enabled")
+            if resolved_config.some_flag:
+                tags.add_tag("extra_sensor", Tag("number"))
+            else:
+                tags.add_tag("legacy_sensor", Tag("number"))
+            return tags
+
+        app = make_docker_app(tag_manager=manager)
+        app.config = config
+        app._tags_source = build_tags
+        app.tags = None
+
+        resolved = app._resolve_tags()
+
+        assert resolved.get_tag("voltage") is not None
+        assert resolved.get_tag("extra_sensor") is not None
+        assert resolved.get_tag("legacy_sensor") is None
+        assert resolved.get_tag("enabled") is None
+        assert {tag.name for tag in resolved} == {"voltage", "speed", "extra_sensor"}
+
+    def test_docker_resolve_tags_allows_factory_returning_none(self):
+        manager = FakeDockerAppTagManager()
+        app = make_docker_app(tag_manager=manager)
+        app.config = FakeSchema()
+        app._tags_source = lambda config: None
+        app.tags = None
+
+        resolved = app._resolve_tags()
+
+        assert resolved is None
+        assert app.tags is None
+
+    def test_docker_resolve_tags_propagates_factory_error(self):
+        app = make_docker_app()
+        app.config = FakeSchema()
+
+        def build_tags(_config):
+            raise RuntimeError("boom")
+
+        app._tags_source = build_tags
+
+        with pytest.raises(RuntimeError, match="boom"):
+            app._resolve_tags()
+
+    def test_processor_resolve_tags_calls_factory_after_config_injection(self):
+        config = FakeSchema()
+        manager = FakeProcessorTagManager()
+        calls = []
+
+        def build_tags(resolved_config):
+            calls.append(resolved_config.some_flag)
+            return MyAppTags()
+
+        config._inject_deployment_config({"some_flag": True})
+        app = make_processor_app(config=config, tags=build_tags, tag_manager=manager)
+
+        resolved = app._resolve_tags()
+
+        assert isinstance(resolved, MyAppTags)
+        assert calls == [True]
+        assert resolved._manager is manager
+
+    def test_processor_factory_can_change_available_tags_based_on_config(self):
+        config = FakeSchema()
+        config._inject_deployment_config({"some_flag": False})
+        manager = FakeProcessorTagManager()
+
+        def build_tags(resolved_config):
+            tags = MyAppTags()
+            tags.remove_tag("enabled")
+            if resolved_config.some_flag:
+                tags.add_tag("extra_sensor", Tag("number"))
+            else:
+                tags.add_tag("legacy_sensor", Tag("number"))
+            return tags
+
+        app = make_processor_app(config=config, tags=build_tags, tag_manager=manager)
+
+        resolved = app._resolve_tags()
+
+        assert resolved.get_tag("voltage") is not None
+        assert resolved.get_tag("legacy_sensor") is not None
+        assert resolved.get_tag("extra_sensor") is None
+        assert resolved.get_tag("enabled") is None
+        assert {tag.name for tag in resolved} == {"voltage", "speed", "legacy_sensor"}
+
+    def test_processor_resolve_tags_keeps_prebuilt_instance(self):
+        config = FakeSchema()
+        tags = MyAppTags()
+        manager = FakeProcessorTagManager()
+        app = make_processor_app(config=config, tags=tags, tag_manager=manager)
+
+        resolved = app._resolve_tags()
+
+        assert resolved is tags
+        assert tags._manager is manager

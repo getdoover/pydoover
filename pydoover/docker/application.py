@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, Awaitable, Callable
 
+from pydoover.tags import Tags, TagsFactory
 from pydoover.tags.manager import TagsManagerDocker
 
 try:
@@ -88,6 +89,7 @@ class Application:
     def __init__(
         self,
         config: "Schema",
+        tags: Tags | TagsFactory | None = None,
         app_key: str = None,
         is_async: bool = None,
         device_agent: DeviceAgentInterface = None,
@@ -99,6 +101,8 @@ class Application:
         healthcheck_port: int = None,
     ):
         self.config = config
+        self._tags_source = tags
+        self.tags: Tags | None = tags if isinstance(tags, Tags) else None
 
         if config_fp:
             path = Path(config_fp)
@@ -153,6 +157,18 @@ class Application:
 
         self._is_healthy = False
         self._healthcheck_port = healthcheck_port
+
+    def _resolve_tags(self) -> Tags | None:
+        if self._tags_source is None:
+            self.tags = None
+        elif isinstance(self._tags_source, Tags):
+            self.tags = self._tags_source
+        else:
+            self.tags = self._tags_source(self.config)
+
+        if self.tags is not None:
+            self.tags.register_manager(self.tag_manager)
+        return self.tags
 
     async def _handle_healthcheck(self, _request):
         if self._is_healthy:
@@ -258,6 +274,8 @@ class Application:
                 "deployment_config", self._on_deployment_config_update
             )
             await self.device_agent.wait_for_channels_sync_async(["deployment_config"])
+
+        self._resolve_tags()
 
         await self.modbus_iface.setup()
 
