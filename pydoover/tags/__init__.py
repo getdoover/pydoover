@@ -17,12 +17,14 @@ class Tag:
         self.default = default
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert this tag definition to its schema-style dictionary form."""
         data = {"type": self.tag_type}
         if self.default is not NotSet:
             data["default"] = self.default
         return data
 
     def to_schema(self) -> dict[str, Any]:
+        """Alias for :meth:`to_dict` to match the rest of the declarative API."""
         return self.to_dict()
 
     def __repr__(self) -> str:
@@ -30,7 +32,11 @@ class Tag:
 
 
 class BoundTag:
-    """Manager-backed runtime view of a declared tag."""
+    """Manager-backed runtime view of a declared tag.
+
+    A ``BoundTag`` is what you interact with on a :class:`Tags` instance.
+    Reads and writes are delegated to the registered tag manager.
+    """
 
     _NUMERIC_TAG_TYPES = {"number", "integer", "float"}
 
@@ -44,28 +50,39 @@ class BoundTag:
 
     @property
     def name(self) -> str:
+        """str: The resolved runtime name of this tag."""
         return self._declaration.name
 
     @property
     def tag_type(self) -> str:
+        """str: The declared tag type."""
         return self._declaration.template.tag_type
 
     @property
     def default(self) -> Any:
+        """Any: The default value returned when no runtime value exists."""
         return self._declaration.template.default
     
     @property
     def value(self) -> Any:
+        """Any: Convenience alias for :meth:`get`."""
         return self.get()
 
     def get(self) -> Any:
+        """Return the current value of this tag from the registered manager."""
         return self._tags._get_tag_value(self._declaration.attr_name)
 
     @maybe_async()
     def set(self, value: Any) -> None:
+        """Set the current value of this tag.
+
+        In async contexts this follows the repo's ``maybe_async`` pattern and
+        should be awaited.
+        """
         self._tags._set_tag_value(self._declaration.attr_name, value)
 
     async def set_async(self, value: Any) -> None:
+        """Async variant of :meth:`set`."""
         await call_maybe_async(
             self._tags._set_tag_value_async,
             self._declaration.attr_name,
@@ -74,16 +91,20 @@ class BoundTag:
 
     @maybe_async()
     def clear(self) -> None:
+        """Reset this tag back to its declared default value."""
         self.set(self.default)
 
     async def clear_async(self) -> None:
+        """Async variant of :meth:`clear`."""
         await self.set_async(self.default)
 
     def is_set(self) -> bool:
+        """Return ``True`` when this tag currently has a concrete value."""
         return self.get() is not NotSet
 
     @maybe_async()
     def increment(self, amount: int | float = 1) -> Any:
+        """Increment a numeric tag and return the new value."""
         self._validate_numeric("increment")
         current = self.get()
         if current is NotSet:
@@ -93,6 +114,7 @@ class BoundTag:
         return new_value
 
     async def increment_async(self, amount: int | float = 1) -> Any:
+        """Async variant of :meth:`increment`."""
         self._validate_numeric("increment")
         current = self.get()
         if current is NotSet:
@@ -103,6 +125,7 @@ class BoundTag:
 
     @maybe_async()
     def decrement(self, amount: int | float = 1) -> Any:
+        """Decrement a numeric tag and return the new value."""
         self._validate_numeric("decrement")
         current = self.get()
         if current is NotSet:
@@ -112,6 +135,7 @@ class BoundTag:
         return new_value
 
     async def decrement_async(self, amount: int | float = 1) -> Any:
+        """Async variant of :meth:`decrement`."""
         self._validate_numeric("decrement")
         current = self.get()
         if current is NotSet:
@@ -181,7 +205,12 @@ class _DeclaredTag:
 
 
 class Tags:
-    """Base class for declarative tag definitions."""
+    """Base class for declarative tag definitions.
+
+    Subclasses declare available tags as class attributes. Instances expose
+    manager-backed :class:`BoundTag` proxies and may also mutate their available
+    tag set at runtime via :meth:`add_tag` and :meth:`remove_tag`.
+    """
 
     __tag_declarations__: "OrderedDict[str, _DeclaredTag]" = OrderedDict()
 
@@ -205,14 +234,17 @@ class Tags:
     def __init__(self):
         self._manager = None
         self._is_async = False
+        # Keep runtime declaration changes isolated to this instance.
         self._tag_declarations = OrderedDict(self.__class__.__tag_declarations__)
 
     @property
     def definitions(self) -> list[Tag]:
+        """list[Tag]: The declared tag definitions for this instance."""
         return [declaration.template for declaration in self._tag_declarations.values()]
 
     @property
     def values(self) -> dict[str, Any]:
+        """dict[str, Any]: The current manager-backed values for all declared tags."""
         return {
             declaration.name: self._get_tag_value(attr_name)
             for attr_name, declaration in self._tag_declarations.items()
@@ -220,6 +252,7 @@ class Tags:
         }
 
     def register_manager(self, manager) -> None:
+        """Bind this tag collection to a tag manager."""
         self._manager = manager
         self._is_async = get_is_async(getattr(manager, "_is_async", None))
 
@@ -230,6 +263,11 @@ class Tags:
         return None
 
     def add_tag(self, name: str, tag: Tag) -> Tag:
+        """Add a tag definition to this instance.
+
+        This is primarily intended for config-dependent tag factories, where the
+        available tag set needs to be customized before user code runs.
+        """
         if not isinstance(tag, Tag):
             raise TypeError("add_tag expects a Tag instance.")
         if self._get_declaration(name) is not None:
@@ -243,6 +281,7 @@ class Tags:
         return declaration.template
 
     def remove_tag(self, name: str) -> None:
+        """Remove a tag definition from this instance."""
         declaration = self._get_declaration(name)
         if declaration is None:
             raise KeyError(name)
@@ -286,30 +325,36 @@ class Tags:
         await call_maybe_async(self._manager.set_tag, declaration.name, value)
 
     def get(self, name: str) -> Tag | None:
+        """Alias for :meth:`get_tag`."""
         return self.get_tag(name)
 
     def get_tag(self, name: str) -> BoundTag | None:
+        """Return the bound runtime proxy for a tag, if it exists."""
         declaration = self._get_declaration(name)
         if declaration is None:
             return None
         return BoundTag(self, declaration)
 
     def get_definition(self, name: str) -> Tag | None:
+        """Return the declared :class:`Tag` definition for a tag, if it exists."""
         declaration = self._get_declaration(name)
         if declaration is None:
             return None
         return declaration.template
 
     def update(self, values: dict[str, Any]) -> None:
+        """Update multiple tag values through their bound runtime proxies."""
         for key, value in values.items():
             tag = self.get_tag(key)
             if tag is not None:
                 tag.set(value)
 
     def to_dict(self) -> dict[str, Any]:
+        """Return the current manager-backed tag values."""
         return self.values
 
     def to_schema(self) -> dict[str, Any]:
+        """Return the schema-style definitions for the current tag set."""
         return {
             declaration.name: declaration.template.to_schema()
             for declaration in self._tag_declarations.values()

@@ -15,6 +15,8 @@ log = logging.getLogger(__name__)
 
 
 class KeyPath:
+    """Represents a tag key as a normalized nested path."""
+
     def __init__(self, key: str | list[str] | KeyPath, app_key: str | None = None):
         if isinstance(key, KeyPath):
             self._path = key.path
@@ -40,6 +42,7 @@ class KeyPath:
         self.key = key
 
     def get(self) -> list[str]:
+        """Return the normalized path segments."""
         return list(self._path)
     
     @property
@@ -47,12 +50,14 @@ class KeyPath:
         return self._path
 
     def construct_dict(self, value):
+        """Wrap a leaf value into a nested dict using this key path."""
         result = value
         for part in reversed(self.path):
             result = {part: result}
         return result
 
     def lookup_dict(self, d: dict[str, Any], raise_key_error: bool = False):
+        """Resolve this key path against a nested dictionary."""
         current = d
         for part in self.path:
             if not isinstance(current, dict):
@@ -66,6 +71,7 @@ class KeyPath:
         return current
     
     def in_dict(self, d: dict[str, Any]):
+        """Return ``True`` when this key path exists in a nested dictionary."""
         current = d
         for part in self.path:
             if not isinstance(current, dict):
@@ -101,17 +107,22 @@ class TagsManager:
     def get_tag(
         self, key: str | list[str] | KeyPath, default: Any = None, app_key: str | None = None
     ) -> Any | None:
+        """Fetch a tag value from the backing store."""
         raise NotImplementedError
 
     @maybe_async()
     def set_tag(self, key: str, value: Any, app_key: str | None = None) -> None:
+        """Set a tag value in the backing store."""
         raise NotImplementedError
 
     async def commit_tags(self) -> None:
+        """Flush any buffered tag changes, if the implementation buffers them."""
         return
 
 
 class TagsManagerDocker(TagsManager):
+    """Tag manager for docker applications backed by the device agent channels."""
+
     def __init__(self, client = None, is_async = None):
         self.client = client
         self._is_async = get_is_async(is_async)
@@ -121,9 +132,11 @@ class TagsManagerDocker(TagsManager):
         self._tag_ready = asyncio.Event()
 
     def setup(self):
+        """Register the tag channel subscription with the backing client."""
         self.client.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
         
     async def await_tags_ready(self):
+        """Wait until at least one tag update has been received."""
         if self._tag_ready.is_set():
             return
         await self._tag_ready.wait()
@@ -137,6 +150,7 @@ class TagsManagerDocker(TagsManager):
         self._tag_ready.set()
             
     async def fulfill_tag_subscriptions(self, diff):
+        """Invoke any callbacks whose subscribed tag paths changed."""
         if diff is None or len(diff) == 0:
             return
 
@@ -159,10 +173,12 @@ class TagsManagerDocker(TagsManager):
         | Callable[[str, dict[str, Any]], Any],
         app_key: str = None,
     ):
+        """Register a callback for updates to a tag path."""
         key_path = KeyPath(key, app_key=app_key)
         self._tag_subscriptions[key_path] = callback
         
     def unsubscribe_from_tag(self, key: str | list[str] | KeyPath, app_key: str | None = None):
+        """Remove a previously registered tag subscription."""
         key_path = KeyPath(key, app_key=app_key)
         if key_path in self._tag_subscriptions:
             del self._tag_subscriptions[key_path]
@@ -170,6 +186,7 @@ class TagsManagerDocker(TagsManager):
     def get_tag(
         self, key: str | list[str] | KeyPath, default: Any = None, app_key: str | None = None
     ) -> Any | None:
+        """Read a tag value from the locally cached tag channel state."""
         key_path = KeyPath(key, app_key=app_key)
         if not key_path.in_dict(self._tag_values):
             log.debug(f"Tag {key_path} not found in current tags")
@@ -184,6 +201,7 @@ class TagsManagerDocker(TagsManager):
         app_key: str | None = None,
         only_if_changed: bool = True,
     ) -> None:
+        """Set a single tag value and publish the resulting diff to the tag channel."""
         key_path = KeyPath(key, app_key=app_key)
         self.set_tags(key_path.construct_dict(value), only_if_changed=only_if_changed)
 
@@ -194,6 +212,7 @@ class TagsManagerDocker(TagsManager):
         app_key: str | None = None,
         only_if_changed: bool = True,
     ) -> None:
+        """Async variant of :meth:`set_tag`."""
         key_path = KeyPath(key, app_key=app_key)
         await self.set_tags_async(key_path.construct_dict(value), only_if_changed)
 
@@ -205,6 +224,7 @@ class TagsManagerDocker(TagsManager):
         key = None,
         app_key: str | None = None,
     ):
+        """Publish multiple tag values to the device agent tag channel."""
         if key is not None or app_key is not None:
             tags = KeyPath(key, app_key=app_key).construct_dict(tags)
             
@@ -225,6 +245,7 @@ class TagsManagerDocker(TagsManager):
         key = None,
         app_key: str | None = None,
     ):
+        """Async variant of :meth:`set_tags`."""
         if key is not None or app_key is not None:
             tags = KeyPath(key, app_key=app_key).construct_dict(tags)
         
@@ -240,6 +261,8 @@ class TagsManagerDocker(TagsManager):
 
 
 class TagsManagerProcessor(TagsManager):
+    """Tag manager for cloud processor execution contexts."""
+
     def __init__(
         self,
         app_key: str,
@@ -259,6 +282,7 @@ class TagsManagerProcessor(TagsManager):
     def get_tag(
         self, key: str, default: Any = None, app_key: str | None = None
     ) -> Any | None:
+        """Read a tag value from the processor's in-memory tag payload."""
         app_key = app_key or self.app_key
         try:
             return self._tag_values[app_key][key]
@@ -267,6 +291,7 @@ class TagsManagerProcessor(TagsManager):
 
     @maybe_async()
     def set_tag(self, key: str, value: Any, app_key: str | None = None) -> None:
+        """Update a tag value in the buffered processor payload."""
         app_key = app_key or self.app_key
 
         try:
@@ -287,9 +312,11 @@ class TagsManagerProcessor(TagsManager):
     async def set_tag_async(
         self, key: str, value: Any, app_key: str | None = None
     ) -> None:
+        """Async variant of :meth:`set_tag`."""
         self.set_tag(key, value, app_key=app_key, run_sync=True)
 
     async def commit_tags(self) -> None:
+        """Flush any buffered tag changes back to the processor data API."""
         if not self._update_tags:
             return
 
