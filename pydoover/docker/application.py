@@ -120,7 +120,10 @@ class Application:
             is_async=is_async,
         )
         
-        self.tag_manager = TagsManagerDocker(self)
+        self.tag_manager = TagsManagerDocker(
+            client=self.device_agent,
+            is_async=is_async                                     
+        )
 
         self.app_key = app_key
         self.app_display_name = ""

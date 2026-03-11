@@ -111,21 +111,21 @@ class TagsManager:
 
 
 class TagsManagerDocker(TagsManager):
-    def __init__(self, app):
-        self.app = app
-        self._is_async = get_is_async(getattr(app, "_is_async", None))
+    def __init__(self, client = None, is_async = None):
+        self.client = client
+        self._is_async = get_is_async(is_async)
         
         self._tag_values = {}
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
         self._tag_ready = asyncio.Event()
 
     def setup(self):
-        self.app.device_agent.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
+        self.client.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
         
     async def await_tags_ready(self):
         if self._tag_ready.is_set():
             return
-        return self._tag_ready.wait()
+        await self._tag_ready.wait()
 
     async def _on_tag_update(self, _, tag_values: dict[str, Any]):
         diff = generate_diff(self._tag_values, tag_values, do_delete=False)
@@ -213,7 +213,7 @@ class TagsManagerDocker(TagsManager):
                 return
 
         apply_diff(self._tag_values, tags, clone=False)
-        self.app.device_agent.publish_to_channel(
+        self.client.publish_to_channel(
             TAG_CHANNEL_NAME, tags, max_age=TAG_CLOUD_MAX_AGE, record_log=True
         )
 
@@ -233,7 +233,7 @@ class TagsManagerDocker(TagsManager):
                 return
 
         apply_diff(self._tag_values, tags, clone=False)
-        await self.app.device_agent.publish_to_channel_async(
+        await self.client.publish_to_channel_async(
             TAG_CHANNEL_NAME, tags, max_age=TAG_CLOUD_MAX_AGE, record_log=True
         )
 
