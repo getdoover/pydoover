@@ -96,6 +96,7 @@ class Application:
         )
 
         self.app_key = data.get("app_key", None)
+        self.app_id = data.get("app_id", None)
         self._tag_values = data.get("tag_values", None)
 
         try:
