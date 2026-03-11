@@ -105,7 +105,11 @@ class TagsManager:
     _is_async = False
 
     def get_tag(
-        self, key: str | list[str] | KeyPath, default: Any = None, app_key: str | None = None
+        self,
+        key: str | list[str] | KeyPath,
+        default: Any = None,
+        app_key: str | None = None,
+        raise_key_error: bool = False,
     ) -> Any | None:
         """Fetch a tag value from the backing store."""
         raise NotImplementedError
@@ -184,12 +188,18 @@ class TagsManagerDocker(TagsManager):
             del self._tag_subscriptions[key_path]
 
     def get_tag(
-        self, key: str | list[str] | KeyPath, default: Any = None, app_key: str | None = None
+        self,
+        key: str | list[str] | KeyPath,
+        default: Any = None,
+        app_key: str | None = None,
+        raise_key_error: bool = False,
     ) -> Any | None:
         """Read a tag value from the locally cached tag channel state."""
         key_path = KeyPath(key, app_key=app_key)
         if not key_path.in_dict(self._tag_values):
             log.debug(f"Tag {key_path} not found in current tags")
+            if raise_key_error:
+                raise KeyError(key_path)
             return default
         return key_path.lookup_dict(self._tag_values)
 
@@ -280,13 +290,19 @@ class TagsManagerProcessor(TagsManager):
         self._record_tag_update = record_tag_update
 
     def get_tag(
-        self, key: str, default: Any = None, app_key: str | None = None
+        self,
+        key: str,
+        default: Any = None,
+        app_key: str | None = None,
+        raise_key_error: bool = False,
     ) -> Any | None:
         """Read a tag value from the processor's in-memory tag payload."""
         app_key = app_key or self.app_key
         try:
             return self._tag_values[app_key][key]
-        except (KeyError, TypeError):
+        except (KeyError, TypeError) as exc:
+            if raise_key_error:
+                raise KeyError(key) from exc
             return default
 
     @maybe_async()

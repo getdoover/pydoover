@@ -127,6 +127,83 @@ class FakeTagClient:
         )
 
 
+class FakeRuntimeDeviceAgent:
+    def __init__(self, app_key="test_app"):
+        self.app_key = app_key
+        self.agent_id = None
+        self.uri = ""
+        self.subscriptions = {}
+        self.sync_publishes = []
+        self.async_publishes = []
+
+    def has_persistent_connection(self):
+        return True
+
+    async def await_dda_available_async(self, timeout):
+        return True
+
+    def add_subscription(self, channel_name, callback):
+        self.subscriptions[channel_name] = callback
+
+    async def wait_for_channels_sync_async(self, channel_names=None, timeout=None):
+        if channel_names and "deployment_config" in channel_names:
+            callback = self.subscriptions.get("deployment_config")
+            if callback is not None:
+                await callback(
+                    "deployment_config",
+                    {"applications": {self.app_key: {}}},
+                )
+        return True
+
+    def publish_to_channel(self, channel_name, payload, max_age=None, record_log=None):
+        self.sync_publishes.append(
+            (channel_name, payload, max_age, record_log)
+        )
+
+    async def publish_to_channel_async(
+        self, channel_name, payload, max_age=None, record_log=None
+    ):
+        self.async_publishes.append(
+            (channel_name, payload, max_age, record_log)
+        )
+
+    async def close(self):
+        return None
+
+    def get_is_dda_available(self):
+        return True
+
+    def get_is_dda_online(self):
+        return True
+
+    def get_has_dda_been_online(self):
+        return True
+
+
+class FakeRuntimePlatformInterface:
+    def __init__(self, app_key="test_app", uri="", is_async=False):
+        self.app_key = app_key
+        self.uri = uri
+        self._is_async = is_async
+
+    async def close(self):
+        return None
+
+
+class FakeRuntimeModbusInterface:
+    def __init__(self, app_key="test_app", uri="", is_async=False, config=None):
+        self.app_key = app_key
+        self.uri = uri
+        self._is_async = is_async
+        self.config = config
+
+    async def setup(self):
+        return None
+
+    async def close(self):
+        return None
+
+
 class FakeDockerAppTagManager:
     def __init__(self):
         self.get_calls = []
@@ -208,6 +285,22 @@ class MyAppTags(Tags):
     voltage = Tag("number")
     speed = Tag("number", default=0)
     enabled = Tag("boolean", default=False)
+
+
+class AsyncStartupTags(Tags):
+    some_tag = Tag("string")
+
+
+class AsyncStartupApp(DockerApplication):
+    async def setup(self):
+        self.setup_tag_manager_is_async = self.tag_manager._is_async
+        await self.tags.some_tag.set("ready")
+
+    async def main_loop(self):
+        return None
+
+    async def on_shutdown_at(self, dt):
+        self.shutdown_events.append(dt)
 
 
 class TestTags:
@@ -470,6 +563,13 @@ class TestTagsManagerDocker:
         assert manager.get_tag("voltage", app_key="my_app") == 12.7
         assert client.sync_publishes[-1]["payload"] == {"my_app": {"voltage": 12.7}}
 
+    def test_get_tag_raise_key_error(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client, is_async=False)
+
+        with pytest.raises(KeyError):
+            manager.get_tag("missing", raise_key_error=True)
+
     def test_async_set_tag_uses_async_publish_path(self):
         import asyncio
 
@@ -695,6 +795,82 @@ class TestDockerApplicationTagMethods:
 
         assert app._shutdown_requested is True
         assert manager.get_calls == [("shutdown_requested", None, None, {})]
+
+    def test_async_app_initializes_tag_manager_as_async(self):
+        device_agent = FakeRuntimeDeviceAgent()
+        app = AsyncStartupApp(
+            config=FakeSchema(),
+            tags=AsyncStartupTags(),
+            app_key="test_app",
+            device_agent=device_agent,
+            platform_iface=FakeRuntimePlatformInterface(),
+            modbus_iface=FakeRuntimeModbusInterface(),
+            test_mode=True,
+            healthcheck_port=0,
+        )
+
+        assert app._is_async is True
+        assert app.tag_manager._is_async is True
+        assert app.ui_manager._is_async is True
+
+    def test_async_run_startup_handles_declarative_tags_and_shutdown_subscription(
+        self, monkeypatch
+    ):
+        import asyncio
+        import time
+
+        docker_application_module = importlib.import_module("pydoover.docker.application")
+        monkeypatch.setattr(docker_application_module, "RUN_HEALTHCHECK", False)
+
+        async def run_test():
+            initial_shutdown_at = time.time() + 60
+            updated_shutdown_at = initial_shutdown_at + 60
+
+            device_agent = FakeRuntimeDeviceAgent()
+            app = AsyncStartupApp(
+                config=FakeSchema(),
+                tags=AsyncStartupTags(),
+                app_key="test_app",
+                device_agent=device_agent,
+                platform_iface=FakeRuntimePlatformInterface(is_async=True),
+                modbus_iface=FakeRuntimeModbusInterface(is_async=True),
+                test_mode=True,
+                healthcheck_port=0,
+            )
+            app.shutdown_events = []
+            app.tag_manager._tag_values = {"shutdown_at": initial_shutdown_at}
+
+            task = asyncio.create_task(app._run())
+            try:
+                await app.wait_until_ready()
+                await asyncio.sleep(0.05)
+
+                assert app.setup_tag_manager_is_async is True
+                assert app.tag_manager.get_tag("some_tag") == "ready"
+                assert len(app.shutdown_events) == 1
+                assert app.shutdown_events[0].timestamp() == pytest.approx(
+                    initial_shutdown_at
+                )
+                assert KeyPath("shutdown_at") in app.tag_manager._tag_subscriptions
+
+                await app.tag_manager._on_tag_update(
+                    TAG_CHANNEL_NAME,
+                    {
+                        "shutdown_at": updated_shutdown_at,
+                        "some_tag": "ready",
+                    },
+                )
+
+                assert len(app.shutdown_events) == 2
+                assert app.shutdown_events[1].timestamp() == pytest.approx(
+                    updated_shutdown_at
+                )
+            finally:
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+
+        asyncio.run(run_test())
 
 
 class TestTagFactories:

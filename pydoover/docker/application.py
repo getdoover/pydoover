@@ -103,6 +103,9 @@ class Application:
         self.config = config
         self._tags_source = tags
         self.tags: Tags | None = tags if isinstance(tags, Tags) else None
+        self.app_key = app_key
+        self.app_display_name = ""
+        self._is_async = self._resolve_is_async_mode(is_async)
 
         if config_fp:
             path = Path(config_fp)
@@ -112,27 +115,27 @@ class Application:
         else:
             self._config_fp = None
 
-        self.device_agent = device_agent or DeviceAgentInterface(app_key, "", is_async)
-        self.platform_iface = platform_iface or PlatformInterface(app_key, "", is_async)
+        self.device_agent = device_agent or DeviceAgentInterface(
+            self.app_key, "", self._is_async
+        )
+        self.platform_iface = platform_iface or PlatformInterface(
+            self.app_key, "", self._is_async
+        )
         self.modbus_iface = modbus_iface or ModbusInterface(
-            app_key, "", is_async, config
+            self.app_key, "", self._is_async, config
         )
 
         self.ui_manager = UIManager(
-            app_key=app_key,
+            app_key=self.app_key,
             client=self.device_agent,
-            is_async=is_async,
+            is_async=self._is_async,
         )
         
         self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
-            is_async=is_async                                     
+            is_async=self._is_async,
         )
-
-        self.app_key = app_key
-        self.app_display_name = ""
-
-        self._is_async = get_is_async(is_async)
+        self._set_async_mode(self._is_async)
         self._ready = asyncio.Event()
 
         self._shutdown_at = None
@@ -157,6 +160,37 @@ class Application:
 
         self._is_healthy = False
         self._healthcheck_port = healthcheck_port
+
+    def _resolve_is_async_mode(self, is_async: bool | None) -> bool:
+        if is_async is not None:
+            return get_is_async(is_async)
+
+        user_is_async = asyncio.iscoroutinefunction(self.setup) or asyncio.iscoroutinefunction(
+            self.main_loop
+        )
+        if user_is_async:
+            return True
+
+        return get_is_async(None)
+
+    def _set_async_mode(self, is_async: bool | None) -> bool:
+        resolved = self._resolve_is_async_mode(is_async)
+        self._is_async = resolved
+
+        for inst in (
+            getattr(self, "device_agent", None),
+            getattr(self, "platform_iface", None),
+            getattr(self, "modbus_iface", None),
+            getattr(self, "ui_manager", None),
+            getattr(self, "tag_manager", None),
+        ):
+            if inst is not None:
+                inst._is_async = resolved
+
+        if self.tags is not None:
+            self.tags._is_async = resolved
+
+        return resolved
 
     def _resolve_tags(self) -> Tags | None:
         if self._tags_source is None:
@@ -559,6 +593,11 @@ class Application:
     @property
     def _shutdown_requested(self):
         return self.tag_manager.get_tag("shutdown_requested")
+
+    async def _on_shutdown_at(self, _, shutdown_at):
+        if shutdown_at is None:
+            return
+        await self._check_shutdown_at(shutdown_at)
 
     async def _check_shutdown_at(self, shutdown_at):
         if not self.is_ready:
@@ -999,7 +1038,7 @@ def run_app(
     user_is_async = asyncio.iscoroutinefunction(
         app.setup
     ) or asyncio.iscoroutinefunction(app.main_loop)
-    is_async = get_is_async(user_is_async)
+    is_async = app._set_async_mode(user_is_async)
     if setup_logging:
         utils_setup_logging(debug=debug, formatter=log_formatter, filters=log_filters)
 
@@ -1009,9 +1048,13 @@ def run_app(
         app.modbus_iface,
         app.device_agent,
         app.ui_manager,
+        app.tag_manager,
     ):
         inst.app_key = app_key
         inst._is_async = is_async
+
+    if app.tags is not None:
+        app.tags._is_async = is_async
 
     app.platform_iface.uri = plt_uri
     app.modbus_iface.uri = modbus_uri

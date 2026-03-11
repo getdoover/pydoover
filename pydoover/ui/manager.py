@@ -419,6 +419,7 @@ class UIManager:
     def get_from_ui_state(self, element_name: str) -> Optional[dict]:
         return find_object_with_key(self.last_ui_state, element_name)
 
+    @maybe_async()
     def update_variable(
         self, variable_name: str, value: Any, critical: bool = False
     ) -> bool:
@@ -434,6 +435,17 @@ class UIManager:
 
         element.current_value = value
         return True
+
+    async def update_variable_async(
+        self, variable_name: str, value: Any, critical: bool = False
+    ) -> bool:
+        """Async-safe wrapper for :meth:`update_variable`."""
+        return self.update_variable(
+            variable_name,
+            value,
+            critical=critical,
+            run_sync=True,
+        )
 
     def add_cmds_update_subscription(self, callback):
         # fixme: create alias or something
