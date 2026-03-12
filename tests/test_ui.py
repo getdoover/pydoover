@@ -1,4 +1,5 @@
 import asyncio
+import copy
 
 import pytest
 
@@ -7,6 +8,9 @@ from pydoover.tags import Tag, Tags
 
 from tests.test_tags import (
     DockerApplication,
+    FakeRuntimeDeviceAgent,
+    FakeRuntimeModbusInterface,
+    FakeRuntimePlatformInterface,
     FakeDockerAppTagManager,
     FakeProcessorTagManager,
     FakeSchema,
@@ -109,6 +113,12 @@ class TestDeclarativeUI:
         assert "extra" not in ui_obj.__dict__
         assert [element.name for element in ui_obj.children] == ["voltage"]
 
+    def test_tag_binding_survives_deepcopy_without_serializing_missing_default(self):
+        binding = ui.tag_ref("voltage", tag_type="number")
+        copied = copy.deepcopy(binding)
+
+        assert copied.to_lookup() == "$tag.voltage:number"
+
 
 class TestTagReferenceSerialization:
     def test_class_tag_reference_serializes_to_compact_lookup_string(self):
@@ -126,6 +136,20 @@ class TestTagReferenceSerialization:
                 "voltage",
                 "Voltage",
                 curr_val=tags.speed,
+            )
+
+        ui_obj = FactoryUI().bind_tags(tags)
+
+        assert ui_obj.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
+
+    def test_runtime_bound_tag_from_get_tag_is_supported(self):
+        tags = MyAppTags()
+
+        class FactoryUI(ui.UI):
+            voltage = ui.NumericVariable(
+                "voltage",
+                "Voltage",
+                curr_val=tags.get_tag("speed"),
             )
 
         ui_obj = FactoryUI().bind_tags(tags)
@@ -300,6 +324,41 @@ class TestApplicationUIResolution:
         assert isinstance(resolved, BaseUI)
         assert calls == [app.config]
 
+    def test_docker_ui_factory_supports_dynamic_children_with_manager_bound_tags(self):
+        def build_ui(_config, tags):
+            class FactoryUI(ui.UI):
+                voltage = ui.NumericVariable(
+                    "voltage",
+                    "Voltage",
+                    curr_val=tags.speed,
+                )
+
+            ui_obj = FactoryUI()
+            ui_obj.add_element(
+                "telemetry",
+                ui.Submodule(
+                    "telemetry",
+                    "Telemetry",
+                    children=[
+                        ui.NumericVariable(
+                            "inner_voltage",
+                            "Inner Voltage",
+                            curr_val=tags.get_tag("speed"),
+                        )
+                    ],
+                ),
+            )
+            return ui_obj
+
+        app = make_docker_app(config=FakeSchema(), tags=MyAppTags(), ui_source=build_ui)
+        app._resolve_tags()
+
+        resolved = app._resolve_ui()
+
+        assert resolved.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
+        telemetry = resolved.telemetry.to_dict()
+        assert telemetry["children"]["inner_voltage"]["currentValue"] == "$tag.speed:number:0"
+
     def test_docker_ui_factory_returning_none_is_allowed(self):
         app = make_docker_app(tags=MyAppTags(), ui_source=lambda config: None)
         app._resolve_tags()
@@ -346,3 +405,68 @@ class TestApplicationUIResolution:
 
         with pytest.raises(ValueError, match="enabled"):
             app._resolve_ui()
+
+    def test_async_docker_startup_handles_factory_ui_with_runtime_bound_tags(self, monkeypatch):
+        docker_application_module = pytest.importorskip("pydoover.docker.application")
+        monkeypatch.setattr(docker_application_module, "RUN_HEALTHCHECK", False)
+
+        class AsyncUIApp(DockerApplication):
+            async def setup(self):
+                return None
+
+            async def main_loop(self):
+                return None
+
+        def build_ui(_config, tags):
+            class FactoryUI(ui.UI):
+                voltage = ui.NumericVariable(
+                    "voltage",
+                    "Voltage",
+                    curr_val=tags.speed,
+                )
+
+            ui_obj = FactoryUI()
+            ui_obj.add_element(
+                "telemetry",
+                ui.Submodule(
+                    "telemetry",
+                    "Telemetry",
+                    children=[
+                        ui.NumericVariable(
+                            "inner_voltage",
+                            "Inner Voltage",
+                            curr_val=tags.get_tag("speed"),
+                        )
+                    ],
+                ),
+            )
+            return ui_obj
+
+        async def run_test():
+            device_agent = FakeRuntimeDeviceAgent()
+            app = AsyncUIApp(
+                config=FakeSchema(),
+                tags=MyAppTags(),
+                ui=build_ui,
+                app_key="test_app",
+                device_agent=device_agent,
+                platform_iface=FakeRuntimePlatformInterface(is_async=True),
+                modbus_iface=FakeRuntimeModbusInterface(is_async=True),
+                test_mode=True,
+                healthcheck_port=0,
+            )
+
+            task = asyncio.create_task(app._run())
+            try:
+                await app.wait_until_ready()
+                assert app.ui.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
+                assert (
+                    app.ui.telemetry.to_dict()["children"]["inner_voltage"]["currentValue"]
+                    == "$tag.speed:number:0"
+                )
+            finally:
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+
+        asyncio.run(run_test())

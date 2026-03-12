@@ -34,6 +34,17 @@ Static declarative UI example::
             curr_val=MyTags.voltage,
         )
 
+Explicit tag helper example::
+
+    from pydoover import ui
+
+    class MyUI(ui.UI):
+        voltage = ui.NumericVariable(
+            "voltage",
+            "Voltage",
+            curr_val=ui.tag_ref("voltage", tag_type="number"),
+        )
+
 Config-aware UI example::
 
     from pydoover import ui

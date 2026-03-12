@@ -157,6 +157,12 @@ class BoundTag:
     def __repr__(self) -> str:
         return f"BoundTag(name={self.name!r}, value={self.get()!r})"
 
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, _memo):
+        return self
+
     def __str__(self) -> str:
         return str(self.get())
 

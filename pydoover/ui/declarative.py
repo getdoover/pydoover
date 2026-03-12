@@ -22,7 +22,17 @@ _TAG_TYPE_MAP = {
     "dict": "object",
 }
 _SKIP_BIND_ATTRS = {"parent", "_manager"}
-_MISSING = object()
+
+
+class _MissingDefault:
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, _memo):
+        return self
+
+
+_MISSING = _MissingDefault()
 
 
 class UITagBinding:
@@ -36,11 +46,25 @@ class UITagBinding:
         self.tag_type = _TAG_TYPE_MAP.get(tag_type, tag_type)
         self.default_value = default_value
 
+    def __copy__(self):
+        return type(self)(
+            self.tag_name,
+            tag_type=self.tag_type,
+            default_value=self.default_value,
+        )
+
+    def __deepcopy__(self, memo):
+        return type(self)(
+            copy.deepcopy(self.tag_name, memo),
+            tag_type=copy.deepcopy(self.tag_type, memo),
+            default_value=copy.deepcopy(self.default_value, memo),
+        )
+
     def to_lookup(self) -> str:
         result = f"$tag.{self.tag_name}"
         if self.tag_type is not None:
             result += f":{self.tag_type}"
-        if self.default_value is not _MISSING:
+        if not _is_missing_default(self.default_value):
             if self.tag_type is None:
                 result += ":string"
             result += f":{json.dumps(self.default_value, separators=(',', ':'))}"
@@ -124,6 +148,34 @@ class UI:
 
 
 UIFactory = Callable[..., UI | None]
+
+
+def tag_ref(
+    tag: BoundTag | Tag | UITagBinding | str,
+    tag_type: str | None = None,
+    default_value: Any = _MISSING,
+) -> UITagBinding:
+    if isinstance(tag, UITagBinding):
+        return copy.deepcopy(tag)
+    if isinstance(tag, BoundTag):
+        return _binding_from_bound_tag(tag)
+    if isinstance(tag, Tag):
+        binding = _binding_from_tag(tag)
+        if tag_type is None and _is_missing_default(default_value):
+            return binding
+        return UITagBinding(
+            binding.tag_name,
+            tag_type=tag_type or binding.tag_type,
+            default_value=(
+                binding.default_value
+                if _is_missing_default(default_value)
+                else default_value
+            ),
+        )
+    return UITagBinding(tag, tag_type=tag_type, default_value=default_value)
+
+
+bind_tag = tag_ref
 
 
 def is_tag_reference(value: Any) -> bool:
@@ -274,3 +326,7 @@ def _normalize_default(value: Any) -> Any:
     if value is NotSet:
         return _MISSING
     return value
+
+
+def _is_missing_default(value: Any) -> bool:
+    return value is _MISSING or isinstance(value, _MissingDefault)
