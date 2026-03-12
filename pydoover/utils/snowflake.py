@@ -16,6 +16,11 @@ class SnowflakeType:
     WSSSession = 4
     ProcessorSchedule = 5
     Token = 6
+    NotificationEndpoint = 7
+    NotificationSubscription = 8
+    Attachment = 9
+    Alarm = 10
+    OneShotMessage = 11
 
 
 nums = list(range(16))
