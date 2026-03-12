@@ -96,7 +96,6 @@ class Application:
         )
 
         self.app_key = data.get("app_key", None)
-        self.app_id = data.get("app_id", None)
         self._tag_values = data.get("tag_values", None)
 
         try:
@@ -140,6 +139,7 @@ class Application:
         # Store the deployment config for later use
         self.received_deployment_config = data["deployment_config"]
         self.display_name = self.received_deployment_config.get("APP_DISPLAY_NAME")
+        self.app_id = self.received_deployment_config.get("APP_ID")
         self.ui_manager.set_display_name(self.display_name)
 
     async def _close(self):
