@@ -49,6 +49,14 @@ class Attachment:
             url=self.url,
         )
 
+    def to_dict(self):
+        return {
+            "filename": self.filename,
+            "content_type": self.content_type,
+            "size": self.size,
+            "url": self.url,
+        }
+
 
 class File:
     def __init__(self, filename: str, content_type: str, size: int, data: bytes):
@@ -86,6 +94,12 @@ class ChannelID:
             data["agent_id"],
             data["name"],
         )
+
+    def to_dict(self):
+        return {
+            "agent_id": self.agent_id,
+            "name": self.name,
+        }
 
     @classmethod
     def from_proto(cls, response: ProtoChannelID):
@@ -125,6 +139,15 @@ class Message:
             data["data"],
             [Attachment.from_dict(d) for d in data["attachments"]],
         )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "author_id": self.author_id,
+            "channel": self.channel.to_dict(),
+            "data": self.data,
+            "attachments": [a.to_dict() for a in self.attachments],
+        }
 
     @classmethod
     def from_proto(cls, response: ProtoMessage):
@@ -267,3 +290,10 @@ class Aggregate:
             last_updated=self.last_updated
             and int(self.last_updated.timestamp() * 1000.0),
         )
+
+    def to_dict(self):
+        return {
+            "data": self.data,
+            "attachments": [a.to_dict() for a in self.attachments],
+            "last_updated": self.last_updated and self.last_updated.timestamp() * 1000,
+        }
