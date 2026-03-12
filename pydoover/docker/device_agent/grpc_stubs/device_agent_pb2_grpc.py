@@ -45,11 +45,6 @@ class deviceAgentStub(object):
                 request_serializer=grpc__stubs_dot_device__agent__pb2.TestCommsRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_device__agent__pb2.TestCommsResponse.FromString,
                 _registered_method=True)
-        self.GetChannelDetails = channel.unary_unary(
-                '/device_agent.deviceAgent/GetChannelDetails',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.ChannelDetailsRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelDetailsResponse.FromString,
-                _registered_method=True)
         self.GetChannelSubscription = channel.unary_stream(
                 '/device_agent.deviceAgent/GetChannelSubscription',
                 request_serializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionRequest.SerializeToString,
@@ -70,10 +65,10 @@ class deviceAgentStub(object):
                 request_serializer=grpc__stubs_dot_device__agent__pb2.DebugInfoRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_device__agent__pb2.DebugInfoResponse.FromString,
                 _registered_method=True)
-        self.GetTempAPIToken = channel.unary_unary(
-                '/device_agent.deviceAgent/GetTempAPIToken',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.TempAPITokenRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.TempAPITokenResponse.FromString,
+        self.GetAggregate = channel.unary_unary(
+                '/device_agent.deviceAgent/GetAggregate',
+                request_serializer=grpc__stubs_dot_device__agent__pb2.GetAggregateRequest.SerializeToString,
+                response_deserializer=grpc__stubs_dot_device__agent__pb2.GetAggregateResponse.FromString,
                 _registered_method=True)
         self.GetTurnCredential = channel.unary_unary(
                 '/device_agent.deviceAgent/GetTurnCredential',
@@ -117,14 +112,10 @@ class deviceAgentServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetChannelDetails(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def GetChannelSubscription(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
+
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -147,8 +138,9 @@ class deviceAgentServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetTempAPIToken(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+    def GetAggregate(self, request, context):
+        """rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -197,11 +189,6 @@ def add_deviceAgentServicer_to_server(servicer, server):
                     request_deserializer=grpc__stubs_dot_device__agent__pb2.TestCommsRequest.FromString,
                     response_serializer=grpc__stubs_dot_device__agent__pb2.TestCommsResponse.SerializeToString,
             ),
-            'GetChannelDetails': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetChannelDetails,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelDetailsRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.ChannelDetailsResponse.SerializeToString,
-            ),
             'GetChannelSubscription': grpc.unary_stream_rpc_method_handler(
                     servicer.GetChannelSubscription,
                     request_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionRequest.FromString,
@@ -222,10 +209,10 @@ def add_deviceAgentServicer_to_server(servicer, server):
                     request_deserializer=grpc__stubs_dot_device__agent__pb2.DebugInfoRequest.FromString,
                     response_serializer=grpc__stubs_dot_device__agent__pb2.DebugInfoResponse.SerializeToString,
             ),
-            'GetTempAPIToken': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetTempAPIToken,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.TempAPITokenRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.TempAPITokenResponse.SerializeToString,
+            'GetAggregate': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAggregate,
+                    request_deserializer=grpc__stubs_dot_device__agent__pb2.GetAggregateRequest.FromString,
+                    response_serializer=grpc__stubs_dot_device__agent__pb2.GetAggregateResponse.SerializeToString,
             ),
             'GetTurnCredential': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTurnCredential,
@@ -286,33 +273,6 @@ class deviceAgent(object):
             '/device_agent.deviceAgent/TestComms',
             grpc__stubs_dot_device__agent__pb2.TestCommsRequest.SerializeToString,
             grpc__stubs_dot_device__agent__pb2.TestCommsResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetChannelDetails(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/device_agent.deviceAgent/GetChannelDetails',
-            grpc__stubs_dot_device__agent__pb2.ChannelDetailsRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.ChannelDetailsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -432,7 +392,7 @@ class deviceAgent(object):
             _registered_method=True)
 
     @staticmethod
-    def GetTempAPIToken(request,
+    def GetAggregate(request,
             target,
             options=(),
             channel_credentials=None,
@@ -445,9 +405,9 @@ class deviceAgent(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/device_agent.deviceAgent/GetTempAPIToken',
-            grpc__stubs_dot_device__agent__pb2.TempAPITokenRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.TempAPITokenResponse.FromString,
+            '/device_agent.deviceAgent/GetAggregate',
+            grpc__stubs_dot_device__agent__pb2.GetAggregateRequest.SerializeToString,
+            grpc__stubs_dot_device__agent__pb2.GetAggregateResponse.FromString,
             options,
             channel_credentials,
             insecure,

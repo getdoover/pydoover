@@ -9,13 +9,14 @@ service deviceAgent {
 
   rpc TestComms (TestCommsRequest) returns (TestCommsResponse) {}
 
-  rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
+  //  rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
 
   rpc GetChannelSubscription (ChannelSubscriptionRequest) returns (stream ChannelSubscriptionResponse) {}
   rpc ChannelEventSubscription (ChannelEventSubscriptionRequest) returns (stream ChannelEventSubscriptionResponse) {}
   rpc WriteToChannel (ChannelWriteRequest) returns (ChannelWriteResponse) {}
   rpc GetDebugInfo (DebugInfoRequest) returns (DebugInfoResponse) {}
-  rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
+  //  rpc GetTempAPIToken (TempAPITokenRequest) returns (TempAPITokenResponse) {}
+  rpc GetAggregate (GetAggregateRequest) returns (GetAggregateResponse) {}
   rpc GetTurnCredential (TurnCredentialRequest) returns (TurnCredentialResponse) {}
   rpc CreateMessage (CreateMessageRequest) returns (CreateMessageResponse) {}
   rpc UpdateMessage (UpdateMessageRequest) returns (UpdateMessageResponse) {}
@@ -281,4 +282,14 @@ message ChannelEventSubscriptionResponse {
   string event_name = 2;
   string channel_name = 3;
   google.protobuf.Struct data = 4;
+}
+
+message GetAggregateRequest {
+  RequestHeader header = 1;
+  string channel_name = 2;
+}
+
+message GetAggregateResponse {
+  ResponseHeader response_header = 1;
+  Aggregate aggregate = 2;
 }

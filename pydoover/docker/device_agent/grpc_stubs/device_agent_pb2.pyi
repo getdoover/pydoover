@@ -431,3 +431,19 @@ class ChannelEventSubscriptionResponse(_message.Message):
     channel_name: str
     data: _struct_pb2.Struct
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., event_name: _Optional[str] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+
+class GetAggregateRequest(_message.Message):
+    __slots__ = ("header", "channel_name")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    channel_name: str
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ...) -> None: ...
+
+class GetAggregateResponse(_message.Message):
+    __slots__ = ("response_header", "aggregate")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    AGGREGATE_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    aggregate: Aggregate
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., aggregate: _Optional[_Union[Aggregate, _Mapping]] = ...) -> None: ...
