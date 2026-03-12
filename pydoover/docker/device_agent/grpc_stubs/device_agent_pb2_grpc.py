@@ -95,6 +95,16 @@ class deviceAgentStub(object):
                 request_serializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.SerializeToString,
                 response_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.FromString,
                 _registered_method=True)
+        self.GetMessage = channel.unary_unary(
+                '/device_agent.deviceAgent/GetMessage',
+                request_serializer=grpc__stubs_dot_device__agent__pb2.GetMessageRequest.SerializeToString,
+                response_deserializer=grpc__stubs_dot_device__agent__pb2.GetMessageResponse.FromString,
+                _registered_method=True)
+        self.GetMessages = channel.unary_unary(
+                '/device_agent.deviceAgent/GetMessages',
+                request_serializer=grpc__stubs_dot_device__agent__pb2.GetMessagesRequest.SerializeToString,
+                response_deserializer=grpc__stubs_dot_device__agent__pb2.GetMessagesResponse.FromString,
+                _registered_method=True)
 
 
 class deviceAgentServicer(object):
@@ -167,6 +177,18 @@ class deviceAgentServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetMessage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetMessages(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_deviceAgentServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -224,6 +246,16 @@ def add_deviceAgentServicer_to_server(servicer, server):
                     servicer.UpdateAggregate,
                     request_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.FromString,
                     response_serializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.SerializeToString,
+            ),
+            'GetMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetMessage,
+                    request_deserializer=grpc__stubs_dot_device__agent__pb2.GetMessageRequest.FromString,
+                    response_serializer=grpc__stubs_dot_device__agent__pb2.GetMessageResponse.SerializeToString,
+            ),
+            'GetMessages': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetMessages,
+                    request_deserializer=grpc__stubs_dot_device__agent__pb2.GetMessagesRequest.FromString,
+                    response_serializer=grpc__stubs_dot_device__agent__pb2.GetMessagesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -524,6 +556,60 @@ class deviceAgent(object):
             '/device_agent.deviceAgent/UpdateAggregate',
             grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.SerializeToString,
             grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/device_agent.deviceAgent/GetMessage',
+            grpc__stubs_dot_device__agent__pb2.GetMessageRequest.SerializeToString,
+            grpc__stubs_dot_device__agent__pb2.GetMessageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetMessages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/device_agent.deviceAgent/GetMessages',
+            grpc__stubs_dot_device__agent__pb2.GetMessagesRequest.SerializeToString,
+            grpc__stubs_dot_device__agent__pb2.GetMessagesResponse.FromString,
             options,
             channel_credentials,
             insecure,

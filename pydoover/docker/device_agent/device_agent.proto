@@ -20,6 +20,8 @@ service deviceAgent {
   rpc CreateMessage (CreateMessageRequest) returns (CreateMessageResponse) {}
   rpc UpdateMessage (UpdateMessageRequest) returns (UpdateMessageResponse) {}
   rpc UpdateAggregate (UpdateAggregateRequest) returns (UpdateAggregateResponse) {}
+  rpc GetMessage (GetMessageRequest) returns (GetMessageResponse) {}
+  rpc GetMessages (GetMessagesRequest) returns (GetMessagesResponse) {}
 }
 
 message RequestHeader {
@@ -193,6 +195,27 @@ message Message {
   repeated Attachment attachments = 5;
 }
 
+message GetMessageRequest {
+  RequestHeader header = 1;
+  string channel_name = 2;
+  uint64 message_id = 3;
+}
+
+message GetMessageResponse {
+  ResponseHeader header = 1;
+  Message message = 2;
+}
+
+message GetMessagesRequest {
+  RequestHeader header = 1;
+  string channel_name = 2;
+}
+
+message GetMessagesResponse {
+  ResponseHeader header = 1;
+  repeated Message messages = 2;
+}
+
 message CreateMessageRequest {
   RequestHeader header = 1;
 
@@ -204,7 +227,7 @@ message CreateMessageRequest {
 
 message CreateMessageResponse {
   ResponseHeader response_header = 1;
-  string message_id = 2;
+  uint64 message_id = 2;
 }
 
 message UpdateMessageRequest {
@@ -239,6 +262,7 @@ message UpdateAggregateRequest {
   optional bool replace_data = 7;
 
   float max_age_secs = 8;
+  bool save_log = 9;
 }
 
 message UpdateAggregateResponse {
