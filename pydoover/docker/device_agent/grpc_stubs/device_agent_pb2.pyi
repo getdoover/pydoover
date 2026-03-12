@@ -303,12 +303,12 @@ class GetMessageRequest(_message.Message):
     def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., message_id: _Optional[int] = ...) -> None: ...
 
 class GetMessageResponse(_message.Message):
-    __slots__ = ("header", "message")
-    HEADER_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ("response_header", "message")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    header: ResponseHeader
+    response_header: ResponseHeader
     message: Message
-    def __init__(self, header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message: _Optional[_Union[Message, _Mapping]] = ...) -> None: ...
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message: _Optional[_Union[Message, _Mapping]] = ...) -> None: ...
 
 class GetMessagesRequest(_message.Message):
     __slots__ = ("header", "channel_name")
@@ -319,12 +319,12 @@ class GetMessagesRequest(_message.Message):
     def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ...) -> None: ...
 
 class GetMessagesResponse(_message.Message):
-    __slots__ = ("header", "messages")
-    HEADER_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ("response_header", "messages")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
     MESSAGES_FIELD_NUMBER: _ClassVar[int]
-    header: ResponseHeader
+    response_header: ResponseHeader
     messages: _containers.RepeatedCompositeFieldContainer[Message]
-    def __init__(self, header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., messages: _Optional[_Iterable[_Union[Message, _Mapping]]] = ...) -> None: ...
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., messages: _Optional[_Iterable[_Union[Message, _Mapping]]] = ...) -> None: ...
 
 class CreateMessageRequest(_message.Message):
     __slots__ = ("header", "channel_name", "data", "files", "timestamp")

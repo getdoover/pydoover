@@ -202,7 +202,7 @@ message GetMessageRequest {
 }
 
 message GetMessageResponse {
-  ResponseHeader header = 1;
+  ResponseHeader response_header = 1;
   Message message = 2;
 }
 
@@ -212,7 +212,7 @@ message GetMessagesRequest {
 }
 
 message GetMessagesResponse {
-  ResponseHeader header = 1;
+  ResponseHeader response_header = 1;
   repeated Message messages = 2;
 }
 
