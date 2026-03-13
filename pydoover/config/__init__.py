@@ -223,11 +223,14 @@ class ConfigElement:
                     assert isinstance(default, str)
                 case "boolean":
                     assert isinstance(default, bool)
-                case ("array", "object"):
-                    if default is not None:
-                        raise ValueError(
-                            "You cannot set default values for arrays and objects. It's confusing."
-                        )
+                case "array":
+                    assert isinstance(default, list)
+                    for item in default:
+                        # fixme: we don't really need to do this, but assert all values in default list are the correct type
+                        # assert isinstance(item, self.element.primitive)
+                        pass
+                case "object":
+                    assert isinstance(default, dict)
 
     @property
     def required(self):
