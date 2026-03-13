@@ -929,6 +929,11 @@ class ApplicationPosition(Integer):
         **kwargs,
     ):
         super().__init__(
-            display_name, description=description, minimum=0, default=default, **kwargs
+            display_name,
+            description=description,
+            minimum=0,
+            default=default,
+            hidden=True,
+            **kwargs,
         )
         self._name = "dv-app-position"
