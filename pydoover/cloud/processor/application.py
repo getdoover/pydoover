@@ -288,9 +288,13 @@ class Application:
         log.info(f"Setup took {time.perf_counter() - s} seconds.")
 
         if (
-            isinstance(payload, (MessageCreateEvent, AggregateUpdateEvent))
-            and payload.channel_name == "tag_values"
+            isinstance(payload, AggregateUpdateEvent)
+            and payload.channel.name == "tag_values"
             and self.app_key in payload.request_data
+        ) or (
+            isinstance(payload, MessageCreateEvent)
+            and payload.channel_name == "tag_values"
+            and self.app_key in payload.message.data
         ):
             log.info("Rejecting event publishing to tag_values within this app key.")
             return None
