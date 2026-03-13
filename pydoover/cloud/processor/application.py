@@ -59,6 +59,7 @@ class Application:
         logging.getLogger().addHandler(console_handler)
 
         self._record_tag_update: bool = True
+        self._update_external_tags: bool = False
 
     async def _setup(self, initial_payload: dict[str, Any]):
         self._publish_tags = False
@@ -328,18 +329,23 @@ class Application:
         # fixme: publish UI if needed
 
         if self._publish_tags:
-            await self.api.update_aggregate(
-                self.agent_id,
-                "tag_values",
-                self._tag_values,
-            )
+            try:
+                update = self._tag_values[self.app_key]
+            except KeyError:
+                update = None
 
-            if self._record_tag_update:
-                await self.api.publish_message(
-                    self.agent_id,
-                    "tag_values",
-                    self._tag_values,
-                )
+            if self._update_external_tags:
+                update = self._tag_values
+            else:
+                update = update and {self.app_key: update}
+
+            # only publish if there are tags to publish.
+            # Only publish external tags if requested explicitly (can cause recursion issues)
+            if update:
+                await self.api.update_aggregate(self.agent_id, "tag_values", update)
+
+                if self._record_tag_update:
+                    await self.api.publish_message(self.agent_id, "tag_values", update)
 
         try:
             await self.close()
