@@ -585,10 +585,6 @@ class Array(ConfigElement):
     - Minimum and maximum number of items
     - Unique items
 
-    .. note::
-
-        The ``default`` value is not allowed for Array elements, as it is confusing.
-
     Attributes
     ----------
     display_name: str
@@ -622,10 +618,6 @@ class Array(ConfigElement):
     ):
         if element and not isinstance(element, ConfigElement):
             raise ValueError("Many element must be a ConfigElement instance")
-        if "default" in kwargs:
-            raise ValueError(
-                "Default value not allowed for Many elements. It's confusing."
-            )
 
         super().__init__(display_name, **kwargs)
 
@@ -708,11 +700,6 @@ class Object(ConfigElement):
         default_collapsed: bool = False,
         **kwargs,
     ):
-        if "default" in kwargs:
-            raise ValueError(
-                "Default value not allowed for Object elements. It's confusing."
-            )
-
         if default_collapsed and not collapsible:
             raise ValueError("default_collapsed is not allowed if collapsible is False")
 
