@@ -239,6 +239,7 @@ class Application:
         self.agent_id = event.get("agent_id")
 
         func = None
+        original_func = None
         payload = None
         match event["op"]:
             case "on_message_create":
@@ -246,24 +247,35 @@ class Application:
                 payload = MessageCreateEvent.from_dict(event["d"])
                 # prevent infinite loops
                 self.api._invoking_channel_name = payload.channel_name
+                original_func = Application.on_message_create
+
             case "on_deployment":
                 func = self.on_deployment
                 payload = DeploymentEvent.from_dict(event["d"])
+                original_func = Application.on_deployment
             case "on_schedule":
                 func = self.on_schedule
                 payload = ScheduleEvent.from_dict(event["d"])
+                original_func = Application.on_schedule
             case "on_ingestion_endpoint":
                 func = self.on_ingestion_endpoint
                 payload = IngestionEndpointEvent.from_dict(
                     event["d"], parser=self.parse_ingestion_event_payload
                 )
+                original_func = Application.on_ingestion_endpoint
             case "on_manual_invoke":
                 func = self.on_manual_invoke
                 payload = ManualInvokeEvent.from_dict(event["d"])
+                original_func = Application.on_manual_invoke
             case "on_aggregate_update":
                 func = self.on_aggregate_update
                 payload = AggregateUpdateEvent.from_dict(event["d"])
                 self.api._invoking_channel_name = payload.channel.name
+                original_func = Application.on_aggregate_update
+
+        if func == original_func:
+            log.info(f"Skipping {func.__name__} event as no overridden handler found.")
+            return None
 
         self._payload = payload
 
