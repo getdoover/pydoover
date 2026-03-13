@@ -267,6 +267,23 @@ class DooverData:
 
         return [Message.from_dict(m) for m in data]
 
+    def _check_invoking_channel(self, channel_name, data, allow_invoking_channel):
+        if (
+            channel_name == "tag_values"
+            and not allow_invoking_channel
+            and any(k != self.app_key for k in data.keys())
+        ):
+            raise RuntimeError(
+                "Cannot publish to tag_values outside the scope of this app without explicit enable."
+            )
+
+        if allow_invoking_channel:
+            log.warning(
+                "Publishing to invoking channel with override to allow. Be careful - this will cause recursion issues if not handled correctly."
+            )
+        else:
+            raise RuntimeError("Cannot publish to the invoking channel.")
+
     async def update_aggregate(
         self,
         agent_id: int,
@@ -279,21 +296,7 @@ class DooverData:
     ):
         # this allow_invoking_channel parameter is pretty dangerous,
         if channel_name == self._invoking_channel_name:
-            if (
-                channel_name == "tag_values"
-                and not allow_invoking_channel
-                and any(k != self.app_key for k in data.keys())
-            ):
-                raise RuntimeError(
-                    "Cannot publish to tag_values outside the scope of this app without explicit enable."
-                )
-
-            if allow_invoking_channel:
-                log.warning(
-                    "Publishing to invoking channel with override to allow. Be careful - this will cause recursion issues if not handled correctly."
-                )
-            else:
-                raise RuntimeError("Cannot publish to the invoking channel.")
+            self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
         operation = "PUT" if replace else "PATCH"
         url = f"{self.base_url}/agents/{agent_id}/channels/{channel_name}/aggregate"
@@ -335,9 +338,10 @@ class DooverData:
         timestamp: datetime | None = None,
         files: list[tuple[str, bytes, str]] = None,
         organisation_id: int = None,
+        allow_invoking_channel: bool = False,
     ):
         if channel_name == self._invoking_channel_name:
-            raise RuntimeError("Cannot publish to the invoking channel.")
+            self._check_invoking_channel(channel_name, message, allow_invoking_channel)
 
         payload: dict[str, Any] = {
             "data": message,
@@ -380,9 +384,10 @@ class DooverData:
         organisation_id: int = None,
         files: list[tuple[str, bytes, str]] = None,
         replace: bool = True,
+        allow_invoking_channel: bool = False,
     ):
         if channel_name == self._invoking_channel_name:
-            raise RuntimeError("Cannot update to the invoking channel.")
+            self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
         payload: dict[str, Any] = {"data": data}
 
