@@ -96,6 +96,7 @@ class Application:
         )
 
         self.app_key = data.get("app_key", None)
+        self.api.app_key = self.app_key
         self._tag_values = data.get("tag_values", None)
 
         try:
@@ -255,12 +256,21 @@ class Application:
             case "on_aggregate_update":
                 func = self.on_aggregate_update
                 payload = AggregateUpdateEvent.from_dict(event["d"])
+                self.api._invoking_channel_name = payload.channel_name
 
         self._payload = payload
 
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")
-            return
+            return None
+
+        if (
+            isinstance(payload, (MessageCreateEvent, AggregateUpdateEvent))
+            and payload.channel_name == "tag_values"
+            and self.app_key in payload.request_data
+        ):
+            log.info("Rejecting event publishing to tag_values within this app key.")
+            return None
 
         s = time.perf_counter()
         await self._setup(event)

@@ -37,6 +37,7 @@ class DooverData:
         # and get in an infinite loop
         self._invoking_channel_name = None
         self.lookup_ip = True
+        self.app_key = None
 
     async def setup(self):
         if self.session:
@@ -278,6 +279,15 @@ class DooverData:
     ):
         # this allow_invoking_channel parameter is pretty dangerous,
         if channel_name == self._invoking_channel_name:
+            if (
+                channel_name == "tag_values"
+                and not allow_invoking_channel
+                and any(k != self.app_key for k in data.keys())
+            ):
+                raise RuntimeError(
+                    "Cannot publish to tag_values outside the scope of this app without explicit enable."
+                )
+
             if allow_invoking_channel:
                 log.warning(
                     "Publishing to invoking channel with override to allow. Be careful - this will cause recursion issues if not handled correctly."
