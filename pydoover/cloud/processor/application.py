@@ -290,7 +290,7 @@ class Application:
         if (
             isinstance(payload, AggregateUpdateEvent)
             and payload.channel.name == "tag_values"
-            and self.app_key in payload.request_data
+            and self.app_key in payload.request_data.data
         ) or (
             isinstance(payload, MessageCreateEvent)
             and payload.channel_name == "tag_values"
