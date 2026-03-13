@@ -199,6 +199,13 @@ class Application:
         """
         return True
 
+    async def post_setup_filter(self, event):
+        """This is a filter that can be used to reject events after `setup` and API setup.
+
+        If you don't require any API calls, config, etc. - use pre_hook_filter which is cheaper, faster and earlier in the process.
+        """
+        return True
+
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
         log.info("Initialising processor task")
@@ -282,6 +289,10 @@ class Application:
         except Exception as e:
             log.error(f"Error attempting to setup processor: {e} ", exc_info=e)
         log.info(f"user Setup took {time.perf_counter() - s} seconds.")
+
+        if not await self.post_setup_filter(payload):
+            log.info("Post-setup filter rejected event.")
+            return None
 
         if self._ui_to_set:
             # not valid for org apps
