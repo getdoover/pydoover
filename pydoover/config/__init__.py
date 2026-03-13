@@ -225,10 +225,9 @@ class ConfigElement:
                     assert isinstance(default, bool)
                 case "array":
                     assert isinstance(default, list)
-                    for item in default:
-                        # fixme: we don't really need to do this, but assert all values in default list are the correct type
-                        # assert isinstance(item, self.element.primitive)
-                        pass
+                    # fixme: we don't really need to do this, but assert all values in default list are the correct type
+                    # for item in default:
+                    #     assert isinstance(item, self.element.primitive)
                 case "object":
                     assert isinstance(default, dict)
 
