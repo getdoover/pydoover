@@ -24,20 +24,26 @@ class MessageCreateEvent:
     #     pub data: Value,
     # }
     def __init__(
-        self, id: int, author_id: int, channel: ChannelID, data: dict[str, Any]
+        self,
+        channel: ChannelID,
+        message: Message,
     ):
-        self.id = id
-        self.author_id = author_id
         self.channel = channel
-        self.data = data
+        self.message = message
 
     @classmethod
     def from_dict(cls, data):
+        try:
+            message = data["message"]
+        except KeyError:
+            message = Message.from_dict(data)
+            channel = message.channel
+        else:
+            channel = data["channel"]
+
         return cls(
-            data["id"],
-            data["author_id"],
-            ChannelID.from_dict(data["channel"]),
-            data["data"],
+            channel,
+            message,
         )
 
 

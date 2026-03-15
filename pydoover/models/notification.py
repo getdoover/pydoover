@@ -1,0 +1,127 @@
+from enum import IntEnum
+from typing import Any
+
+
+class NotificationType(IntEnum):
+    Email = 1
+    Sms = 2
+    WebPush = 3
+    Http = 4
+    Placeholder = 5
+
+
+class NotificationSeverity(IntEnum):
+    Trace = 3
+    Debug = 4
+    Info = 5
+    Warn = 6
+    Critical = 7
+
+
+class NotificationEndpoint:
+    def __init__(
+        self,
+        id: str,
+        agent_id: str,
+        type: NotificationType,
+        name: str,
+        default: bool,
+        extra_data: dict[str, Any],
+        priority: int | None = None,
+    ):
+        self.id = id
+        self.agent_id = agent_id
+        self.type = type
+        self.name = name
+        self.default = default
+        self.extra_data = extra_data
+        self.priority = priority
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            id=int(data["id"]),
+            agent_id=int(data["agent_id"]),
+            type=NotificationType(data["type"]),
+            name=data["name"],
+            default=data["default"],
+            extra_data=data["extra_data"],
+            priority=data.get("priority"),
+        )
+
+    def to_dict(self):
+        result = {
+            "id": self.id,
+            "agent_id": self.agent_id,
+            "type": self.type.value,
+            "name": self.name,
+            "default": self.default,
+            "extra_data": self.extra_data,
+        }
+        if self.priority is not None:
+            result["priority"] = self.priority
+        return result
+
+
+class NotificationSubscriptionEndpoint:
+    def __init__(self, id: str, name: str, default: bool):
+        self.id = id
+        self.name = name
+        self.default = default
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            id=int(data["id"]),
+            name=data["name"],
+            default=data["default"],
+        )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "default": self.default,
+        }
+
+
+class NotificationSubscription:
+    def __init__(
+        self,
+        id: str,
+        subscriber: str,
+        subscribed_to: str,
+        severity: NotificationSeverity,
+        topic_filter: list[str],
+        endpoints: list[NotificationSubscriptionEndpoint],
+    ):
+        self.id = id
+        self.subscriber = subscriber
+        self.subscribed_to = subscribed_to
+        self.severity = severity
+        self.topic_filter = topic_filter
+        self.endpoints = endpoints
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            id=int(data["id"]),
+            subscriber=int(data["subscriber"]),
+            subscribed_to=int(data["subscribed_to"]),
+            severity=NotificationSeverity(data["severity"]),
+            topic_filter=data["topic_filter"],
+            endpoints=[
+                NotificationSubscriptionEndpoint.from_dict(e)
+                for e in data.get("endpoints", [])
+            ],
+        )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "subscriber": self.subscriber,
+            "subscribed_to": self.subscribed_to,
+            "severity": self.severity.value,
+            "topic_filter": self.topic_filter,
+            "endpoints": [e.to_dict() for e in self.endpoints],
+        }

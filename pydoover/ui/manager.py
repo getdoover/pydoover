@@ -20,7 +20,7 @@ from ..utils import call_maybe_async, get_is_async, maybe_async, find_object_wit
 
 if TYPE_CHECKING:
     from ..docker.device_agent.device_agent import DeviceAgentInterface
-    from ..cloud.processor.data_client import DooverData
+    from ..cloud.processor.data_client import ProcessorDataClient
 
 log = logging.getLogger(__name__)
 ElementT = TypeVar("ElementT", bound=Element)
@@ -31,7 +31,7 @@ class UIManager:
     def __init__(
         self,
         app_key: str = None,
-        client: Union["Client", "DeviceAgentInterface", "DooverData"] = None,
+        client: Union["Client", "DeviceAgentInterface", "ProcessorDataClient"] = None,
         auto_start: bool = False,
         min_ui_update_period: int = 600,
         min_observed_update_period: int = 4,

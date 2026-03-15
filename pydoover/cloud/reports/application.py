@@ -9,7 +9,12 @@ import croniter
 
 from pydoover.utils.files import zip_files
 
-from ..processor.types import ManualInvokeEvent, MessageCreateEvent, DeploymentEvent, ScheduleEvent
+from ..processor.types import (
+    ManualInvokeEvent,
+    MessageCreateEvent,
+    DeploymentEvent,
+    ScheduleEvent,
+)
 from ..processor.application import Application as ApplicationBase
 
 log = logging.getLogger()
@@ -24,7 +29,7 @@ class Application(ApplicationBase):
         self.period_start = None
         self.period_end = None
         self.devices = None
-        
+
     async def on_message_create(self, event: MessageCreateEvent):
         raise RuntimeError("Report Genertator does not support message create events")
 
@@ -104,14 +109,13 @@ class Application(ApplicationBase):
         await self._generate(self.devices, self.period_start, self.period_end)
 
     async def on_manual_invoke(self, event: ManualInvokeEvent):
-        
         if "report_id" not in event.payload:
             log.error("No Report Id provided")
             return
-        
+
         self._report_id = event.payload["report_id"]
         self.report_id = event.payload["report_id"]
-        
+
         try:
             data = await self.api.get_channel_message(
                 self.agent_id,
@@ -122,28 +126,32 @@ class Application(ApplicationBase):
         except Exception as e:
             log.error(f"Error getting report message: {e}")
             return
-        
+
         self._report_metadata = data["data"]
-        
-        self.period_start = datetime.fromtimestamp(self._report_metadata["period_start"] / 1000.0)
-        self.period_end = datetime.fromtimestamp(self._report_metadata["period_end"] / 1000.0)
+
+        self.period_start = datetime.fromtimestamp(
+            self._report_metadata["period_start"] / 1000.0
+        )
+        self.period_end = datetime.fromtimestamp(
+            self._report_metadata["period_end"] / 1000.0
+        )
         self.devices = self.received_deployment_config.get("DEVICE_LIST", [])
-        
-        await self._generate(self.devices, self.period_start, self.period_end) 
+
+        await self._generate(self.devices, self.period_start, self.period_end)
 
     async def _generate(
         self, agent_ids: list[int], period_start: datetime, period_end: datetime
     ):
         log.info(f"Start Report Generation from {period_start} to {period_end}")
         s = time.perf_counter()
-        
+
         try:
             files = await self.generate(agent_ids, period_start, period_end)
         except Exception as e:
             log.error(f"Error generating report: {e}")
-            
+
             self._report_metadata["logs"] = self.log_capture_string.getvalue()
-            
+
             await self.api.update_message(
                 self.agent_id,
                 "reports",
@@ -152,10 +160,10 @@ class Application(ApplicationBase):
                 organisation_id=self.agent_id,
             )
             return
-        
+
         if not isinstance(files, list):
             files = [files]
-        
+
         log.info(
             f"Report Generation took {time.perf_counter() - s} seconds. {len(files)} file{'s' if len(files) > 1 else ''} generated."
         )
@@ -163,18 +171,20 @@ class Application(ApplicationBase):
         self._report_metadata["status"] = "Complete"
 
         log.info("Uploading Report to Doover")
-        
+
         total_file_size = 0
         for _, data, _ in files:
             total_file_size += len(data.getvalue())
             data.seek(0)
-            
-        if total_file_size > 4.5e+7:
-            log.info(f"Report is {total_file_size} bytes, which is over the 45MB limit. Zipping files.")
+
+        if total_file_size > 4.5e7:
+            log.info(
+                f"Report is {total_file_size} bytes, which is over the 45MB limit. Zipping files."
+            )
             files = zip_files(files)
-        
+
         s = time.perf_counter()
-        
+
         self._report_metadata["logs"] = self.log_capture_string.getvalue()
 
         try:
@@ -282,7 +292,12 @@ class Application(ApplicationBase):
         """
 
         # Start the tasks
-        tasks = [self.fetch_channel_in_window(agent_id, channel_name, period_start, period_end) for agent_id in agent_ids]
+        tasks = [
+            self.fetch_channel_in_window(
+                agent_id, channel_name, period_start, period_end
+            )
+            for agent_id in agent_ids
+        ]
 
         # Collect the results
         results = await asyncio.gather(*tasks)

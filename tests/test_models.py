@@ -281,16 +281,17 @@ class TestEventSubscription:
 class TestMessageCreateEvent:
     def test_from_dict(self):
         d = {
-            "id": 1,
-            "author_id": 2,
+            "id": "1",
+            "author_id": "2",
             "channel": CHANNEL_ID_DICT,
             "data": {"hello": "world"},
+            "attachments": [],
         }
         e = MessageCreateEvent.from_dict(d)
-        assert e.id == 1
-        assert e.author_id == 2
+        assert e.message.id == 1
+        assert e.message.author_id == 2
         assert e.channel.name == "test_channel"
-        assert e.data == {"hello": "world"}
+        assert e.message.data == {"hello": "world"}
 
 
 # ── OneShotMessage ────────────────────────────────────────────────────
@@ -298,15 +299,26 @@ class TestMessageCreateEvent:
 
 class TestOneShotMessage:
     def test_is_message_create_subclass(self):
-        e = OneShotMessage(1, 2, ChannelID(3, "ch"), {})
+        ch = ChannelID(3, "ch")
+        msg = Message.from_dict(
+            {
+                "id": "1",
+                "author_id": "2",
+                "channel": ch.to_dict(),
+                "data": {},
+                "attachments": [],
+            }
+        )
+        e = OneShotMessage(ch, msg)
         assert isinstance(e, MessageCreateEvent)
 
     def test_from_dict(self):
         d = {
-            "id": 1,
-            "author_id": 2,
+            "id": "1",
+            "author_id": "2",
             "channel": CHANNEL_ID_DICT,
             "data": {},
+            "attachments": [],
         }
         e = OneShotMessage.from_dict(d)
         assert isinstance(e, OneShotMessage)
@@ -605,21 +617,34 @@ class TestProtoWithAttachments:
 # ── Event isinstance discrimination ──────────────────────────────────
 
 
+def _make_event_msg(channel_id=None):
+    ch = channel_id or ChannelID(3, "ch")
+    return ch, Message.from_dict(
+        {
+            "id": "1",
+            "author_id": "2",
+            "channel": ch.to_dict(),
+            "data": {},
+            "attachments": [],
+        }
+    )
+
+
 class TestEventDiscrimination:
     """OneShotMessage must be checked before MessageCreateEvent in isinstance
     chains, since it's a subclass. Verify the type hierarchy works correctly."""
 
     def test_oneshot_is_message_create(self):
-        e = OneShotMessage(1, 2, ChannelID(3, "ch"), {})
+        e = OneShotMessage(*_make_event_msg())
         assert isinstance(e, MessageCreateEvent)
 
     def test_message_create_is_not_oneshot(self):
-        e = MessageCreateEvent(1, 2, ChannelID(3, "ch"), {})
+        e = MessageCreateEvent(*_make_event_msg())
         assert not isinstance(e, OneShotMessage)
 
     def test_dispatch_order_matters(self):
-        oneshot = OneShotMessage(1, 2, ChannelID(3, "ch"), {})
-        create = MessageCreateEvent(1, 2, ChannelID(3, "ch"), {})
+        oneshot = OneShotMessage(*_make_event_msg())
+        create = MessageCreateEvent(*_make_event_msg())
 
         # simulates the dispatch pattern in _run_channel_stream
         def classify(event):

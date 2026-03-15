@@ -32,6 +32,7 @@ from ..models import (
     MessageUpdateEvent,
     OneShotMessage,
 )
+from ..rpc import RPCManager
 from ..ui import UIManager
 from ..utils import (
     setup_logging as utils_setup_logging,
@@ -123,6 +124,8 @@ class Application:
             app_key=app_key,
             client=self.device_agent,
         )
+
+        self.rpc = RPCManager(self)
 
         self.app_key = app_key
         self.app_display_name = ""
@@ -1124,6 +1127,7 @@ class Application:
     async def _setup(self):
         log.info(f"Setting up internal app: {self.name}")
         self.ui_manager.register_callbacks(self)
+        self.rpc.register_handlers(self)
         self.ui_manager.set_display_name(self.app_display_name)
         self.device_agent.add_event_callback(
             TAG_CHANNEL_NAME,

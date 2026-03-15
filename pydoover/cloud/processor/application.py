@@ -20,7 +20,8 @@ from .types import (
     AggregateUpdateEvent,
     DooverConnectionStatus,
 )
-from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
+from .data_client import ProcessorDataClient
+from ...models import ConnectionDetermination, ConnectionStatus, SubscriptionInfo
 from ...ui import UIManager
 from ...config import Schema
 
@@ -44,7 +45,7 @@ class Application:
             os.environ.get("DOOVER_DATA_ENDPOINT") or DEFAULT_DATA_ENDPOINT
         )
 
-        self.api = DooverData(self._api_endpoint)
+        self.api = ProcessorDataClient(self._api_endpoint)
 
         # set per-task
         self.agent_id: int = None
@@ -73,73 +74,59 @@ class Application:
         # tag values and deployment config.
         self.api.set_token(self._initial_token)
 
-        # Always prioritise the upgrade payload, other get it from the normal method
+        # Always prioritise the upgrade payload, otherwise get it from the normal method
         if initial_payload["d"].get("upgrade", None) is not None:
-            data = initial_payload["d"]["upgrade"]
+            info = SubscriptionInfo.from_dict(initial_payload["d"]["upgrade"])
         else:
             if self.subscription_id:
-                data = await self.api.fetch_processor_info(self.subscription_id)
+                info = await self.api.fetch_processor_info(self.subscription_id)
             elif self.schedule_id:
-                data = await self.api.fetch_schedule_info(self.schedule_id)
+                info = await self.api.fetch_schedule_info(self.schedule_id)
             elif self.ingestion_id:
                 # doover data invokes this directly so we can pre-load all required info here to save a call...
-                data = initial_payload["d"]["upgrade"]
+                info = SubscriptionInfo.from_dict(initial_payload["d"]["upgrade"])
             else:
                 raise ValueError("No subscription or schedule ID provided.")
 
-        self.agent_id = self.api.agent_id = data["agent_id"]
-        self.api.set_token(data["token"])
+        self.agent_id = self.api.agent_id = info.agent_id
+        self.api.set_token(info.token)
 
         # this should match the original organisation ID, but in case it doesn't, this should
         # probably be the source of truth
-        self.api.organisation_id = (
-            data.get("organisation_id", None) or self.organisation_id
-        )
+        self.api.organisation_id = info.organisation_id or self.organisation_id
 
-        self.app_key = data.get("app_key", None)
+        self.app_key = info.app_key
         self.api.app_key = self.app_key
-        self._tag_values = data.get("tag_values", None)
+        self._tag_values = info.tag_values
 
-        try:
-            connection_data = data["connection_data"]
-        except KeyError:
+        connection_data = info.connection_data
+        if not connection_data:
             # connection config isn't valid for org processors
             # but fresh-ly created devices also won't have connection config...
             self._connection_config = {}
             self.connection_config = None
         else:
-            if not connection_data:
-                # bit of a weird case? we probably shouldn't give any connection data, not a null / empty dict value
-                # in this case maybe we don't need the try/catch?
-                self._connection_config = {}
-                self.connection_config = None
-            else:
-                self._connection_config = connection_data.get("config", {})
-                self._connection_status = connection_data.get("status", {})
-                self.connection_config = ConnectionConfig.from_dict(
-                    self._connection_config
-                )
-                self.connection_status = DooverConnectionStatus.from_dict(
-                    self._connection_status
-                )
+            self._connection_config = connection_data.get("config", {})
+            self._connection_status = connection_data.get("status", {})
+            self.connection_config = ConnectionConfig.from_dict(self._connection_config)
+            self.connection_status = DooverConnectionStatus.from_dict(
+                self._connection_status
+            )
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
 
-        if (
-            data.get("ui_state", None) is not None
-            and data.get("ui_cmds", None) is not None
-        ):
-            self._ui_to_set = (data["ui_state"], data["ui_cmds"])
+        if info.ui_state is not None and info.ui_cmds is not None:
+            self._ui_to_set = (info.ui_state, info.ui_cmds)
         else:
             self._ui_to_set = None
 
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
-            self.config._inject_deployment_config(data["deployment_config"])
+            self.config._inject_deployment_config(info.deployment_config)
 
         # Store the deployment config for later use
-        self.received_deployment_config = data["deployment_config"]
+        self.received_deployment_config = info.deployment_config
         self.display_name = self.received_deployment_config.get("APP_DISPLAY_NAME")
         self.app_id = self.received_deployment_config.get("APP_ID")
         self.ui_manager.set_display_name(self.display_name)
@@ -294,7 +281,7 @@ class Application:
             and self.app_key in payload.request_data.data
         ) or (
             isinstance(payload, MessageCreateEvent)
-            and payload.channel_name == "tag_values"
+            and payload.channel.name == "tag_values"
             and self.app_key in payload.message.data
         ):
             log.info("Rejecting event publishing to tag_values within this app key.")
