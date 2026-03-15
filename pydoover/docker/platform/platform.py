@@ -10,7 +10,7 @@ import grpc
 from ...models.generated.platform import platform_iface_pb2, platform_iface_pb2_grpc
 from .platform_types import Location, Event
 from ..grpc_interface import GRPCInterface
-from ...utils import maybe_async, call_maybe_async, deprecated
+from ...utils import call_maybe_async, deprecated
 from ...cli.decorators import command as cli_command
 
 log = logging.getLogger(__name__)
@@ -239,10 +239,8 @@ class PlatformInterface(GRPCInterface):
 
     stub = platform_iface_pb2_grpc.platformIfaceStub
 
-    def __init__(
-        self, app_key: str, plt_uri: str = "localhost:50053", is_async: bool = False
-    ):
-        super().__init__(app_key, plt_uri, is_async)
+    def __init__(self, app_key: str, plt_uri: str = "localhost:50053"):
+        super().__init__(app_key, plt_uri)
         self.pulse_counter_listeners = []
 
     async def close(self):
@@ -516,7 +514,7 @@ class PlatformInterface(GRPCInterface):
         return pins, values
 
     @cli_command()
-    def test_comms(self, message: str = "Comms Check Message") -> str | None:
+    async def test_comms(self, message: str = "Comms Check Message") -> str | None:
         """Test connection by sending a basic echo response to platform interface container.
 
         Parameters
@@ -529,18 +527,15 @@ class PlatformInterface(GRPCInterface):
         str
             The response from platform interface.
         """
-        return self.make_request(
+        return await self.make_request(
             "TestComms",
             platform_iface_pb2.TestCommsRequest(message=message),
             response_field="response",
         )
 
     @cli_command()
-    @maybe_async()
-    def get_di(self, *di: int) -> bool | list[bool]:
+    async def get_di(self, *di: int) -> bool | list[bool]:
         """Get digital input values.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -567,22 +562,13 @@ class PlatformInterface(GRPCInterface):
             Returns None if the request failed.
         """
         pins = self._cast_pins(di)
-        return self.make_request(
-            "getDI", platform_iface_pb2.getDIRequest(di=pins), response_field="di"
-        )
-
-    async def get_di_async(self, *di: int) -> bool | list[bool]:
-        pins = self._cast_pins(di)
-        return await self.make_request_async(
+        return await self.make_request(
             "getDI", platform_iface_pb2.getDIRequest(di=pins), response_field="di"
         )
 
     @cli_command()
-    @maybe_async()
-    def get_ai(self, *ai: int) -> float | list[float]:
+    async def get_ai(self, *ai: int) -> float | list[float]:
         """Get analogue input values.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -615,22 +601,13 @@ class PlatformInterface(GRPCInterface):
         # allows for get_ai(1, 2, 3) or get_ai(1) or get_ai(*[1, 2, 3])
 
         pins = self._cast_pins(ai)
-        return self.make_request(
-            "getAI", platform_iface_pb2.getAIRequest(ai=pins), response_field="ai"
-        )
-
-    async def get_ai_async(self, *ai: int) -> float | list[float]:
-        pins = self._cast_pins(ai)
-        return await self.make_request_async(
+        return await self.make_request(
             "getAI", platform_iface_pb2.getAIRequest(ai=pins), response_field="ai"
         )
 
     @cli_command()
-    @maybe_async()
-    def get_do(self, *do: int) -> list[bool] | None:
+    async def get_do(self, *do: int) -> list[bool] | None:
         """Get digital output values.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -657,22 +634,15 @@ class PlatformInterface(GRPCInterface):
             Returns None if the request failed.
         """
         pins = self._cast_pins(do)
-        return self.make_request(
-            "getDO", platform_iface_pb2.getDORequest(do=pins), response_field="do"
-        )
-
-    async def get_do_async(self, *do: int) -> float | list[float]:
-        pins = self._cast_pins(do)
-        return await self.make_request_async(
+        return await self.make_request(
             "getDO", platform_iface_pb2.getDORequest(do=pins), response_field="do"
         )
 
     @cli_command()
-    @maybe_async()
-    def set_do(self, do: int | list[int], value: int | list[int]) -> list[bool] | None:
+    async def set_do(
+        self, do: int | list[int], value: int | list[int]
+    ) -> list[bool] | None:
         """Set digital output values.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -704,30 +674,19 @@ class PlatformInterface(GRPCInterface):
             Returns None if the request failed.
         """
         pins, values = self._cast_pin_values(do, value)
-        return self.make_request(
-            "setDO",
-            platform_iface_pb2.setDORequest(do=pins, value=values),
-            response_field="do",
-        )
-
-    async def set_do_async(self, do, value):
-        pins, values = self._cast_pin_values(do, value)
-        return await self.make_request_async(
+        return await self.make_request(
             "setDO",
             platform_iface_pb2.setDORequest(do=pins, value=values),
             response_field="do",
         )
 
     @cli_command()
-    @maybe_async()
-    def schedule_do(
+    async def schedule_do(
         self, do: int | list[int], value: bool | list[bool], in_secs: int
     ) -> None:
         """Schedule digital output values.
 
         This is similar to `set_do`, but schedules the change in a specified number of seconds.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -763,24 +722,7 @@ class PlatformInterface(GRPCInterface):
         # schedule_do([1,4,2], 0, 1) => [1,4,2], [0,0,0], 1
         # schedule_do([1,4,2], [0,1,0], 1) => [1,4,2], [0,1,0], 1
 
-        return self.make_request(
-            "scheduleDO",
-            platform_iface_pb2.scheduleDORequest(
-                do=pins, value=values, time_secs=in_secs
-            ),
-            response_field="do",
-        )
-
-    async def schedule_do_async(
-        self, do: int | list[int], value: bool | list[bool], in_secs: int
-    ) -> None:
-        if not isinstance(in_secs, int) or in_secs < 0:
-            raise ValueError(
-                f"Invalid value for in_secs: {in_secs}. Must be a positive integer."
-            )
-
-        pins, values = self._cast_pin_values(do, value)
-        return await self.make_request_async(
+        return await self.make_request(
             "scheduleDO",
             platform_iface_pb2.scheduleDORequest(
                 do=pins, value=values, time_secs=in_secs
@@ -789,11 +731,8 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    @maybe_async()
-    def get_ao(self, *ao: int) -> float | list[float]:
+    async def get_ao(self, *ao: int) -> float | list[float]:
         """Get analogue output values.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -819,24 +758,15 @@ class PlatformInterface(GRPCInterface):
             If the request failed, returns None.
         """
         pins = self._cast_pins(ao)
-        return self.make_request(
-            "getAO", platform_iface_pb2.getAORequest(ao=pins), response_field="ao"
-        )
-
-    async def get_ao_async(self, *ao: int) -> float | list[float]:
-        pins = self._cast_pins(ao)
-        return await self.make_request_async(
+        return await self.make_request(
             "getAO", platform_iface_pb2.getAORequest(ao=pins), response_field="ao"
         )
 
     @cli_command()
-    @maybe_async()
-    def set_ao(
+    async def set_ao(
         self, ao: int | list[int], value: float | list[float]
     ) -> list[bool] | None:
         """Set analogue output values.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -868,32 +798,19 @@ class PlatformInterface(GRPCInterface):
         # if not isinstance(value, list):
         #     value = [value]
         pins, values = self._cast_ao_pin_values(ao, value)
-        return self.make_request(
-            "setAO",
-            platform_iface_pb2.setAORequest(ao=pins, value=values),
-            response_field="ao",
-        )
-
-    async def set_ao_async(
-        self, ao: int | list[int], value: float | list[float]
-    ) -> list[bool]:
-        pins, values = self._cast_ao_pin_values(ao, value)
-        return await self.make_request_async(
+        return await self.make_request(
             "setAO",
             platform_iface_pb2.setAORequest(ao=pins, value=values),
             response_field="ao",
         )
 
     @cli_command()
-    @maybe_async()
-    def schedule_ao(
+    async def schedule_ao(
         self, ao: int | list[int], value: bool | list[bool], in_secs: int
     ) -> None:
         """Schedule analogue output values.
 
         This is similar to `set_ao`, but schedules the change in a specified number of seconds.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -929,24 +846,7 @@ class PlatformInterface(GRPCInterface):
         # schedule_ao(1, 1, 1) => [1],[1],1
         # schedule_ao([1,4,2], 0, 1) => [1,4,2], [0,0,0], 1
         # schedule_ao([1,4,2], [0,1,0], 1) => [1,4,2], [0,1,0], 1
-        return self.make_request(
-            "scheduleAO",
-            platform_iface_pb2.scheduleAORequest(
-                ao=pins, value=values, time_secs=in_secs
-            ),
-            response_field="ao",
-        )
-
-    async def schedule_ao_async(
-        self, ao: int | list[int], value: bool | list[bool], in_secs: int
-    ) -> None:
-        if not isinstance(in_secs, int) or in_secs < 0:
-            raise ValueError(
-                f"Invalid value for in_secs: {in_secs}. Must be a positive integer."
-            )
-
-        pins, values = self._cast_ao_pin_values(ao, value)
-        return await self.make_request_async(
+        return await self.make_request(
             "scheduleAO",
             platform_iface_pb2.scheduleAORequest(
                 ao=pins, value=values, time_secs=in_secs
@@ -955,13 +855,10 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    @maybe_async()
-    def get_system_voltage(self) -> float:
+    async def get_system_voltage(self) -> float:
         """Get the system input voltage.
 
         This is the voltage supplied to the system, typically from a power supply or battery.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -976,27 +873,17 @@ class PlatformInterface(GRPCInterface):
         float
             The system input voltage in volts. Returns None if the request failed.
         """
-        return self.make_request(
-            "getInputVoltage",
-            platform_iface_pb2.getInputVoltageRequest(),
-            response_field="voltage",
-        )
-
-    async def get_system_voltage_async(self) -> float:
-        return await self.make_request_async(
+        return await self.make_request(
             "getInputVoltage",
             platform_iface_pb2.getInputVoltageRequest(),
             response_field="voltage",
         )
 
     @cli_command()
-    @maybe_async()
-    def get_system_power(self) -> float:
+    async def get_system_power(self) -> float:
         """Get the system input power.
 
         This is the power supplied to the system in watts.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -1011,27 +898,17 @@ class PlatformInterface(GRPCInterface):
         float
             The system input power in watts. Returns None if the request failed.
         """
-        return self.make_request(
-            "getSystemPower",
-            platform_iface_pb2.getSystemPowerRequest(),
-            response_field="power_watts",
-        )
-
-    async def get_system_power_async(self) -> float:
-        return await self.make_request_async(
+        return await self.make_request(
             "getSystemPower",
             platform_iface_pb2.getSystemPowerRequest(),
             response_field="power_watts",
         )
 
     @cli_command()
-    @maybe_async()
-    def get_system_temperature(self) -> float:
+    async def get_system_temperature(self) -> float:
         """Get the system temperature.
 
         On a Doovit, this is the temperature of the Raspberry Pi CM4.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -1047,27 +924,17 @@ class PlatformInterface(GRPCInterface):
         float
             The system temperature in degrees Celsius. Returns None if the request failed.
         """
-        return self.make_request(
-            "getTemperature",
-            platform_iface_pb2.getTemperatureRequest(),
-            response_field="temperature",
-        )
-
-    async def get_system_temperature_async(self):
-        return await self.make_request_async(
+        return await self.make_request(
             "getTemperature",
             platform_iface_pb2.getTemperatureRequest(),
             response_field="temperature",
         )
 
     @cli_command()
-    @maybe_async()
-    def get_location(self) -> Location:
+    async def get_location(self) -> Location:
         """Get the device location.
 
         Doovits with 4G cards generally implement this using the ModemManager (mmcli).
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -1084,61 +951,37 @@ class PlatformInterface(GRPCInterface):
             The location of the device.
             Returns None if the request failed.
         """
-        return self.make_request(
-            "getLocation",
-            platform_iface_pb2.getLocationRequest(),
-            response_field="location",
-        )
-
-    async def get_location_async(self) -> Location:
-        return await self.make_request_async(
+        return await self.make_request(
             "getLocation",
             platform_iface_pb2.getLocationRequest(),
             response_field="location",
         )
 
     @cli_command()
-    @maybe_async()
-    def reboot(self):
+    async def reboot(self):
         """Reboot the device.
 
         You should **not** call this method directly, instead see
         [guide for shutting down](https://docs.doover.com/guide/app-shutdown)
         for more information on how to safely initiate a shutdown in an application.
         """
-        return self.make_request("reboot", platform_iface_pb2.rebootRequest())
-
-    async def reboot_async(self):
-        # fixme: should these have async varients?
-        return await self.make_request_async(
-            "reboot", platform_iface_pb2.rebootRequest()
-        )
+        return await self.make_request("reboot", platform_iface_pb2.rebootRequest())
 
     @cli_command()
-    @maybe_async()
-    def shutdown(self):
+    async def shutdown(self):
         """Shutdown the device.
 
         You should **not** call this method directly, instead see
         [guide for shutting down](https://docs.doover.com/guide/app-shutdown)
         for more information on how to safely initiate a shutdown in an application.
         """
-        return self.make_request("shutdown", platform_iface_pb2.shutdownRequest())
-
-    async def shutdown_async(self):
-        # fixme: as above
-        return await self.make_request_async(
-            "shutdown", platform_iface_pb2.shutdownRequest()
-        )
+        return await self.make_request("shutdown", platform_iface_pb2.shutdownRequest())
 
     @cli_command()
-    @maybe_async()
-    def get_immunity_seconds(self) -> float:
+    async def get_immunity_seconds(self) -> float:
         """Get the number of seconds the device is immune for.
 
         Immunity is the time for which the device will ignore any shutdown requests.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -1154,27 +997,17 @@ class PlatformInterface(GRPCInterface):
         float
             The number of seconds the device is immune for.
         """
-        return self.make_request(
-            "getShutdownImmunity",
-            platform_iface_pb2.getShutdownImmunityRequest(),
-            response_field="immunity_secs",
-        )
-
-    async def get_immunity_seconds_async(self):
-        return await self.make_request_async(
+        return await self.make_request(
             "getShutdownImmunity",
             platform_iface_pb2.getShutdownImmunityRequest(),
             response_field="immunity_secs",
         )
 
     @cli_command()
-    @maybe_async()
-    def set_immunity_seconds(self, immunity_secs: int) -> float:
+    async def set_immunity_seconds(self, immunity_secs: int) -> float:
         """Set the number of seconds the device is immune for.
 
         Immunity is the time for which the device will ignore any shutdown requests.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Examples
         --------
@@ -1188,74 +1021,35 @@ class PlatformInterface(GRPCInterface):
         float
             The number of seconds the device is immune for.
         """
-        return self.make_request(
+        return await self.make_request(
             "setShutdownImmunity",
             platform_iface_pb2.setShutdownImmunityRequest(immunity_secs=immunity_secs),
             response_field="immunity_secs",
         )
 
-    async def set_immunity_seconds_async(self, immunity_secs: int):
-        return await self.make_request_async(
-            "setShutdownImmunity",
-            platform_iface_pb2.setShutdownImmunityRequest(immunity_secs=immunity_secs),
-            response_field="immunity_secs",
-        )
-
-    @maybe_async()
-    def schedule_startup(self, time_secs: int) -> None:
-        return self.make_request(
-            "scheduleStartup",
-            platform_iface_pb2.scheduleStartupRequest(time_secs=time_secs),
-            response_field="time_secs",
-        )
-
-    async def schedule_startup_async(self, time_secs: int) -> None:
-        return await self.make_request_async(
+    async def schedule_startup(self, time_secs: int) -> None:
+        return await self.make_request(
             "scheduleStartup",
             platform_iface_pb2.scheduleStartupRequest(time_secs=time_secs),
             response_field="time_secs",
         )
 
     @cli_command()
-    @maybe_async()
-    def schedule_shutdown(self, time_secs: int) -> None:
-        return self.make_request(
-            "scheduleShutdown",
-            platform_iface_pb2.scheduleShutdownRequest(time_secs=time_secs),
-            response_field="time_secs",
-        )
-
-    async def schedule_shutdown_async(self, time_secs: int) -> None:
-        return await self.make_request_async(
+    async def schedule_shutdown(self, time_secs: int) -> None:
+        return await self.make_request(
             "scheduleShutdown",
             platform_iface_pb2.scheduleShutdownRequest(time_secs=time_secs),
             response_field="time_secs",
         )
 
     @cli_command()
-    @maybe_async()
-    def get_io_table(self):
-        res = self.make_request(
+    async def get_io_table(self):
+        res = await self.make_request(
             "getIoTable",
             platform_iface_pb2.getIoTableRequest(),
             response_field="io_table",
         )
-        # result = json.loads("".join(self.make_request("getIoTable", platform_iface_pb2.getIoTableRequest())))
-        if res is None:
-            return None
-        string = ""
-        for i in res:
-            string += i
-        result = json.loads(string)
-        return result
-
-    async def get_io_table_async(self):
-        res = await self.make_request_async(
-            "getIoTable",
-            platform_iface_pb2.getIoTableRequest(),
-            response_field="io_table",
-        )
-        # result = json.loads("".join(await self.make_request_async("getIoTable", platform_iface_pb2.getIoTableRequest())))
+        # result = json.loads("".join(await self.make_request("getIoTable", platform_iface_pb2.getIoTableRequest())))
         if res is None:
             return None
         string = ""
@@ -1265,26 +1059,17 @@ class PlatformInterface(GRPCInterface):
         return result
 
     @cli_command()
-    @maybe_async()
-    def sync_rtc(self):
+    async def sync_rtc(self):
         """Synchronize the real-time clock (RTC) with the system (network) time.
 
         For Doovits, you shouldn't need to do this as this is handled automatically by `doovitd`.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
         """
-        return self.make_request("syncRtcTime", platform_iface_pb2.syncRtcTimeRequest())
-
-    async def sync_rtc_async(self):
         return await self.make_request(
             "syncRtcTime", platform_iface_pb2.syncRtcTimeRequest()
         )
 
-    @maybe_async()
-    def get_events(self, events_from: int = 0):
+    async def get_events(self, events_from: int = 0):
         """Get all events.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Parameters
         ----------
@@ -1296,22 +1081,14 @@ class PlatformInterface(GRPCInterface):
         List[:class:`pydoover.docker.platform.Event`]
             List of events.
         """
-        return self.make_request(
-            "getEvents",
-            platform_iface_pb2.getEventsRequest(events_from=events_from),
-            response_field="events",
-        )
-
-    async def get_events_async(self, events_from=0):
-        return await self.make_request_async(
+        return await self.make_request(
             "getEvents",
             platform_iface_pb2.getEventsRequest(events_from=events_from),
             response_field="events",
         )
 
     @cli_command()
-    @maybe_async()
-    def get_di_events(
+    async def get_di_events(
         self,
         di_pin: int,
         edge: str,
@@ -1319,8 +1096,6 @@ class PlatformInterface(GRPCInterface):
         events_from: int = 0,
     ) -> (bool, list[Event]):
         """Get digital input events.
-
-        .. note:: This method can be used in both synchronous and asynchronous contexts.
 
         Parameters
         ----------
@@ -1347,37 +1122,7 @@ class PlatformInterface(GRPCInterface):
         elif edge == "both":
             rising = True
             falling = True
-        resp: platform_iface_pb2.getDIEventsResponse = self.make_request(
-            "getDIEvents",
-            platform_iface_pb2.getDIEventsRequest(
-                pin=di_pin,
-                rising=rising,
-                falling=falling,
-                include_system_events=include_system_events,
-                events_from=events_from,
-            ),
-        )
-        if resp:
-            return resp.events_synced, resp.events
-        return None, []
-
-    async def get_di_events_async(
-        self,
-        di_pin: int,
-        edge: str,
-        include_system_events: bool = False,
-        events_from: int = 0,
-    ) -> (bool, list[Event]):
-        rising = False
-        falling = False
-        if edge == "rising":
-            rising = True
-        elif edge == "falling":
-            falling = True
-        elif edge == "both":
-            rising = True
-            falling = True
-        resp: platform_iface_pb2.getDIEventsResponse = await self.make_request_async(
+        resp: platform_iface_pb2.getDIEventsResponse = await self.make_request(
             "getDIEvents",
             platform_iface_pb2.getDIEventsRequest(
                 pin=di_pin,
