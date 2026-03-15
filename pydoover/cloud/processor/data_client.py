@@ -4,6 +4,7 @@ from typing import Any
 
 from ...api import AsyncDataClient
 from ...models import (
+    Aggregate,
     File,
     Message,
 )
@@ -68,8 +69,8 @@ class ProcessorDataClient(AsyncDataClient):
         channel_name: str,
         data: dict[str, Any],
         ts: int | None = None,
-        files: list[File] = None,
-        organisation_id: int = None,
+        files: list[File] | None = None,
+        organisation_id: int | None = None,
         allow_invoking_channel: bool = False,
     ) -> Message:
         if channel_name == self._invoking_channel_name:
@@ -89,12 +90,14 @@ class ProcessorDataClient(AsyncDataClient):
         agent_id: int,
         channel_name: str,
         data: dict[str, Any],
-        files: list[File] = None,
         replace: bool = False,
-        organisation_id: int = None,
+        files: list[File] | None = None,
+        suppress_response: bool = False,
+        clear_attachments: bool = False,
+        log_update: bool = False,
+        organisation_id: int | None = None,
         allow_invoking_channel: bool = False,
-        **kwargs,
-    ):
+    ) -> Aggregate | None:
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
@@ -104,8 +107,10 @@ class ProcessorDataClient(AsyncDataClient):
             data,
             replace=replace,
             files=files,
+            suppress_response=suppress_response,
+            clear_attachments=clear_attachments,
+            log_update=log_update,
             organisation_id=organisation_id or self.organisation_id,
-            **kwargs,
         )
 
     async def update_message(
@@ -113,13 +118,14 @@ class ProcessorDataClient(AsyncDataClient):
         agent_id: int,
         channel_name: str,
         message_id: int,
-        data: dict | str,
+        data: dict[str, Any],
         replace: bool = True,
-        files: list[File] = None,
-        organisation_id: int = None,
+        files: list[File] | None = None,
+        suppress_response: bool = False,
+        clear_attachments: bool = False,
+        organisation_id: int | None = None,
         allow_invoking_channel: bool = False,
-        **kwargs,
-    ):
+    ) -> Message | None:
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
@@ -130,8 +136,9 @@ class ProcessorDataClient(AsyncDataClient):
             data=data,
             replace=replace,
             files=files,
+            suppress_response=suppress_response,
+            clear_attachments=clear_attachments,
             organisation_id=organisation_id or self.organisation_id,
-            **kwargs,
         )
 
     # -- Connection helpers --------------------------------------------------
@@ -142,10 +149,10 @@ class ProcessorDataClient(AsyncDataClient):
         online_at: datetime,
         connection_status: ConnectionStatus,
         determination: ConnectionDetermination,
-        ping_at: datetime = None,
-        user_agent: str = None,
-        ip_address: str = None,
-        organisation_id: int = None,
+        ping_at: datetime | None = None,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+        organisation_id: int | None = None,
     ):
         user_agent = user_agent or "pydoover-processor, aiohttp"
         if not ip_address and self.lookup_ip:
@@ -183,7 +190,10 @@ class ProcessorDataClient(AsyncDataClient):
         )
 
     async def update_connection_config(
-        self, agent_id: int, config: ConnectionConfig, organisation_id: int = None
+        self,
+        agent_id: int,
+        config: ConnectionConfig,
+        organisation_id: int | None = None,
     ):
         payload = {"config": config.to_dict()}
         org = organisation_id or self.organisation_id

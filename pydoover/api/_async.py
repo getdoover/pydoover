@@ -20,7 +20,7 @@ import aiohttp
 from datetime import datetime
 
 from ._auth import decode_jwt_exp
-from ._base import BaseClient, _raise_for_status, _to_snowflake
+from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake
 from ._iterators import AsyncMessageIterator
 from .exceptions import TokenRefreshError
 from ..models import (
@@ -139,6 +139,7 @@ class AsyncDataClient(BaseClient):
         organisation_id: int | None = None,
     ) -> Any:
         self._ensure_session()
+        assert self._session is not None
         await self._ensure_token()
         url = self._build_url(path)
         if params:
@@ -462,6 +463,7 @@ class AsyncDataClient(BaseClient):
     ) -> bytes:
         """Download a message attachment. Follows the redirect to S3."""
         self._ensure_session()
+        assert self._session is not None
         await self._ensure_token()
         url = self._build_url(
             f"/agents/{agent_id}/channels/{channel_name}"
@@ -552,6 +554,7 @@ class AsyncDataClient(BaseClient):
     ) -> bytes:
         """Download an aggregate attachment. Follows the redirect to S3."""
         self._ensure_session()
+        assert self._session is not None
         await self._ensure_token()
         url = self._build_url(
             f"/agents/{agent_id}/channels/{channel_name}"
@@ -711,7 +714,7 @@ class AsyncDataClient(BaseClient):
         value: Any = None,
         description: str | None = None,
         enabled: bool | None = None,
-        expiry_mins: float | None = ...,
+        expiry_mins: float | None = UNSET,
         organisation_id: int | None = None,
     ) -> Alarm:
         payload: dict[str, Any] = {}
@@ -727,7 +730,7 @@ class AsyncDataClient(BaseClient):
             payload["description"] = description
         if enabled is not None:
             payload["enabled"] = enabled
-            if expiry_mins is not ...:
+            if expiry_mins is not UNSET:
                 payload["expiry_mins"] = expiry_mins
         data = await self._request(
             "PATCH",
@@ -897,7 +900,7 @@ class AsyncDataClient(BaseClient):
         endpoint_id: int,
         name: str | None = None,
         extra_data: dict[str, Any] | None = None,
-        priority: int | None = ...,
+        priority: int | None = UNSET,
         organisation_id: int | None = None,
     ):
         payload: dict[str, Any] = {}
@@ -905,7 +908,7 @@ class AsyncDataClient(BaseClient):
             payload["name"] = name
         if extra_data is not None:
             payload["extra_data"] = extra_data
-        if priority is not ...:
+        if priority is not UNSET:
             payload["priority"] = priority
         await self._request(
             "PATCH",

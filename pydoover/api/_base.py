@@ -17,6 +17,19 @@ from .exceptions import (
 log = logging.getLogger(__name__)
 
 
+class _Unset:
+    """Sentinel for distinguishing 'not provided' from ``None``."""
+
+    def __repr__(self):
+        return "UNSET"
+
+    def __bool__(self):
+        return False
+
+
+UNSET = _Unset()
+
+
 def _to_snowflake(value: int | datetime | None) -> int | None:
     """Coerce a datetime or snowflake int to a snowflake int."""
     if value is None:
@@ -61,8 +74,8 @@ class BaseClient:
         self._token_expires_at: float | None = decode_jwt_exp(token) if token else None
         self._client_id = client_id
         self._client_secret = client_secret
-        self.organisation_id: str | None = (
-            str(organisation_id) if organisation_id else None
+        self.organisation_id: int | None = (
+            int(organisation_id) if organisation_id else None
         )
         self.max_retries = max_retries
         self.retry_delay = retry_delay
@@ -102,7 +115,7 @@ class BaseClient:
         """Build a query string, filtering out None values and handling lists."""
         filtered = {}
         for k, v in params.items():
-            if v is None:
+            if v is None or isinstance(v, _Unset):
                 continue
             if isinstance(v, bool):
                 filtered[k] = str(v).lower()

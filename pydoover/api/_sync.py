@@ -21,7 +21,7 @@ import httpx
 from datetime import datetime
 
 from ._auth import decode_jwt_exp
-from ._base import BaseClient, _raise_for_status, _to_snowflake
+from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake
 from ._iterators import MessageIterator
 from .exceptions import TokenRefreshError
 from ..models import (
@@ -682,7 +682,7 @@ class DataClient(BaseClient):
         value: Any = None,
         description: str | None = None,
         enabled: bool | None = None,
-        expiry_mins: float | None = ...,  # sentinel: None means "clear"
+        expiry_mins: float | None = UNSET,
         organisation_id: int | None = None,
     ) -> Alarm:
         payload: dict[str, Any] = {}
@@ -698,7 +698,7 @@ class DataClient(BaseClient):
             payload["description"] = description
         if enabled is not None:
             payload["enabled"] = enabled
-        if expiry_mins is not ...:
+        if expiry_mins is not UNSET:
             payload["expiry_mins"] = expiry_mins
         data = self._request(
             "PATCH",
@@ -868,7 +868,7 @@ class DataClient(BaseClient):
         endpoint_id: int,
         name: str | None = None,
         extra_data: dict[str, Any] | None = None,
-        priority: int | None = ...,
+        priority: int | None = UNSET,
         organisation_id: int | None = None,
     ):
         payload: dict[str, Any] = {}
@@ -876,7 +876,7 @@ class DataClient(BaseClient):
             payload["name"] = name
         if extra_data is not None:
             payload["extra_data"] = extra_data
-        if priority is not ...:
+        if priority is not UNSET:
             payload["priority"] = priority
         self._request(
             "PATCH",
