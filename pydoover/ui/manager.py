@@ -140,7 +140,7 @@ class UIManager:
             log.warning("Attempted to setup subscriptions without client being set")
             return
 
-        from ..docker.device_agent.models import EventSubscription
+        from ..models import EventSubscription
 
         log.info("Setting up dda subscriptions")
         self.client.add_event_callback(

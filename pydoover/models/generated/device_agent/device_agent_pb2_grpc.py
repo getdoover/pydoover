@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import device_agent_pb2 as grpc__stubs_dot_device__agent__pb2
+from . import device_agent_pb2 as device__agent_dot_device__agent__pb2
 
 GRPC_GENERATED_VERSION = '1.65.1'
 GRPC_VERSION = grpc.__version__
@@ -20,7 +20,7 @@ except ImportError:
 if _version_not_supported:
     warnings.warn(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in grpc_stubs/device_agent_pb2_grpc.py depends on'
+        + f' but the generated code in device_agent/device_agent_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -42,63 +42,63 @@ class deviceAgentStub(object):
         """
         self.TestComms = channel.unary_unary(
                 '/device_agent.deviceAgent/TestComms',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.TestCommsRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.TestCommsResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.TestCommsRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.TestCommsResponse.FromString,
                 _registered_method=True)
         self.GetChannelSubscription = channel.unary_stream(
                 '/device_agent.deviceAgent/GetChannelSubscription',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.ChannelSubscriptionRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.ChannelSubscriptionResponse.FromString,
                 _registered_method=True)
         self.ChannelEventSubscription = channel.unary_stream(
                 '/device_agent.deviceAgent/ChannelEventSubscription',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.ChannelEventSubscriptionRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.ChannelEventSubscriptionResponse.FromString,
                 _registered_method=True)
         self.WriteToChannel = channel.unary_unary(
                 '/device_agent.deviceAgent/WriteToChannel',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.ChannelWriteRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelWriteResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.ChannelWriteRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.ChannelWriteResponse.FromString,
                 _registered_method=True)
         self.GetDebugInfo = channel.unary_unary(
                 '/device_agent.deviceAgent/GetDebugInfo',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.DebugInfoRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.DebugInfoResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.DebugInfoRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.DebugInfoResponse.FromString,
                 _registered_method=True)
         self.GetAggregate = channel.unary_unary(
                 '/device_agent.deviceAgent/GetAggregate',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.GetAggregateRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.GetAggregateResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.GetAggregateRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.GetAggregateResponse.FromString,
                 _registered_method=True)
         self.GetTurnCredential = channel.unary_unary(
                 '/device_agent.deviceAgent/GetTurnCredential',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.TurnCredentialRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.TurnCredentialResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.TurnCredentialRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.TurnCredentialResponse.FromString,
                 _registered_method=True)
         self.CreateMessage = channel.unary_unary(
                 '/device_agent.deviceAgent/CreateMessage',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.CreateMessageRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.CreateMessageResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.CreateMessageRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.CreateMessageResponse.FromString,
                 _registered_method=True)
         self.UpdateMessage = channel.unary_unary(
                 '/device_agent.deviceAgent/UpdateMessage',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.UpdateMessageRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateMessageResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.UpdateMessageRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.UpdateMessageResponse.FromString,
                 _registered_method=True)
         self.UpdateAggregate = channel.unary_unary(
                 '/device_agent.deviceAgent/UpdateAggregate',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.UpdateAggregateRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.UpdateAggregateResponse.FromString,
                 _registered_method=True)
         self.GetMessage = channel.unary_unary(
                 '/device_agent.deviceAgent/GetMessage',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.GetMessageRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.GetMessageResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.GetMessageRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.GetMessageResponse.FromString,
                 _registered_method=True)
         self.GetMessages = channel.unary_unary(
                 '/device_agent.deviceAgent/GetMessages',
-                request_serializer=grpc__stubs_dot_device__agent__pb2.GetMessagesRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_device__agent__pb2.GetMessagesResponse.FromString,
+                request_serializer=device__agent_dot_device__agent__pb2.GetMessagesRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.GetMessagesResponse.FromString,
                 _registered_method=True)
 
 
@@ -186,63 +186,63 @@ def add_deviceAgentServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'TestComms': grpc.unary_unary_rpc_method_handler(
                     servicer.TestComms,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.TestCommsRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.TestCommsResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.TestCommsRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.TestCommsResponse.SerializeToString,
             ),
             'GetChannelSubscription': grpc.unary_stream_rpc_method_handler(
                     servicer.GetChannelSubscription,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.ChannelSubscriptionRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.ChannelSubscriptionResponse.SerializeToString,
             ),
             'ChannelEventSubscription': grpc.unary_stream_rpc_method_handler(
                     servicer.ChannelEventSubscription,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.ChannelEventSubscriptionRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.ChannelEventSubscriptionResponse.SerializeToString,
             ),
             'WriteToChannel': grpc.unary_unary_rpc_method_handler(
                     servicer.WriteToChannel,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.ChannelWriteRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.ChannelWriteResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.ChannelWriteRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.ChannelWriteResponse.SerializeToString,
             ),
             'GetDebugInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetDebugInfo,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.DebugInfoRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.DebugInfoResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.DebugInfoRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.DebugInfoResponse.SerializeToString,
             ),
             'GetAggregate': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAggregate,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.GetAggregateRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.GetAggregateResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.GetAggregateRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.GetAggregateResponse.SerializeToString,
             ),
             'GetTurnCredential': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTurnCredential,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.TurnCredentialRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.TurnCredentialResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.TurnCredentialRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.TurnCredentialResponse.SerializeToString,
             ),
             'CreateMessage': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateMessage,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.CreateMessageRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.CreateMessageResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.CreateMessageRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.CreateMessageResponse.SerializeToString,
             ),
             'UpdateMessage': grpc.unary_unary_rpc_method_handler(
                     servicer.UpdateMessage,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateMessageRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.UpdateMessageResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.UpdateMessageRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.UpdateMessageResponse.SerializeToString,
             ),
             'UpdateAggregate': grpc.unary_unary_rpc_method_handler(
                     servicer.UpdateAggregate,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.UpdateAggregateRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.UpdateAggregateResponse.SerializeToString,
             ),
             'GetMessage': grpc.unary_unary_rpc_method_handler(
                     servicer.GetMessage,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.GetMessageRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.GetMessageResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.GetMessageRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.GetMessageResponse.SerializeToString,
             ),
             'GetMessages': grpc.unary_unary_rpc_method_handler(
                     servicer.GetMessages,
-                    request_deserializer=grpc__stubs_dot_device__agent__pb2.GetMessagesRequest.FromString,
-                    response_serializer=grpc__stubs_dot_device__agent__pb2.GetMessagesResponse.SerializeToString,
+                    request_deserializer=device__agent_dot_device__agent__pb2.GetMessagesRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.GetMessagesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -271,8 +271,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/TestComms',
-            grpc__stubs_dot_device__agent__pb2.TestCommsRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.TestCommsResponse.FromString,
+            device__agent_dot_device__agent__pb2.TestCommsRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.TestCommsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -298,8 +298,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/GetChannelSubscription',
-            grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.ChannelSubscriptionResponse.FromString,
+            device__agent_dot_device__agent__pb2.ChannelSubscriptionRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.ChannelSubscriptionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -325,8 +325,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/ChannelEventSubscription',
-            grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.ChannelEventSubscriptionResponse.FromString,
+            device__agent_dot_device__agent__pb2.ChannelEventSubscriptionRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.ChannelEventSubscriptionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -352,8 +352,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/WriteToChannel',
-            grpc__stubs_dot_device__agent__pb2.ChannelWriteRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.ChannelWriteResponse.FromString,
+            device__agent_dot_device__agent__pb2.ChannelWriteRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.ChannelWriteResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -379,8 +379,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/GetDebugInfo',
-            grpc__stubs_dot_device__agent__pb2.DebugInfoRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.DebugInfoResponse.FromString,
+            device__agent_dot_device__agent__pb2.DebugInfoRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.DebugInfoResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -406,8 +406,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/GetAggregate',
-            grpc__stubs_dot_device__agent__pb2.GetAggregateRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.GetAggregateResponse.FromString,
+            device__agent_dot_device__agent__pb2.GetAggregateRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.GetAggregateResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -433,8 +433,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/GetTurnCredential',
-            grpc__stubs_dot_device__agent__pb2.TurnCredentialRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.TurnCredentialResponse.FromString,
+            device__agent_dot_device__agent__pb2.TurnCredentialRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.TurnCredentialResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -460,8 +460,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/CreateMessage',
-            grpc__stubs_dot_device__agent__pb2.CreateMessageRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.CreateMessageResponse.FromString,
+            device__agent_dot_device__agent__pb2.CreateMessageRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.CreateMessageResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -487,8 +487,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/UpdateMessage',
-            grpc__stubs_dot_device__agent__pb2.UpdateMessageRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.UpdateMessageResponse.FromString,
+            device__agent_dot_device__agent__pb2.UpdateMessageRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.UpdateMessageResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -514,8 +514,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/UpdateAggregate',
-            grpc__stubs_dot_device__agent__pb2.UpdateAggregateRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.UpdateAggregateResponse.FromString,
+            device__agent_dot_device__agent__pb2.UpdateAggregateRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.UpdateAggregateResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -541,8 +541,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/GetMessage',
-            grpc__stubs_dot_device__agent__pb2.GetMessageRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.GetMessageResponse.FromString,
+            device__agent_dot_device__agent__pb2.GetMessageRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.GetMessageResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -568,8 +568,8 @@ class deviceAgent(object):
             request,
             target,
             '/device_agent.deviceAgent/GetMessages',
-            grpc__stubs_dot_device__agent__pb2.GetMessagesRequest.SerializeToString,
-            grpc__stubs_dot_device__agent__pb2.GetMessagesResponse.FromString,
+            device__agent_dot_device__agent__pb2.GetMessagesRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.GetMessagesResponse.FromString,
             options,
             channel_credentials,
             insecure,

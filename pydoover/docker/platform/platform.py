@@ -7,7 +7,7 @@ from collections.abc import Iterable, Coroutine, Callable
 
 import grpc
 
-from .grpc_stubs import platform_iface_pb2, platform_iface_pb2_grpc
+from ...models.generated.platform import platform_iface_pb2, platform_iface_pb2_grpc
 from .platform_types import Location, Event
 from ..grpc_interface import GRPCInterface
 from ...utils import maybe_async, call_maybe_async, deprecated

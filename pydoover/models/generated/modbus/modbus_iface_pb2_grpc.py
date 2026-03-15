@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import modbus_iface_pb2 as grpc__stubs_dot_modbus__iface__pb2
+from . import modbus_iface_pb2 as modbus_dot_modbus__iface__pb2
 
 GRPC_GENERATED_VERSION = '1.65.1'
 GRPC_VERSION = grpc.__version__
@@ -20,7 +20,7 @@ except ImportError:
 if _version_not_supported:
     warnings.warn(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in grpc_stubs/modbus_iface_pb2_grpc.py depends on'
+        + f' but the generated code in modbus/modbus_iface_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -42,78 +42,78 @@ class modbusIfaceStub(object):
         """
         self.testComms = channel.unary_unary(
                 '/modbus_iface.modbusIface/testComms',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.testCommsRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.testCommsResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.testCommsRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.testCommsResponse.FromString,
                 _registered_method=True)
         self.openBus = channel.unary_unary(
                 '/modbus_iface.modbusIface/openBus',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.openBusRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.openBusResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.openBusRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.openBusResponse.FromString,
                 _registered_method=True)
         self.listBus = channel.unary_unary(
                 '/modbus_iface.modbusIface/listBus',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.listBusRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.listBusResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.listBusRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.listBusResponse.FromString,
                 _registered_method=True)
         self.busStatus = channel.unary_unary(
                 '/modbus_iface.modbusIface/busStatus',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.busStatusRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.busStatusResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.busStatusRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.busStatusResponse.FromString,
                 _registered_method=True)
         self.closeBus = channel.unary_unary(
                 '/modbus_iface.modbusIface/closeBus',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.closeBusRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.closeBusResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.closeBusRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.closeBusResponse.FromString,
                 _registered_method=True)
         self.readRegisters = channel.unary_unary(
                 '/modbus_iface.modbusIface/readRegisters',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.readRegisterRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.readRegisterResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.readRegisterRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.readRegisterResponse.FromString,
                 _registered_method=True)
         self.writeRegisters = channel.unary_unary(
                 '/modbus_iface.modbusIface/writeRegisters',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.writeRegisterRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.writeRegisterResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.writeRegisterRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.writeRegisterResponse.FromString,
                 _registered_method=True)
         self.scheduleWriteRegisters = channel.unary_unary(
                 '/modbus_iface.modbusIface/scheduleWriteRegisters',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.scheduleWriteRegisterRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.scheduleWriteRegisterResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.scheduleWriteRegisterRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.scheduleWriteRegisterResponse.FromString,
                 _registered_method=True)
         self.readRegisterSubscription = channel.unary_stream(
                 '/modbus_iface.modbusIface/readRegisterSubscription',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.readRegisterSubscriptionRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.readRegisterSubscriptionResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.readRegisterSubscriptionRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.readRegisterSubscriptionResponse.FromString,
                 _registered_method=True)
         self.createServer = channel.unary_unary(
                 '/modbus_iface.modbusIface/createServer',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.createServerRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.createServerResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.createServerRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.createServerResponse.FromString,
                 _registered_method=True)
         self.listServer = channel.unary_unary(
                 '/modbus_iface.modbusIface/listServer',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.listServerRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.listServerResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.listServerRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.listServerResponse.FromString,
                 _registered_method=True)
         self.closeServer = channel.unary_unary(
                 '/modbus_iface.modbusIface/closeServer',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.closeServerRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.closeServerResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.closeServerRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.closeServerResponse.FromString,
                 _registered_method=True)
         self.setServerRegisters = channel.unary_unary(
                 '/modbus_iface.modbusIface/setServerRegisters',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.setServerRegistersRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.setServerRegistersResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.setServerRegistersRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.setServerRegistersResponse.FromString,
                 _registered_method=True)
         self.getServerRegisters = channel.unary_unary(
                 '/modbus_iface.modbusIface/getServerRegisters',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.getServerRegistersRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.getServerRegistersResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.getServerRegistersRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.getServerRegistersResponse.FromString,
                 _registered_method=True)
         self.scheduleServerRegisters = channel.unary_unary(
                 '/modbus_iface.modbusIface/scheduleServerRegisters',
-                request_serializer=grpc__stubs_dot_modbus__iface__pb2.scheduleServerRegistersRequest.SerializeToString,
-                response_deserializer=grpc__stubs_dot_modbus__iface__pb2.scheduleServerRegistersResponse.FromString,
+                request_serializer=modbus_dot_modbus__iface__pb2.scheduleServerRegistersRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.scheduleServerRegistersResponse.FromString,
                 _registered_method=True)
 
 
@@ -216,78 +216,78 @@ def add_modbusIfaceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'testComms': grpc.unary_unary_rpc_method_handler(
                     servicer.testComms,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.testCommsRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.testCommsResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.testCommsRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.testCommsResponse.SerializeToString,
             ),
             'openBus': grpc.unary_unary_rpc_method_handler(
                     servicer.openBus,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.openBusRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.openBusResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.openBusRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.openBusResponse.SerializeToString,
             ),
             'listBus': grpc.unary_unary_rpc_method_handler(
                     servicer.listBus,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.listBusRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.listBusResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.listBusRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.listBusResponse.SerializeToString,
             ),
             'busStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.busStatus,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.busStatusRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.busStatusResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.busStatusRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.busStatusResponse.SerializeToString,
             ),
             'closeBus': grpc.unary_unary_rpc_method_handler(
                     servicer.closeBus,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.closeBusRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.closeBusResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.closeBusRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.closeBusResponse.SerializeToString,
             ),
             'readRegisters': grpc.unary_unary_rpc_method_handler(
                     servicer.readRegisters,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.readRegisterRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.readRegisterResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.readRegisterRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.readRegisterResponse.SerializeToString,
             ),
             'writeRegisters': grpc.unary_unary_rpc_method_handler(
                     servicer.writeRegisters,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.writeRegisterRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.writeRegisterResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.writeRegisterRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.writeRegisterResponse.SerializeToString,
             ),
             'scheduleWriteRegisters': grpc.unary_unary_rpc_method_handler(
                     servicer.scheduleWriteRegisters,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.scheduleWriteRegisterRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.scheduleWriteRegisterResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.scheduleWriteRegisterRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.scheduleWriteRegisterResponse.SerializeToString,
             ),
             'readRegisterSubscription': grpc.unary_stream_rpc_method_handler(
                     servicer.readRegisterSubscription,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.readRegisterSubscriptionRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.readRegisterSubscriptionResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.readRegisterSubscriptionRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.readRegisterSubscriptionResponse.SerializeToString,
             ),
             'createServer': grpc.unary_unary_rpc_method_handler(
                     servicer.createServer,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.createServerRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.createServerResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.createServerRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.createServerResponse.SerializeToString,
             ),
             'listServer': grpc.unary_unary_rpc_method_handler(
                     servicer.listServer,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.listServerRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.listServerResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.listServerRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.listServerResponse.SerializeToString,
             ),
             'closeServer': grpc.unary_unary_rpc_method_handler(
                     servicer.closeServer,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.closeServerRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.closeServerResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.closeServerRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.closeServerResponse.SerializeToString,
             ),
             'setServerRegisters': grpc.unary_unary_rpc_method_handler(
                     servicer.setServerRegisters,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.setServerRegistersRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.setServerRegistersResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.setServerRegistersRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.setServerRegistersResponse.SerializeToString,
             ),
             'getServerRegisters': grpc.unary_unary_rpc_method_handler(
                     servicer.getServerRegisters,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.getServerRegistersRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.getServerRegistersResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.getServerRegistersRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.getServerRegistersResponse.SerializeToString,
             ),
             'scheduleServerRegisters': grpc.unary_unary_rpc_method_handler(
                     servicer.scheduleServerRegisters,
-                    request_deserializer=grpc__stubs_dot_modbus__iface__pb2.scheduleServerRegistersRequest.FromString,
-                    response_serializer=grpc__stubs_dot_modbus__iface__pb2.scheduleServerRegistersResponse.SerializeToString,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.scheduleServerRegistersRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.scheduleServerRegistersResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -316,8 +316,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/testComms',
-            grpc__stubs_dot_modbus__iface__pb2.testCommsRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.testCommsResponse.FromString,
+            modbus_dot_modbus__iface__pb2.testCommsRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.testCommsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -343,8 +343,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/openBus',
-            grpc__stubs_dot_modbus__iface__pb2.openBusRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.openBusResponse.FromString,
+            modbus_dot_modbus__iface__pb2.openBusRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.openBusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -370,8 +370,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/listBus',
-            grpc__stubs_dot_modbus__iface__pb2.listBusRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.listBusResponse.FromString,
+            modbus_dot_modbus__iface__pb2.listBusRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.listBusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -397,8 +397,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/busStatus',
-            grpc__stubs_dot_modbus__iface__pb2.busStatusRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.busStatusResponse.FromString,
+            modbus_dot_modbus__iface__pb2.busStatusRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.busStatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -424,8 +424,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/closeBus',
-            grpc__stubs_dot_modbus__iface__pb2.closeBusRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.closeBusResponse.FromString,
+            modbus_dot_modbus__iface__pb2.closeBusRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.closeBusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -451,8 +451,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/readRegisters',
-            grpc__stubs_dot_modbus__iface__pb2.readRegisterRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.readRegisterResponse.FromString,
+            modbus_dot_modbus__iface__pb2.readRegisterRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.readRegisterResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -478,8 +478,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/writeRegisters',
-            grpc__stubs_dot_modbus__iface__pb2.writeRegisterRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.writeRegisterResponse.FromString,
+            modbus_dot_modbus__iface__pb2.writeRegisterRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.writeRegisterResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -505,8 +505,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/scheduleWriteRegisters',
-            grpc__stubs_dot_modbus__iface__pb2.scheduleWriteRegisterRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.scheduleWriteRegisterResponse.FromString,
+            modbus_dot_modbus__iface__pb2.scheduleWriteRegisterRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.scheduleWriteRegisterResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -532,8 +532,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/readRegisterSubscription',
-            grpc__stubs_dot_modbus__iface__pb2.readRegisterSubscriptionRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.readRegisterSubscriptionResponse.FromString,
+            modbus_dot_modbus__iface__pb2.readRegisterSubscriptionRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.readRegisterSubscriptionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -559,8 +559,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/createServer',
-            grpc__stubs_dot_modbus__iface__pb2.createServerRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.createServerResponse.FromString,
+            modbus_dot_modbus__iface__pb2.createServerRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.createServerResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -586,8 +586,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/listServer',
-            grpc__stubs_dot_modbus__iface__pb2.listServerRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.listServerResponse.FromString,
+            modbus_dot_modbus__iface__pb2.listServerRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.listServerResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -613,8 +613,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/closeServer',
-            grpc__stubs_dot_modbus__iface__pb2.closeServerRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.closeServerResponse.FromString,
+            modbus_dot_modbus__iface__pb2.closeServerRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.closeServerResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -640,8 +640,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/setServerRegisters',
-            grpc__stubs_dot_modbus__iface__pb2.setServerRegistersRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.setServerRegistersResponse.FromString,
+            modbus_dot_modbus__iface__pb2.setServerRegistersRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.setServerRegistersResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -667,8 +667,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/getServerRegisters',
-            grpc__stubs_dot_modbus__iface__pb2.getServerRegistersRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.getServerRegistersResponse.FromString,
+            modbus_dot_modbus__iface__pb2.getServerRegistersRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.getServerRegistersResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -694,8 +694,8 @@ class modbusIface(object):
             request,
             target,
             '/modbus_iface.modbusIface/scheduleServerRegisters',
-            grpc__stubs_dot_modbus__iface__pb2.scheduleServerRegistersRequest.SerializeToString,
-            grpc__stubs_dot_modbus__iface__pb2.scheduleServerRegistersResponse.FromString,
+            modbus_dot_modbus__iface__pb2.scheduleServerRegistersRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.scheduleServerRegistersResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -15,19 +15,19 @@ from google.protobuf.struct_pb2 import Struct
 from google.protobuf.json_format import MessageToDict
 
 
-from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
-from .models import (
-    TurnCredential,
+from ...models.generated.device_agent import device_agent_pb2, device_agent_pb2_grpc
+from ...models import (
+    Aggregate,
+    AggregateUpdateEvent,
+    EventSubscription,
     File,
     Message,
     MessageCreateEvent,
     MessageUpdateEvent,
     OneShotMessage,
-    Aggregate,
-    EventSubscription,
+    TurnCredential,
 )
 from ..grpc_interface import GRPCInterface
-from ...cloud.processor.types import AggregateUpdateEvent
 from ...cli.decorators import command as cli_command
 
 log = logging.getLogger(__name__)

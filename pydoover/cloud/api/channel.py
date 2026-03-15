@@ -18,45 +18,7 @@ if TYPE_CHECKING:
     from .message import Message
 
 
-class Attachment:
-    #     pub filename: String,
-    #     pub content_type: Option<String>,
-    #     pub size: u64,
-    #     pub url: String,
-    def __init__(self, filename: str, content_type: str, size: int, url: str):
-        self.filename = filename
-        self.content_type = content_type
-        self.size = size
-        self.url = url
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any]):
-        return cls(
-            payload["filename"],
-            payload.get("content_type"),
-            payload["size"],
-            payload["url"],
-        )
-
-
-class Aggregate:
-    def __init__(
-        self,
-        data: dict[str, Any],
-        attachments: list[Attachment],
-        last_updated: datetime | None,
-    ):
-        self.data: dict[str, Any] = data
-        self.attachments = attachments
-        self.last_updated: datetime | None = last_updated
-
-    @classmethod
-    def from_dict(cls, payload):
-        return cls(
-            payload["data"],
-            [Attachment.from_dict(a) for a in payload.get("attachments", [])],
-            payload.get("last_updated"),
-        )
+from ...models import Aggregate
 
 
 class Channel:

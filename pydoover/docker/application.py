@@ -18,9 +18,13 @@ except ImportError:
 else:
     RUN_HEALTHCHECK = True
 
-from .device_agent import DeviceAgentInterface
-from .device_agent.models import (
+from .device_agent.device_agent import DeviceAgentInterface
+from .modbus import ModbusInterface
+from .platform import PlatformInterface
+
+from ..models import (
     Aggregate,
+    AggregateUpdateEvent,
     EventSubscription,
     File,
     Message,
@@ -28,10 +32,6 @@ from .device_agent.models import (
     MessageUpdateEvent,
     OneShotMessage,
 )
-from .modbus import ModbusInterface
-from .platform import PlatformInterface
-
-from ..cloud.processor.types import AggregateUpdateEvent
 from ..ui import UIManager
 from ..utils import (
     setup_logging as utils_setup_logging,

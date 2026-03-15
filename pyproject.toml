@@ -34,6 +34,9 @@ test = [
     "jsonschema>=4.23.0",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",
+    "grpcio==1.65.1",
+    "protobuf==5.28.2",
+    "grpcio-health-checking==1.65.1",
 ]
 
 [build-system]
@@ -64,7 +67,5 @@ asyncio_default_fixture_loop_scope = "session"
 
 [tool.ruff]
 exclude = [
-    "pydoover/docker/device_agent/grpc_stubs",
-    "pydoover/docker/modbus/grpc_stubs",
-    "pydoover/docker/platform/grpc_stubs",
+    "pydoover/models/generated",
 ]

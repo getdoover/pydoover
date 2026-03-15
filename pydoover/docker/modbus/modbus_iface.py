@@ -5,7 +5,7 @@ from collections.abc import Coroutine, Callable
 import grpc
 
 from .config import ModbusConfig, ModbusType, ManyModbusConfig
-from .grpc_stubs import modbus_iface_pb2, modbus_iface_pb2_grpc
+from ...models.generated.modbus import modbus_iface_pb2, modbus_iface_pb2_grpc
 from ..grpc_interface import GRPCInterface
 from ...utils import call_maybe_async, maybe_async
 from ...cli.decorators import command as cli_command, ignore_alias
