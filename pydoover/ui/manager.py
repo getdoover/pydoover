@@ -140,10 +140,24 @@ class UIManager:
             log.warning("Attempted to setup subscriptions without client being set")
             return
 
+        from ..docker.device_agent.models import EventSubscription
+
         log.info("Setting up dda subscriptions")
-        self.client.add_subscription("ui_state", self.on_state_update)
-        self.client.add_subscription("doover_ui_fastmode", self.on_state_wss_update)
-        self.client.add_subscription("ui_cmds", self.on_command_update_async)
+        self.client.add_event_callback(
+            "ui_state",
+            self._wrap_aggregate_callback(self.on_state_update),
+            EventSubscription.aggregate_update,
+        )
+        self.client.add_event_callback(
+            "doover_ui_fastmode",
+            self._wrap_aggregate_callback(self.on_state_wss_update),
+            EventSubscription.aggregate_update,
+        )
+        self.client.add_event_callback(
+            "ui_cmds",
+            self._wrap_aggregate_callback(self.on_command_update_async),
+            EventSubscription.aggregate_update,
+        )
 
         self._subscriptions_ready = True
 
@@ -151,18 +165,39 @@ class UIManager:
         if not self._has_persistent_connection:
             return False
 
-        if not hasattr(self.client, "wait_for_channels_sync_async"):
+        if not hasattr(self.client, "wait_for_channels_sync"):
             log.error("Attempted to await comms sync without valid connection client.")
             return False
-        return await self.client.wait_for_channels_sync_async(
+        result = await self.client.wait_for_channels_sync(
             channel_names=["ui_state", "ui_cmds"],
             timeout=timeout,
         )
 
-    async def on_state_update(self, _, aggregate: dict[str, Any]):
+        # Fetch initial state from the aggregate cache
+        ui_state = await self.client.get_channel_aggregate("ui_state")
+        if ui_state:
+            await self.on_state_update(ui_state)
+
+        ui_cmds = await self.client.get_channel_aggregate("ui_cmds")
+        if ui_cmds:
+            await self.on_command_update_async(ui_cmds)
+
+        return result
+
+    @staticmethod
+    def _wrap_aggregate_callback(callback):
+        """Wrap a ``(data_dict)`` callback for use with ``add_event_callback``."""
+
+        async def _wrapper(event):
+            data = event.aggregate.data if event.aggregate else {}
+            await callback(data)
+
+        return _wrapper
+
+    async def on_state_update(self, aggregate: dict[str, Any]):
         self._set_new_ui_state(aggregate)
 
-    async def on_state_wss_update(self, _, aggregate: dict[str, Any]):
+    async def on_state_wss_update(self, aggregate: dict[str, Any]):
         self.last_ui_state_wss_connections = aggregate
         self.last_ui_state_wss_connections_update = time.time()
 
@@ -180,7 +215,7 @@ class UIManager:
 
         return aggregate
 
-    def on_command_update(self, _, aggregate: dict[str, Any]):
+    def on_command_update(self, aggregate: dict[str, Any]):
         log.debug(f"running on command update, {aggregate}")
         self._on_command_update_common(aggregate)
 
@@ -204,7 +239,7 @@ class UIManager:
                 if pattern.match(command_name):
                     callback(command, new_value)
 
-    async def on_command_update_async(self, _, aggregate: dict[str, Any]):
+    async def on_command_update_async(self, aggregate: dict[str, Any]):
         log.debug("Running on_command_update_async")
         prev_agg = copy.deepcopy(self.last_ui_cmds)
         aggregate = self._on_command_update_common(aggregate)
@@ -679,7 +714,7 @@ class UIManager:
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
 
-        self.on_command_update(None, ui_cmds_agg)
+        self.on_command_update(ui_cmds_agg)
 
     async def pull_async(self):
         if isinstance(self.client, Client):
@@ -700,13 +735,13 @@ class UIManager:
 
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
-        await self.on_command_update_async(None, ui_cmds_agg)
+        await self.on_command_update_async(ui_cmds_agg)
 
     async def _processor_set_ui_channels(
         self, ui_state: dict[str, Any], ui_cmds: dict[str, Any]
     ):
         self._set_new_ui_state(ui_state)
-        await self.on_command_update_async(None, ui_cmds)
+        await self.on_command_update_async(ui_cmds)
 
     def _check_dda_ready(self):
         if not self._is_conn_ready():

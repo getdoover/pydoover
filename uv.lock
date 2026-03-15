@@ -337,6 +337,19 @@ wheels = [
 ]
 
 [[package]]
+name = "grpcio-health-checking"
+version = "1.65.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "grpcio" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/16/0f2c51df82f24033028ca5c8d5546738b974537ddae949de91544b504ce8/grpcio_health_checking-1.65.1.tar.gz", hash = "sha256:ae5f209110cb2dd385331a989ab63548efc0bdf8468cd8f5677fbd8022973876", size = 16621, upload-time = "2024-07-18T07:56:17.607Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/27/0a6613989ea11483fc54a5f0845a8a6061254f61e94464c98a4ade436230/grpcio_health_checking-1.65.1-py3-none-any.whl", hash = "sha256:bf185cd001baf60b3ff08c747edc5d24b2e27538a60e552a69ca40b62f13599f", size = 18948, upload-time = "2024-07-18T07:51:45.802Z" },
+]
+
+[[package]]
 name = "grpcio-tools"
 version = "1.65.1"
 source = { registry = "https://pypi.org/simple" }
@@ -722,6 +735,7 @@ dependencies = [
 [package.optional-dependencies]
 grpc = [
     { name = "grpcio" },
+    { name = "grpcio-health-checking" },
     { name = "protobuf" },
 ]
 reports = [
@@ -752,6 +766,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.12.13" },
     { name = "croniter", marker = "extra == 'reports'", specifier = ">=6.0.0" },
     { name = "grpcio", marker = "extra == 'grpc'", specifier = "==1.65.1" },
+    { name = "grpcio-health-checking", marker = "extra == 'grpc'", specifier = "==1.65.1" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.23.0" },
     { name = "protobuf", marker = "extra == 'grpc'", specifier = "==5.28.2" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3.5" },

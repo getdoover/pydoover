@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Flag, auto
 from typing import Any
 
 from google.protobuf.json_format import MessageToDict
@@ -14,6 +15,14 @@ from .grpc_stubs.device_agent_pb2 import (
 
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
+
+
+class EventSubscription(Flag):
+    message_create = auto()
+    message_update = auto()
+    aggregate_update = auto()
+    oneshot_message = auto()
+    all = message_create | message_update | aggregate_update | oneshot_message
 
 
 class Attachment:
@@ -201,6 +210,44 @@ class MessageCreateEvent:
 class OneShotMessage(MessageCreateEvent):
     # just to support isinstance checks and really highlight that this isn't a real message.
     pass
+
+
+class MessageUpdateEvent:
+    # #[derive(Serialize, Deserialize, Clone)]
+    # pub struct MessageUpdatePayload {
+    #     pub owner_id: SnowflakeID,
+    #     pub channel_name: String,
+    #     pub author_id: SnowflakeID,
+    #     pub organisation_id: SnowflakeID,
+    #     pub message: Message,
+    #     pub request_data: Value,
+    # }
+    def __init__(
+        self,
+        owner_id: int,
+        channel_name: str,
+        author_id: int,
+        organisation_id: int,
+        message: Message,
+        request_data: dict[str, Any],
+    ):
+        self.owner_id = owner_id
+        self.channel_name = channel_name
+        self.author_id = author_id
+        self.organisation_id = organisation_id
+        self.message = message
+        self.request_data = request_data
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["owner_id"],
+            data["channel_name"],
+            data["author_id"],
+            data["organisation_id"],
+            Message.from_dict(data["message"]),
+            data.get("request_data", {}),
+        )
 
 
 class TurnCredential:

@@ -2,10 +2,9 @@ import asyncio
 import copy
 import json
 import logging
-import time
 import sys
 
-from collections.abc import Coroutine, Callable
+from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,26 +14,23 @@ from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf.json_format import MessageToDict
 
+
 from .grpc_stubs import device_agent_pb2, device_agent_pb2_grpc
 from .models import (
     TurnCredential,
     File,
     Message,
     MessageCreateEvent,
+    MessageUpdateEvent,
     OneShotMessage,
     Aggregate,
+    EventSubscription,
 )
 from ..grpc_interface import GRPCInterface
 from ...cloud.processor.types import AggregateUpdateEvent
-from ...utils import apply_diff, call_maybe_async, maybe_async, maybe_load_json
 from ...cli.decorators import command as cli_command
 
 log = logging.getLogger(__name__)
-
-MaybeAsyncCallback = (
-    Callable[[str, dict[str, Any] | str], None]
-    | Coroutine[[str, dict[str, Any] | str], None]
-)
 
 
 class DeviceAgentInterface(GRPCInterface):
@@ -66,12 +62,11 @@ class DeviceAgentInterface(GRPCInterface):
         self,
         app_key: str,
         dda_uri: str = "127.0.0.1:50051",
-        is_async: bool = None,
         dda_timeout: int = 7,
         max_conn_attempts: int = 5,
         time_between_connection_attempts: int = 10,
     ):
-        super().__init__(app_key, dda_uri, is_async, dda_timeout)
+        super().__init__(app_key, dda_uri, dda_timeout)
 
         self.dda_timeout = dda_timeout
         self.max_connection_attempts = max_conn_attempts
@@ -82,16 +77,14 @@ class DeviceAgentInterface(GRPCInterface):
         self.has_dda_been_online = False
         self.agent_id = None
 
-        # this is a list of channels that the agent interface will subscribe to,
-        # and a list of callbacks that will be called when a message is received,
-        # as well as the aggregate data that is received from the channel
-        ## for channel in default_subscriptions:
-        self._subscriptions: dict[str, list[Callable]] = {}
-        self._synced_channels: dict[str, bool] = {}
-        self._listeners: dict[str, asyncio.Task] = {}
-        self._aggregates: dict[str, dict[str, Any] | str] = {}
+        # Single event stream per channel, distributing to all registered callbacks
+        self._event_callbacks: dict[str, list[tuple[Callable, EventSubscription]]] = {}
+        self._stream_tasks: dict[str, asyncio.Task] = {}
 
-        self.last_channel_message_ts = {}  # this is a dictionary of the last time a message was received from a channel
+        # Aggregate state tracking
+        self._synced_channels: dict[str, bool] = {}
+        self._aggregates: dict[str, dict[str, Any]] = {}
+        self.last_channel_message_ts: dict[str, datetime] = {}
 
     @staticmethod
     def has_persistent_connection():
@@ -110,28 +103,17 @@ class DeviceAgentInterface(GRPCInterface):
     def get_has_dda_been_online(self):
         return self.has_dda_been_online
 
-    @cli_command()
-    @maybe_async()
-    def await_dda_available(self, timeout: int = 10):
-        start_time = datetime.now()
-        while (
-            not self.test_dda_available()
-            or (datetime.now() - start_time).seconds > timeout
-        ):
-            time.sleep(0.1)
-        return True
-
-    async def await_dda_available_async(self, timeout: int):
+    async def wait_until_healthy(self, timeout: float = 10):
         start_time = datetime.now()
         backoff = 1
         while True:
             try:
-                resp = await self.test_comms_async()
+                healthy = await self.health_check()
             except Exception as e:
                 log.error(f"Failed to get DDA comms: {e}")
-                resp = None
+                healthy = False
 
-            if resp is not None:
+            if healthy:
                 log.info("DDA is available.")
                 return True
 
@@ -145,168 +127,141 @@ class DeviceAgentInterface(GRPCInterface):
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, 1)
 
-    def add_subscription(self, channel_name: str, callback: MaybeAsyncCallback) -> None:
-        """Add a subscription to a channel.
+    def _ensure_stream(self, channel_name: str) -> None:
+        """Ensure a single event stream is running for this channel."""
+        if channel_name not in self._stream_tasks:
+            self._stream_tasks[channel_name] = asyncio.create_task(
+                self._run_channel_stream(channel_name)
+            )
 
-        This does not block, but will start a background task to asynchronously
-        invoke the callback when a new message is received on the given channel.
+    def add_event_callback(
+        self,
+        channel_name: str,
+        callback: Callable,
+        events: EventSubscription = EventSubscription.all,
+    ) -> None:
+        """Register a callback for events on a channel.
 
-        The callback may be a regular function or an async function.
+        The callback receives a single event argument, one of
+        ``MessageCreateEvent``, ``MessageUpdateEvent``, ``AggregateUpdateEvent``,
+        or ``OneShotMessage``, filtered by the ``events`` parameter.
 
-        Examples
-        --------
+        The channel name is accessible via the event payload itself.
 
-        >>> async def my_callback(name, data):
-        ...     print(f"Received data on {name}: {data}")
-        >>> self.device_agent.add_subscription("my_channel", my_callback)
+        Starts the event stream for the channel if not already running.
 
         Parameters
         ----------
         channel_name : str
             Name of channel to subscribe to.
         callback : Callable
-            A callback function that will be called when a message is received on the channel.
-            This callback should accept two parameters: channel_name, aggregate_data.
-            It may be a regular function or an async function.
+            An async callback ``(event) -> None``.
+        events : EventSubscription, optional
+            Which event types to deliver. Defaults to ``EventSubscription.all``.
         """
+        entry = (callback, events)
         try:
-            self._subscriptions[channel_name].append(callback)
+            self._event_callbacks[channel_name].append(entry)
         except KeyError:
-            self._subscriptions[channel_name] = [callback]
-            self._listeners[channel_name] = asyncio.create_task(
-                self.start_subscription_listener(channel_name)
-            )
+            self._event_callbacks[channel_name] = [entry]
 
-    async def start_subscription_listener(self, channel_name):
-        # """Start a subscription listener for the given channel.
-        #
-        # You should instead use the `add_subscription` method to add a subscription with a passed callback.
-        #
-        # This method will continually wait for updates from a channel,
-        # and re-try connections that fail after `self.time_between_connection_attempts` seconds.
-        # """
-        while True:
-            try:
-                log.debug(f"Starting subscription to channel: {channel_name}")
-                await self._subscribe_receive_channel_updates(channel_name)
-            except Exception as e:
-                log.error(
-                    f"Error starting subscription listener for {channel_name}: {e}",
-                    exc_info=e,
-                )
-                sys.stdout.flush()
-                sys.stderr.flush()
-                await asyncio.sleep(self.time_between_connection_attempts)
+        self._ensure_stream(channel_name)
 
-    async def _subscribe_receive_channel_updates(self, channel_name):
-        async with grpc.aio.insecure_channel(self.uri) as channel:
-            channel_stream = device_agent_pb2_grpc.deviceAgentStub(
-                channel
-            ).GetChannelSubscription(
-                device_agent_pb2.ChannelSubscriptionRequest(channel_name=channel_name)
-            )
-            while True:
+    @staticmethod
+    def _event_type_to_flag(event) -> EventSubscription | None:
+        if isinstance(event, OneShotMessage):
+            return EventSubscription.oneshot_message
+        elif isinstance(event, MessageCreateEvent):
+            return EventSubscription.message_create
+        elif isinstance(event, MessageUpdateEvent):
+            return EventSubscription.message_update
+        elif isinstance(event, AggregateUpdateEvent):
+            return EventSubscription.aggregate_update
+        return None
+
+    async def _run_channel_stream(self, channel_name: str):
+        """Single event stream per channel. Seeds aggregate cache, then distributes events."""
+        # Seed the aggregate cache (no callbacks fired — initial state is not an "event")
+        data = await self.get_channel_aggregate(channel_name)
+        if data is not None:
+            self._aggregates[channel_name] = data
+            self._synced_channels[channel_name] = True
+
+        async for event in self.stream_channel_events(channel_name):
+            # Update internal aggregate state on AggregateUpdate
+            if isinstance(event, AggregateUpdateEvent):
+                agg_data = event.aggregate.data if event.aggregate else {}
+                self._aggregates[channel_name] = agg_data
+                self._synced_channels[channel_name] = True
+                self.last_channel_message_ts[channel_name] = datetime.now()
+
+            # Determine which flag this event corresponds to
+            event_flag = self._event_type_to_flag(event)
+
+            # Distribute to matching registered callbacks
+            for callback, events in self._event_callbacks.get(channel_name, []):
+                if event_flag is None or event_flag not in events:
+                    continue
                 try:
-                    response: device_agent_pb2.ChannelSubscriptionResponse = (
-                        await channel_stream.read()
+                    asyncio.create_task(callback(event))
+                except Exception as e:
+                    log.error(
+                        f"Error dispatching event callback for {channel_name}: {e}",
+                        exc_info=e,
                     )
-                    log.debug(
-                        f"Received response from subscription request on {channel_name}: {str(response)[:120]}"
-                    )
-                    self.update_dda_status(response.response_header)
-                    if not response.response_header.success:
-                        raise RuntimeError(
-                            f"Failed to subscribe to channel {channel_name}: {response.response_header.response_message}"
-                        )
-
-                    log.debug(
-                        f"Calling callback with subscription response for {channel_name}..."
-                    )
-                    await self.recv_update_callback(channel_name, response)
-                except StopAsyncIteration:
-                    log.debug("Channel stream ended.")
-                    break
 
     async def stream_channel_events(self, channel_name: str):
+        backoff = 1
         while True:
-            async with grpc.aio.insecure_channel(self.uri) as channel:
-                pl = device_agent_pb2.ChannelEventSubscriptionRequest(
-                    channel_name=channel_name
-                )
-                channel_stream = device_agent_pb2_grpc.deviceAgentStub(
-                    channel
-                ).ChannelEventSubscription(pl)
+            try:
+                async with grpc.aio.insecure_channel(self.uri) as channel:
+                    pl = device_agent_pb2.ChannelEventSubscriptionRequest(
+                        channel_name=channel_name
+                    )
+                    channel_stream = device_agent_pb2_grpc.deviceAgentStub(
+                        channel
+                    ).ChannelEventSubscription(pl)
 
-                while True:
-                    try:
-                        response: device_agent_pb2.ChannelEventSubscriptionResponse = (
-                            await channel_stream.read()
-                        )
-                        log.debug(
-                            f"Received event response from subscription request on {channel_name}: {str(response)[:120]}"
-                        )
-                        if not response.response_header.success:
-                            raise RuntimeError(
-                                f"Failed to subscribe to channel {channel_name}: {response.response_header.response_message}"
+                    backoff = 1  # reset on successful connection
+                    while True:
+                        try:
+                            response: device_agent_pb2.ChannelEventSubscriptionResponse = await channel_stream.read()
+                            log.debug(
+                                f"Received event response from subscription request on {channel_name}: {str(response)[:120]}"
                             )
-
-                        match response.event_name:
-                            case "MessageCreate":
-                                yield MessageCreateEvent.from_dict(
-                                    MessageToDict(response.data)
-                                )
-                            case "AggregateUpdate":
-                                yield AggregateUpdateEvent.from_dict(
-                                    MessageToDict(response.data)
-                                )
-                            case "OneShotMessage":
-                                yield OneShotMessage.from_dict(
-                                    MessageToDict(response.data)
+                            if not response.response_header.success:
+                                raise RuntimeError(
+                                    f"Failed to subscribe to channel {channel_name}: {response.response_header.response_message}"
                                 )
 
-                    except StopAsyncIteration:
-                        log.debug("Channel stream ended.")
-                        break
+                            match response.event_name:
+                                case "MessageCreate":
+                                    yield MessageCreateEvent.from_dict(
+                                        MessageToDict(response.data)
+                                    )
+                                case "MessageUpdate":
+                                    yield MessageUpdateEvent.from_dict(
+                                        MessageToDict(response.data)
+                                    )
+                                case "AggregateUpdate":
+                                    yield AggregateUpdateEvent.from_dict(
+                                        MessageToDict(response.data)
+                                    )
+                                case "OneShotMessage":
+                                    yield OneShotMessage.from_dict(
+                                        MessageToDict(response.data)
+                                    )
 
-    async def recv_update_callback(self, channel_name, response):
-        log.debug(f"Received response from subscription request: {str(response)[:100]}")
-        try:
-            existing = self._aggregates[channel_name]
-        except KeyError:
-            data = await self.get_channel_aggregate_async(channel_name)
-        else:
-            diff = maybe_load_json(response.message.payload)
-            log.debug(
-                f"Applying diff to existing data for channel {channel_name}: {diff}"
-            )
-            data = copy.deepcopy(existing)
-            if diff:
-                data = apply_diff(data, diff)
-                log.debug(f"Applied diff result ({channel_name}): {data}")
-            # else:
-            #     log.debug(f"No diff found for channel {channel_name}. Skipping...")
-            #     return
-
-        if data in (None, "None"):
-            log.warning(f"Received empty data from channel {channel_name}")
-            data = {}
-            # return
-
-        self._aggregates[channel_name] = data
-        self._synced_channels[channel_name] = True
-        self.last_channel_message_ts[channel_name] = datetime.now()
-
-        log.debug(
-            f"Calling {len(self._subscriptions.get(channel_name, []))} "
-            f"callbacks for channel {channel_name} with data: {str(data)[:100]}"
-        )
-        _tasks = [
-            await call_maybe_async(
-                callback, channel_name, copy.deepcopy(data), as_task=True
-            )
-            for callback in self._subscriptions.get(channel_name, [])
-        ]
-        # await asyncio.gather(*tasks)
+                        except StopAsyncIteration:
+                            log.debug("Channel event stream ended.")
+                            break
+            except Exception as e:
+                log.error(
+                    f"Error in channel event stream for {channel_name}: {e}",
+                    exc_info=e,
+                )
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, self.time_between_connection_attempts)
 
     def process_response(self, stub_call: str, response, *args, **kwargs):
         self.update_dda_status(response.response_header)
@@ -343,13 +298,13 @@ class DeviceAgentInterface(GRPCInterface):
         bool
             True if the channel is synced, False otherwise.
         """
-        if channel_name not in self._subscriptions:
+        if channel_name not in self._event_callbacks:
             return False
         if channel_name not in self._synced_channels:
             return False
         return self._synced_channels[channel_name]
 
-    async def wait_for_channels_sync_async(
+    async def wait_for_channels_sync(
         self, channel_names: list[str], timeout: int = 5, inter_wait: float = 0.2
     ) -> bool:
         """Wait for all specified channels to be synced with DDA.
@@ -382,16 +337,16 @@ class DeviceAgentInterface(GRPCInterface):
         return True
 
     @cli_command()
-    @maybe_async()
-    def get_channel_aggregate(self, channel_name: str) -> str | dict[str, Any] | None:
+    async def get_channel_aggregate(self, channel_name: str) -> dict[str, Any] | None:
         """Fetch a channel's current aggregate payload.
 
-        .. note:: This method can be called in both sync and asynchronous contexts.
+        If the channel has been subscribed to via :meth:`add_event_callback`, the cached
+        aggregate is returned. Otherwise, a gRPC call is made to fetch it.
 
         Examples
         --------
         >>> aggregate = await self.device_agent.get_channel_aggregate("my_channel")
-        >>> print(aggregate)  # This will print the aggregate data as a dictionary or string.
+        >>> print(aggregate)
 
         Parameters
         ----------
@@ -400,33 +355,24 @@ class DeviceAgentInterface(GRPCInterface):
 
         Returns
         -------
-        dict | str, optional
+        dict, optional
             Aggregate data from channel. If the request fails for any reason, this will return `None`.
         """
+        if channel_name in self._aggregates:
+            return copy.deepcopy(self._aggregates[channel_name])
+
         log.debug(f"Getting channel aggregate for {channel_name}")
-        resp = self.make_request(
-            "GetChannelDetails",
-            device_agent_pb2.ChannelDetailsRequest(channel_name=channel_name),
+        resp = await self.make_request(
+            "GetAggregate",
+            device_agent_pb2.GetAggregateRequest(channel_name=channel_name),
         )
         if not resp:
             return None
 
-        return maybe_load_json(resp.channel.aggregate)
-
-    async def get_channel_aggregate_async(self, channel_name):
-        log.debug(f"Getting channel aggregate (async) for {channel_name}")
-        resp = await self.make_request_async(
-            "GetChannelDetails",
-            device_agent_pb2.ChannelDetailsRequest(channel_name=channel_name),
-        )
-        if not resp:
-            return
-
-        return maybe_load_json(resp.channel.aggregate)
+        return MessageToDict(resp.aggregate.data)
 
     @cli_command()
-    @maybe_async()
-    def publish_to_channel(
+    async def publish_to_channel(
         self,
         channel_name: str,
         message: dict | str,
@@ -435,48 +381,25 @@ class DeviceAgentInterface(GRPCInterface):
     ) -> bool:
         """Publish a message to a channel.
 
-        .. note:: This method can be called in both sync and asynchronous contexts.
-
         There is a special case with the `max_age` parameter where you can set it to `-1` to publish the message immediately.
         This is useful for ensuring that the message is sent to the cloud immediately and won't be bundled in with other messages.
         A good example is when you want to clear the UI. However, use this sparingly!
 
-        Examples
-        --------
-
-        Simple example::
-
-        >>> result = await self.device_agent.publish_to_channel("my_channel", {"foo": "bar"})
-        >>> print(f"Publishing the message was {'successful' if result else 'unsuccessful'}.")
-
-
-        Publish to the cloud in 5 seconds::
-
-        >>> result = await self.device_agent.publish_to_channel("my_channel", {"foo": "bar"}, max_age=5)
-        >>> print(f"Publishing the message was {'successful' if result else 'unsuccessful'}.")
-
-        Publish to the cloud immediately and save to the log::
-
-        >>> result = await self.device_agent.publish_to_channel("my_channel", {"foo": "bar"}, record_log=True, max_age=-1)
-        >>> print(f"Publishing the message was {'successful' if result else 'unsuccessful'}.")
-
-
-
         Parameters
         ----------
         channel_name : str
-            Name of channel to publish data too.
+            Name of channel to publish data to.
         message : dict or str
-            The data to send either in a dictionary or string format
-        record_log :
-            Whether to save to the log
+            The data to send either in a dictionary or string format.
+        record_log : bool
+            Whether to save to the log.
         max_age : float
-            The maximum age of the message before publishing to the cloud
+            The maximum age of the message before publishing to the cloud.
 
         Returns
         -------
         bool
-            Whether publishing was successful
+            Whether publishing was successful.
         """
         if isinstance(message, dict):
             message = json.dumps(message)
@@ -488,78 +411,13 @@ class DeviceAgentInterface(GRPCInterface):
             save_log=record_log,
             max_age_f=max_age,
         )
-        resp = self.make_request("WriteToChannel", req)
+        resp = await self.make_request("WriteToChannel", req)
         return resp and resp.response_header.success or False
-
-    async def publish_to_channel_async(
-        self,
-        channel_name: str,
-        message: dict | str,
-        record_log: bool = True,
-        max_age: float = None,
-    ):
-        if isinstance(message, dict):
-            message = json.dumps(message)
-
-        req = device_agent_pb2.ChannelWriteRequest(
-            header=device_agent_pb2.RequestHeader(app_id=self.app_key),
-            channel_name=channel_name,
-            message_payload=message,
-            save_log=record_log,
-            max_age_f=max_age,
-        )
-        resp = await self.make_request_async("WriteToChannel", req)
-        return resp and resp.response_header.success or False
-
-    @staticmethod
-    def _parse_get_token_response(
-        response,
-    ) -> tuple[str, datetime, str] | None:
-        if response is None:
-            return None
-
-        try:
-            return (
-                response.token,
-                datetime.fromtimestamp(float(response.valid_until)),
-                response.endpoint,
-            )
-        except (ValueError, Exception) as e:
-            logging.error("Failed to parse output from get_temp_token", exc_info=e)
-            return None
-
-    @cli_command()
-    @maybe_async()
-    def get_temp_token(self) -> tuple[str, datetime, str] | None:
-        """Get a temporary API token.
-
-        .. deprecated:: 0.4.0
-            WSS Tokens are now valid for API calls. Use that instead.
-
-        .. note:: This method can be called in both sync and asynchronous contexts.
-
-        Returns
-        -------
-        tuple, optional
-            (token, expire_time, url_endpoint) if the request succeeds, otherwise None.
-        """
-        resp = self.make_request(
-            "GetTempAPIToken", device_agent_pb2.TempAPITokenRequest()
-        )
-        return self._parse_get_token_response(resp)
-
-    async def get_temp_token_async(
-        self,
-    ) -> tuple[str, datetime, str] | None:
-        resp = await self.make_request_async(
-            "GetTempAPIToken", device_agent_pb2.TempAPITokenRequest()
-        )
-        return self._parse_get_token_response(resp)
 
     async def get_turn_credential(
         self,
     ) -> TurnCredential:
-        resp = await self.make_request_async(
+        resp = await self.make_request(
             "GetTurnCredential",
             device_agent_pb2.TurnCredentialRequest(
                 header=device_agent_pb2.RequestHeader(app_id=self.app_key)
@@ -586,7 +444,7 @@ class DeviceAgentInterface(GRPCInterface):
             files=[file.to_proto() for file in files],
             timestamp=int(timestamp),
         )
-        resp = await self.make_request_async("CreateMessage", req)
+        resp = await self.make_request("CreateMessage", req)
         return resp.message_id
 
     async def update_message(
@@ -611,12 +469,13 @@ class DeviceAgentInterface(GRPCInterface):
             clear_attachments=clear_attachments,
             replace_data=replace_data,
         )
-        resp = await self.make_request_async("UpdateMessage", req)
+        resp = await self.make_request("UpdateMessage", req)
         # fixme: some proper error handling
         if resp:
             return Message.from_proto(resp.message)
         else:
             log.info(f"Failed to update message: {resp}...")
+            raise RuntimeError(f"Failed to update message: {resp}")
 
     async def update_aggregate(
         self,
@@ -639,87 +498,38 @@ class DeviceAgentInterface(GRPCInterface):
             replace_data=replace_data,
             max_age_secs=max_age_secs,
         )
-        resp = await self.make_request_async("UpdateAggregate", req)
+        resp = await self.make_request("UpdateAggregate", req)
         return Aggregate.from_proto(resp.aggregate)
 
     async def close(self):
-        for listener in self._listeners.values():
-            listener.cancel()
+        for task in self._stream_tasks.values():
+            task.cancel()
+        self._stream_tasks.clear()
         logging.info("Closing device agent interface...")
-
-    def test_dda_available(self):
-        try:
-            self.test_comms()
-            return True
-        except Exception as e:
-            log.error(f"Failed to get DDA comms: {e}")
-            return False
-
-    @cli_command()
-    def test_comms(self, message: str = "Comms Check Message") -> str | None:
-        """Test connection by sending a basic echo response to device agent container.
-
-        Parameters
-        ----------
-        message : str
-            Message to send to device agent to have echo'd as a response
-
-        Returns
-        -------
-        str
-            The response from device agent.
-        """
-        return self.make_request(
-            "TestComms",
-            device_agent_pb2.TestCommsRequest(message=message),
-            response_field="response",
-        )
-
-    async def test_comms_async(
-        self, message: str = "Comms Check Message"
-    ) -> str | None:
-        return await self.make_request_async(
-            "TestComms",
-            device_agent_pb2.TestCommsRequest(message=message),
-            response_field="response",
-        )
 
     @cli_command()
     def listen_channel(self, channel_name: str) -> None:
-        """Listen to channel printing the output to the console.
+        """Listen to channel events, printing the output to the console.
 
         Parameters
         ----------
         channel_name : str
-            Name of channel to get aggregate from.
-
-        Returns
-        -------
-        None
-            Response is printed to stdout directly
+            Name of channel to listen to.
         """
         try:
             asyncio.get_running_loop()
         except RuntimeError:
-            asyncio.run(self.run_channel_listening(channel_name))
+            asyncio.run(self._run_channel_listening(channel_name))
         else:
-            asyncio.create_task(self.run_channel_listening(channel_name))
+            asyncio.create_task(self._run_channel_listening(channel_name))
 
-    async def run_channel_listening(self, channel_name: str):
-        def callback(name, aggregate):
-            print(name, json.dumps(aggregate))
-            sys.stdout.flush()
-
-        self.add_subscription(channel_name, callback)
-
+    async def _run_channel_listening(self, channel_name: str):
         try:
-            while True:
-                await asyncio.sleep(1)
+            async for event in self.stream_channel_events(channel_name):
+                print(channel_name, event)
+                sys.stdout.flush()
         except asyncio.CancelledError:
             await self.close()
-
-
-device_agent_iface = DeviceAgentInterface
 
 
 class MockDeviceAgentInterface(DeviceAgentInterface):
@@ -735,51 +545,34 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         self.is_dda_available = True
         self.has_dda_been_online = True
 
-    async def wait_for_channels_sync_async(
+    async def wait_for_channels_sync(
         self, channel_names: list[str], timeout: int = 5, inter_wait: float = 0.2
     ):
         for channel in channel_names:
-            await self.recv_update_callback(
-                channel,
-                device_agent_pb2.ChannelSubscriptionResponse(
-                    channel=device_agent_pb2.ChannelDetails(
-                        channel_name=channel,
-                        aggregate=json.dumps(self.channels.get(channel, {})),
-                    )
-                ),
-            )
+            data = self.channels.get(channel, {})
+            self._aggregates[channel] = data
+            self._synced_channels[channel] = True
         return True
 
-    async def recv_update_callback(self, channel_name: str, response):
-        if channel_name not in self._aggregates:
-            self._aggregates[channel_name] = {}
-        super(MockDeviceAgentInterface, self).recv_update_callback(
-            channel_name, response
-        )
+    async def _run_channel_stream(self, channel_name: str):
+        # No-op in mock — no real event stream to listen to
+        return
 
-    async def start_subscription_listener(self, channel_name):
-        return True
-
-    def get_channel_aggregate(self, channel_name):
+    async def get_channel_aggregate(self, channel_name):
         return self.channels.get(channel_name, {})
 
-    async def await_dda_available_async(self, timeout):
+    async def wait_until_healthy(self, timeout: float = 10):
         return True
 
-    async def make_request_async(self, *args, **kwargs):
-        raise NotImplementedError("make_request_async is not implemented")
-
-    def make_request(self, *args, **kwargs):
+    async def make_request(self, *args, **kwargs):
         raise NotImplementedError("make_request is not implemented")
 
-    async def publish_to_channel_async(self, *args, **kwargs):
-        return self.publish_to_channel(*args, **kwargs)
+    async def update_aggregate(self, channel_name, data, **kwargs):
+        existing = self.channels.get(channel_name, {})
+        existing.update(data)
+        self.channels[channel_name] = existing
+        self._aggregates[channel_name] = existing
+        return Aggregate(data=existing, attachments=[], last_updated=None)
 
-    def publish_to_channel(
-        self,
-        channel_name: str,
-        message: dict | str,
-        record_log: bool = True,
-        max_age: int = None,
-    ):
-        self.channels[channel_name] = message
+    async def create_message(self, channel_name, data, **kwargs):
+        return 0

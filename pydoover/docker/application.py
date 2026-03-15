@@ -8,7 +8,8 @@ from collections import deque
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, Awaitable, Callable
+from collections.abc import Callable, Coroutine
+from typing import Any, TYPE_CHECKING
 
 try:
     from aiohttp.web import Response, Server, ServerRunner, TCPSite
@@ -18,14 +19,21 @@ else:
     RUN_HEALTHCHECK = True
 
 from .device_agent import DeviceAgentInterface
+from .device_agent.models import (
+    Aggregate,
+    EventSubscription,
+    File,
+    Message,
+    MessageCreateEvent,
+    MessageUpdateEvent,
+    OneShotMessage,
+)
 from .modbus import ModbusInterface
 from .platform import PlatformInterface
 
+from ..cloud.processor.types import AggregateUpdateEvent
 from ..ui import UIManager
 from ..utils import (
-    call_maybe_async,
-    get_is_async,
-    maybe_async,
     setup_logging as utils_setup_logging,
     apply_diff,
     generate_diff,
@@ -35,8 +43,6 @@ if TYPE_CHECKING:
     from ..config import Schema
 
 log = logging.getLogger(__name__)
-
-MaybeAsyncMainLoopMethod = Callable[[], Awaitable[None]] | Callable[[], None]
 
 TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
 TAG_CHANNEL_NAME = "tag_values"
@@ -91,7 +97,6 @@ class Application:
         self,
         config: "Schema",
         app_key: str = None,
-        is_async: bool = None,
         device_agent: DeviceAgentInterface = None,
         platform_iface: PlatformInterface = None,
         modbus_iface: ModbusInterface = None,
@@ -110,27 +115,29 @@ class Application:
         else:
             self._config_fp = None
 
-        self.device_agent = device_agent or DeviceAgentInterface(app_key, "", is_async)
-        self.platform_iface = platform_iface or PlatformInterface(app_key, "", is_async)
-        self.modbus_iface = modbus_iface or ModbusInterface(
-            app_key, "", is_async, config
-        )
+        self.device_agent = device_agent or DeviceAgentInterface(app_key, "")
+        self.platform_iface = platform_iface or PlatformInterface(app_key, "")
+        self.modbus_iface = modbus_iface or ModbusInterface(app_key, "", config)
 
         self.ui_manager = UIManager(
             app_key=app_key,
             client=self.device_agent,
-            is_async=is_async,
         )
 
         self.app_key = app_key
         self.app_display_name = ""
 
-        self._is_async = get_is_async(is_async)
         self._ready = asyncio.Event()
 
         self._tag_values = {}
         self._tag_subscriptions = {}
         self._tag_ready = asyncio.Event()
+
+        self._pending_tag_aggregate = {}
+        self._pending_tag_log = {}
+        self._tags_dirty = False
+        self._last_tag_log_time: float = 0.0
+        self.tag_log_interval: float = TAG_CLOUD_MAX_AGE
 
         self._shutdown_at = None
         self.force_log_on_shutdown = False
@@ -161,7 +168,7 @@ class Application:
         else:
             return Response(text="ERROR", status=503)
 
-    async def _on_deployment_config_update(self, _, config: dict[str, Any]):
+    async def _on_deployment_config_update(self, config: dict[str, Any]):
         try:
             app_config = config["applications"][self.app_key]
         except KeyError:
@@ -249,24 +256,30 @@ class Application:
         log.info(
             f"Waiting for DDA to start with a timeout of {self.dda_startup_timeout} seconds."
         )
-        await self.device_agent.await_dda_available_async(self.dda_startup_timeout)
+        await self.device_agent.wait_until_healthy(self.dda_startup_timeout)
 
         if self._config_fp is not None:
             data = json.loads(self._config_fp.read_text())
             self.config._inject_deployment_config(data)
         else:
-            self.device_agent.add_subscription(
-                "deployment_config", self._on_deployment_config_update
+            self.device_agent.add_event_callback(
+                "deployment_config",
+                self._wrap_aggregate_callback(self._on_deployment_config_update),
+                EventSubscription.aggregate_update,
             )
-            await self.device_agent.wait_for_channels_sync_async(["deployment_config"])
+            await self.device_agent.wait_for_channels_sync(["deployment_config"])
+            # Fetch initial deployment config from the aggregate cache
+            config_data = await self.device_agent.get_channel_aggregate(
+                "deployment_config"
+            )
+            if config_data:
+                await self._on_deployment_config_update(config_data)
 
         await self.modbus_iface.setup()
 
         try:
             await self._setup()
-            ## Don't run setup in executor, to give the user the
-            # ability to set up async stuff in the setup function
-            await call_maybe_async(self.setup, in_executor=False)
+            await self.setup()
         except Exception as e:
             log.error(f"Error in setup function: {e}", exc_info=e)
             log.warning(
@@ -296,7 +309,8 @@ class Application:
 
             try:
                 await self._main_loop()
-                await call_maybe_async(self.main_loop)
+                await self.main_loop()
+                await self._flush_tags()
             except Exception as e:
                 log.error(f"Error in loop function: {e}", exc_info=e)
                 log.warning(
@@ -405,6 +419,126 @@ class Application:
 
     ## Agent Interface Functions (DDA)
 
+    async def on_message_create(self, event: MessageCreateEvent):
+        """Called when a new message is created on a subscribed channel.
+
+        Override this method in your application to handle message creation events.
+
+        You do **not** need to call ``super().on_message_create()`` — this method does nothing by default.
+
+        Parameters
+        ----------
+        event : MessageCreateEvent
+            The message creation event.
+        """
+        pass
+
+    async def on_message_update(self, event: MessageUpdateEvent):
+        """Called when a message is updated on a subscribed channel.
+
+        Override this method in your application to handle message update events.
+
+        You do **not** need to call ``super().on_message_update()`` — this method does nothing by default.
+
+        Parameters
+        ----------
+        event : MessageUpdateEvent
+            The message update event.
+        """
+        pass
+
+    async def on_oneshot_message(self, event: OneShotMessage):
+        """Called when a one-shot message is received on a subscribed channel.
+
+        Override this method in your application to handle one-shot message events.
+
+        You do **not** need to call ``super().on_oneshot_message()`` — this method does nothing by default.
+
+        Parameters
+        ----------
+        event : OneShotMessage
+            The one-shot message event.
+        """
+        pass
+
+    async def on_aggregate_update(self, event: AggregateUpdateEvent):
+        """Called when the aggregate is updated on a subscribed channel.
+
+        Override this method in your application to handle aggregate update events.
+
+        You do **not** need to call ``super().on_aggregate_update()`` — this method does nothing by default.
+
+        Parameters
+        ----------
+        event : AggregateUpdateEvent
+            The aggregate update event.
+        """
+        pass
+
+    async def subscribe(
+        self,
+        channel_name: str,
+        events: EventSubscription = EventSubscription.all,
+    ):
+        """Subscribe to events on a channel.
+
+        When events are received on the channel, the appropriate ``on_*`` callback methods
+        will be called (e.g. :meth:`on_message_create`, :meth:`on_aggregate_update`).
+
+        You can subscribe to specific event types using the ``events`` parameter, or
+        subscribe to all events (the default).
+
+        Examples
+        --------
+
+        Subscribe to all events on a channel::
+
+            async def setup(self):
+                await self.subscribe("my_channel")
+
+        Subscribe to only message creation events::
+
+            async def setup(self):
+                await self.subscribe("my_channel", EventSubscription.message_create)
+
+        Combine event types::
+
+            async def setup(self):
+                await self.subscribe(
+                    "my_channel",
+                    EventSubscription.message_create | EventSubscription.aggregate_update,
+                )
+
+        Parameters
+        ----------
+        channel_name : str
+            The name of the channel to subscribe to.
+        events : EventSubscription, optional
+            Which event types to subscribe to. Defaults to ``EventSubscription.all``.
+        """
+        self.device_agent.add_event_callback(channel_name, self._dispatch_event, events)
+
+    @staticmethod
+    def _wrap_aggregate_callback(callback):
+        """Wrap a ``(data_dict)`` callback for use with ``add_event_callback``."""
+
+        async def _wrapper(event):
+            data = event.aggregate.data if event.aggregate else {}
+            await callback(data)
+
+        return _wrapper
+
+    async def _dispatch_event(self, event):
+        """Dispatch an event to the appropriate user-facing handler."""
+        if isinstance(event, OneShotMessage):
+            await self.on_oneshot_message(event)
+        elif isinstance(event, MessageCreateEvent):
+            await self.on_message_create(event)
+        elif isinstance(event, MessageUpdateEvent):
+            await self.on_message_update(event)
+        elif isinstance(event, AggregateUpdateEvent):
+            await self.on_aggregate_update(event)
+
     def get_is_dda_available(self):
         return self.device_agent.get_is_dda_available()
 
@@ -414,21 +548,114 @@ class Application:
     def get_has_dda_been_online(self):
         return self.device_agent.get_has_dda_been_online()
 
-    def subscribe_to_channel(
+    async def create_message(
         self,
         channel_name: str,
-        callback: (
-            Callable[[str, dict[str, Any]], Awaitable[Any]]
-            | Callable[[str, dict[str, Any]], Any]
-        ),
-    ):
-        return self.device_agent.add_subscription(channel_name, callback)
+        data: dict[str, Any],
+        files: list[File] = None,
+        timestamp: datetime = None,
+    ) -> int:
+        """Create a new message on a channel.
 
-    def publish_to_channel(self, channel_name: str, data: str | dict[str, Any]):
-        return self.device_agent.publish_to_channel(channel_name, data)
+        Parameters
+        ----------
+        channel_name : str
+            The name of the channel to create the message on.
+        data : dict
+            The message data.
+        files : list[File], optional
+            Files to attach to the message.
+        timestamp : datetime, optional
+            The timestamp for the message. Defaults to now (UTC).
 
-    def get_channel_aggregate(self, channel_name: str):
-        return self.device_agent.get_channel_aggregate(channel_name)
+        Returns
+        -------
+        int
+            The ID of the created message.
+        """
+        return await self.device_agent.create_message(
+            channel_name, data, files=files, timestamp=timestamp
+        )
+
+    async def update_message(
+        self,
+        channel_name: str,
+        message_id: int,
+        data: dict[str, Any],
+        files: list[File] = None,
+        replace_data: bool = False,
+        clear_attachments: bool = False,
+    ) -> Message:
+        """Update an existing message on a channel.
+
+        Parameters
+        ----------
+        channel_name : str
+            The name of the channel the message belongs to.
+        message_id : int
+            The ID of the message to update.
+        data : dict
+            The updated message data. By default this is merged with existing data.
+        files : list[File], optional
+            Files to attach to the message.
+        replace_data : bool, optional
+            If True, replace the message data entirely instead of merging. Defaults to False.
+        clear_attachments : bool, optional
+            If True, clear existing attachments before adding new ones. Defaults to False.
+
+        Returns
+        -------
+        Message
+            The updated message.
+        """
+        return await self.device_agent.update_message(
+            channel_name,
+            message_id,
+            data,
+            files=files,
+            replace_data=replace_data,
+            clear_attachments=clear_attachments,
+        )
+
+    async def update_aggregate(
+        self,
+        channel_name: str,
+        data: dict[str, Any],
+        files: list[File] = None,
+        clear_attachments: bool = False,
+        replace_data: bool = False,
+        max_age_secs: float = None,
+    ) -> Aggregate:
+        """Update the aggregate data on a channel.
+
+        Parameters
+        ----------
+        channel_name : str
+            The name of the channel to update the aggregate on.
+        data : dict
+            The aggregate data. By default this is merged with existing data.
+        files : list[File], optional
+            Files to attach to the aggregate.
+        clear_attachments : bool, optional
+            If True, clear existing attachments before adding new ones. Defaults to False.
+        replace_data : bool, optional
+            If True, replace the aggregate data entirely instead of merging. Defaults to False.
+        max_age_secs : float, optional
+            Maximum age in seconds before the aggregate is published to the cloud.
+
+        Returns
+        -------
+        Aggregate
+            The updated aggregate.
+        """
+        return await self.device_agent.update_aggregate(
+            channel_name,
+            data,
+            files=files,
+            clear_attachments=clear_attachments,
+            replace_data=replace_data,
+            max_age_secs=max_age_secs,
+        )
 
     ## UI Manager Functions
 
@@ -544,7 +771,7 @@ class Application:
         except (KeyError, TypeError):
             return False
 
-    async def _on_tag_update(self, _, tag_values: dict[str, Any]):
+    async def _on_tag_update(self, tag_values: dict[str, Any]):
         diff = generate_diff(self._tag_values, tag_values, do_delete=False)
         self._tag_values = tag_values or {}
         await self.fulfill_tag_subscriptions(diff)
@@ -571,7 +798,7 @@ class Application:
             # shutdown should be in the future and not already scheduled
             log.info(f"Shutdown scheduled at {dt.strftime('%Y-%m-%d %H:%M:%S')}")
             self._shutdown_at = dt
-            await call_maybe_async(self.on_shutdown_at, dt)
+            await self.on_shutdown_at(dt)
 
     async def fulfill_tag_subscriptions(self, diff):
         if diff is None or len(diff) == 0:
@@ -579,9 +806,7 @@ class Application:
 
         async def _wrap_callback(callback, tag_key, new_value):
             try:
-                await asyncio.wait_for(
-                    call_maybe_async(callback, tag_key, new_value), timeout=1
-                )
+                await asyncio.wait_for(callback(tag_key, new_value), timeout=1)
             except Exception as e:
                 log.exception(f"Error in {callback.__name__}: {e}", exc_info=e)
 
@@ -604,8 +829,7 @@ class Application:
     def subscribe_to_tag(
         self,
         tag_key: str,
-        callback: Callable[[str, dict[str, Any]], Awaitable[Any]]
-        | Callable[[str, dict[str, Any]], Any],
+        callback: Callable[[str, Any], Coroutine],
         app_key: str = None,
         global_tag: bool = False,
     ):
@@ -690,7 +914,6 @@ class Application:
             log.debug(f"Global tag {tag_key} not found in current tags")
             return default
 
-    @maybe_async()
     def set_tag(
         self,
         tag_key: str,
@@ -702,7 +925,8 @@ class Application:
 
         This method sets a tag value for a specific app. If you want to set a global tag, use :meth:`set_global_tag` instead.
 
-        .. note:: This method can be called in both sync and asynchronous contexts.
+        Tag updates are accumulated and flushed to the aggregate once per main loop cycle.
+        Call :meth:`flush_tags` to force an immediate flush.
 
         Examples
         --------
@@ -724,40 +948,18 @@ class Application:
             {tag_key: value}, app_key=app_key, only_if_changed=only_if_changed
         )
 
-    async def set_tag_async(
-        self,
-        tag_key: str,
-        value: Any,
-        app_key: str = None,
-        only_if_changed: bool = True,
-    ) -> None:
-        await self._do_set_tags_async(
-            {tag_key: value}, app_key=app_key, only_if_changed=only_if_changed
-        )
-
-    @maybe_async()
     def set_tags(
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
         """Set multiple tags at once."""
         self._do_set_tags(tags, app_key=app_key, only_if_changed=only_if_changed)
 
-    async def set_tags_async(
-        self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
-    ) -> None:
-        await self._do_set_tags_async(
-            tags, app_key=app_key, only_if_changed=only_if_changed
-        )
-
-    @maybe_async()
     def set_global_tag(
         self, tag_key: str, value: Any, only_if_changed: bool = True
     ) -> None:
         """Set a global tag value.
 
         As in :meth:`get_global_tag`, global tags are not specific to an app, but are shared across all apps and should be used sparingly as such.
-
-        .. note:: This method can be called in both sync and asynchronous contexts.
 
         Examples
         --------
@@ -780,17 +982,6 @@ class Application:
             only_if_changed=only_if_changed,
         )
 
-    async def set_global_tag_async(
-        self, tag_key: str, value: Any, only_if_changed: bool = True
-    ) -> None:
-        """Set a global tag value asynchronously. This is a convenience method for setting global tags."""
-        await self._do_set_tags_async(
-            {tag_key: value},
-            app_key=None,
-            is_global=True,
-            only_if_changed=only_if_changed,
-        )
-
     def _do_set_tags(
         self,
         tags: dict[str, Any],
@@ -805,29 +996,8 @@ class Application:
                 app_key = self.app_key
             data = {app_key: tags}
 
-        if only_if_changed:
-            diff = generate_diff(self._tag_values, data, do_delete=False)
-            if len(diff) == 0:
-                return
-
-        apply_diff(self._tag_values, data, clone=False)
-        self.device_agent.publish_to_channel(
-            TAG_CHANNEL_NAME, data, max_age=TAG_CLOUD_MAX_AGE, record_log=True
-        )
-
-    async def _do_set_tags_async(
-        self,
-        tags: dict[str, Any],
-        app_key: str | None,
-        is_global: bool = False,
-        only_if_changed: bool = True,
-    ):
-        if is_global:
-            data = tags
-        else:
-            if app_key is None:
-                app_key = self.app_key
-            data = {app_key: tags}
+        # Always track for logging (even if value unchanged)
+        apply_diff(self._pending_tag_log, data, clone=False)
 
         if only_if_changed:
             diff = generate_diff(self._tag_values, data, do_delete=False)
@@ -835,24 +1005,57 @@ class Application:
                 return
 
         apply_diff(self._tag_values, data, clone=False)
-        await self.device_agent.publish_to_channel_async(
-            TAG_CHANNEL_NAME, data, max_age=TAG_CLOUD_MAX_AGE, record_log=True
-        )
+        apply_diff(self._pending_tag_aggregate, data, clone=False)
+        self._tags_dirty = True
+
+    async def _flush_tags(self):
+        """Flush pending tag updates to the aggregate and optionally log a message."""
+        if self._tags_dirty:
+            data = self._pending_tag_aggregate
+            self._pending_tag_aggregate = {}
+            self._tags_dirty = False
+
+            await self.device_agent.update_aggregate(TAG_CHANNEL_NAME, data)
+
+        now = time.time()
+        if self._pending_tag_log and (
+            now - self._last_tag_log_time >= self.tag_log_interval
+        ):
+            log_data = self._pending_tag_log
+            self._pending_tag_log = {}
+            self._last_tag_log_time = now
+
+            await self.device_agent.create_message(TAG_CHANNEL_NAME, log_data)
+
+    async def flush_tags(self):
+        """Force an immediate flush of all pending tag updates and log a message.
+
+        By default, tag aggregate updates are flushed once per main loop cycle,
+        and tag log messages are created at most once per :attr:`tag_log_interval` seconds.
+
+        Call this method to force both an immediate aggregate update and a log message,
+        regardless of timing.
+        """
+        if self._tags_dirty:
+            data = self._pending_tag_aggregate
+            self._pending_tag_aggregate = {}
+            self._tags_dirty = False
+
+            await self.device_agent.update_aggregate(TAG_CHANNEL_NAME, data)
+
+        if self._pending_tag_log:
+            log_data = self._pending_tag_log
+            self._pending_tag_log = {}
+            self._last_tag_log_time = time.time()
+
+            await self.device_agent.create_message(TAG_CHANNEL_NAME, log_data)
 
     ## Power Manager Functions
 
-    @maybe_async()
     def request_shutdown(self) -> None:
-        """Request a system shutdown
-
-        .. note:: This method can be called in both sync and asynchronous contexts.
-        """
+        """Request a system shutdown."""
         log.info("Requesting shutdown")
         self.set_tag("shutdown_requested", True)
-
-    async def request_shutdown_async(self) -> None:
-        log.info("Requesting shutdown")
-        await self.set_tag_async("shutdown_requested", True)
 
     async def on_shutdown_at(self, dt: datetime) -> None:
         """Callback for when a shutdown is scheduled.
@@ -922,18 +1125,26 @@ class Application:
         log.info(f"Setting up internal app: {self.name}")
         self.ui_manager.register_callbacks(self)
         self.ui_manager.set_display_name(self.app_display_name)
-        self.device_agent.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
+        self.device_agent.add_event_callback(
+            TAG_CHANNEL_NAME,
+            self._wrap_aggregate_callback(self._on_tag_update),
+            EventSubscription.aggregate_update,
+        )
 
         if self.test_mode:
             ## Quit out of setup if we are in test mode.
             return
 
+        # Fetch initial tag values from the aggregate cache (seeded by _run_channel_stream)
+        await self.device_agent.wait_for_channels_sync([TAG_CHANNEL_NAME], timeout=10)
+        tag_data = await self.device_agent.get_channel_aggregate(TAG_CHANNEL_NAME)
+        if tag_data:
+            self._tag_values = tag_data
+            self._tag_ready.set()
+        else:
+            log.warning("No initial tag values available from DDA")
+
         await self.ui_manager.clear_ui_async()
-        try:
-            # wait for tag values to sync from DDA - but only for 10sec.
-            await asyncio.wait_for(self._tag_ready.wait(), timeout=10.0)
-        except TimeoutError:
-            log.warning("Timed out waiting for tag values to be set")
 
     async def _main_loop(self):
         log.debug(f"Running internal main_loop: {self.name}")
@@ -947,7 +1158,7 @@ class Application:
                 )
                 resp = False
 
-            await self.set_tag_async("shutdown_check_ok", resp)
+            self.set_tag("shutdown_check_ok", resp)
 
         await self._update_ui()
 
@@ -1098,10 +1309,6 @@ def run_app(
         healthcheck_port,
     ) = parse_args()
 
-    user_is_async = asyncio.iscoroutinefunction(
-        app.setup
-    ) or asyncio.iscoroutinefunction(app.main_loop)
-    is_async = get_is_async(user_is_async)
     if setup_logging:
         utils_setup_logging(debug=debug, formatter=log_formatter, filters=log_filters)
 
@@ -1113,7 +1320,6 @@ def run_app(
         app.ui_manager,
     ):
         inst.app_key = app_key
-        inst._is_async = is_async
 
     app.platform_iface.uri = plt_uri
     app.modbus_iface.uri = modbus_uri
@@ -1152,19 +1358,14 @@ def run_app2(
         healthcheck_port,
     ) = parse_args()
 
-    user_is_async = asyncio.iscoroutinefunction(
-        app_cls.setup
-    ) or asyncio.iscoroutinefunction(app_cls.main_loop)
-    is_async = get_is_async(user_is_async)
     utils_setup_logging(debug)
 
     app = app_cls(
         config,
         app_key,
-        is_async,
-        platform_iface=plt_iface_cls(app_key, plt_uri, is_async),
-        modbus_iface=mb_iface_cls(app_key, modbus_uri, is_async, config),
-        device_agent=dda_iface_cls(app_key, dda_uri, is_async),
+        platform_iface=plt_iface_cls(app_key, plt_uri),
+        modbus_iface=mb_iface_cls(app_key, modbus_uri, config),
+        device_agent=dda_iface_cls(app_key, dda_uri),
         config_fp=config_fp,
         healthcheck_port=healthcheck_port,
     )
