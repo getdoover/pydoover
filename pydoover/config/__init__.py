@@ -924,3 +924,20 @@ class ApplicationPosition(Integer):
             **kwargs,
         )
         self._name = "dv-app-position"
+
+
+class LLMAPIKey(String):
+    def __init__(
+        self,
+        display_name: str = "LLM API Key",
+        *,
+        description: str = "API key for the LLM service.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            hidden=True,
+            **kwargs,
+        )
+        self._name = "dv-llm-api-key"
