@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timedelta
 import re
 from zoneinfo import ZoneInfo
@@ -85,7 +84,7 @@ class Application(ApplicationBase):
         s = time.perf_counter()
 
         try:
-            data = await self.api.publish_message(
+            data = await self.api.create_message(
                 self.agent_id,
                 "reports",
                 self._report_metadata,
@@ -117,7 +116,7 @@ class Application(ApplicationBase):
         self.report_id = event.payload["report_id"]
 
         try:
-            data = await self.api.get_channel_message(
+            data = await self.api.get_message(
                 self.agent_id,
                 "reports",
                 self.report_id,
@@ -227,38 +226,16 @@ class Application(ApplicationBase):
         channel_name: str,
         period_start: datetime,
         period_end: datetime,
-    ):
-        """Helper method to fetch the messages from a device channel in a window.
-
-        Parameters
-        ----------
-        agent_id : int
-            The agent ID who owns the channel.
-        channel_name : str,
-            The name of the channel to fetch.
-        period_start : datetime
-            The start of the window.
-        period_end : datetime
-            The end of the window.
-
-        Returns
-        -------
-        :class:`pydoover.cloud.api.Messages`
-            The messages object corresponding to the given window.
-
-        Raises
-        -------
-        :class:`pydoover.cloud.api.NotFound`
-            If the channel with the specified key does not exist.
-        """
-        return await self.api.get_channel_messages(
+    ) -> list:
+        """Fetch all messages from a channel within a time window."""
+        return await self.api.iter_messages(
             agent_id,
             channel_name,
-            after=period_start,
             before=period_end,
-            chunk_size=SPLIT_MESSAGES_LIMIT,
-            organisation_id=self.agent_id,
-        )
+            after=period_start,
+            organisation_id=self.organisation_id,
+            page_size=SPLIT_MESSAGES_LIMIT,
+        ).collect()
 
     async def fetch_channels_in_window(
         self,
@@ -267,40 +244,11 @@ class Application(ApplicationBase):
         period_start: datetime,
         period_end: datetime,
     ):
-        """Helper method to fetch the messages from a device channel in a window.
-
-        Parameters
-        ----------
-        agent_id : int
-            The agent ID who owns the channel.
-        channel_name : str,
-            The name of the channel to fetch.
-        period_start : datetime
-            The start of the window.
-        period_end : datetime
-            The end of the window.
-
-        Returns
-        -------
-        :class:`pydoover.cloud.api.Messages`
-            The messages object corresponding to the given window.
-
-        Raises
-        -------
-        :class:`pydoover.cloud.api.NotFound`
-            If the channel with the specified key does not exist.
-        """
-
-        # Start the tasks
-        tasks = [
-            self.fetch_channel_in_window(
-                agent_id, channel_name, period_start, period_end
-            )
-            for agent_id in agent_ids
-        ]
-
-        # Collect the results
-        results = await asyncio.gather(*tasks)
-
-        # Return the results
-        return {agent_id: result for agent_id, result in zip(agent_ids, results)}
+        """Fetch messages from multiple agents for a channel within a time window."""
+        return await self.api.get_multi_agent_messages(
+            channel_name,
+            agent_ids,
+            before=period_end,
+            after=period_start,
+            organisation_id=self.organisation_id,
+        )

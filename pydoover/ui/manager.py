@@ -174,11 +174,11 @@ class UIManager:
         )
 
         # Fetch initial state from the aggregate cache
-        ui_state = await self.client.get_channel_aggregate("ui_state")
+        ui_state = await self.client.get_aggregate("ui_state")
         if ui_state:
             await self.on_state_update(ui_state)
 
-        ui_cmds = await self.client.get_channel_aggregate("ui_cmds")
+        ui_cmds = await self.client.get_aggregate("ui_cmds")
         if ui_cmds:
             await self.on_command_update_async(ui_cmds)
 
@@ -684,7 +684,7 @@ class UIManager:
                 data,
             )
             if record_log:
-                await self.client.publish_message(
+                await self.client.create_message(
                     self.client.agent_id,
                     channel_name,
                     data,
@@ -708,8 +708,8 @@ class UIManager:
         elif getattr(self.client, "is_processor_v2", False):
             raise RuntimeError("Doover data must be used with async methods.")
         else:
-            ui_cmds_agg = self.client.get_channel_aggregate("ui_cmds")
-            ui_state_agg = self.client.get_channel_aggregate("ui_state")
+            ui_cmds_agg = self.client.get_aggregate("ui_cmds")
+            ui_state_agg = self.client.get_aggregate("ui_state")
 
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
@@ -720,18 +720,14 @@ class UIManager:
         if isinstance(self.client, Client):
             raise RuntimeError("Cannot pull async with a Client object")
         elif getattr(self.client, "is_processor_v2", False):
-            ui_cmds = await self.client.get_channel_aggregate(
-                self.client.agent_id, "ui_cmds"
-            )
-            ui_state = await self.client.get_channel_aggregate(
-                self.client.agent_id, "ui_state"
-            )
+            ui_cmds = await self.client.get_aggregate(self.client.agent_id, "ui_cmds")
+            ui_state = await self.client.get_aggregate(self.client.agent_id, "ui_state")
 
             ui_cmds_agg = ui_cmds.data
             ui_state_agg = ui_state.data
         else:
-            ui_cmds_agg = await self.client.get_channel_aggregate_async("ui_cmds")
-            ui_state_agg = await self.client.get_channel_aggregate_async("ui_state")
+            ui_cmds_agg = await self.client.get_aggregate_async("ui_cmds")
+            ui_state_agg = await self.client.get_aggregate_async("ui_state")
 
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)

@@ -79,9 +79,9 @@ class Application:
             info = SubscriptionInfo.from_dict(initial_payload["d"]["upgrade"])
         else:
             if self.subscription_id:
-                info = await self.api.fetch_processor_info(self.subscription_id)
+                info = await self.api.get_subscription_info(self.subscription_id)
             elif self.schedule_id:
-                info = await self.api.fetch_schedule_info(self.schedule_id)
+                info = await self.api.get_schedule_info(self.schedule_id)
             elif self.ingestion_id:
                 # doover data invokes this directly so we can pre-load all required info here to save a call...
                 info = SubscriptionInfo.from_dict(initial_payload["d"]["upgrade"])
@@ -332,7 +332,7 @@ class Application:
                 await self.api.update_aggregate(self.agent_id, "tag_values", update)
 
                 if self._record_tag_update:
-                    await self.api.publish_message(self.agent_id, "tag_values", update)
+                    await self.api.create_message(self.agent_id, "tag_values", update)
 
         try:
             await self.close()

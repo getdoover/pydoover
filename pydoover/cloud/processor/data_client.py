@@ -4,33 +4,28 @@ from typing import Any
 
 from ...api import AsyncDataClient
 from ...models import (
-    Aggregate,
-    Channel,
     File,
     Message,
-    SubscriptionInfo,
 )
 from ...models.connection import (
     ConnectionConfig,
     ConnectionDetermination,
     ConnectionStatus,
 )
-from ...utils.snowflake import generate_snowflake_id_at
 
 log = logging.getLogger(__name__)
 
 
-class ProcessorDataClient:
-    """Processor-layer wrapper around :class:`AsyncDataClient`.
+class ProcessorDataClient(AsyncDataClient):
+    """Processor-layer extension of :class:`AsyncDataClient`.
 
     Adds anti-recursion checks for invoking channels, datetime-to-snowflake
     conversion, chunked message fetching, and connection helpers.
     """
 
     def __init__(self, base_url: str):
+        super().__init__(base_url)
         self.agent_id: int | None = None
-        self.organisation_id: int | None = None
-        self._client = AsyncDataClient(base_url)
 
         self.has_persistent_connection = lambda: False
         self.is_processor_v2 = True
@@ -41,15 +36,6 @@ class ProcessorDataClient:
         self._invoking_channel_name: str | None = None
         self.lookup_ip = True
         self.app_key: str | None = None
-
-    async def setup(self):
-        await self._client.setup()
-
-    def set_token(self, token: str):
-        self._client.set_token(token)
-
-    async def close(self):
-        await self._client.close()
 
     # -- Anti-recursion checks -----------------------------------------------
 
@@ -72,93 +58,31 @@ class ProcessorDataClient:
 
         return True
 
-    # -- Channel operations --------------------------------------------------
+    # -- Convenience: chunked message fetching with datetime support ----------
 
-    async def get_channel(
-        self, agent_id: int, channel_name: str, organisation_id: int = None
-    ) -> Channel:
-        return await self._client.get_channel(
-            agent_id,
-            channel_name,
-            organisation_id=organisation_id or self.organisation_id,
-        )
+    # -- Overrides with anti-recursion ---------------------------------------
 
-    async def get_channel_aggregate(
-        self, agent_id: int, channel_name: str
-    ) -> Aggregate:
-        return await self._client.get_aggregate(
-            agent_id,
-            channel_name,
-            organisation_id=self.organisation_id,
-        )
-
-    async def get_channel_messages(
+    async def create_message(
         self,
         agent_id: int,
         channel_name: str,
+        data: dict[str, Any],
+        ts: int | None = None,
+        files: list[File] = None,
         organisation_id: int = None,
-        limit: int = None,
-        before: datetime | None = None,
-        after: datetime | None = None,
-        chunk_size: int | None = None,
-        field_names: list[str] = None,
-    ) -> list[Message]:
-        before_sf = generate_snowflake_id_at(before) if before else None
-        after_sf = generate_snowflake_id_at(after) if after else None
-        org = organisation_id or self.organisation_id
-
-        if chunk_size is not None and before_sf is not None and after_sf is not None:
-            log.debug(f"Splitting messages into chunks of {chunk_size}")
-            all_messages = []
-
-            while True:
-                log.debug(f"Fetching messages from {after_sf} with limit {chunk_size}")
-                messages = await self._client.list_messages(
-                    agent_id,
-                    channel_name,
-                    limit=chunk_size,
-                    after=after_sf,
-                    field_names=field_names,
-                    organisation_id=org,
-                )
-                log.debug(f"Received {len(messages)} messages")
-                for message in messages:
-                    if int(message.id) <= before_sf:
-                        all_messages.append(message)
-                if not messages or len(messages) < chunk_size:
-                    break
-                last_message = messages[-1]
-                if int(last_message.id) >= before_sf:
-                    break
-                after_sf = int(messages[-1].id)
-
-            return all_messages
-
-        return await self._client.list_messages(
-            agent_id,
-            channel_name,
-            before=before_sf,
-            after=after_sf,
-            limit=limit,
-            field_names=field_names,
-            organisation_id=org,
-        )
-
-    async def get_channel_message(
-        self,
-        agent_id: int,
-        channel_name: str,
-        message_id: int,
-        organisation_id: int = None,
+        allow_invoking_channel: bool = False,
     ) -> Message:
-        return await self._client.get_message(
+        if channel_name == self._invoking_channel_name:
+            self._check_invoking_channel(channel_name, data, allow_invoking_channel)
+
+        return await super().create_message(
             agent_id,
             channel_name,
-            message_id,
+            data=data,
+            ts=ts,
+            files=files,
             organisation_id=organisation_id or self.organisation_id,
         )
-
-    # -- Publishing ----------------------------------------------------------
 
     async def update_aggregate(
         self,
@@ -169,43 +93,19 @@ class ProcessorDataClient:
         replace: bool = False,
         organisation_id: int = None,
         allow_invoking_channel: bool = False,
+        **kwargs,
     ):
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
-        return await self._client.update_aggregate(
+        return await super().update_aggregate(
             agent_id,
             channel_name,
             data,
             replace=replace,
             files=files,
             organisation_id=organisation_id or self.organisation_id,
-        )
-
-    async def publish_message(
-        self,
-        agent_id: int,
-        channel_name: str,
-        message: dict | str,
-        timestamp: datetime | None = None,
-        files: list[File] = None,
-        organisation_id: int = None,
-        allow_invoking_channel: bool = False,
-    ):
-        if channel_name == self._invoking_channel_name:
-            self._check_invoking_channel(channel_name, message, allow_invoking_channel)
-
-        ts = None
-        if timestamp is not None:
-            ts = int(timestamp.timestamp()) * 1000  # milliseconds since epoch
-
-        return await self._client.create_message(
-            agent_id,
-            channel_name,
-            data=message,
-            ts=ts,
-            files=files,
-            organisation_id=organisation_id or self.organisation_id,
+            **kwargs,
         )
 
     async def update_message(
@@ -214,15 +114,16 @@ class ProcessorDataClient:
         channel_name: str,
         message_id: int,
         data: dict | str,
-        organisation_id: int = None,
-        files: list[File] = None,
         replace: bool = True,
+        files: list[File] = None,
+        organisation_id: int = None,
         allow_invoking_channel: bool = False,
+        **kwargs,
     ):
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
-        return await self._client.update_message(
+        return await super().update_message(
             agent_id,
             channel_name,
             message_id,
@@ -230,24 +131,7 @@ class ProcessorDataClient:
             replace=replace,
             files=files,
             organisation_id=organisation_id or self.organisation_id,
-        )
-
-    # -- Processor info ------------------------------------------------------
-
-    async def fetch_processor_info(
-        self, subscription_id: int, organisation_id: int = None
-    ) -> SubscriptionInfo:
-        return await self._client.get_subscription_info(
-            subscription_id,
-            organisation_id=organisation_id or self.organisation_id,
-        )
-
-    async def fetch_schedule_info(
-        self, schedule_id: int, organisation_id: int = None
-    ) -> SubscriptionInfo:
-        return await self._client.get_schedule_info(
-            schedule_id,
-            organisation_id=organisation_id or self.organisation_id,
+            **kwargs,
         )
 
     # -- Connection helpers --------------------------------------------------
@@ -285,7 +169,7 @@ class ProcessorDataClient:
         }
 
         org = organisation_id or self.organisation_id
-        await self.publish_message(
+        await self.create_message(
             agent_id,
             "doover_connection",
             payload,
@@ -303,7 +187,7 @@ class ProcessorDataClient:
     ):
         payload = {"config": config.to_dict()}
         org = organisation_id or self.organisation_id
-        await self.publish_message(
+        await self.create_message(
             agent_id,
             "doover_connection",
             payload,

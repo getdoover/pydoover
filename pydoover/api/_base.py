@@ -1,10 +1,12 @@
 import json
 import logging
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 
 from ._auth import decode_jwt_exp, token_needs_refresh
 from ..models.attachment import File
+from ..utils.snowflake import generate_snowflake_id_at
 from .exceptions import (
     ForbiddenError,
     HTTPError,
@@ -13,6 +15,15 @@ from .exceptions import (
 )
 
 log = logging.getLogger(__name__)
+
+
+def _to_snowflake(value: int | datetime | None) -> int | None:
+    """Coerce a datetime or snowflake int to a snowflake int."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return generate_snowflake_id_at(value)
+    return int(value)
 
 
 def _raise_for_status(status: int, text: str, url: str):
