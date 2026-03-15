@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 RPC_KEY = "dv-rpc"
-DEFAULT_CHANNEL = "tag_values"
+DEFAULT_CHANNEL = "dv-rpc"
 
 
 # ---------------------------------------------------------------------------

@@ -176,7 +176,7 @@ class ManualInvokeEvent:
     def __init__(
         self,
         organisation_id: int,
-        payload: str,
+        payload: dict[str, Any],
     ):
         self.organisation_id = organisation_id
         self.payload = payload

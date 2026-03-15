@@ -1,22 +1,24 @@
-from datetime import datetime, timedelta
-import re
-from zoneinfo import ZoneInfo
 import logging
-import time
 import os
+import re
+import time
+
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 import croniter
 
-from pydoover.utils.files import zip_files
+from ..utils.files import zip_files
 
-from ..processor.types import (
+from ..models import (
     ManualInvokeEvent,
     MessageCreateEvent,
     DeploymentEvent,
     ScheduleEvent,
 )
-from ..processor.application import Application as ApplicationBase
+from ..cloud.processor.application import Application as ApplicationBase
 
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 
 SPLIT_MESSAGES_LIMIT = 100  # 1 hour
 
