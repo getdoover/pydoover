@@ -475,7 +475,7 @@ class DataClient(BaseClient):
 
     # ── Aggregates ─────────────────────────────────────────────────────────
 
-    def get_aggregate(
+    def get_channel_aggregate(
         self,
         agent_id: int,
         channel_name: str,
@@ -488,7 +488,7 @@ class DataClient(BaseClient):
         )
         return Aggregate.from_dict(data)
 
-    def update_aggregate(
+    def update_channel_aggregate(
         self,
         agent_id: int,
         channel_name: str,
@@ -517,7 +517,7 @@ class DataClient(BaseClient):
             return None
         return Aggregate.from_dict(result)
 
-    def get_aggregate_attachment(
+    def get_channel_aggregate_attachment(
         self,
         agent_id: int,
         channel_name: str,

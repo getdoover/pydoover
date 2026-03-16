@@ -938,6 +938,7 @@ class LLMAPIKey(String):
             display_name,
             description=description,
             hidden=True,
+            default="placeholder",
             **kwargs,
         )
         self._name = "dv-llm-api-key"
