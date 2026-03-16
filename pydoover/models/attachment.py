@@ -1,14 +1,13 @@
 from typing import Any
 
-from .generated.device_agent.device_agent_pb2 import (
-    Attachment as ProtoAttachment,
-    File as ProtoFile,
-)
-
 try:
+    from .generated.device_agent.device_agent_pb2 import (
+        Attachment as ProtoAttachment,
+        File as ProtoFile,
+    )
+
     _HAS_PROTO = True
-except ImportError as e:
-    print(f"import failed; {e}")
+except ImportError:
     _HAS_PROTO = False
 
 

@@ -329,7 +329,9 @@ class Application:
             # only publish if there are tags to publish.
             # Only publish external tags if requested explicitly (can cause recursion issues)
             if update:
-                await self.api.update_aggregate(self.agent_id, "tag_values", update)
+                await self.api.update_channel_aggregate(
+                    self.agent_id, "tag_values", update
+                )
 
                 if self._record_tag_update:
                     await self.api.create_message(self.agent_id, "tag_values", update)

@@ -85,7 +85,7 @@ class ProcessorDataClient(AsyncDataClient):
             organisation_id=organisation_id or self.organisation_id,
         )
 
-    async def update_aggregate(
+    async def update_channel_aggregate(
         self,
         agent_id: int,
         channel_name: str,
@@ -101,7 +101,7 @@ class ProcessorDataClient(AsyncDataClient):
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
-        return await super().update_aggregate(
+        return await super().update_channel_aggregate(
             agent_id,
             channel_name,
             data,
@@ -182,7 +182,7 @@ class ProcessorDataClient(AsyncDataClient):
             payload,
             organisation_id=org,
         )
-        await self.update_aggregate(
+        await self.update_channel_aggregate(
             agent_id,
             "doover_connection",
             payload,
@@ -203,7 +203,7 @@ class ProcessorDataClient(AsyncDataClient):
             payload,
             organisation_id=org,
         )
-        await self.update_aggregate(
+        await self.update_channel_aggregate(
             agent_id,
             "doover_connection",
             payload,

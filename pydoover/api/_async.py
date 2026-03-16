@@ -503,7 +503,7 @@ class AsyncDataClient(BaseClient):
 
     # ── Aggregates ─────────────────────────────────────────────────────────
 
-    async def get_aggregate(
+    async def get_channel_aggregate(
         self,
         agent_id: int,
         channel_name: str,
@@ -516,7 +516,7 @@ class AsyncDataClient(BaseClient):
         )
         return Aggregate.from_dict(data)
 
-    async def update_aggregate(
+    async def update_channel_aggregate(
         self,
         agent_id: int,
         channel_name: str,
@@ -545,7 +545,7 @@ class AsyncDataClient(BaseClient):
             return None
         return Aggregate.from_dict(result)
 
-    async def get_aggregate_attachment(
+    async def get_channel_aggregate_attachment(
         self,
         agent_id: int,
         channel_name: str,
