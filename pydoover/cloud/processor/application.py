@@ -234,7 +234,7 @@ class Application:
                 func = self.on_message_create
                 payload = MessageCreateEvent.from_dict(event["d"])
                 # prevent infinite loops
-                self.api._invoking_channel_name = payload.channel_name
+                self.api._invoking_channel_name = payload.channel.name
                 original_func = Application.on_message_create
 
             case "on_deployment":

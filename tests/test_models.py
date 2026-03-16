@@ -293,6 +293,42 @@ class TestMessageCreateEvent:
         assert e.channel.name == "test_channel"
         assert e.message.data == {"hello": "world"}
 
+    def test_from_dict_with_nested_message_key(self):
+        """When data contains a 'message' key, the message should be parsed
+        and channel should be derived from the parsed message."""
+        d = {
+            "message": {
+                "id": "10",
+                "author_id": "20",
+                "channel": CHANNEL_ID_DICT,
+                "data": {"nested": True},
+                "attachments": [ATTACHMENT_DICT],
+            }
+        }
+        e = MessageCreateEvent.from_dict(d)
+        assert e.message.id == 10
+        assert e.message.author_id == 20
+        assert e.message.data == {"nested": True}
+        assert len(e.message.attachments) == 1
+        assert e.message.attachments[0].filename == "photo.jpg"
+        # channel must come from the parsed message, not from the outer dict
+        assert e.channel.name == "test_channel"
+        assert e.channel.agent_id == 12345
+        assert e.channel is e.message.channel
+
+    def test_channel_name_accessible_via_channel_dot_name(self):
+        """Verify channel name is accessed via .channel.name, not .channel_name."""
+        d = {
+            "id": "1",
+            "author_id": "2",
+            "channel": CHANNEL_ID_DICT,
+            "data": {},
+            "attachments": [],
+        }
+        e = MessageCreateEvent.from_dict(d)
+        assert e.channel.name == "test_channel"
+        assert not hasattr(e, "channel_name")
+
 
 # ── OneShotMessage ────────────────────────────────────────────────────
 

@@ -37,9 +37,10 @@ class MessageCreateEvent:
             message = data["message"]
         except KeyError:
             message = Message.from_dict(data)
-            channel = message.channel
         else:
-            channel = data["channel"]
+            message = Message.from_dict(message)
+
+        channel = message.channel
 
         return cls(
             channel,
