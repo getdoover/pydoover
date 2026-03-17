@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import warnings
 
 import pytest
 
@@ -51,11 +52,11 @@ class TagBoundUI(ui.UI):
             )
         ],
     )
-    mode = ui.StateCommand(
+    mode = ui.Select(
         "mode",
         "Mode",
-        currentValue=UITags.mode,
-        user_options=[ui.Option("auto", UITags.mode)],
+        current_value=UITags.mode,
+        options=[ui.Option("auto", UITags.mode)],
     )
 
 
@@ -166,7 +167,7 @@ class TestTagReferenceSerialization:
         assert voltage["conditions"]["armed"] == "$tag.enabled:boolean:false"
         assert voltage["ranges"][0]["label"] == '$tag.mode:string:"idle"'
         assert voltage["ranges"][0]["max"] == "$tag.voltage:number"
-        assert mode["userOptions"]["auto"]["displayString"] == '$tag.mode:string:"idle"'
+        assert mode["options"]["auto"]["displayString"] == '$tag.mode:string:"idle"'
 
     def test_name_field_cannot_reference_a_tag(self):
         bad = ui.TextVariable("bad", "Bad")
@@ -261,6 +262,104 @@ class TestCallbacksAndInteractions:
 
         assert tags.mode.get() == "idle"
         assert manager_backend.values == {}
+
+
+class TestCanonicalUiTypes:
+    def test_select_serializes_with_canonical_type_and_options(self):
+        select = ui.Select(
+            "mode",
+            "Mode",
+            options=[ui.Option("auto", "Auto"), ui.Option("manual", "Manual")],
+            current_value="auto",
+        )
+
+        data = select.to_dict()
+
+        assert data["type"] == "uiSelect"
+        assert data["options"]["auto"]["displayString"] == "Auto"
+        assert data["currentValue"] == "auto"
+
+    def test_button_serializes_with_canonical_type(self):
+        button = ui.Button("restart", "Restart", label_string="Restart now")
+
+        data = button.to_dict()
+
+        assert data["type"] == "uiButton"
+        assert data["labelString"] == "Restart now"
+
+    def test_float_and_time_inputs_serialize_with_canonical_types(self):
+        float_input = ui.FloatInput("setpoint", "Setpoint", min_val=0, max_val=5)
+        time_input = ui.TimeInput("start_time", "Start Time", current_value=60)
+
+        assert float_input.to_dict()["type"] == "uiFloatInput"
+        assert float_input.to_dict()["min"] == 0
+        assert time_input.to_dict()["type"] == "uiTimeInput"
+
+    def test_multiplot_serializes_record_based_series_schema(self):
+        multiplot = ui.Multiplot(
+            "history",
+            "History",
+            series={
+                "temperature": {
+                    "dataType": "number",
+                    "displayString": "Temperature",
+                    "colour": "red",
+                    "units": "C",
+                }
+            },
+            title="History",
+        )
+
+        data = multiplot.to_dict()
+
+        assert data["type"] == "uiMultiPlot"
+        assert data["series"]["temperature"]["dataType"] == "number"
+        assert data["series"]["temperature"]["displayString"] == "Temperature"
+        assert "colours" not in data
+        assert "sharedAxis" not in data
+
+
+class TestLegacyUiAliases:
+    def test_legacy_aliases_warn_and_preserve_legacy_types(self):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            state_command = ui.StateCommand(
+                "mode",
+                "Mode",
+                user_options=[ui.Option("auto", "Auto")],
+            )
+            text_param = ui.TextParameter("notes", "Notes")
+
+        messages = [str(w.message) for w in caught]
+
+        assert any("StateCommand is deprecated" in message for message in messages)
+        assert any("TextParameter is deprecated" in message for message in messages)
+        assert state_command.to_dict()["type"] == "uiStateCommand"
+        assert "userOptions" in state_command.to_dict()
+        assert text_param.to_dict()["type"] == "uiTextParam"
+
+    def test_multiplot_legacy_series_input_warns_and_normalizes_to_record_schema(self):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            multiplot = ui.Multiplot(
+                "history",
+                "History",
+                series=["temperature", "pressure"],
+                series_colours=["red", "blue"],
+                series_active=[True, False],
+                shared_axis=[True, False],
+                step_labels=["Low", "High"],
+            )
+
+        messages = [str(w.message) for w in caught]
+        data = multiplot.to_dict()
+
+        assert any("Legacy uiMultiPlot list-based schema is deprecated" in message for message in messages)
+        assert data["series"]["temperature"]["colour"] == "red"
+        assert data["series"]["temperature"]["active"] is True
+        assert data["series"]["pressure"]["sharedAxis"] is False
+        assert data["series"]["temperature"]["stepLabels"] == ["Low", "High"]
+        assert "colours" not in data
 
 
 class TestApplicationUIResolution:

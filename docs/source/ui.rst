@@ -85,6 +85,10 @@ Elements are the building blocks of the Doover UI. They represent various compon
 .. autoclass:: pydoover.ui.Multiplot
     :members:
 
+``Multiplot`` now prefers the Doover 2.0 record-based ``series`` schema. Legacy
+list-based series definitions remain supported as deprecated input and are normalized
+to the newer payload shape on serialization.
+
 .. autoclass:: pydoover.ui.RemoteComponent
 
 
@@ -93,8 +97,16 @@ Interactions
 
 Interactions are a form of UI element that allows users to interact with the application.
 They can be used to trigger actions, change state, or provide input.
+Use ``Button`` and ``Select`` for new code. ``Action``, ``SlimCommand``, and
+``StateCommand`` remain as compatibility aliases for older Doover 1.0 UI payloads.
 
 .. autoclass:: pydoover.ui.Interaction
+    :members:
+
+.. autoclass:: pydoover.ui.Button
+    :members:
+
+.. autoclass:: pydoover.ui.Select
     :members:
 
 .. autoclass:: pydoover.ui.Action
@@ -142,8 +154,22 @@ Parameters
 ==========
 
 Parameters are input fields with various validations for different types. They expect a callback that is executed when a user modifies the input.
+Use ``FloatInput``, ``TextInput``, ``DatetimeInput``, and ``TimeInput`` for new code.
+The ``*Parameter`` classes remain available as deprecated compatibility aliases.
 
 .. autoclass:: pydoover.ui.Parameter
+    :members:
+
+.. autoclass:: pydoover.ui.FloatInput
+    :members:
+
+.. autoclass:: pydoover.ui.TextInput
+    :members:
+
+.. autoclass:: pydoover.ui.DatetimeInput
+    :members:
+
+.. autoclass:: pydoover.ui.TimeInput
     :members:
 
 .. autoclass:: pydoover.ui.NumericParameter
@@ -166,6 +192,10 @@ Decorators can be used as a shortcut to add UI interactions with an associated c
 
 .. autofunction:: pydoover.ui.callback
 
+.. autofunction:: pydoover.ui.button
+
+.. autofunction:: pydoover.ui.select
+
 .. autofunction:: pydoover.ui.action
 
 .. autofunction:: pydoover.ui.warning_indicator
@@ -175,6 +205,14 @@ Decorators can be used as a shortcut to add UI interactions with an associated c
 .. autofunction:: pydoover.ui.state_command
 
 .. autofunction:: pydoover.ui.slider
+
+.. autofunction:: pydoover.ui.float_input
+
+.. autofunction:: pydoover.ui.text_input
+
+.. autofunction:: pydoover.ui.datetime_input
+
+.. autofunction:: pydoover.ui.time_input
 
 .. autofunction:: pydoover.ui.numeric_parameter
 

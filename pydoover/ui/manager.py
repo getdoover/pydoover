@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Union, Any, Optional, TypeVar, TYPE_CHECKING
 
 from .element import Element
-from .interaction import SlimCommand, Interaction, NotSet
+from .interaction import Select, Interaction, NotSet
 from .misc import ApplicationVariant
 from .submodule import Container, NAME_VALIDATOR, Application as UIApplication
 from .variable import Variable
@@ -176,7 +176,7 @@ class UIManager:
         # add commands that don't currently exist
         to_add = {k: v for k, v in aggregate.items() if k not in self._interactions}
         for name, current_value in to_add.items():
-            self._interactions[name] = SlimCommand(name, current_value)
+            self._interactions[name] = Select(name, current_value=current_value)
 
         return aggregate
 
