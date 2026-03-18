@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from ._base import _to_snowflake
-from ..models import Message
+from ...models import Message
 
 if TYPE_CHECKING:
     from ._async import AsyncDataClient

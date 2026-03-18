@@ -20,7 +20,7 @@ import httpx
 
 from datetime import datetime
 
-from ..auth._utils import decode_jwt_exp
+from ..auth import decode_jwt_exp
 from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake, Unset
 from ._iterators import MessageIterator
 from ...models.exceptions import TokenRefreshError
