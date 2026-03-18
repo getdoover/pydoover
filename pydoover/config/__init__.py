@@ -267,10 +267,13 @@ class ConfigElement(Generic[RuntimeValueT]):
                     assert isinstance(default, str)
                 case "boolean":
                     assert isinstance(default, bool)
-                case ("array", "object"):
-                    raise ValueError(
-                        "You cannot set default values for arrays and objects. It's confusing."
-                    )
+                case "array":
+                    assert isinstance(default, list)
+                    # fixme: we don't really need to do this, but assert all values in default list are the correct type
+                    # for item in default:
+                    #     assert isinstance(item, self.element.primitive)
+                case "object":
+                    assert isinstance(default, dict)
 
     @overload
     def __get__(self, instance: None, owner: type["Schema"]) -> Self: ...
@@ -476,6 +479,32 @@ class Enum(ConfigElement[Any]):
 
 
 class Array(ConfigElement["Array"]):
+    """Represents a JSON Array type. Internally represented as a list.
+
+    Only a subset of JSON Schema is supported:
+    - Item type
+    - Minimum and maximum number of items
+    - Unique items
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    description: str | None
+        A help text for the config element.
+    hidden: bool
+        Whether the config element should be hidden in the UI.
+    element: ConfigElement
+        The type of elements in the array. This can be any ConfigElement, such as String, Integer, etc.
+    min_items: int | None
+        The minimum number of items in the array. If None, no minimum is enforced.
+    max_items: int | None
+        The maximum number of items in the array. If None, no maximum is enforced.
+    unique_items: bool | None
+        Whether the items in the array must be unique. If None, no uniqueness is enforced.
+
+    """
+
     _type = "array"
 
     def __init__(
@@ -490,10 +519,6 @@ class Array(ConfigElement["Array"]):
     ):
         if element and not isinstance(element, ConfigElement):
             raise ValueError("Many element must be a ConfigElement instance")
-        if "default" in kwargs:
-            raise ValueError(
-                "Default value not allowed for Many elements. It's confusing."
-            )
 
         super().__init__(display_name, **kwargs)
         self.element = element or ConfigElement("unknown")
@@ -556,10 +581,6 @@ class Object(ConfigElement["Object"]):
         default_collapsed: bool = False,
         **kwargs,
     ):
-        if "default" in kwargs:
-            raise ValueError(
-                "Default value not allowed for Object elements. It's confusing."
-            )
         if default_collapsed and not collapsible:
             raise ValueError("default_collapsed is not allowed if collapsible is False")
 
@@ -783,8 +804,27 @@ class ApplicationPosition(Integer):
             minimum=0,
             default=default,
             name="dv-app-position",
+            hidden=True,
             **kwargs,
         )
 
 
 ApplicationConfig = Schema
+
+
+class LLMAPIKey(String):
+    def __init__(
+        self,
+        display_name: str = "LLM API Key",
+        *,
+        description: str = "API key for the LLM service.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            hidden=True,
+            default="placeholder",
+            **kwargs,
+        )
+        self._name = "dv-llm-api-key"

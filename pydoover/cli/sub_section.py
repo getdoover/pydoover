@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import inspect
 import typing
 from typing import Any, Protocol, cast
@@ -77,16 +78,18 @@ class SubSection:
 
                 # Run the method on the interface class
                 try:
-                    result = func_to_run(
-                        object_instance,
-                        **{
-                            k: v
-                            for k, v in kwargs.items()
-                            if k in inspect.signature(func_to_run).parameters.keys()
-                        },
-                    )
+                    func_kwargs = {
+                        k: v
+                        for k, v in kwargs.items()
+                        if k in inspect.signature(func_to_run).parameters.keys()
+                    }
+                    result = func_to_run(object_instance, **func_kwargs)
+                    if inspect.iscoroutine(result):
+                        result = asyncio.run(result)
                 except Exception as e:
-                    print(f"An error occurred while running {func_to_run.__name__}: {e}")
+                    print(
+                        f"An error occurred while running {func_to_run.__name__}: {e}"
+                    )
                     return
 
                 if result is not None:
@@ -166,8 +169,6 @@ class SubSection:
                 if "uri" in param_name:
                     self.uri_remapping = param_name
                     param_name = "uri"
-                elif "is_async" in param_name:
-                    continue
                 elif "app_key" in param_name:
                     continue
 

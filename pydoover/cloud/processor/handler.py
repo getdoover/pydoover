@@ -20,8 +20,8 @@ def run_app(
 ):
     if setup_logging:
         logging.basicConfig(level=logging.INFO)
-        debug = os.environ.get('DEBUG', 'FALSE').upper()
-        if debug == 'TRUE' or debug == '1':
+        debug = os.environ.get("DEBUG", "FALSE").upper()
+        if debug == "TRUE" or debug == "1":
             logging.getLogger().setLevel("DEBUG")
         else:
             logging.getLogger().setLevel("INFO")

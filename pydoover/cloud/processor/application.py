@@ -23,7 +23,8 @@ from .types import (
     AggregateUpdateEvent,
     DooverConnectionStatus,
 )
-from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
+from .data_client import ProcessorDataClient
+from ...models import ConnectionDetermination, ConnectionStatus, SubscriptionInfo
 from ...ui import UI, UIManager
 from ...config import Schema
 
@@ -54,7 +55,7 @@ class Application:
             os.environ.get("DOOVER_DATA_ENDPOINT") or DEFAULT_DATA_ENDPOINT
         )
 
-        self.api = DooverData(self._api_endpoint)
+        self.api = ProcessorDataClient(self._api_endpoint)
 
         # set per-task
         self.agent_id: int | None = None
@@ -69,6 +70,7 @@ class Application:
         logging.getLogger().addHandler(console_handler)
 
         self._record_tag_update: bool = True
+        self._update_external_tags: bool = False
 
     @property
     def tags(self) -> Tags:
@@ -126,82 +128,69 @@ class Application:
             raise RuntimeError("Initial token has not been set.")
         self.api.set_token(self._initial_token)
 
-        # Always prioritise the upgrade payload, other get it from the normal method
+        # Always prioritise the upgrade payload, otherwise get it from the normal method
         if initial_payload["d"].get("upgrade", None) is not None:
-            data = initial_payload["d"]["upgrade"]
+            info = SubscriptionInfo.from_dict(initial_payload["d"]["upgrade"])
         else:
             if self.subscription_id:
-                data = await self.api.fetch_processor_info(self.subscription_id)
+                info = await self.api.fetch_subscription_info(self.subscription_id)
             elif self.schedule_id:
-                data = await self.api.fetch_schedule_info(self.schedule_id)
+                info = await self.api.fetch_schedule_info(self.schedule_id)
             elif self.ingestion_id:
                 # doover data invokes this directly so we can pre-load all required info here to save a call...
-                data = initial_payload["d"]["upgrade"]
+                info = SubscriptionInfo.from_dict(initial_payload["d"]["upgrade"])
             else:
                 raise ValueError("No subscription or schedule ID provided.")
 
-        self.agent_id = self.api.agent_id = data["agent_id"]
-        self.api.set_token(data["token"])
+        self.agent_id = self.api.agent_id = info.agent_id
+        self.api.set_token(info.token)
 
         # this should match the original organisation ID, but in case it doesn't, this should
         # probably be the source of truth
-        self.api.organisation_id = (
-            data.get("organisation_id", None) or self.organisation_id
-        )
+        self.api.organisation_id = info.organisation_id or self.organisation_id
 
-        self.app_key = data.get("app_key", None)
+        self.app_key = info.app_key
         self.tag_manager = TagsManagerProcessor(
             self.app_key,
             self.api,
             self.agent_id,
-            data.get("tag_values", None),
+            info.tag_values,
             record_tag_update=self._record_tag_update,
         )
 
-        try:
-            connection_data = data["connection_data"]
-        except KeyError:
+        connection_data = info.connection_data
+        if not connection_data:
             # connection config isn't valid for org processors
             # but fresh-ly created devices also won't have connection config...
             self._connection_config = {}
             self.connection_config = None
         else:
-            if not connection_data:
-                # bit of a weird case? we probably shouldn't give any connection data, not a null / empty dict value
-                # in this case maybe we don't need the try/catch?
-                self._connection_config = {}
-                self.connection_config = None
-            else:
-                self._connection_config = connection_data.get("config", {})
-                self._connection_status = connection_data.get("status", {})
-                self.connection_config = ConnectionConfig.from_dict(
-                    self._connection_config
-                )
-                self.connection_status = DooverConnectionStatus.from_dict(
-                    self._connection_status
-                )
+            self._connection_config = connection_data.get("config", {})
+            self._connection_status = connection_data.get("status", {})
+            self.connection_config = ConnectionConfig.from_dict(self._connection_config)
+            self.connection_status = DooverConnectionStatus.from_dict(
+                self._connection_status
+            )
 
         # it's probably better to recreate this one every time
         self.ui_manager: UIManager = UIManager(self.app_key, self.api)
 
-        if (
-            data.get("ui_state", None) is not None
-            and data.get("ui_cmds", None) is not None
-        ):
-            self._ui_to_set = (data["ui_state"], data["ui_cmds"])
+        if info.ui_state is not None and info.ui_cmds is not None:
+            self._ui_to_set = (info.ui_state, info.ui_cmds)
         else:
             self._ui_to_set = None
 
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
-            self.config._inject_deployment_config(data["deployment_config"])
+            self.config._inject_deployment_config(info.deployment_config)
 
         await self._resolve_tags()
         await self._resolve_ui()
 
         # Store the deployment config for later use
-        self.received_deployment_config = data["deployment_config"]
+        self.received_deployment_config = info.deployment_config
         self.display_name = self.received_deployment_config.get("APP_DISPLAY_NAME")
+        self.app_id = self.received_deployment_config.get("APP_ID")
         self.ui_manager.set_display_name(self.display_name)
 
     async def _close(self):
@@ -260,6 +249,13 @@ class Application:
         """
         return True
 
+    async def post_setup_filter(self, event):
+        """This is a filter that can be used to reject events after `setup` and API setup.
+
+        If you don't require any API calls, config, etc. - use pre_hook_filter which is cheaper, faster and earlier in the process.
+        """
+        return True
+
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
         log.info("Initialising processor task")
@@ -293,40 +289,65 @@ class Application:
         self.agent_id = event.get("agent_id", self.agent_id)
 
         func = None
+        original_func = None
         payload = None
         match event["op"]:
             case "on_message_create":
                 func = self.on_message_create
                 payload = MessageCreateEvent.from_dict(event["d"])
                 # prevent infinite loops
-                self.api._invoking_channel_name = payload.channel_name
+                self.api._invoking_channel_name = payload.channel.name
+                original_func = Application.on_message_create
+
             case "on_deployment":
                 func = self.on_deployment
                 payload = DeploymentEvent.from_dict(event["d"])
+                original_func = Application.on_deployment
             case "on_schedule":
                 func = self.on_schedule
                 payload = ScheduleEvent.from_dict(event["d"])
+                original_func = Application.on_schedule
             case "on_ingestion_endpoint":
                 func = self.on_ingestion_endpoint
                 payload = IngestionEndpointEvent.from_dict(
                     event["d"], parser=self.parse_ingestion_event_payload
                 )
+                original_func = Application.on_ingestion_endpoint
             case "on_manual_invoke":
                 func = self.on_manual_invoke
                 payload = ManualInvokeEvent.from_dict(event["d"])
+                original_func = Application.on_manual_invoke
             case "on_aggregate_update":
                 func = self.on_aggregate_update
                 payload = AggregateUpdateEvent.from_dict(event["d"])
+                self.api._invoking_channel_name = payload.channel.name
+                original_func = Application.on_aggregate_update
+
+        if func == original_func:
+            log.info(f"Skipping {func.__name__} event as no overridden handler found.")
+            return None
 
         self._payload = payload
 
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")
-            return
+            return None
 
         s = time.perf_counter()
         await self._setup(event)
         log.info(f"Setup took {time.perf_counter() - s} seconds.")
+
+        if (
+            isinstance(payload, AggregateUpdateEvent)
+            and payload.channel.name == "tag_values"
+            and self.app_key in payload.request_data.data
+        ) or (
+            isinstance(payload, MessageCreateEvent)
+            and payload.channel.name == "tag_values"
+            and self.app_key in payload.message.data
+        ):
+            log.info("Rejecting event publishing to tag_values within this app key.")
+            return None
 
         s = time.perf_counter()
         try:
@@ -334,6 +355,10 @@ class Application:
         except Exception as e:
             log.error(f"Error attempting to setup processor: {e} ", exc_info=e)
         log.info(f"user Setup took {time.perf_counter() - s} seconds.")
+
+        if not await self.post_setup_filter(payload):
+            log.info("Post-setup filter rejected event.")
+            return None
 
         if self._ui_to_set:
             # not valid for org apps
@@ -392,7 +417,7 @@ class Application:
         """
         if self.agent_id is None:
             raise RuntimeError("Agent ID has not been initialized.")
-        return await self.api.get_channel(self.agent_id, channel_name)
+        return await self.api.fetch_channel(self.agent_id, channel_name)
 
     async def get_tag(self, key: str, default: Any = None):
         if self.tag_manager is None:

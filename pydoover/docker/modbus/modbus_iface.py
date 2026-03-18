@@ -5,10 +5,10 @@ from collections.abc import Coroutine, Callable
 import grpc
 
 from .config import ModbusConfig, ModbusType, ManyModbusConfig
-from .grpc_stubs import modbus_iface_pb2, modbus_iface_pb2_grpc
+from ...models.generated.modbus import modbus_iface_pb2, modbus_iface_pb2_grpc
 from ..grpc_interface import GRPCInterface
-from ...utils import call_maybe_async, maybe_async
-from ...cli.decorators import command as cli_command, ignore_alias
+from ...utils import call_maybe_async
+from ...cli.decorators import command as cli_command
 from ...config import Schema
 
 log = logging.getLogger(__name__)
@@ -30,8 +30,6 @@ class ModbusInterface(GRPCInterface):
     It allows for opening and closing modbus buses, reading and writing registers, and subscribing to register updates.
     It is designed to be used with the modbus_iface gRPC service.
 
-    It supports both synchronous and asynchronous operations, depending on the context of the application.
-
     Attributes
     ----------
     config : Schema
@@ -45,10 +43,11 @@ class ModbusInterface(GRPCInterface):
         self,
         app_key: str,
         modbus_uri: str = "127.0.0.1:50054",
-        is_async: bool = None,
+        service_name: str = "doover.ModbusInterface",
+        timeout: int = 7,
         config: Schema = None,
     ):
-        super().__init__(app_key, modbus_uri, is_async)
+        super().__init__(app_key, modbus_uri, service_name, timeout)
 
         self.subscription_tasks = []
 
@@ -187,41 +186,7 @@ class ModbusInterface(GRPCInterface):
         return modbus_iface_pb2.openBusRequest(**kwargs)
 
     @cli_command()
-    @maybe_async()
-    def open_bus(
-        self,
-        bus_type="serial",
-        name="default",
-        serial_port="/dev/ttyS0",
-        serial_baud=9600,
-        serial_method="rtu",
-        serial_bits=8,
-        serial_parity="N",
-        serial_stop=1,
-        serial_timeout=0.3,
-        tcp_uri="127.0.0.1:5000",
-        tcp_timeout=2,
-    ) -> bool:
-        req = self._get_bus_request(
-            bus_type,
-            name,
-            serial_port,
-            serial_baud,
-            serial_method,
-            serial_bits,
-            serial_parity,
-            serial_stop,
-            serial_timeout,
-            tcp_uri,
-            tcp_timeout,
-        )
-        if req is None:
-            return
-
-        resp = self.make_request("openBus", req)
-        return resp.response_header.success
-
-    async def open_bus_async(
+    async def open_bus(
         self,
         bus_type="serial",
         name="default",
@@ -251,19 +216,13 @@ class ModbusInterface(GRPCInterface):
         if req is None:
             return False
 
-        resp = await self.make_request_async("openBus", req)
+        resp = await self.make_request("openBus", req)
         return resp.response_header.success
 
     @cli_command()
-    @maybe_async()
-    def close_bus(self, bus_id: str = "default") -> bool:
+    async def close_bus(self, bus_id: str = "default") -> bool:
         req = modbus_iface_pb2.closeBusRequest(bus_id=str(bus_id))
-        resp = self.make_request("closeBus", req)
-        return resp.response_header.success and resp.bus_status.open
-
-    async def close_bus_async(self, bus_id: str = "default") -> bool:
-        req = modbus_iface_pb2.closeBusRequest(bus_id=str(bus_id))
-        resp = await self.make_request_async("closeBus", req)
+        resp = await self.make_request("closeBus", req)
         return resp.response_header.success and resp.bus_status.open
 
     def _validate_read_register_resp(self, resp, bus_id, configure_bus):
@@ -278,11 +237,8 @@ class ModbusInterface(GRPCInterface):
             return False
 
     @cli_command()
-    @maybe_async()
-    def get_bus_status(self, bus_id: str = "default") -> bool:
+    async def fetch_bus_status(self, bus_id: str = "default") -> bool:
         """Get the status of a modbus bus.
-
-        .. note:: This method can be called in both sync and asynchronous contexts.
 
         Parameters
         ----------
@@ -295,16 +251,8 @@ class ModbusInterface(GRPCInterface):
             True if the bus is open, False otherwise.
         """
         req = modbus_iface_pb2.busStatusRequest(bus_id=str(bus_id))
-        resp = self.make_request("busStatus", req)
+        resp = await self.make_request("busStatus", req)
         return resp.response_header.success and resp.bus_status.open
-
-    async def get_bus_status_async(self, bus_id: str = "default") -> bool:
-        req = modbus_iface_pb2.busStatusRequest(bus_id=str(bus_id))
-        resp = await self.make_request_async("busStatus", req)
-        return resp.response_header.success and resp.bus_status.open
-
-    getBusStatus = ignore_alias(get_bus_status)
-    getBusStatus_async = get_bus_status_async
 
     @staticmethod
     def _parse_register_output(values):
@@ -315,8 +263,7 @@ class ModbusInterface(GRPCInterface):
         return values
 
     @cli_command()
-    @maybe_async()
-    def read_registers(
+    async def read_registers(
         self,
         bus_id: str = "default",
         modbus_id: int = 1,
@@ -326,8 +273,6 @@ class ModbusInterface(GRPCInterface):
         configure_bus: bool = True,
     ) -> int | list[int] | None:
         """Read registers from a modbus bus.
-
-        .. note:: This method can be called in both sync and asynchronous contexts.
 
         Examples
         --------
@@ -364,35 +309,13 @@ class ModbusInterface(GRPCInterface):
             address=start_address,
             count=num_registers,
         )
-        resp = self.make_request(
-            "readRegisters", req, bus_id=bus_id, configure_bus=configure_bus
-        )
-        return resp and self._parse_register_output(resp.values)
-
-    async def read_registers_async(
-        self,
-        bus_id: str = "default",
-        modbus_id: int = 1,
-        start_address: int = 0,
-        num_registers: int = 1,
-        register_type: int = 4,
-        configure_bus: bool = True,
-    ) -> int | list[int] | None:
-        req = modbus_iface_pb2.readRegisterRequest(
-            bus_id=str(bus_id),
-            modbus_id=modbus_id,
-            register_type=register_type,
-            address=start_address,
-            count=num_registers,
-        )
-        resp = await self.make_request_async(
+        resp = await self.make_request(
             "readRegisters", req, bus_id=bus_id, configure_bus=configure_bus
         )
         return resp and self._parse_register_output(resp.values)
 
     @cli_command()
-    @maybe_async()
-    def write_registers(
+    async def write_registers(
         self,
         bus_id: str = "default",
         modbus_id: int = 1,
@@ -402,8 +325,6 @@ class ModbusInterface(GRPCInterface):
         configure_bus: bool = True,
     ) -> bool:
         """Write values to registers on a modbus bus.
-
-        .. note:: This method can be called in both sync and asynchronous contexts.
 
         Examples
         --------
@@ -444,29 +365,7 @@ class ModbusInterface(GRPCInterface):
             address=start_address,
             values=values,
         )
-        resp = self.make_request(
-            "writeRegisters", req, bus_id=bus_id, configure_bus=configure_bus
-        )
-        return resp and self._validate_read_register_resp(resp, bus_id, configure_bus)
-
-    async def write_registers_async(
-        self,
-        bus_id: str = "default",
-        modbus_id: int = 1,
-        start_address: int = 0,
-        values: list[int] = None,
-        register_type: int = 4,
-        configure_bus: bool = True,
-    ) -> bool:
-        values = values or []
-        req = modbus_iface_pb2.writeRegisterRequest(
-            bus_id=str(bus_id),
-            modbus_id=modbus_id,
-            register_type=register_type,
-            address=start_address,
-            values=values,
-        )
-        resp = await self.make_request_async(
+        resp = await self.make_request(
             "writeRegisters", req, bus_id=bus_id, configure_bus=configure_bus
         )
         return resp and self._validate_read_register_resp(resp, bus_id, configure_bus)
@@ -599,7 +498,7 @@ class ModbusInterface(GRPCInterface):
             return None
 
     @cli_command()
-    def test_comms(self, message: str = "Comms Check Message") -> str | None:
+    async def test_comms(self, message: str = "Comms Check Message") -> str | None:
         """Test connection by sending a basic echo response to modbus interface container.
 
         Parameters
@@ -612,7 +511,7 @@ class ModbusInterface(GRPCInterface):
         str
             The response from modbus interface.
         """
-        return self.make_request(
+        return await self.make_request(
             "testComms",
             modbus_iface_pb2.testCommsRequest(message=message),
             response_field="response",

@@ -6,7 +6,7 @@ import time
 import json
 from datetime import datetime, timezone
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING, Union
 
 from .element import Element
 from .interaction import Select, Interaction, NotSet
@@ -20,7 +20,7 @@ from ..utils import call_maybe_async, get_is_async, maybe_async, find_object_wit
 
 if TYPE_CHECKING:
     from ..docker.device_agent.device_agent import DeviceAgentInterface
-    from ..cloud.processor.data_client import DooverData
+    from ..cloud.processor.data_client import ProcessorDataClient
 
 log = logging.getLogger(__name__)
 
@@ -28,8 +28,8 @@ log = logging.getLogger(__name__)
 class UIManager:
     def __init__(
         self,
-        app_key: str | None = None,
-        client: Any = None,
+        app_key: str = None,
+        client: Union["Client", "DeviceAgentInterface", "ProcessorDataClient"] = None,
         auto_start: bool = False,
         min_ui_update_period: int = 600,
         min_observed_update_period: int = 4,
@@ -138,10 +138,24 @@ class UIManager:
             log.warning("Attempted to setup subscriptions without client being set")
             return
 
+        from ..models import EventSubscription
+
         log.info("Setting up dda subscriptions")
-        self.client.add_subscription("ui_state", self.on_state_update)
-        self.client.add_subscription("doover_ui_fastmode", self.on_state_wss_update)
-        self.client.add_subscription("ui_cmds", self.on_command_update_async)
+        self.client.add_event_callback(
+            "ui_state",
+            self._wrap_aggregate_callback(self.on_state_update),
+            EventSubscription.aggregate_update,
+        )
+        self.client.add_event_callback(
+            "doover_ui_fastmode",
+            self._wrap_aggregate_callback(self.on_state_wss_update),
+            EventSubscription.aggregate_update,
+        )
+        self.client.add_event_callback(
+            "ui_cmds",
+            self._wrap_aggregate_callback(self.on_command_update_async),
+            EventSubscription.aggregate_update,
+        )
 
         self._subscriptions_ready = True
 
@@ -149,18 +163,43 @@ class UIManager:
         if not self._has_persistent_connection:
             return False
 
-        if not hasattr(self.client, "wait_for_channels_sync_async"):
+        if not hasattr(self.client, "wait_for_channels_sync"):
             log.error("Attempted to await comms sync without valid connection client.")
             return False
-        return await self.client.wait_for_channels_sync_async(
+        result = await self.client.wait_for_channels_sync(
             channel_names=["ui_state", "ui_cmds"],
             timeout=timeout,
         )
 
-    async def on_state_update(self, _, aggregate: dict[str, Any]):
+        # Fetch initial state from the aggregate cache
+        try:
+            ui_state_agg = await self.client.fetch_channel_aggregate("ui_state")
+            await self.on_state_update(ui_state_agg.data)
+        except Exception:
+            pass
+
+        try:
+            ui_cmds_agg = await self.client.fetch_channel_aggregate("ui_cmds")
+            await self.on_command_update_async(ui_cmds_agg.data)
+        except Exception:
+            pass
+
+        return result
+
+    @staticmethod
+    def _wrap_aggregate_callback(callback):
+        """Wrap a ``(data_dict)`` callback for use with ``add_event_callback``."""
+
+        async def _wrapper(event):
+            data = event.aggregate.data if event.aggregate else {}
+            await callback(data)
+
+        return _wrapper
+
+    async def on_state_update(self, aggregate: dict[str, Any]):
         self._set_new_ui_state(aggregate)
 
-    async def on_state_wss_update(self, _, aggregate: dict[str, Any]):
+    async def on_state_wss_update(self, aggregate: dict[str, Any]):
         self.last_ui_state_wss_connections = aggregate
         self.last_ui_state_wss_connections_update = time.time()
 
@@ -178,7 +217,7 @@ class UIManager:
 
         return aggregate
 
-    def on_command_update(self, _, aggregate: dict[str, Any]):
+    def on_command_update(self, aggregate: dict[str, Any]):
         log.debug(f"running on command update, {aggregate}")
         self._on_command_update_common(aggregate)
 
@@ -202,7 +241,7 @@ class UIManager:
                 if pattern.match(command_name):
                     callback(command, new_value)
 
-    async def on_command_update_async(self, _, aggregate: dict[str, Any]):
+    async def on_command_update_async(self, aggregate: dict[str, Any]):
         log.debug("Running on_command_update_async")
         prev_agg = copy.deepcopy(self.last_ui_cmds)
         aggregate = self._on_command_update_common(aggregate)
@@ -646,10 +685,7 @@ class UIManager:
         elif getattr(self.client, "is_processor_v2", False):
             raise RuntimeError("Doover data must be used with async methods.")
         else:
-            # fixme: allow for timestamp in DDA message publishing...
-            return self.client.publish_to_channel(
-                channel_name, data, record_log=record_log, max_age=max_age
-            )
+            raise RuntimeError("Doover data must be used with async methods.")
 
     async def _publish_to_channel_async(
         self,
@@ -669,13 +705,13 @@ class UIManager:
                 log.warning(f"Not publishing to invoking channel: {data}")
                 return None
 
-            await self.client.update_aggregate(
+            await self.client.update_channel_aggregate(
                 self.client.agent_id,
                 channel_name,
                 data,
             )
             if record_log:
-                await self.client.publish_message(
+                await self.client.create_message(
                     self.client.agent_id,
                     channel_name,
                     data,
@@ -683,9 +719,12 @@ class UIManager:
                 )
             return None
 
-        return await self.client.publish_to_channel_async(
-            channel_name, data, record_log=record_log, max_age=max_age
+        await self.client.update_channel_aggregate(
+            channel_name, data, max_age_secs=max_age
         )
+        if record_log:
+            await self.client.create_message(channel_name, data, timestamp=timestamp)
+        return None
 
     @maybe_async()
     def pull(self):
@@ -699,40 +738,40 @@ class UIManager:
         elif getattr(self.client, "is_processor_v2", False):
             raise RuntimeError("Doover data must be used with async methods.")
         else:
-            ui_cmds_agg = self.client.get_channel_aggregate("ui_cmds")
-            ui_state_agg = self.client.get_channel_aggregate("ui_state")
+            ui_cmds_agg = self.client.fetch_channel_aggregate("ui_cmds").data
+            ui_state_agg = self.client.fetch_channel_aggregate("ui_state").data
 
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
 
-        self.on_command_update(None, ui_cmds_agg)
+        self.on_command_update(ui_cmds_agg)
 
     async def pull_async(self):
         if isinstance(self.client, Client):
             raise RuntimeError("Cannot pull async with a Client object")
         elif getattr(self.client, "is_processor_v2", False):
-            ui_cmds = await self.client.get_channel_aggregate(
+            ui_cmds = await self.client.fetch_channel_aggregate(
                 self.client.agent_id, "ui_cmds"
             )
-            ui_state = await self.client.get_channel_aggregate(
+            ui_state = await self.client.fetch_channel_aggregate(
                 self.client.agent_id, "ui_state"
             )
 
             ui_cmds_agg = ui_cmds.data
             ui_state_agg = ui_state.data
         else:
-            ui_cmds_agg = await self.client.get_channel_aggregate_async("ui_cmds")
-            ui_state_agg = await self.client.get_channel_aggregate_async("ui_state")
+            ui_cmds_agg = await self.client.get_aggregate_async("ui_cmds")
+            ui_state_agg = await self.client.get_aggregate_async("ui_state")
 
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)
-        await self.on_command_update_async(None, ui_cmds_agg)
+        await self.on_command_update_async(ui_cmds_agg)
 
     async def _processor_set_ui_channels(
         self, ui_state: dict[str, Any], ui_cmds: dict[str, Any]
     ):
         self._set_new_ui_state(ui_state)
-        await self.on_command_update_async(None, ui_cmds)
+        await self.on_command_update_async(ui_cmds)
 
     def _check_dda_ready(self):
         if not self._is_conn_ready():
