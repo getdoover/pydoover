@@ -17,7 +17,7 @@ from ..models.exceptions import (
 log = logging.getLogger(__name__)
 
 
-class _Unset:
+class Unset:
     """Sentinel for distinguishing 'not provided' from ``None``."""
 
     def __repr__(self):
@@ -27,7 +27,7 @@ class _Unset:
         return False
 
 
-UNSET = _Unset()
+UNSET = Unset()
 
 
 def _to_snowflake(value: int | datetime | None) -> int | None:
@@ -115,7 +115,7 @@ class BaseClient:
         """Build a query string, filtering out None values and handling lists."""
         filtered = {}
         for k, v in params.items():
-            if v is None or isinstance(v, _Unset):
+            if v is None or isinstance(v, Unset):
                 continue
             if isinstance(v, bool):
                 filtered[k] = str(v).lower()

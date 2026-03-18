@@ -21,7 +21,7 @@ import httpx
 from datetime import datetime
 
 from ._auth import decode_jwt_exp
-from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake
+from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake, Unset
 from ._iterators import MessageIterator
 from ..models.exceptions import TokenRefreshError
 from ..models import (
@@ -374,7 +374,7 @@ class DataClient(BaseClient):
         data: dict[str, Any],
         ts: int | None = None,
         files: list[File] | None = None,
-        message_id: int = None,
+        message_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Message:
         payload: dict[str, Any] = {"data": data}
@@ -689,7 +689,7 @@ class DataClient(BaseClient):
         value: Any = None,
         description: str | None = None,
         enabled: bool | None = None,
-        expiry_mins: float | None = UNSET,
+        expiry_mins: float | None | Unset = UNSET,
         organisation_id: int | None = None,
     ) -> Alarm:
         payload: dict[str, Any] = {}
@@ -875,7 +875,7 @@ class DataClient(BaseClient):
         endpoint_id: int,
         name: str | None = None,
         extra_data: dict[str, Any] | None = None,
-        priority: int | None = UNSET,
+        priority: int | None | Unset = UNSET,
         organisation_id: int | None = None,
     ):
         payload: dict[str, Any] = {}
