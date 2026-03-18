@@ -48,28 +48,28 @@ class Application:
 
     def __init__(
         self,
-        id: str,
-        key: str,
-        name: str,
-        display_name: str,
-        app_type: Type,
-        visibility: Visibility,
+        id: str | None,
+        key: str | None,
+        name: str | None,
+        display_name: str | None,
+        app_type: str | None,
+        visibility: str | None,
         allow_many: bool,
-        description: str,
-        long_description: str | Path,
+        description: str | None,
+        long_description: str | Path | None,
         depends_on: list[Object],
-        owner_org: Object,
-        code_repo: Object,
-        repo_branch: str,
-        image_name: str,
-        build_args: str,
-        container_registry_profile: Object,
-        lambda_arn: str,
-        lambda_config: dict[str, Any],
+        owner_org: Object | None,
+        code_repo: Object | None,
+        repo_branch: str | None,
+        image_name: str | None,
+        build_args: str | None,
+        container_registry_profile: Object | None,
+        lambda_arn: str | None,
+        lambda_config: dict[str, Any] | None,
         export_config_command: str | None,
         run_command: str | None,
-        config_schema: dict[str, Any],
-        staging_config: dict[str, Any],
+        config_schema: dict[str, Any] | None,
+        staging_config: dict[str, Any] | None,
         icon_url: str | None,
         banner_url: str | None,
         app_base: Path,
@@ -88,8 +88,8 @@ class Application:
 
         self.description = description or ""
 
-        path = app_base and long_description and app_base / long_description
-        if path and path.exists():
+        path = app_base / long_description if isinstance(long_description, str) else long_description
+        if isinstance(path, Path) and path.exists():
             self.long_description = path.read_text()
         else:
             self.long_description = long_description or ""
@@ -105,26 +105,26 @@ class Application:
         self.build_args = build_args
 
         self.lambda_arn = lambda_arn
-        self.lambda_config = lambda_config
+        self.lambda_config = lambda_config or {}
 
         self.export_config_command = export_config_command
         self.run_command = run_command
 
         self.config_schema = config_schema or {}
-        self.staging_config = staging_config
+        self.staging_config = staging_config or {}
 
         self.base_path = app_base
 
     @property
-    def src_directory(self):
-        return self.base_path / "src" / self.name.replace("-", "_")
+    def src_directory(self) -> Path:
+        return self.base_path / "src" / (self.name or "").replace("-", "_")
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> "Application":
-        pass
+        raise NotImplementedError
 
     @classmethod
-    def from_config(cls, data: dict, app_base: Path) -> "Application":
+    def from_config(cls, data: dict[str, Any], app_base: Path) -> "Application":
         return cls(
             data.get("id"),
             data.get("key"),
@@ -216,10 +216,11 @@ class Application:
             raise ValueError("Application base path is not set.")
 
         config_path = self.base_path / "doover_config.json"
+        app_name = self.name or ""
         data: dict[str, dict[str, Any]] = (
-            json.loads(config_path.read_text())
+            dict(json.loads(config_path.read_text()))
             if config_path.exists()
-            else {self.name: {}}
+            else {app_name: {}}
         )
 
         upstream = self.to_dict(include_cloud_only=True)
@@ -228,6 +229,6 @@ class Application:
         # upstream.pop("code_repo_id", None)
         # upstream.pop("container_registry_profile_id", None)
 
-        data[self.name].update(**upstream)
+        data.setdefault(app_name, {}).update(**upstream)
         config_path.write_text(json.dumps(data, indent=4))
         log.info(f"Configuration saved to {config_path}")

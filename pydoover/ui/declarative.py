@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from collections import OrderedDict
-from typing import Any
+from typing import Any, Generic, Self, TypeVar, overload
 
 from pydoover.tags import BoundTag, NotSet, Tag, Tags
 
@@ -32,6 +32,7 @@ class _MissingDefault:
 
 
 _MISSING = _MissingDefault()
+ElementT = TypeVar("ElementT")
 
 
 class UITagBinding:
@@ -42,7 +43,7 @@ class UITagBinding:
         default_value: Any = _MISSING,
     ):
         self.tag_name = tag_name
-        self.tag_type = _TAG_TYPE_MAP.get(tag_type, tag_type)
+        self.tag_type = _TAG_TYPE_MAP.get(tag_type, tag_type) if tag_type else tag_type
         self.default_value = default_value
 
     def __copy__(self):
@@ -70,17 +71,23 @@ class UITagBinding:
         return result
 
 
-class _DeclaredElement:
-    def __init__(self, attr_name: str, template):
+class _DeclaredElement(Generic[ElementT]):
+    def __init__(self, attr_name: str, template: ElementT):
         self.attr_name = attr_name
         self.template = template
 
-    def __get__(self, instance, owner):
+    @overload
+    def __get__(self, instance: None, owner: type["UI"]) -> ElementT: ...
+
+    @overload
+    def __get__(self, instance: "UI", owner: type["UI"]) -> ElementT: ...
+
+    def __get__(self, instance: "UI | None", owner: type["UI"]) -> ElementT:
         if instance is None:
             return self.template
         return instance._elements[self.attr_name]
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: "UI", value: ElementT) -> None:
         from .element import Element
 
         if not isinstance(value, Element):
@@ -116,7 +123,7 @@ class UI:
             for name, declaration in self.__class__.__ui_declarations__.items()
         )
 
-    async def setup(self, config: Any, tags: Tags | None) -> None:
+    async def setup(self, config: Any = None, tags: Tags | None = None) -> None:
         """Mutate this UI instance before it is bound and installed."""
         return None
 
@@ -127,7 +134,7 @@ class UI:
     def to_elements(self) -> list[Any]:
         return self.children
 
-    def add_element(self, name: str, element):
+    def add_element(self, name: str, element: Any) -> Any:
         from .element import Element
 
         if not isinstance(element, Element):
@@ -143,11 +150,17 @@ class UI:
             raise KeyError(name) from exc
         self.__dict__.pop(name, None)
 
-    def bind_tags(self, tags: Tags | None) -> "UI":
+    def bind_tags(self, tags: Tags | None) -> Self:
         visited: set[int] = set()
         for element in self._elements.values():
             _bind_value(element, tags=tags, visited=visited)
         return self
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self._elements[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
 
 
 def tag_ref(

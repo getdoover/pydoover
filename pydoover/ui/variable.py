@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from typing import Union, Any
+from typing import Any, Union
 
 from .declarative import is_tag_reference, normalize_ui_value
 from .element import Element
@@ -42,8 +42,8 @@ class Variable(Element):
         display_name: str,
         var_type: str,
         curr_val: Any = NotSet,
-        precision: int = None,
-        ranges: list[Union[Range, dict]] = None,
+        precision: int | None = None,
+        ranges: list[Union[Range, dict[str, Any]]] | None = None,
         earliest_data_time: datetime | None = None,
         default_zoom: str | None = None,
         log_threshold: float | None = None,
@@ -72,7 +72,7 @@ class Variable(Element):
         if ranges is not None:
             self.add_ranges(*ranges)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         result = super().to_dict()
         result["type"] = self.type
         result["varType"] = self.var_type
@@ -97,14 +97,14 @@ class Variable(Element):
         return normalize_ui_value(result)
 
     @property
-    def current_value(self):
+    def current_value(self) -> Any:
         """Returns the current value of the variable."""
         if self._curr_val is NotSet:
             return None
         return self._curr_val
 
     @current_value.setter
-    def current_value(self, val):
+    def current_value(self, val: Any) -> None:
         """Updates the current value of the variable."""
         self._ensure_current_value_writable()
         self.update(val)
@@ -167,7 +167,7 @@ class Variable(Element):
                 "Update the underlying tag instead."
             )
 
-    def add_ranges(self, *range_val: Range):
+    def add_ranges(self, *range_val: Range | dict[str, Any]) -> None:
         """Adds one or more ranges to the variable.
 
         Parameters
@@ -206,10 +206,10 @@ class NumericVariable(Variable):
         self,
         name: str,
         display_name: str,
-        curr_val: Union[int, float] = None,
-        precision: int = None,
-        ranges: list[Range] = None,
-        form: Widget | None = None,
+        curr_val: Any = None,
+        precision: int | None = None,
+        ranges: list[Range | dict[str, Any]] | None = None,
+        form: Widget | str | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -223,7 +223,7 @@ class NumericVariable(Variable):
         )
         self.form = form
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         result = super().to_dict()
         if self.form is not None:
             result["form"] = self.form
@@ -243,7 +243,7 @@ class TextVariable(Variable):
         The current value of the variable. Defaults to None.
     """
 
-    def __init__(self, name: str, display_name: str, curr_val: str = None, **kwargs):
+    def __init__(self, name: str, display_name: str, curr_val: Any = None, **kwargs):
         # fixme: double check this type
         super().__init__(
             name, display_name, var_type="string", curr_val=curr_val, **kwargs
@@ -269,7 +269,7 @@ class BooleanVariable(Variable):
         self,
         name: str,
         display_name: str,
-        curr_val: bool = None,
+        curr_val: Any = None,
         log_threshold: float | None = 0,
         **kwargs,
     ):
@@ -300,7 +300,7 @@ class DateTimeVariable(Variable):
         self,
         name: str,
         display_name: str,
-        curr_val: Union[datetime, int] = None,
+        curr_val: Any = None,
         **kwargs,
     ):
         # fixme: double check this type, and how to handle different date / time / datetime
@@ -312,7 +312,7 @@ class DateTimeVariable(Variable):
 class Timestamp(Variable):
     type = "uiTimestamp"
 
-    def __init__(self, name: str, display_name: str, curr_val: int = None, **kwargs):
+    def __init__(self, name: str, display_name: str, curr_val: Any = None, **kwargs):
         # this might do some weird stuff where people think they can have ranges and what not, but yeah...
         # this will do for now...
         super().__init__(

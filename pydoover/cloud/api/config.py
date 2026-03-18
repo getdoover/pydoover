@@ -31,18 +31,18 @@ class ConfigEntry:
     def __init__(
         self,
         profile: str,
-        username: str = None,
-        password: str = None,
-        token: str = None,
-        token_expires: datetime = None,
-        agent_id: str = None,
-        base_url: str = None,
-        is_doover2: bool = None,
-        refresh_token: str = None,
-        refresh_token_id: str = None,
-        base_data_url: str = None,
-        auth_server_url: str = None,
-        auth_server_client_id: str = None,
+        username: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
+        token_expires: datetime | None = None,
+        agent_id: str | None = None,
+        base_url: str | None = None,
+        is_doover2: bool | None = None,
+        refresh_token: str | None = None,
+        refresh_token_id: str | None = None,
+        base_data_url: str | None = None,
+        auth_server_url: str | None = None,
+        auth_server_client_id: str | None = None,
     ):
         self.profile = profile
 
@@ -68,8 +68,10 @@ class ConfigEntry:
         return f"ConfigEntry <profile={self.profile}, username={self.username}, base_url={self.base_url}>"
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: str) -> "ConfigEntry":
         match = cls.pattern.match(data.strip())
+        if match is None:
+            raise ValueError("Invalid config entry format")
 
         if match["token_expires"]:
             token_expires = datetime.fromtimestamp(
@@ -117,13 +119,15 @@ class ConfigManager:
     directory = os.path.expanduser("~/.doover")
     filepath = os.path.join(directory, "config")
 
-    def __init__(self, current_profile: str = None):
-        self.entries = {}
+    def __init__(self, current_profile: str | None = None):
+        self.entries: dict[str, ConfigEntry] = {}
         self.current_profile = current_profile
         self.read()
 
     @property
-    def current(self) -> ConfigEntry:
+    def current(self) -> ConfigEntry | None:
+        if self.current_profile is None:
+            return None
         return self.entries.get(self.current_profile)
 
     def create(self, entry: ConfigEntry):
@@ -143,7 +147,7 @@ class ConfigManager:
 
         self.parse(contents)
 
-    def parse(self, contents):
+    def parse(self, contents: str) -> None:
         for item in contents.split("\n\n"):
             config = ConfigEntry.from_data(item)
             self.entries[config.profile] = config
@@ -156,5 +160,5 @@ class ConfigManager:
         with open(self.filepath, "w") as fp:
             fp.write(fmt)
 
-    def dump(self):
+    def dump(self) -> str:
         return "\n\n".join(e.format() for e in self.entries.values())

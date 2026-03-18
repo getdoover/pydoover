@@ -2,6 +2,7 @@ import asyncio
 import importlib
 import sys
 import types
+from typing import Any, cast
 
 import pytest
 
@@ -38,7 +39,7 @@ DockerApplication = _load_docker_application_class()
 
 def _load_processor_application_class():
     if "pydoover.cloud.processor.data_client" not in sys.modules:
-        module = types.ModuleType("pydoover.cloud.processor.data_client")
+        module = cast(Any, types.ModuleType("pydoover.cloud.processor.data_client"))
         module.DooverData = type("DooverData", (), {})
         module.ConnectionDetermination = type("ConnectionDetermination", (), {})
         module.ConnectionStatus = type(
@@ -49,7 +50,7 @@ def _load_processor_application_class():
         sys.modules["pydoover.cloud.processor.data_client"] = module
 
     if "pydoover.cloud.processor.types" not in sys.modules:
-        module = types.ModuleType("pydoover.cloud.processor.types")
+        module = cast(Any, types.ModuleType("pydoover.cloud.processor.types"))
         for class_name in (
             "ManualInvokeEvent",
             "MessageCreateEvent",
@@ -412,7 +413,9 @@ class TestTags:
         tags.add_tag("extra_sensor", Tag("number"))
 
         assert tags.get_tag("extra_sensor") is not None
-        assert tags.get_definition("extra_sensor").tag_type == "number"
+        extra_sensor = tags.get_definition("extra_sensor")
+        assert extra_sensor is not None
+        assert extra_sensor.tag_type == "number"
         assert {tag.name for tag in tags} == {
             "voltage",
             "speed",
@@ -440,13 +443,17 @@ class TestTags:
         tags = MyAppTags()
         tags.register_manager(manager)
 
-        assert str(tags.voltage) == "12.7"
-        assert float(tags.voltage) == 12.7
-        assert int(tags.speed) == 0
-        assert bool(tags.enabled) is True
-        assert tags.voltage > 10
-        assert tags.voltage >= 12.7
-        assert tags.voltage == 12.7
+        voltage = cast(BoundTag, tags.voltage)
+        speed = cast(BoundTag, tags.speed)
+        enabled = cast(BoundTag, tags.enabled)
+
+        assert str(voltage) == "12.7"
+        assert float(voltage) == 12.7
+        assert int(speed) == 0
+        assert bool(enabled) is True
+        assert voltage > 10
+        assert voltage >= 12.7
+        assert voltage == 12.7
 
     def test_async_set_uses_async_manager_path(self):
         import asyncio
@@ -903,8 +910,8 @@ class TestTagClassResolution:
         calls = []
 
         class ConfiguredTags(MyAppTags):
-            async def setup(self, resolved_config):
-                calls.append(resolved_config)
+            async def setup(self, config: Any = None) -> None:
+                calls.append(config)
 
         app = make_docker_app(tag_manager=manager)
         app.config = config
@@ -922,9 +929,9 @@ class TestTagClassResolution:
         config._inject_deployment_config({"some_flag": True})
 
         class ConfiguredTags(MyAppTags):
-            async def setup(self, resolved_config):
+            async def setup(self, config: Any = None) -> None:
                 self.remove_tag("enabled")
-                if resolved_config.some_flag:
+                if config.some_flag:
                     self.add_tag("extra_sensor", Tag("number"))
                 else:
                     self.add_tag("legacy_sensor", Tag("number"))
@@ -955,7 +962,8 @@ class TestTagClassResolution:
         app.config = FakeSchema()
 
         class BrokenTags(MyAppTags):
-            async def setup(self, _config):
+            async def setup(self, config: Any = None) -> None:
+                del config
                 raise RuntimeError("boom")
 
         app.__class__.tags_class = BrokenTags
@@ -969,8 +977,8 @@ class TestTagClassResolution:
         calls = []
 
         class ConfiguredTags(MyAppTags):
-            async def setup(self, resolved_config):
-                calls.append(resolved_config.some_flag)
+            async def setup(self, config: Any = None) -> None:
+                calls.append(config.some_flag)
 
         config._inject_deployment_config({"some_flag": True})
         app = make_processor_app(
@@ -991,9 +999,9 @@ class TestTagClassResolution:
         manager = FakeProcessorTagManager()
 
         class ConfiguredTags(MyAppTags):
-            async def setup(self, resolved_config):
+            async def setup(self, config: Any = None) -> None:
                 self.remove_tag("enabled")
-                if resolved_config.some_flag:
+                if config.some_flag:
                     self.add_tag("extra_sensor", Tag("number"))
                 else:
                     self.add_tag("legacy_sensor", Tag("number"))

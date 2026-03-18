@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+from typing import Any, cast
 
 from pydoover.docker import Application, run_app
 from pydoover.config import Schema
@@ -86,30 +87,31 @@ class HelloWorld(Application):
     tags_class = HelloWorldTags
     ui_class = HelloWorldUI
 
-    started: time.time
+    started: float
 
     def setup(self):
         self.started = time.time()
 
     def main_loop(self):
-        self.tags.is_working.set(True)
-        self.tags.uptime.set(time.time() - self.started)
-        self.tags.battery_voltage.set(random.randint(900, 2100) / 100)
+        tags = cast(HelloWorldTags, self.tags)
+        tags.is_working.set(True)
+        tags.uptime.set(time.time() - self.started)
+        tags.battery_voltage.set(random.randint(900, 2100) / 100)
 
     @ui.callback("send_alert")
-    def on_send_alert(self, command, _new_value):
-        output = self.tags.test_output.get()
+    def on_send_alert(self, command: Any, _new_value: Any):
+        output = cast(HelloWorldTags, self.tags).test_output.get()
         log.info("Sending alert: %s", output)
         self.send_notification(output, record_activity=True)
         command.coerce(None)
 
     @ui.callback("test_message")
-    def on_text_parameter_change(self, _command, new_value):
+    def on_text_parameter_change(self, _command: Any, new_value: Any):
         log.info("New value for test message: %s", new_value)
-        self.tags.test_output.set(new_value)
+        cast(HelloWorldTags, self.tags).test_output.set(new_value)
 
     @ui.callback("charge_mode")
-    def on_state_command(self, _command, new_value):
+    def on_state_command(self, _command: Any, new_value: Any):
         log.info("New value for state command: %s", new_value)
 
 

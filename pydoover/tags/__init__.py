@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any
+from typing import Any, Iterator, NoReturn, overload
 
 from ..utils import call_maybe_async, get_is_async, maybe_async
 
@@ -30,6 +30,65 @@ class Tag:
 
     def __repr__(self) -> str:
         return f"Tag(name={self.name!r}, tag_type={self.tag_type!r}, default={self.default!r})"
+
+    def _raise_unbound_error(self) -> NoReturn:
+        raise RuntimeError(
+            "Declared Tag definitions are not runtime values. "
+            "Access tags through a Tags instance."
+        )
+
+    @property
+    def value(self) -> Any:
+        self._raise_unbound_error()
+
+    def get(self) -> Any:
+        self._raise_unbound_error()
+
+    def set(self, value: Any) -> Any:
+        del value
+        self._raise_unbound_error()
+
+    def clear(self) -> Any:
+        self._raise_unbound_error()
+
+    def is_set(self) -> bool:
+        self._raise_unbound_error()
+
+    def increment(self, amount: int | float = 1) -> Any:
+        del amount
+        self._raise_unbound_error()
+
+    def decrement(self, amount: int | float = 1) -> Any:
+        del amount
+        self._raise_unbound_error()
+
+    def __str__(self) -> str:
+        self._raise_unbound_error()
+
+    def __bool__(self) -> bool:
+        self._raise_unbound_error()
+
+    def __int__(self) -> int:
+        self._raise_unbound_error()
+
+    def __float__(self) -> float:
+        self._raise_unbound_error()
+
+    def __lt__(self, other: Any) -> bool:
+        del other
+        self._raise_unbound_error()
+
+    def __le__(self, other: Any) -> bool:
+        del other
+        self._raise_unbound_error()
+
+    def __gt__(self, other: Any) -> bool:
+        del other
+        self._raise_unbound_error()
+
+    def __ge__(self, other: Any) -> bool:
+        del other
+        self._raise_unbound_error()
 
 
 class BoundTag:
@@ -200,12 +259,18 @@ class _DeclaredTag:
     def name(self) -> str:
         return self.template.name or self.attr_name
 
-    def __get__(self, instance, owner):
+    @overload
+    def __get__(self, instance: None, owner: type["Tags"]) -> Tag: ...
+
+    @overload
+    def __get__(self, instance: "Tags", owner: type["Tags"]) -> BoundTag: ...
+
+    def __get__(self, instance: "Tags | None", owner: type["Tags"]) -> Tag | BoundTag:
         if instance is None:
             return self.template
         return BoundTag(instance, self)
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: "Tags", value: Any) -> None:
         if isinstance(value, BoundTag):
             return
         instance._set_tag_value(self.attr_name, value)
@@ -240,12 +305,12 @@ class Tags:
         cls.__tag_declarations__ = declarations
 
     def __init__(self):
-        self._manager = None
+        self._manager: Any | None = None
         self._is_async = False
         # Keep runtime declaration changes isolated to this instance.
         self._tag_declarations = OrderedDict(self.__class__.__tag_declarations__)
 
-    async def setup(self, config: Any) -> None:
+    async def setup(self, config: Any = None) -> None:
         """Mutate this tag collection before it is bound to a manager."""
         return None
 
@@ -263,10 +328,10 @@ class Tags:
             if self._get_tag_value(attr_name) is not NotSet
         }
 
-    def register_manager(self, manager) -> None:
+    def register_manager(self, manager: Any) -> None:
         """Bind this tag collection to a tag manager."""
         self._manager = manager
-        self._is_async = get_is_async(getattr(manager, "_is_async", None))
+        self._is_async = get_is_async(bool(getattr(manager, "_is_async", False)))
 
     def _get_declaration(self, name: str) -> _DeclaredTag | None:
         for attr_name, declaration in self._tag_declarations.items():
@@ -299,7 +364,7 @@ class Tags:
             raise KeyError(name)
         del self._tag_declarations[declaration.attr_name]
 
-    def _get_tag_value(self, name: str):
+    def _get_tag_value(self, name: str) -> Any:
         declaration = self._get_declaration(name)
         if declaration is None:
             raise AttributeError(f"Unknown tag '{name}'")
@@ -336,7 +401,7 @@ class Tags:
 
         await call_maybe_async(self._manager.set_tag, declaration.name, value)
 
-    def get(self, name: str) -> Tag | None:
+    def get(self, name: str) -> BoundTag | None:
         """Alias for :meth:`get_tag`."""
         return self.get_tag(name)
 
@@ -372,16 +437,25 @@ class Tags:
             for declaration in self._tag_declarations.values()
         }
 
-    def __iter__(self):
-        return iter(self.get_tag(name) for name in self._tag_declarations)
+    def __iter__(self) -> Iterator[BoundTag]:
+        for name in self._tag_declarations:
+            tag = self.get_tag(name)
+            if tag is not None:
+                yield tag
 
     def __len__(self):
         return len(self._tag_declarations)
 
-    def __getitem__(self, item: str) -> Tag:
+    def __getitem__(self, item: str) -> BoundTag:
         tag = self.get_tag(item)
         if tag is None:
             raise KeyError(item)
+        return tag
+
+    def __getattr__(self, name: str) -> BoundTag:
+        tag = self.get_tag(name)
+        if tag is None:
+            raise AttributeError(name)
         return tag
 
     def __repr__(self) -> str:

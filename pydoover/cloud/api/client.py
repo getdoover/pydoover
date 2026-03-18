@@ -2,7 +2,7 @@ import logging
 
 from collections import namedtuple
 from datetime import datetime
-from typing import Callable
+from typing import Any, Callable
 from urllib.parse import quote, urlencode
 
 
@@ -35,22 +35,22 @@ class Client:
 
     def __init__(
         self,
-        username: str = None,
-        password: str = None,
-        token: str = None,
-        token_expires: datetime = None,
+        username: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
+        token_expires: datetime | None = None,
         base_url: str = "https://my.doover.dev",
-        agent_id: str = None,
+        agent_id: str | None = None,
         verify: bool = True,
-        login_callback: Callable = None,
+        login_callback: Callable[..., Any] | None = None,
         config_profile: str = "default",
         debug: bool = False,
         *,
-        refresh_token: str = None,
-        refresh_token_id: str = None,
+        refresh_token: str | None = None,
+        refresh_token_id: str | None = None,
         data_base_url: str = "https://data.doover.com/api",
         auth_server_url: str = "https://auth.doover.com",
-        auth_server_client_id: str = None,
+        auth_server_client_id: str | None = None,
         is_doover2: bool = False,
     ):
         self.is_doover2 = is_doover2
@@ -77,31 +77,33 @@ class Client:
             self.base_url = config.base_url
 
             if config.is_doover2:
-                refresh_token = config.refresh_token
-                refresh_token_id = config.refresh_token_id
-                data_base_url = config.base_data_url
-                auth_server_url = config.auth_server_url
-                auth_server_client_id = config.auth_server_client_id
-                base_url = config.base_url
+                refresh_token = config.refresh_token or refresh_token
+                refresh_token_id = config.refresh_token_id or refresh_token_id
+                data_base_url = config.base_data_url or data_base_url
+                auth_server_url = config.auth_server_url or auth_server_url
+                auth_server_client_id = (
+                    config.auth_server_client_id or auth_server_client_id
+                )
+                base_url = config.base_url or base_url
             else:
-                username = config.username
-                password = config.password
-                token = config.token
-                token_expires = config.token_expires
-                base_url = config.base_url
-                agent_id = config.agent_id
+                username = config.username or username
+                password = config.password or password
+                token = config.token or token
+                token_expires = config.token_expires or token_expires
+                base_url = config.base_url or base_url
+                agent_id = config.agent_id or agent_id
 
             self.is_doover2 = config.is_doover2
 
         access_token = AccessToken(token, token_expires)
         if self.is_doover2:
-            refresh_token = RefreshToken(refresh_token, refresh_token_id)
+            refresh_token_pair = RefreshToken(refresh_token, refresh_token_id)
             # cyclic imports
             from .client_v2 import Client as ClientV2
 
             self.client = ClientV2(
                 access_token,
-                refresh_token,
+                refresh_token_pair,
                 base_url,
                 data_base_url,
                 auth_server_url,

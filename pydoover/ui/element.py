@@ -56,20 +56,20 @@ class Element:
         self,
         name: str,
         display_name: str | None = None,
-        is_available: bool = None,  # not sure of type
-        help_str: str = None,
-        verbose_str: str = None,
+        is_available: Any = None,
+        help_str: str | None = None,
+        verbose_str: str | None = None,
         show_activity: bool = True,
-        form: str = None,
-        graphic: str = None,  # not sure of type
-        layout: str = None,  # not sure of type
-        component_url: str = None,  # not sure of type
-        position: int = None,  # 100,
-        conditions: Optional[dict] = None,
-        hidden: bool = False,
-        units: str = None,
-        icon: str = None,
-        colour: Colour = None,
+        form: Any = None,
+        graphic: str | None = None,
+        layout: str | None = None,
+        component_url: str | None = None,
+        position: int | None = None,
+        conditions: Optional[dict[str, Any]] = None,
+        hidden: Any = False,
+        units: str | None = None,
+        icon: str | None = None,
+        colour: str | None = None,
         **kwargs,
     ):
         self.name = name
@@ -103,7 +103,7 @@ class Element:
 
         self._retain_fields = []
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Convert the element to a dictionary representation.
 
         Returns
@@ -176,7 +176,7 @@ class Element:
     ## A stub for the method that will be called when the UI state is updated.
     # The element can choose to update its internal state based on the previous state and the new state.
     def recv_ui_state_update(self, state: dict[str, Any]) -> None:
-        pass
+        return None
 
 
 class ConnectionType(enum.Enum):
@@ -208,10 +208,10 @@ class ConnectionInfo(Element):
         self,
         name: str = "connectionInfo",
         connection_type: ConnectionType = ConnectionType.constant,
-        connection_period: int = None,
-        next_connection: int = None,
-        offline_after: int = None,
-        allowed_misses: int = None,
+        connection_period: int | None = None,
+        next_connection: int | None = None,
+        offline_after: int | None = None,
+        allowed_misses: int | None = None,
         **kwargs,
     ):
         super().__init__(name, None, **kwargs)
@@ -309,7 +309,7 @@ class Multiplot(Element):
         name: str,
         display_name: str,
         series: list[str] | dict[str, dict[str, Any]],
-        series_colours: Optional[list[Colour]] = None,
+        series_colours: Optional[list[str]] = None,
         series_active: Optional[list[bool]] = None,
         earliest_data_time: Optional[datetime] = None,
         title: Optional[str] = None,

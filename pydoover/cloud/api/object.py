@@ -5,7 +5,7 @@ class Object:
     functions that expect an object, but only use the `.id` attribute.
     """
 
-    def __init__(self, id: str):
+    def __init__(self, id: str | None):
         self.id = id
 
     def __eq__(self, other):

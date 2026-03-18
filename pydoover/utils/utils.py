@@ -103,7 +103,7 @@ def find_path_to_key(obj: dict[Any, Any], key_to_find: str) -> str | None:
     return None
 
 
-def get_is_async(is_async: bool = None):
+def get_is_async(is_async: bool | None = None) -> bool:
     if is_async is not None:
         return is_async
 
@@ -387,11 +387,11 @@ class CaseInsensitiveDict(MutableMapping):
 
 class CaseInsensitiveDictEncoder(json.JSONEncoder):
     # might not need this
-    def default(self, obj):
-        if isinstance(obj, CaseInsensitiveDict):
-            return obj.to_dict()
+    def default(self, o: Any) -> Any:
+        if isinstance(o, CaseInsensitiveDict):
+            return o.to_dict()
         # Let the base class default method raise the TypeError
-        return super().default(obj)
+        return super().default(o)
 
 
 class LogFormatter(logging.Formatter):

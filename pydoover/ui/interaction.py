@@ -2,7 +2,7 @@ import logging
 import re
 import warnings
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from .declarative import is_tag_reference, normalize_ui_value
 from .element import Element
@@ -52,11 +52,11 @@ class Interaction(Element):
     def __init__(
         self,
         name: str,
-        display_name: str = None,
+        display_name: str | None = None,
         current_value: Any = NotSet,
         default: Any = None,
-        callback=None,
-        transform_check=None,
+        callback: Callable[[Any], Any] | None = None,
+        transform_check: Callable[[Any], Any] | None = None,
         show_activity: bool | None = None,
         requires_confirm: bool = True,
         **kwargs,
@@ -75,11 +75,13 @@ class Interaction(Element):
             self._default_value = None
 
         self._manager: Optional["UIManager"] = None
+        self._callback: Callable[[Any], Any] = self.callback
+        self._transform_check: Callable[[Any], Any] = self.transform_check
 
         if callback:
-            self.callback = callback
+            self._callback = callback
         if transform_check:
-            self.transform_check = transform_check
+            self._transform_check = transform_check
 
         ## Handle default value 'statelessly' now in current_value property instead of here
         # if self._current_value in (None, NotSet) and self._default_value is not None:
@@ -155,7 +157,7 @@ class Interaction(Element):
 
     def _handle_new_value_common(self, new_value: Any):
         try:
-            new_value = self.transform_check(new_value)
+            new_value = self._transform_check(new_value)
         except Exception as e:
             log.error(f"Error transforming value for {self.name}: {e}")
             return
@@ -169,13 +171,13 @@ class Interaction(Element):
     def _handle_new_value(self, new_value: Any):
         self._handle_new_value_common(new_value)
         try:
-            self.callback(new_value)
+            self._callback(new_value)
         except Exception as e:
             log.error(f"Error in callback for {self.name}: {e}")
 
     async def _handle_new_value_async(self, new_value: Any):
         self._handle_new_value_common(new_value)
-        await call_maybe_async(self.callback, new_value)
+        await call_maybe_async(self._callback, new_value)
         # try:
         #     self.callback(new_value)
         # except Exception as e:
@@ -253,7 +255,7 @@ class Button(Interaction):
         self,
         name: str,
         display_name: str,
-        colour: Colour = Colour.blue,
+        colour: str = Colour.blue,
         disabled: bool = False,
         label_string: str | None = None,
         **kwargs,
@@ -339,8 +341,8 @@ class Select(Interaction):
     def __init__(
         self,
         name: str,
-        display_name: str = None,
-        options: list[Option] = None,
+        display_name: str | None = None,
+        options: list[Option] | None = None,
         **kwargs,
     ):
         user_options = kwargs.pop("user_options", None)
@@ -354,7 +356,7 @@ class Select(Interaction):
         result["options"] = {o.name: o.to_dict() for o in self.options}
         return normalize_ui_value(result)
 
-    def add_options(self, *option: Option):
+    def add_options(self, *option: Option | dict[str, Any]) -> None:
         """Add selectable options to the input.
 
         Parameters
@@ -431,7 +433,7 @@ class Slider(Interaction):
     def __init__(
         self,
         name: str,
-        display_name: str = None,
+        display_name: str | None = None,
         min_val: int = 0,
         max_val: int = 100,
         step_size: float = 0.1,
@@ -470,7 +472,9 @@ class Slider(Interaction):
 class Switch(Interaction):
     type = "uiSwitch"
 
-    def __init__(self, name: str, icon: str = None, colour: Colour = None, **kwargs):
+    def __init__(
+        self, name: str, icon: str | None = None, colour: str | None = None, **kwargs
+    ):
         super().__init__(
             name=name.replace(" ", "_").lower(), display_name=name, **kwargs
         )
@@ -488,8 +492,8 @@ class Switch(Interaction):
 
 def button(
     name: str,
-    display_name: str = None,
-    colour: Colour = Colour.blue,
+    display_name: str | None = None,
+    colour: str = Colour.blue,
     requires_confirm: bool = True,
     **kwargs,
 ):
@@ -525,8 +529,8 @@ def button(
 
 def action(
     name: str,
-    display_name: str = None,
-    colour: Colour = Colour.blue,
+    display_name: str | None = None,
+    colour: str = Colour.blue,
     requires_confirm: bool = True,
     **kwargs,
 ):
@@ -547,7 +551,7 @@ def action(
 
 
 def warning_indicator(
-    name: str, display_name: str = None, can_cancel: bool = True, **kwargs
+    name: str, display_name: str | None = None, can_cancel: bool = True, **kwargs
 ):
     """Decorator to mark a function as a UI warning indicator.
 
@@ -576,8 +580,8 @@ def warning_indicator(
 
 def select(
     name: str,
-    display_name: str = None,
-    options: list[Option] = None,
+    display_name: str | None = None,
+    options: list[Option] | None = None,
     **kwargs,
 ):
     """Decorator to mark a function as a selectable UI input.
@@ -630,7 +634,10 @@ def select(
 
 
 def state_command(
-    name: str, display_name: str = None, user_options: list[Option] = None, **kwargs
+    name: str,
+    display_name: str | None = None,
+    user_options: list[Option] | None = None,
+    **kwargs,
 ):
     """Deprecated Doover 1.0 alias for :func:`select`."""
 
@@ -687,7 +694,7 @@ def hidden_value(name: str, **kwargs):
 
 def slider(
     name: str,
-    display_name: str = None,
+    display_name: str | None = None,
     min_val: int = 0,
     max_val: int = 100,
     step_size: float = 0.1,

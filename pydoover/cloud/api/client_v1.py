@@ -23,14 +23,14 @@ class Client:
 
     def __init__(
         self,
-        username: str = None,
-        password: str = None,
-        token: str = None,
-        token_expires: datetime = None,
+        username: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
+        token_expires: datetime | None = None,
         base_url: str = "https://my.doover.dev",
-        agent_id: str = None,
+        agent_id: str | None = None,
         verify: bool = True,
-        login_callback: Callable = None,
+        login_callback: Callable[..., Any] | None = None,
         config_profile: str = "default",
         debug: bool = False,
     ):

@@ -4,6 +4,7 @@ import copy
 from datetime import datetime, timezone
 from math import floor
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 
 from . import json_flatten
 
@@ -16,6 +17,14 @@ class ReportGeneratorDooverDataMixin:
     """
     Mixin class for adding capabilities for retrieving data from the Doover API to a report generator.
     """
+
+    api_endpoint: str
+    access_token: Any
+    test_mode: bool
+    for_timezone: Any
+
+    def add_to_log(self, message: str) -> None:
+        raise NotImplementedError
 
     @staticmethod
     def get_data_object(payload_dict, data_object_name):

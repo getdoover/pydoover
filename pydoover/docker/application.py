@@ -234,6 +234,21 @@ class Application:
             self.ui_manager.set_children(self.ui.to_elements())
         return self.ui
 
+    @maybe_async()
+    def send_notification(self, message: str, record_activity: bool = True):
+        return self.ui_manager.send_notification(
+            message,
+            record_activity=record_activity,
+        )
+
+    async def send_notification_async(
+        self, message: str, record_activity: bool = True
+    ):
+        return await self.ui_manager.send_notification_async(
+            message,
+            record_activity=record_activity,
+        )
+
     async def _handle_healthcheck(self, _request):
         if self._is_healthy:
             return Response(text="OK", status=200)

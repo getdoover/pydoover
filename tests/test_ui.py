@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import warnings
+from typing import Any
 
 import pytest
 
@@ -392,14 +393,14 @@ class TestApplicationUIResolution:
         calls = []
 
         class ConfiguredUI(ui.UI):
-            async def setup(self, resolved_config, resolved_tags):
-                calls.append((resolved_config.some_flag, resolved_tags))
+            async def setup(self, config: Any = None, tags: Any = None) -> None:
+                calls.append((config.some_flag, tags))
                 self.add_element(
                     "voltage",
                     ui.NumericVariable(
                         "voltage",
                         "Voltage",
-                        curr_val=resolved_tags.speed,
+                        curr_val=tags.speed,
                     ),
                 )
 
@@ -412,7 +413,8 @@ class TestApplicationUIResolution:
 
     def test_docker_ui_setup_supports_dynamic_children_with_manager_bound_tags(self):
         class DynamicUI(ui.UI):
-            async def setup(self, _config, tags):
+            async def setup(self, config: Any = None, tags: Any = None) -> None:
+                del config
                 self.add_element(
                     "voltage",
                     ui.NumericVariable(
@@ -464,8 +466,8 @@ class TestApplicationUIResolution:
         calls = []
 
         class ConfiguredUI(TagBoundUI):
-            async def setup(self, resolved_config, resolved_tags):
-                calls.append((resolved_config, resolved_tags))
+            async def setup(self, config: Any = None, tags: Any = None) -> None:
+                calls.append((config, tags))
 
         app = make_processor_app(config=config, tags_class=UITags, ui_class=ConfiguredUI)
         resolved = resolve_app(app)
@@ -477,7 +479,8 @@ class TestApplicationUIResolution:
         config = FakeSchema()
         
         class MissingEnabledTags(UITags):
-            async def setup(self, _config):
+            async def setup(self, config: Any = None) -> None:
+                del config
                 self.remove_tag("enabled")
 
         app = make_processor_app(
@@ -494,7 +497,8 @@ class TestApplicationUIResolution:
         monkeypatch.setattr(docker_application_module, "RUN_HEALTHCHECK", False)
 
         class DynamicStartupUI(ui.UI):
-            async def setup(self, _config, tags):
+            async def setup(self, config: Any = None, tags: Any = None) -> None:
+                del config
                 self.add_element(
                     "voltage",
                     ui.NumericVariable(

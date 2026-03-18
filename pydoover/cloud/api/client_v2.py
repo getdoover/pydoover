@@ -25,9 +25,9 @@ class Client:
         base_url: str = "https://api.doover.com",
         data_base_url: str = "https://data.doover.com/api",
         auth_server_url: str = "https://auth.doover.com",
-        auth_server_client_id: str = None,
+        auth_server_client_id: str | None = None,
         verify: bool = True,
-        login_callback: Callable = None,
+        login_callback: Callable[..., Any] | None = None,
     ):
         self.access_token = token
         self.refresh_token = refresh_token

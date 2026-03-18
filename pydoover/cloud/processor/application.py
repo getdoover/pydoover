@@ -57,11 +57,11 @@ class Application:
         self.api = DooverData(self._api_endpoint)
 
         # set per-task
-        self.agent_id: int = None
-        self._initial_token: str = None
-        self.ui_manager: UIManager = None
-        self.tag_manager: TagsManagerProcessor = None
-        self._connection_config: dict[str, Any] = None
+        self.agent_id: int | None = None
+        self._initial_token: str | None = None
+        self.ui_manager: UIManager | None = None
+        self.tag_manager: TagsManagerProcessor | None = None
+        self._connection_config: dict[str, Any] | None = None
 
         self.log_capture_string = io.StringIO()
         self.string_stream_handler = logging.StreamHandler(self.log_capture_string)
@@ -92,6 +92,8 @@ class Application:
 
         if self.ui is not None:
             self.ui.bind_tags(self.tags)
+            if self.ui_manager is None:
+                raise RuntimeError("UI manager has not been initialized.")
             self.ui_manager.set_children(self.ui.to_elements())
         return self.ui
 
@@ -104,6 +106,8 @@ class Application:
         # we give it a minimal token provisioned from doover data, along with our subscription (uuid) ID
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
+        if self._initial_token is None:
+            raise RuntimeError("Initial token has not been set.")
         self.api.set_token(self._initial_token)
 
         # Always prioritise the upgrade payload, other get it from the normal method
@@ -270,7 +274,7 @@ class Application:
         # Both have permission to access the info endpoint, only.
         self._initial_token = event["token"]
         # this can be set during testing. during normal operation it's signed in the JWT.
-        self.agent_id = event.get("agent_id")
+        self.agent_id = event.get("agent_id", self.agent_id)
 
         func = None
         payload = None
@@ -317,10 +321,12 @@ class Application:
 
         if self._ui_to_set:
             # not valid for org apps
+            if self.ui_manager is None:
+                raise RuntimeError("UI manager has not been initialized.")
             await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
 
         result = None
-        if func is None:
+        if func is None or payload is None:
             log.error(f"Unknown event type: {event['op']}")
         else:
             try:
@@ -332,6 +338,8 @@ class Application:
 
         # fixme: publish UI if needed
 
+        if self.tag_manager is None:
+            raise RuntimeError("Tag manager has not been initialized.")
         await self.tag_manager.commit_tags()
 
         try:
@@ -366,12 +374,18 @@ class Application:
         :class:`pydoover.cloud.api.NotFound`
             If the channel with the specified key does not exist.
         """
+        if self.agent_id is None:
+            raise RuntimeError("Agent ID has not been initialized.")
         return await self.api.get_channel(self.agent_id, channel_name)
 
     async def get_tag(self, key: str, default: Any = None):
+        if self.tag_manager is None:
+            raise RuntimeError("Tag manager has not been initialized.")
         return self.tag_manager.get_tag(key, default)
 
     async def set_tag(self, key: str, value: Any):
+        if self.tag_manager is None:
+            raise RuntimeError("Tag manager has not been initialized.")
         self.tag_manager.set_tag(key, value)
 
     async def ping_connection(
@@ -387,7 +401,7 @@ class Application:
         if offline_at:
             offline_after = (offline_at - online_at).total_seconds()
         else:
-            offline_after = self._connection_config.get(
+            offline_after = (self._connection_config or {}).get(
                 "offline_after", DEFAULT_OFFLINE_AFTER
             )
 
@@ -396,6 +410,8 @@ class Application:
         else:
             determination = ConnectionDetermination.online
 
+        if self.agent_id is None:
+            raise RuntimeError("Agent ID has not been initialized.")
         await self.api.ping_connection_at(
             self.agent_id,
             online_at,
