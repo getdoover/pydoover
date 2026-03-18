@@ -58,7 +58,7 @@ Config-aware UI example::
             )
 
         ui_obj = ConfiguredUI()
-        if config.show_extra.value:
+        if config.show_extra:
             ui_obj.add_element("extra", ui.TextVariable("extra", "Extra"))
         return ui_obj
 

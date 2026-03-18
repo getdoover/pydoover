@@ -67,7 +67,7 @@ class ModbusInterface(GRPCInterface):
         if isinstance(config, ModbusConfig):
             elems: list[ModbusConfig] = [config]
         elif isinstance(config, ManyModbusConfig):
-            elems: list[ModbusConfig] = config.elements
+            elems = list(config)
         else:
             log.warning(f"Unsupported modbus config type: {type(config)}")
             self.config_complete = True
@@ -75,28 +75,28 @@ class ModbusInterface(GRPCInterface):
 
         for elem in elems:
             log.info(f"Setting up modbus bus: {elem}")
-            if elem.type.value == ModbusType.SERIAL:
+            if elem.type == ModbusType.SERIAL:
                 await self.open_bus_async(
-                    elem.type.value,
-                    elem.name.value,
-                    elem.serial_port.value,
-                    elem.serial_baud.value,
-                    elem.serial_method.value,
-                    elem.serial_bits.value,
-                    elem.serial_parity.value,
-                    elem.serial_stop.value,
-                    elem.serial_timeout.value,
+                    elem.type,
+                    elem.name,
+                    elem.serial_port,
+                    elem.serial_baud,
+                    elem.serial_method,
+                    elem.serial_bits,
+                    elem.serial_parity,
+                    elem.serial_stop,
+                    elem.serial_timeout,
                 )
-            elif elem.type.value == ModbusType.TCP:
+            elif elem.type == ModbusType.TCP:
                 await self.open_bus_async(
-                    elem.type.value,
-                    elem.name.value,
-                    tcp_uri=elem.tcp_uri.value,
-                    tcp_timeout=elem.tcp_timeout.value,
+                    elem.type,
+                    elem.name,
+                    tcp_uri=elem.tcp_uri,
+                    tcp_timeout=elem.tcp_timeout,
                 )
             else:
                 log.warning(
-                    f"Invalid bus type: {elem.type.value}. Expected 'serial' or 'tcp'."
+                    f"Invalid bus type: {elem.type}. Expected 'serial' or 'tcp'."
                 )
 
         self.config_complete = True
