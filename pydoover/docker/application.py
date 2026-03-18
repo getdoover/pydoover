@@ -8,7 +8,7 @@ from collections import deque
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, Awaitable, Callable
+from typing import Any, TYPE_CHECKING, Awaitable, Callable, cast
 
 from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
@@ -118,8 +118,8 @@ class Application:
         self.config: "Schema | None" = (
             config_class() if config_class is not None else None
         )
-        self.tags: Tags | None = None
-        self.ui: UI | None = None
+        self._tags: Tags | None = None
+        self._ui: UI | None = None
         self.app_key = app_key
         self.app_display_name = ""
         self._is_async = self._resolve_is_async_mode(is_async)
@@ -204,10 +204,26 @@ class Application:
             if inst is not None:
                 inst._is_async = resolved
 
-        if self.tags is not None:
-            self.tags._is_async = resolved
+        if self._tags is not None:
+            self._tags._is_async = resolved
 
         return resolved
+
+    @property
+    def tags(self) -> Tags:
+        return cast(Tags, self._tags)
+
+    @tags.setter
+    def tags(self, value: Tags | None) -> None:
+        self._tags = value
+
+    @property
+    def ui(self) -> UI:
+        return cast(UI, self._ui)
+
+    @ui.setter
+    def ui(self, value: UI | None) -> None:
+        self._ui = value
 
     async def _resolve_tags(self) -> Tags | None:
         tags_class = self.__class__.tags_class
@@ -217,8 +233,8 @@ class Application:
             self.tags = tags_class()
             await self.tags.setup(self.config)
 
-        if self.tags is not None:
-            self.tags.register_manager(self.tag_manager)
+        if self._tags is not None:
+            self._tags.register_manager(self.tag_manager)
         return self.tags
 
     async def _resolve_ui(self) -> UI | None:
@@ -229,9 +245,9 @@ class Application:
             self.ui = ui_class()
             await self.ui.setup(self.config, self.tags)
 
-        if self.ui is not None:
-            self.ui.bind_tags(self.tags)
-            self.ui_manager.set_children(self.ui.to_elements())
+        if self._ui is not None:
+            self._ui.bind_tags(self._tags)
+            self.ui_manager.set_children(self._ui.to_elements())
         return self.ui
 
     @maybe_async()
@@ -565,7 +581,7 @@ class Application:
 
     def set_ui(self, ui):
         if isinstance(ui, UI):
-            self.ui = ui.bind_tags(self.tags)
+            self.ui = ui.bind_tags(self._tags)
             self.ui_manager.set_children(self.ui.to_elements())
             return
         self.ui_manager.set_children(ui)

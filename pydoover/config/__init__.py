@@ -9,7 +9,7 @@ import re
 from collections import OrderedDict
 from enum import Enum as _Enum
 from enum import EnumType
-from typing import Any, Iterable, Iterator
+from typing import Any, Generic, Iterator, TypeVar, overload
 
 log = logging.getLogger(__name__)
 KEY_VALIDATOR = re.compile(r"^[ a-zA-Z0-9_-]*$")
@@ -58,13 +58,32 @@ def _build_runtime_elements(
     return elements
 
 
-class _DeclaredConfigElement:
-    def __init__(self, attr_name: str, template: "ConfigElement"):
+ConfigElementT = TypeVar("ConfigElementT", bound="ConfigElement")
+
+
+class _DeclaredConfigElement(Generic[ConfigElementT]):
+    def __init__(self, attr_name: str, template: ConfigElementT):
         self.attr_name = attr_name
         self.template = template
         self.template._declared_attr_name = attr_name
 
-    def __get__(self, instance, owner):
+    @overload
+    def __get__(self, instance: None, owner: type["Schema"]) -> ConfigElementT: ...
+
+    @overload
+    def __get__(self, instance: None, owner: type["Object"]) -> ConfigElementT: ...
+
+    @overload
+    def __get__(self, instance: "Schema", owner: type["Schema"]) -> Any: ...
+
+    @overload
+    def __get__(self, instance: "Object", owner: type["Object"]) -> Any: ...
+
+    def __get__(
+        self,
+        instance: "Schema | Object | None",
+        owner: type["Schema"] | type["Object"],
+    ) -> ConfigElementT | Any:
         if instance is None:
             return self.template
         instance._ensure_runtime_state()
