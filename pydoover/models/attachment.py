@@ -19,7 +19,7 @@ class Attachment:
     def __init__(self, filename: str, content_type: str, size: int, url: str):
         self.filename = filename
         self.content_type = content_type
-        self.size = size
+        self.size = int(size)
         self.url = url
 
     @classmethod
