@@ -22,7 +22,7 @@ from datetime import datetime
 from ._auth import decode_jwt_exp
 from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake
 from ._iterators import AsyncMessageIterator
-from .exceptions import TokenRefreshError
+from ..models.exceptions import TokenRefreshError
 from ..models import (
     Aggregate,
     AgentNotificationResponse,

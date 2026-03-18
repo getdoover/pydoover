@@ -6,6 +6,8 @@ import grpc
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
 
+from ..models.exceptions import DooverAPIError, HTTPError, NotFoundError
+
 log = logging.getLogger(__name__)
 
 
@@ -29,27 +31,32 @@ class GRPCInterface:
                 stub = self.stub(channel)
                 response = await getattr(stub, stub_call)(request, timeout=self.timeout)
                 return self.process_response(stub_call, response, *args, **kwargs)
+        except (DooverAPIError, HTTPError):
+            raise
         except Exception as e:
             log.exception(f"Error making {self.__class__.__name__} request: {e}")
-            return None
+            raise DooverAPIError(
+                f"gRPC request failed ({self.__class__.__name__}.{stub_call}): {e}"
+            ) from e
 
     def process_response(self, stub_call: str, response, *args, **kwargs):
         if response is None:
-            logging.warning(
-                f"Error processing response for {self.__class__.__name__}.{stub_call}: response was None"
+            raise DooverAPIError(
+                f"Empty response for {self.__class__.__name__}.{stub_call}"
             )
-            return None
 
         if response.response_header.success is False:
-            # fixme: some classes (modbus, dda) have response_message instead of message (e.g camera, platform)
-            message = getattr(response.response_header, "message", None) or getattr(
-                response.response_header, "response_message", None
+            message = (
+                getattr(response.response_header, "message", None)
+                or getattr(response.response_header, "response_message", None)
+                or "Unknown error"
             )
-            log.warning(
-                f"Error processing {stub_call} response "
-                f"({self.__class__.__name__}.{stub_call}): {message}"
-            )
-            return None
+            code = getattr(response.response_header, "response_code", None) or 500
+
+            if code == 404:
+                raise NotFoundError(message)
+            else:
+                raise HTTPError(code, message)
 
         return response
 

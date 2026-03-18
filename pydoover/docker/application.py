@@ -6,7 +6,7 @@ import logging
 import time
 from collections import deque
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from collections.abc import Callable, Coroutine
 from typing import Any, TYPE_CHECKING
@@ -272,11 +272,13 @@ class Application:
             )
             await self.device_agent.wait_for_channels_sync(["deployment_config"])
             # Fetch initial deployment config from the aggregate cache
-            config_data = await self.device_agent.fetch_channel_aggregate(
-                "deployment_config"
-            )
-            if config_data:
-                await self._on_deployment_config_update(config_data)
+            try:
+                config_agg = await self.device_agent.fetch_channel_aggregate(
+                    "deployment_config"
+                )
+                await self._on_deployment_config_update(config_agg.data)
+            except Exception:
+                log.warning("No initial deployment config available from DDA")
 
         await self.modbus_iface.setup()
 
@@ -794,9 +796,9 @@ class Application:
             log.info("Ignoring check shutdown request, app not ready yet.")
             return
 
-        dt = datetime.fromtimestamp(shutdown_at)
+        dt = datetime.fromtimestamp(shutdown_at, tz=timezone.utc)
         if self._shutdown_at is None or (
-            dt > self._shutdown_at and dt > datetime.now()
+            dt > self._shutdown_at and dt > datetime.now(tz=timezone.utc)
         ):
             # shutdown should be in the future and not already scheduled
             log.info(f"Shutdown scheduled at {dt.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -1141,11 +1143,11 @@ class Application:
 
         # Fetch initial tag values from the aggregate cache (seeded by _run_channel_stream)
         await self.device_agent.wait_for_channels_sync([TAG_CHANNEL_NAME], timeout=10)
-        tag_data = await self.device_agent.fetch_channel_aggregate(TAG_CHANNEL_NAME)
-        if tag_data:
-            self._tag_values = tag_data
+        try:
+            tag_agg = await self.device_agent.fetch_channel_aggregate(TAG_CHANNEL_NAME)
+            self._tag_values = tag_agg.data
             self._tag_ready.set()
-        else:
+        except Exception:
             log.warning("No initial tag values available from DDA")
 
         await self.ui_manager.clear_ui_async()

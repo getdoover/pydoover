@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 from ._auth import decode_jwt_exp, token_needs_refresh
 from ..models.attachment import File
 from ..utils.snowflake import generate_snowflake_id_at
-from .exceptions import (
+from ..models.exceptions import (
     ForbiddenError,
     HTTPError,
     NotFoundError,

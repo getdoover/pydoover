@@ -174,13 +174,17 @@ class UIManager:
         )
 
         # Fetch initial state from the aggregate cache
-        ui_state = await self.client.fetch_channel_aggregate("ui_state")
-        if ui_state:
-            await self.on_state_update(ui_state)
+        try:
+            ui_state_agg = await self.client.fetch_channel_aggregate("ui_state")
+            await self.on_state_update(ui_state_agg.data)
+        except Exception:
+            pass
 
-        ui_cmds = await self.client.fetch_channel_aggregate("ui_cmds")
-        if ui_cmds:
-            await self.on_command_update_async(ui_cmds)
+        try:
+            ui_cmds_agg = await self.client.fetch_channel_aggregate("ui_cmds")
+            await self.on_command_update_async(ui_cmds_agg.data)
+        except Exception:
+            pass
 
         return result
 
@@ -655,10 +659,7 @@ class UIManager:
         elif getattr(self.client, "is_processor_v2", False):
             raise RuntimeError("Doover data must be used with async methods.")
         else:
-            # fixme: allow for timestamp in DDA message publishing...
-            return self.client.publish_to_channel(
-                channel_name, data, record_log=record_log, max_age=max_age
-            )
+            raise RuntimeError("Doover data must be used with async methods.")
 
     async def _publish_to_channel_async(
         self,
@@ -692,9 +693,10 @@ class UIManager:
                 )
             return None
 
-        return await self.client.publish_to_channel_async(
-            channel_name, data, record_log=record_log, max_age=max_age
-        )
+        await self.client.update_aggregate(channel_name, data, max_age_secs=max_age)
+        if record_log:
+            await self.client.create_message(channel_name, data, timestamp=timestamp)
+        return None
 
     @maybe_async()
     def pull(self):
@@ -708,8 +710,8 @@ class UIManager:
         elif getattr(self.client, "is_processor_v2", False):
             raise RuntimeError("Doover data must be used with async methods.")
         else:
-            ui_cmds_agg = self.client.fetch_channel_aggregate("ui_cmds")
-            ui_state_agg = self.client.fetch_channel_aggregate("ui_state")
+            ui_cmds_agg = self.client.fetch_channel_aggregate("ui_cmds").data
+            ui_state_agg = self.client.fetch_channel_aggregate("ui_state").data
 
         self._set_new_ui_state(ui_state_agg)
         # self._set_new_ui_cmds(ui_cmds_agg)

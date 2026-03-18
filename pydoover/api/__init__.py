@@ -1,7 +1,7 @@
 from ._async import AsyncDataClient
 from ._base import UNSET
 from ._sync import DataClient
-from .exceptions import (
+from ..models.exceptions import (
     DooverAPIError,
     ForbiddenError,
     HTTPError,

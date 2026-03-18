@@ -1,6 +1,5 @@
 import asyncio
 import copy
-import json
 import logging
 import sys
 
@@ -28,6 +27,7 @@ from ...models import (
     TurnCredential,
 )
 from ..grpc_interface import GRPCInterface
+from ...models.exceptions import NotFoundError
 from ...cli.decorators import command as cli_command
 
 log = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ class DeviceAgentInterface(GRPCInterface):
 
         # Aggregate state tracking
         self._synced_channels: dict[str, bool] = {}
-        self._aggregates: dict[str, dict[str, Any]] = {}
+        self._aggregates: dict[str, Aggregate] = {}
         self.last_channel_message_ts: dict[str, datetime] = {}
 
     @staticmethod
@@ -104,7 +104,7 @@ class DeviceAgentInterface(GRPCInterface):
         return self.has_dda_been_online
 
     async def wait_until_healthy(self, timeout: float = 10):
-        start_time = datetime.now()
+        start_time = datetime.now(tz=timezone.utc)
         backoff = 1
         while True:
             try:
@@ -117,7 +117,7 @@ class DeviceAgentInterface(GRPCInterface):
                 log.info("DDA is available.")
                 return True
 
-            if (datetime.now() - start_time).seconds > timeout:
+            if (datetime.now(tz=timezone.utc) - start_time).seconds > timeout:
                 log.warning(
                     f"Timed out waiting {timeout} seconds for DDA to become available"
                 )
@@ -181,19 +181,37 @@ class DeviceAgentInterface(GRPCInterface):
 
     async def _run_channel_stream(self, channel_name: str):
         """Single event stream per channel. Seeds aggregate cache, then distributes events."""
+        await self.wait_until_healthy()
+
         # Seed the aggregate cache (no callbacks fired — initial state is not an "event")
-        data = await self.fetch_channel_aggregate(channel_name)
-        if data is not None:
-            self._aggregates[channel_name] = data
-            self._synced_channels[channel_name] = True
+        try:
+            agg = await self.fetch_channel_aggregate(channel_name)
+            self._aggregates[channel_name] = agg
+        except NotFoundError:
+            log.info(
+                f"Channel '{channel_name}' not found, creating with empty aggregate"
+            )
+            try:
+                agg = await self.update_aggregate(channel_name, {})
+            except Exception as e:
+                log.error(f"Failed to create channel '{channel_name}': {e}")
+            else:
+                self._aggregates[channel_name] = agg
+        except Exception as e:
+            log.error(f"Failed to seed aggregate cache for '{channel_name}': {e}")
+        else:
+            self._aggregates[channel_name] = agg
+
+        self._synced_channels[channel_name] = True
 
         async for event in self.stream_channel_events(channel_name):
             # Update internal aggregate state on AggregateUpdate
             if isinstance(event, AggregateUpdateEvent):
-                agg_data = event.aggregate.data if event.aggregate else {}
-                self._aggregates[channel_name] = agg_data
+                self._aggregates[channel_name] = event.aggregate
                 self._synced_channels[channel_name] = True
-                self.last_channel_message_ts[channel_name] = datetime.now()
+                self.last_channel_message_ts[channel_name] = datetime.now(
+                    tz=timezone.utc
+                )
 
             # Determine which flag this event corresponds to
             event_flag = self._event_type_to_flag(event)
@@ -264,7 +282,8 @@ class DeviceAgentInterface(GRPCInterface):
                 backoff = min(backoff * 2, self.time_between_connection_attempts)
 
     def process_response(self, stub_call: str, response, *args, **kwargs):
-        self.update_dda_status(response.response_header)
+        if response is not None:
+            self.update_dda_status(response.response_header)
         return super().process_response(stub_call, response, *args, **kwargs)
 
     def update_dda_status(self, header):
@@ -327,17 +346,17 @@ class DeviceAgentInterface(GRPCInterface):
         bool
             True if all channels are synced within the timeout, False otherwise.
         """
-        start_time = datetime.now()
+        start_time = datetime.now(tz=timezone.utc)
         while not all(
             [self.is_channel_synced(channel_name) for channel_name in channel_names]
         ):
-            if (datetime.now() - start_time).seconds > timeout:
+            if (datetime.now(tz=timezone.utc) - start_time).seconds > timeout:
                 return False
             await asyncio.sleep(inter_wait)
         return True
 
     @cli_command()
-    async def fetch_channel_aggregate(self, channel_name: str) -> dict[str, Any] | None:
+    async def fetch_channel_aggregate(self, channel_name: str) -> Aggregate:
         """Fetch a channel's current aggregate payload.
 
         If the channel has been subscribed to via :meth:`add_event_callback`, the cached
@@ -346,7 +365,7 @@ class DeviceAgentInterface(GRPCInterface):
         Examples
         --------
         >>> aggregate = await self.device_agent.fetch_channel_aggregate("my_channel")
-        >>> print(aggregate)
+        >>> print(aggregate.data)
 
         Parameters
         ----------
@@ -355,8 +374,15 @@ class DeviceAgentInterface(GRPCInterface):
 
         Returns
         -------
-        dict, optional
-            Aggregate data from channel. If the request fails for any reason, this will return `None`.
+        Aggregate
+            Aggregate from channel.
+
+        Raises
+        ------
+        NotFoundError
+            If the channel does not exist.
+        DooverAPIError
+            If the request fails.
         """
         if channel_name in self._aggregates:
             return copy.deepcopy(self._aggregates[channel_name])
@@ -366,53 +392,7 @@ class DeviceAgentInterface(GRPCInterface):
             "GetAggregate",
             device_agent_pb2.GetAggregateRequest(channel_name=channel_name),
         )
-        if not resp:
-            return None
-
-        return MessageToDict(resp.aggregate.data)
-
-    @cli_command()
-    async def publish_to_channel(
-        self,
-        channel_name: str,
-        message: dict | str,
-        record_log: bool = True,
-        max_age: float = None,
-    ) -> bool:
-        """Publish a message to a channel.
-
-        There is a special case with the `max_age` parameter where you can set it to `-1` to publish the message immediately.
-        This is useful for ensuring that the message is sent to the cloud immediately and won't be bundled in with other messages.
-        A good example is when you want to clear the UI. However, use this sparingly!
-
-        Parameters
-        ----------
-        channel_name : str
-            Name of channel to publish data to.
-        message : dict or str
-            The data to send either in a dictionary or string format.
-        record_log : bool
-            Whether to save to the log.
-        max_age : float
-            The maximum age of the message before publishing to the cloud.
-
-        Returns
-        -------
-        bool
-            Whether publishing was successful.
-        """
-        if isinstance(message, dict):
-            message = json.dumps(message)
-
-        req = device_agent_pb2.ChannelWriteRequest(
-            header=device_agent_pb2.RequestHeader(app_id=self.app_key),
-            channel_name=channel_name,
-            message_payload=message,
-            save_log=record_log,
-            max_age_f=max_age,
-        )
-        resp = await self.make_request("WriteToChannel", req)
-        return resp and resp.response_header.success or False
+        return Aggregate.from_proto(resp.aggregate)
 
     async def fetch_turn_credential(
         self,
@@ -470,12 +450,7 @@ class DeviceAgentInterface(GRPCInterface):
             replace_data=replace_data,
         )
         resp = await self.make_request("UpdateMessage", req)
-        # fixme: some proper error handling
-        if resp:
-            return Message.from_proto(resp.message)
-        else:
-            log.info(f"Failed to update message: {resp}...")
-            raise RuntimeError(f"Failed to update message: {resp}")
+        return Message.from_proto(resp.message)
 
     async def update_aggregate(
         self,
@@ -539,7 +514,6 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.channels = {}
 
         self.is_dda_online = True
         self.is_dda_available = True
@@ -549,8 +523,10 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         self, channel_names: list[str], timeout: int = 5, inter_wait: float = 0.2
     ):
         for channel in channel_names:
-            data = self.channels.get(channel, {})
-            self._aggregates[channel] = data
+            if channel not in self._aggregates:
+                self._aggregates[channel] = Aggregate(
+                    data={}, attachments=[], last_updated=None
+                )
             self._synced_channels[channel] = True
         return True
 
@@ -559,7 +535,12 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         return
 
     async def fetch_channel_aggregate(self, channel_name):
-        return self.channels.get(channel_name, {})
+        return copy.deepcopy(
+            self._aggregates.get(
+                channel_name,
+                Aggregate(data={}, attachments=[], last_updated=None),
+            )
+        )
 
     async def wait_until_healthy(self, timeout: float = 10):
         return True
@@ -568,11 +549,12 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         raise NotImplementedError("make_request is not implemented")
 
     async def update_aggregate(self, channel_name, data, **kwargs):
-        existing = self.channels.get(channel_name, {})
-        existing.update(data)
-        self.channels[channel_name] = existing
+        existing = self._aggregates.get(
+            channel_name, Aggregate(data={}, attachments=[], last_updated=None)
+        )
+        existing.data.update(data)
         self._aggregates[channel_name] = existing
-        return Aggregate(data=existing, attachments=[], last_updated=None)
+        return copy.deepcopy(existing)
 
     async def create_message(self, channel_name, data, **kwargs):
         return 0

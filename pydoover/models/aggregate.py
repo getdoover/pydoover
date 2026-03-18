@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .attachment import Attachment
@@ -35,7 +35,7 @@ class Aggregate:
     @classmethod
     def from_dict(cls, payload):
         ts = payload.get("last_updated")
-        dt = ts and datetime.fromtimestamp(ts / 1000.0)
+        dt = ts and datetime.fromtimestamp(ts / 1000.0, tz=timezone.utc)
         return cls(
             payload["data"],
             [Attachment.from_dict(a) for a in payload.get("attachments", [])],
@@ -48,7 +48,7 @@ class Aggregate:
             MessageToDict(response.data),
             [Attachment.from_proto(a) for a in response.attachments],
             response.last_updated
-            and datetime.fromtimestamp(response.last_updated / 1000.0),
+            and datetime.fromtimestamp(response.last_updated / 1000.0, tz=timezone.utc),
         )
 
     def to_proto(self):

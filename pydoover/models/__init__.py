@@ -10,6 +10,14 @@ from .connection import (
     ConnectionType,
     DooverConnectionStatus,
 )
+from .exceptions import (
+    DooverAPIError,
+    ForbiddenError,
+    HTTPError,
+    NotFoundError,
+    TokenRefreshError,
+    UnauthorizedError,
+)
 from .events import (
     AggregateUpdateEvent,
     DeploymentEvent,
@@ -61,15 +69,19 @@ __all__ = [
     "ConnectionSubscription",
     "ConnectionSubscriptionLog",
     "ConnectionType",
+    "DooverAPIError",
     "DeploymentEvent",
     "DooverConnectionStatus",
     "EventSubscription",
     "File",
+    "ForbiddenError",
     "IngestionEndpointEvent",
     "ManualInvokeEvent",
+    "HTTPError",
     "Message",
     "MessageCreateEvent",
     "MessageUpdateEvent",
+    "NotFoundError",
     "NotificationEndpoint",
     "NotificationSeverity",
     "NotificationSubscription",
@@ -80,5 +92,7 @@ __all__ = [
     "ScheduleEvent",
     "SubscriptionInfo",
     "TimeseriesResponse",
+    "TokenRefreshError",
     "TurnCredential",
+    "UnauthorizedError",
 ]
