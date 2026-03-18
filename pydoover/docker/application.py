@@ -272,7 +272,7 @@ class Application:
             )
             await self.device_agent.wait_for_channels_sync(["deployment_config"])
             # Fetch initial deployment config from the aggregate cache
-            config_data = await self.device_agent.get_channel_aggregate(
+            config_data = await self.device_agent.fetch_channel_aggregate(
                 "deployment_config"
             )
             if config_data:
@@ -697,14 +697,14 @@ class Application:
 
     ## Platform Interface Functions
 
-    def get_di(self, di):
-        return self.platform_iface.get_di(di)
+    def fetch_di(self, di):
+        return self.platform_iface.fetch_di(di)
 
-    def get_ai(self, ai):
-        return self.platform_iface.get_ai(ai)
+    def fetch_ai(self, ai):
+        return self.platform_iface.fetch_ai(ai)
 
-    def get_do(self, do):
-        return self.platform_iface.get_do(do)
+    def fetch_do(self, do):
+        return self.platform_iface.fetch_do(do)
 
     def set_do(self, do, value):
         return self.platform_iface.set_do(do, value)
@@ -712,8 +712,8 @@ class Application:
     def schedule_do(self, do, value, delay_secs):
         return self.platform_iface.schedule_do(do, value, delay_secs)
 
-    def get_ao(self, ao):
-        return self.platform_iface.get_ao(ao)
+    def fetch_ao(self, ao):
+        return self.platform_iface.fetch_ao(ao)
 
     def set_ao(self, ao, value):
         return self.platform_iface.set_ao(ao, value)
@@ -1112,7 +1112,7 @@ class Application:
                 # setup, main_loop, etc...
 
                 async def check_can_shutdown(self) -> bool:
-                    if await self.platform_iface.get_do(0) == 0:
+                    if await self.platform_iface.fetch_do(0) == 0:
                         log.info("Digital Output 0 is Low. Can shutdown.")
                         return True
                     else:
@@ -1141,7 +1141,7 @@ class Application:
 
         # Fetch initial tag values from the aggregate cache (seeded by _run_channel_stream)
         await self.device_agent.wait_for_channels_sync([TAG_CHANNEL_NAME], timeout=10)
-        tag_data = await self.device_agent.get_channel_aggregate(TAG_CHANNEL_NAME)
+        tag_data = await self.device_agent.fetch_channel_aggregate(TAG_CHANNEL_NAME)
         if tag_data:
             self._tag_values = tag_data
             self._tag_ready.set()

@@ -108,7 +108,7 @@ class PulseCounter:
             return
         self.receiving_events = True
         self.receive_events(
-            self.platform_iface.get_di_events(
+            self.platform_iface.fetch_di_events(
                 self.pin, self.edge, include_system_events=True
             )
         )
@@ -534,7 +534,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_di(self, *di: int) -> bool | list[bool]:
+    async def fetch_di(self, *di: int) -> bool | list[bool]:
         """Get digital input values.
 
         Examples
@@ -542,11 +542,11 @@ class PlatformInterface(GRPCInterface):
 
         Get a single digital input pin value::
 
-            pin1 = await self.platform_iface.get_di(1)
+            pin1 = await self.platform_iface.fetch_di(1)
 
         Get digital input pins 1, 2 and 3 in the same transaction::
 
-            pin1, pin2, pin3 = await self.platform_iface.get_di(1, 2, 3)
+            pin1, pin2, pin3 = await self.platform_iface.fetch_di(1, 2, 3)
 
         Parameters
         ----------
@@ -567,7 +567,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_ai(self, *ai: int) -> float | list[float]:
+    async def fetch_ai(self, *ai: int) -> float | list[float]:
         """Get analogue input values.
 
         Examples
@@ -575,11 +575,11 @@ class PlatformInterface(GRPCInterface):
 
         Get a single analogue input pin value::
 
-            pin1 = await self.platform_iface.get_ai(1)
+            pin1 = await self.platform_iface.fetch_ai(1)
 
         Get analogue input pins 1, 2 and 3 in the same transaction::
 
-            pin1, pin2, pin3 = await self.platform_iface.get_ai(1, 2, 3)
+            pin1, pin2, pin3 = await self.platform_iface.fetch_ai(1, 2, 3)
 
         Parameters
         ----------
@@ -594,11 +594,11 @@ class PlatformInterface(GRPCInterface):
             Returns None if the request failed.
         """
         # Above section is to facilitate the following:
-        # get_ai(1)
-        # get_ai([1,4,2])
+        # fetch_ai(1)
+        # fetch_ai([1,4,2])
 
-        # Proposal: get_ai(*pins)
-        # allows for get_ai(1, 2, 3) or get_ai(1) or get_ai(*[1, 2, 3])
+        # Proposal: fetch_ai(*pins)
+        # allows for fetch_ai(1, 2, 3) or fetch_ai(1) or fetch_ai(*[1, 2, 3])
 
         pins = self._cast_pins(ai)
         return await self.make_request(
@@ -606,7 +606,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_do(self, *do: int) -> list[bool] | None:
+    async def fetch_do(self, *do: int) -> list[bool] | None:
         """Get digital output values.
 
         Examples
@@ -614,12 +614,12 @@ class PlatformInterface(GRPCInterface):
 
         Get a single digital output pin value::
 
-            await self.platform_iface.get_do(1)
+            await self.platform_iface.fetch_do(1)
 
 
         Get digital output pins 1, 2 and 3 in the same transaction::
 
-            await self.platform_iface.get_do(1, 2, 3)
+            await self.platform_iface.fetch_do(1, 2, 3)
 
         Parameters
         ----------
@@ -731,7 +731,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_ao(self, *ao: int) -> float | list[float]:
+    async def fetch_ao(self, *ao: int) -> float | list[float]:
         """Get analogue output values.
 
         Examples
@@ -739,11 +739,11 @@ class PlatformInterface(GRPCInterface):
 
         Get a single analogue output pin value::
 
-            pin1 = await self.platform_iface.get_ao(1)
+            pin1 = await self.platform_iface.fetch_ao(1)
 
         Get analogue output pins 1, 2 and 3 in the same transaction::
 
-            await self.platform_iface.get_ao(1, 2, 3)
+            await self.platform_iface.fetch_ao(1, 2, 3)
 
         Parameters
         ----------
@@ -855,7 +855,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_system_voltage(self) -> float:
+    async def fetch_system_voltage(self) -> float:
         """Get the system input voltage.
 
         This is the voltage supplied to the system, typically from a power supply or battery.
@@ -865,7 +865,7 @@ class PlatformInterface(GRPCInterface):
 
         Get the system input voltage::
 
-            voltage = await self.platform_iface.get_system_voltage()
+            voltage = await self.platform_iface.fetch_system_voltage()
 
 
         Returns
@@ -880,7 +880,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_system_power(self) -> float:
+    async def fetch_system_power(self) -> float:
         """Get the system input power.
 
         This is the power supplied to the system in watts.
@@ -890,7 +890,7 @@ class PlatformInterface(GRPCInterface):
 
         Get the system input power::
 
-            power_watts = await self.platform_iface.get_system_power()
+            power_watts = await self.platform_iface.fetch_system_power()
 
 
         Returns
@@ -905,7 +905,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_system_temperature(self) -> float:
+    async def fetch_system_temperature(self) -> float:
         """Get the system temperature.
 
         On a Doovit, this is the temperature of the Raspberry Pi CM4.
@@ -915,7 +915,7 @@ class PlatformInterface(GRPCInterface):
 
         Print the system temperature::
 
-            temperature = await self.platform_iface.get_system_temperature()
+            temperature = await self.platform_iface.fetch_system_temperature()
             print(f"System temperature: {temperature}°C")
 
 
@@ -931,7 +931,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_location(self) -> Location:
+    async def fetch_location(self) -> Location:
         """Get the device location.
 
         Doovits with 4G cards generally implement this using the ModemManager (mmcli).
@@ -941,7 +941,7 @@ class PlatformInterface(GRPCInterface):
 
         Print the current location::
 
-            location = await self.platform_iface.get_location()
+            location = await self.platform_iface.fetch_location()
             print(f"Latitude: {location.latitude}, Longitude: {location.longitude}, Altitude: {location.altitude}")
 
 
@@ -978,7 +978,7 @@ class PlatformInterface(GRPCInterface):
         return await self.make_request("shutdown", platform_iface_pb2.shutdownRequest())
 
     @cli_command()
-    async def get_immunity_seconds(self) -> float:
+    async def fetch_immunity_seconds(self) -> float:
         """Get the number of seconds the device is immune for.
 
         Immunity is the time for which the device will ignore any shutdown requests.
@@ -988,7 +988,7 @@ class PlatformInterface(GRPCInterface):
 
         Print the number of seconds the device is immune for::
 
-            immunity_secs = await self.platform_iface.get_immunity_seconds()
+            immunity_secs = await self.platform_iface.fetch_immunity_seconds()
             print(f"Device immune for: {immunity_secs} seconds")
 
 
@@ -1043,7 +1043,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_io_table(self):
+    async def fetch_io_table(self):
         res = await self.make_request(
             "getIoTable",
             platform_iface_pb2.getIoTableRequest(),
@@ -1068,7 +1068,7 @@ class PlatformInterface(GRPCInterface):
             "syncRtcTime", platform_iface_pb2.syncRtcTimeRequest()
         )
 
-    async def get_events(self, events_from: int = 0):
+    async def fetch_events(self, events_from: int = 0):
         """Get all events.
 
         Parameters
@@ -1088,7 +1088,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def get_di_events(
+    async def fetch_di_events(
         self,
         di_pin: int,
         edge: str,

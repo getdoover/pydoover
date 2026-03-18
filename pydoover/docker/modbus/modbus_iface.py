@@ -236,7 +236,7 @@ class ModbusInterface(GRPCInterface):
             return False
 
     @cli_command()
-    async def get_bus_status(self, bus_id: str = "default") -> bool:
+    async def fetch_bus_status(self, bus_id: str = "default") -> bool:
         """Get the status of a modbus bus.
 
         Parameters

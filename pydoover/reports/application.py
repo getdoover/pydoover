@@ -118,7 +118,7 @@ class Application(ApplicationBase):
         self.report_id = event.payload["report_id"]
 
         try:
-            data = await self.api.get_message(
+            data = await self.api.fetch_message(
                 self.agent_id,
                 "reports",
                 self.report_id,
@@ -247,7 +247,7 @@ class Application(ApplicationBase):
         period_end: datetime,
     ):
         """Fetch messages from multiple agents for a channel within a time window."""
-        return await self.api.get_multi_agent_messages(
+        return await self.api.fetch_multi_agent_messages(
             channel_name,
             agent_ids,
             before=period_end,

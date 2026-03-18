@@ -79,9 +79,9 @@ class Application:
             info = SubscriptionInfo.from_dict(initial_payload["d"]["upgrade"])
         else:
             if self.subscription_id:
-                info = await self.api.get_subscription_info(self.subscription_id)
+                info = await self.api.fetch_subscription_info(self.subscription_id)
             elif self.schedule_id:
-                info = await self.api.get_schedule_info(self.schedule_id)
+                info = await self.api.fetch_schedule_info(self.schedule_id)
             elif self.ingestion_id:
                 # doover data invokes this directly so we can pre-load all required info here to save a call...
                 info = SubscriptionInfo.from_dict(initial_payload["d"]["upgrade"])
@@ -368,7 +368,7 @@ class Application:
         :class:`pydoover.cloud.api.NotFound`
             If the channel with the specified key does not exist.
         """
-        return await self.api.get_channel(self.agent_id, channel_name)
+        return await self.api.fetch_channel(self.agent_id, channel_name)
 
     async def get_tag(self, key: str, default: Any = None):
         try:

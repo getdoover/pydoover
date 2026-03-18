@@ -76,7 +76,7 @@ def _make_async_client(**overrides) -> AsyncDataClient:
 class TestDataClientSync:
     def test_get_channel(self):
         with _make_sync_client() as client:
-            channel = client.get_channel(AGENT_ID, TEST_CHANNEL)
+            channel = client.fetch_channel(AGENT_ID, TEST_CHANNEL)
             assert isinstance(channel, Channel)
             assert channel.name == TEST_CHANNEL
 
@@ -108,7 +108,7 @@ class TestDataClientSync:
                 TEST_CHANNEL,
                 data={"get_test": True},
             )
-            fetched = client.get_message(AGENT_ID, TEST_CHANNEL, msg.id)
+            fetched = client.fetch_message(AGENT_ID, TEST_CHANNEL, msg.id)
             assert isinstance(fetched, Message)
             assert str(fetched.id) == str(msg.id)
 
@@ -126,7 +126,7 @@ class TestDataClientSync:
                 data={"version": 2},
                 replace=True,
             )
-            fetched = client.get_message(AGENT_ID, TEST_CHANNEL, msg.id)
+            fetched = client.fetch_message(AGENT_ID, TEST_CHANNEL, msg.id)
             assert fetched.data["version"] == 2
 
     def test_update_and_get_aggregate(self):
@@ -179,7 +179,7 @@ class TestDataClientSync:
             )
             client.delete_message(AGENT_ID, TEST_CHANNEL, msg.id)
             with pytest.raises(NotFoundError):
-                client.get_message(AGENT_ID, TEST_CHANNEL, msg.id)
+                client.fetch_message(AGENT_ID, TEST_CHANNEL, msg.id)
 
     def test_timeseries(self):
         with _make_sync_client() as client:
@@ -189,7 +189,7 @@ class TestDataClientSync:
                 TEST_CHANNEL,
                 data={"temperature": 22.5},
             )
-            result = client.get_timeseries(
+            result = client.fetch_timeseries(
                 AGENT_ID,
                 TEST_CHANNEL,
                 field_names=["temperature"],
@@ -207,7 +207,7 @@ class TestDataClientAsync:
     @pytest.mark.asyncio
     async def test_get_channel(self):
         async with _make_async_client() as client:
-            channel = await client.get_channel(AGENT_ID, TEST_CHANNEL)
+            channel = await client.fetch_channel(AGENT_ID, TEST_CHANNEL)
             assert isinstance(channel, Channel)
             assert channel.name == TEST_CHANNEL
 
@@ -258,7 +258,7 @@ class TestDataClientAsync:
             )
             assert isinstance(alarm, Alarm)
 
-            fetched = await client.get_alarm(AGENT_ID, TEST_CHANNEL, alarm.id)
+            fetched = await client.fetch_alarm(AGENT_ID, TEST_CHANNEL, alarm.id)
             assert fetched.id == alarm.id
 
             await client.delete_alarm(AGENT_ID, TEST_CHANNEL, alarm.id)
@@ -285,7 +285,7 @@ class TestTokenRefresh:
         with client:
             assert client.token is None
             # This should trigger a token refresh
-            channel = client.get_channel(AGENT_ID, TEST_CHANNEL)
+            channel = client.fetch_channel(AGENT_ID, TEST_CHANNEL)
             assert isinstance(channel, Channel)
             assert client.token is not None
 
@@ -299,6 +299,6 @@ class TestTokenRefresh:
             organisation_id=ORG_ID,
         ) as client:
             assert client.token is None
-            channel = await client.get_channel(AGENT_ID, TEST_CHANNEL)
+            channel = await client.fetch_channel(AGENT_ID, TEST_CHANNEL)
             assert isinstance(channel, Channel)
             assert client.token is not None

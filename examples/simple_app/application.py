@@ -14,7 +14,7 @@ class SampleApplication(DockerApplication):
             print("We are allowed to set outputs!")
 
         for i in range(self.config.num_di.value):
-            status = self.platform_iface.get_di(i)
+            status = self.platform_iface.fetch_di(i)
             if status:
                 print(f"DI {i} is active!")
             else:

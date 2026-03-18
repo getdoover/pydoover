@@ -5,7 +5,7 @@ Usage::
     from pydoover.api import AsyncDataClient
 
     async with AsyncDataClient("https://data.doover.com/api", token="...") as client:
-        channel = await client.get_channel(agent_id, "my_channel")
+        channel = await client.fetch_channel(agent_id, "my_channel")
 """
 
 import asyncio
@@ -245,7 +245,7 @@ class AsyncDataClient(BaseClient):
         )
         return [Channel.from_dict(c) for c in data]
 
-    async def get_channel(
+    async def fetch_channel(
         self,
         agent_id: int,
         channel_name: str,
@@ -377,7 +377,7 @@ class AsyncDataClient(BaseClient):
             page_size=page_size,
         )
 
-    async def get_message(
+    async def fetch_message(
         self,
         agent_id: int,
         channel_name: str,
@@ -453,7 +453,7 @@ class AsyncDataClient(BaseClient):
             organisation_id=organisation_id,
         )
 
-    async def get_message_attachment(
+    async def fetch_message_attachment(
         self,
         agent_id: int,
         channel_name: str,
@@ -478,7 +478,7 @@ class AsyncDataClient(BaseClient):
             _raise_for_status(resp.status, text, url)
             return await resp.read()
 
-    async def get_timeseries(
+    async def fetch_timeseries(
         self,
         agent_id: int,
         channel_name: str,
@@ -503,7 +503,7 @@ class AsyncDataClient(BaseClient):
 
     # ── Aggregates ─────────────────────────────────────────────────────────
 
-    async def get_channel_aggregate(
+    async def fetch_channel_aggregate(
         self,
         agent_id: int,
         channel_name: str,
@@ -545,7 +545,7 @@ class AsyncDataClient(BaseClient):
             return None
         return Aggregate.from_dict(result)
 
-    async def get_channel_aggregate_attachment(
+    async def fetch_channel_aggregate_attachment(
         self,
         agent_id: int,
         channel_name: str,
@@ -571,7 +571,7 @@ class AsyncDataClient(BaseClient):
 
     # ── Multi-agent batch ──────────────────────────────────────────────────
 
-    async def get_multi_agent_messages(
+    async def fetch_multi_agent_messages(
         self,
         channel_name: str,
         agent_ids: list[int],
@@ -597,7 +597,7 @@ class AsyncDataClient(BaseClient):
         )
         return BatchMessageResponse.from_dict(data)
 
-    async def get_multi_agent_aggregates(
+    async def fetch_multi_agent_aggregates(
         self,
         channel_name: str,
         agent_ids: list[int],
@@ -626,7 +626,7 @@ class AsyncDataClient(BaseClient):
         )
         return [Alarm.from_dict(a) for a in data]
 
-    async def get_alarm(
+    async def fetch_alarm(
         self,
         agent_id: int,
         channel_name: str,
@@ -767,7 +767,7 @@ class AsyncDataClient(BaseClient):
         )
         return [ConnectionDetail.from_dict(c) for c in data]
 
-    async def get_connection(
+    async def fetch_connection(
         self,
         connection_id: int,
         organisation_id: int | None = None,
@@ -779,7 +779,7 @@ class AsyncDataClient(BaseClient):
         )
         return ConnectionDetail.from_dict(data)
 
-    async def get_connection_history(
+    async def fetch_connection_history(
         self,
         agent_id: int,
         default_connection: bool,
@@ -801,7 +801,7 @@ class AsyncDataClient(BaseClient):
         )
         return [ConnectionDetail.from_dict(c) for c in data]
 
-    async def get_subscription_history(
+    async def fetch_subscription_history(
         self,
         agent_id: int,
         channel_agent_id: int,
@@ -826,7 +826,7 @@ class AsyncDataClient(BaseClient):
         )
         return [ConnectionSubscriptionLog.from_dict(s) for s in data]
 
-    async def get_channel_subscriptions(
+    async def fetch_channel_subscriptions(
         self,
         agent_id: int,
         channel_name: str,
@@ -841,7 +841,7 @@ class AsyncDataClient(BaseClient):
 
     # ── Notifications ──────────────────────────────────────────────────────
 
-    async def get_notifications(
+    async def fetch_notifications(
         self,
         agent_id: int,
         organisation_id: int | None = None,
@@ -1078,7 +1078,7 @@ class AsyncDataClient(BaseClient):
 
     # ── Processors ─────────────────────────────────────────────────────────
 
-    async def get_subscription_info(
+    async def fetch_subscription_info(
         self,
         subscription_id: int,
         organisation_id: int | None = None,
@@ -1090,7 +1090,7 @@ class AsyncDataClient(BaseClient):
         )
         return SubscriptionInfo.from_dict(data)
 
-    async def get_schedule_info(
+    async def fetch_schedule_info(
         self,
         schedule_id: int,
         organisation_id: int | None = None,
@@ -1190,7 +1190,7 @@ class AsyncDataClient(BaseClient):
 
     # ── TURN ───────────────────────────────────────────────────────────────
 
-    async def get_turn_token(
+    async def fetch_turn_token(
         self,
         role: str,
         camera_name: str,

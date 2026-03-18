@@ -4,8 +4,8 @@ from typing import Any
 class SubscriptionInfo:
     def __init__(
         self,
-        agent_id: str,
-        organisation_id: str,
+        agent_id: int,
+        organisation_id: int,
         app_key: str,
         deployment_config: dict[str, Any],
         ui_state: dict[str, Any],

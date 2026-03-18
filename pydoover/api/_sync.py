@@ -5,7 +5,7 @@ Usage::
     from pydoover.api import DataClient
 
     client = DataClient("https://data.doover.com/api", token="...")
-    channel = client.get_channel(agent_id, "my_channel")
+    channel = client.fetch_channel(agent_id, "my_channel")
 """
 
 from __future__ import annotations
@@ -221,7 +221,7 @@ class DataClient(BaseClient):
         )
         return [Channel.from_dict(c) for c in data]
 
-    def get_channel(
+    def fetch_channel(
         self,
         agent_id: int,
         channel_name: str,
@@ -353,7 +353,7 @@ class DataClient(BaseClient):
             page_size=page_size,
         )
 
-    def get_message(
+    def fetch_message(
         self,
         agent_id: int,
         channel_name: str,
@@ -429,7 +429,7 @@ class DataClient(BaseClient):
             organisation_id=organisation_id,
         )
 
-    def get_message_attachment(
+    def fetch_message_attachment(
         self,
         agent_id: int,
         channel_name: str,
@@ -450,7 +450,7 @@ class DataClient(BaseClient):
         _raise_for_status(resp.status_code, resp.text, url)
         return resp.content
 
-    def get_timeseries(
+    def fetch_timeseries(
         self,
         agent_id: int,
         channel_name: str,
@@ -475,7 +475,7 @@ class DataClient(BaseClient):
 
     # ── Aggregates ─────────────────────────────────────────────────────────
 
-    def get_channel_aggregate(
+    def fetch_channel_aggregate(
         self,
         agent_id: int,
         channel_name: str,
@@ -517,7 +517,7 @@ class DataClient(BaseClient):
             return None
         return Aggregate.from_dict(result)
 
-    def get_channel_aggregate_attachment(
+    def fetch_channel_aggregate_attachment(
         self,
         agent_id: int,
         channel_name: str,
@@ -539,7 +539,7 @@ class DataClient(BaseClient):
 
     # ── Multi-agent batch ──────────────────────────────────────────────────
 
-    def get_multi_agent_messages(
+    def fetch_multi_agent_messages(
         self,
         channel_name: str,
         agent_ids: list[int],
@@ -565,7 +565,7 @@ class DataClient(BaseClient):
         )
         return BatchMessageResponse.from_dict(data)
 
-    def get_multi_agent_aggregates(
+    def fetch_multi_agent_aggregates(
         self,
         channel_name: str,
         agent_ids: list[int],
@@ -594,7 +594,7 @@ class DataClient(BaseClient):
         )
         return [Alarm.from_dict(a) for a in data]
 
-    def get_alarm(
+    def fetch_alarm(
         self,
         agent_id: int,
         channel_name: str,
@@ -735,7 +735,7 @@ class DataClient(BaseClient):
         )
         return [ConnectionDetail.from_dict(c) for c in data]
 
-    def get_connection(
+    def fetch_connection(
         self,
         connection_id: int,
         organisation_id: int | None = None,
@@ -747,7 +747,7 @@ class DataClient(BaseClient):
         )
         return ConnectionDetail.from_dict(data)
 
-    def get_connection_history(
+    def fetch_connection_history(
         self,
         agent_id: int,
         default_connection: bool,
@@ -769,7 +769,7 @@ class DataClient(BaseClient):
         )
         return [ConnectionDetail.from_dict(c) for c in data]
 
-    def get_subscription_history(
+    def fetch_subscription_history(
         self,
         agent_id: int,
         channel_agent_id: int,
@@ -794,7 +794,7 @@ class DataClient(BaseClient):
         )
         return [ConnectionSubscriptionLog.from_dict(s) for s in data]
 
-    def get_channel_subscriptions(
+    def fetch_channel_subscriptions(
         self,
         agent_id: int,
         channel_name: str,
@@ -809,7 +809,7 @@ class DataClient(BaseClient):
 
     # ── Notifications ──────────────────────────────────────────────────────
 
-    def get_notifications(
+    def fetch_notifications(
         self,
         agent_id: int,
         organisation_id: int | None = None,
@@ -1046,7 +1046,7 @@ class DataClient(BaseClient):
 
     # ── Processors ─────────────────────────────────────────────────────────
 
-    def get_subscription_info(
+    def fetch_subscription_info(
         self,
         subscription_id: int,
         organisation_id: int | None = None,
@@ -1058,7 +1058,7 @@ class DataClient(BaseClient):
         )
         return SubscriptionInfo.from_dict(data)
 
-    def get_schedule_info(
+    def fetch_schedule_info(
         self,
         schedule_id: int,
         organisation_id: int | None = None,
@@ -1158,7 +1158,7 @@ class DataClient(BaseClient):
 
     # ── TURN ───────────────────────────────────────────────────────────────
 
-    def get_turn_token(
+    def fetch_turn_token(
         self,
         role: str,
         camera_name: str,

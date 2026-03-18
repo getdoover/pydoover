@@ -182,7 +182,7 @@ class DeviceAgentInterface(GRPCInterface):
     async def _run_channel_stream(self, channel_name: str):
         """Single event stream per channel. Seeds aggregate cache, then distributes events."""
         # Seed the aggregate cache (no callbacks fired — initial state is not an "event")
-        data = await self.get_channel_aggregate(channel_name)
+        data = await self.fetch_channel_aggregate(channel_name)
         if data is not None:
             self._aggregates[channel_name] = data
             self._synced_channels[channel_name] = True
@@ -337,7 +337,7 @@ class DeviceAgentInterface(GRPCInterface):
         return True
 
     @cli_command()
-    async def get_channel_aggregate(self, channel_name: str) -> dict[str, Any] | None:
+    async def fetch_channel_aggregate(self, channel_name: str) -> dict[str, Any] | None:
         """Fetch a channel's current aggregate payload.
 
         If the channel has been subscribed to via :meth:`add_event_callback`, the cached
@@ -345,7 +345,7 @@ class DeviceAgentInterface(GRPCInterface):
 
         Examples
         --------
-        >>> aggregate = await self.device_agent.get_channel_aggregate("my_channel")
+        >>> aggregate = await self.device_agent.fetch_channel_aggregate("my_channel")
         >>> print(aggregate)
 
         Parameters
@@ -414,7 +414,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("WriteToChannel", req)
         return resp and resp.response_header.success or False
 
-    async def get_turn_credential(
+    async def fetch_turn_credential(
         self,
     ) -> TurnCredential:
         resp = await self.make_request(
@@ -558,7 +558,7 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         # No-op in mock — no real event stream to listen to
         return
 
-    async def get_channel_aggregate(self, channel_name):
+    async def fetch_channel_aggregate(self, channel_name):
         return self.channels.get(channel_name, {})
 
     async def wait_until_healthy(self, timeout: float = 10):
