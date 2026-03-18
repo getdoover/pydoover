@@ -26,6 +26,7 @@ from ...models import (
     MessageUpdateEvent,
     OneShotMessage,
     TurnCredential,
+    Attachment,
 )
 from ..grpc_interface import GRPCInterface
 from ...models.exceptions import NotFoundError
@@ -519,6 +520,13 @@ class DeviceAgentInterface(GRPCInterface):
         )
         resp = await self.make_request("UpdateAggregate", req)
         return Aggregate.from_proto(resp.aggregate)
+
+    async def fetch_message_attachment(self, attachment: Attachment) -> File:
+        req = device_agent_pb2.FetchAttachmentRequest(
+            attachment=attachment.to_proto(),
+        )
+        resp = await self.make_request("FetchAttachment", req)
+        return File.from_proto(resp.file)
 
     async def close(self):
         for task in self._stream_tasks.values():

@@ -37,6 +37,7 @@ from ...models import (
     SubscriptionInfo,
     TimeseriesResponse,
     TurnCredential,
+    Attachment,
 )
 from ...models.alarm import AlarmOperator
 from ...models.notification import (
@@ -438,23 +439,16 @@ class DataClient(BaseClient):
 
     def fetch_message_attachment(
         self,
-        agent_id: int,
-        channel_name: str,
-        message_id: int,
-        attachment_id: int,
+        attachment: Attachment,
         organisation_id: int | None = None,
     ) -> bytes:
         """Download a message attachment. Follows the redirect to S3."""
         self._ensure_token()
-        url = self._build_url(
-            f"/agents/{agent_id}/channels/{channel_name}"
-            f"/messages/{message_id}/attachments/{attachment_id}"
-        )
         resp = self._session.get(
-            url,
+            attachment.url,
             headers=self._auth_headers(organisation_id),
         )
-        _raise_for_status(resp.status_code, resp.text, url)
+        _raise_for_status(resp.status_code, resp.text, attachment.url)
         return resp.content
 
     def fetch_timeseries(
