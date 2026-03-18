@@ -14,16 +14,21 @@ import json
 import logging
 import time
 from typing import Any
-from base64 import b64encode
 
 import httpx
 
 from datetime import datetime
 
-from ..auth._utils import decode_jwt_exp
-from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake, Unset
+from ._base import (
+    UNSET,
+    BaseClient,
+    _consume_auth_kwargs,
+    _raise_for_status,
+    _to_snowflake,
+    Unset,
+    build_sync_auth,
+)
 from ._iterators import MessageIterator
-from ...models.exceptions import TokenRefreshError
 from ...models import (
     Aggregate,
     AgentNotificationResponse,
@@ -57,63 +62,26 @@ log = logging.getLogger(__name__)
 class DataClient(BaseClient):
     """Synchronous Doover Data API client using ``httpx``."""
 
-    def __init__(self, base_url: str, **kwargs):
-        super().__init__(base_url, **kwargs)
+    def __init__(self, base_url: str | None = None, **kwargs):
+        timeout = kwargs.get("timeout", 60.0)
+        auth, resolved_base_url, owns_auth = build_sync_auth(
+            base_url=base_url,
+            timeout=timeout,
+            **_consume_auth_kwargs(kwargs),
+        )
+        super().__init__(resolved_base_url, auth=auth, owns_auth=owns_auth, **kwargs)
         self._session = httpx.Client(timeout=self.timeout, follow_redirects=True)
-        self._update_session_auth()
-
-    def _update_session_auth(self):
-        if self._token:
-            self._session.headers["Authorization"] = f"Bearer {self._token}"
-
-    def set_token(self, token: str):
-        super().set_token(token)
-        self._update_session_auth()
 
     def close(self):
         self._session.close()
+        if self._owns_auth:
+            self.auth.close()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *exc):
         self.close()
-
-    # -- Token refresh -------------------------------------------------------
-
-    def _refresh_token(self):
-        if not self._can_refresh:
-            raise TokenRefreshError(
-                "Token expired and no client credentials configured for refresh."
-            )
-        url = self._build_url("/oauth2/token")
-        credentials = b64encode(
-            f"{self._client_id}:{self._client_secret}".encode()
-        ).decode()
-        resp = httpx.post(
-            url,
-            data={"grant_type": "client_credentials", "scope": ""},
-            headers={
-                "Authorization": f"Basic {credentials}",
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            timeout=self.timeout,
-        )
-        if resp.is_error:
-            raise TokenRefreshError(
-                f"Token refresh failed: {resp.status_code} {resp.text}"
-            )
-        data = resp.json()
-        self._token = data["access_token"]
-        self._token_expires_at = decode_jwt_exp(self._token)
-        if self._token_expires_at is None and "expires_in" in data:
-            self._token_expires_at = time.time() + data["expires_in"]
-        self._update_session_auth()
-        log.info("Refreshed access token.")
-
-    def _ensure_token(self):
-        if self._needs_refresh:
-            self._refresh_token()
 
     # -- Core request --------------------------------------------------------
 
@@ -126,7 +94,7 @@ class DataClient(BaseClient):
         params: dict[str, Any] | None = None,
         organisation_id: int | None = None,
     ) -> Any:
-        self._ensure_token()
+        self.auth.ensure_token()
         url = self._build_url(path)
         if params:
             url += self._build_query(params)
@@ -445,7 +413,7 @@ class DataClient(BaseClient):
         organisation_id: int | None = None,
     ) -> bytes:
         """Download a message attachment. Follows the redirect to S3."""
-        self._ensure_token()
+        self.auth.ensure_token()
         url = self._build_url(
             f"/agents/{agent_id}/channels/{channel_name}"
             f"/messages/{message_id}/attachments/{attachment_id}"
@@ -532,7 +500,7 @@ class DataClient(BaseClient):
         organisation_id: int | None = None,
     ) -> bytes:
         """Download an aggregate attachment. Follows the redirect to S3."""
-        self._ensure_token()
+        self.auth.ensure_token()
         url = self._build_url(
             f"/agents/{agent_id}/channels/{channel_name}"
             f"/aggregate/attachments/{attachment_id}"

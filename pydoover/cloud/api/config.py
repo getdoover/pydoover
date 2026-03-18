@@ -1,17 +1,21 @@
-"""CLI Config"""
+"""Backward-compatible config exports for cloud.api.
+
+The underlying config implementation now lives under ``pydoover.api.auth`` and
+only manages Doover 2-style auth profiles. This module keeps the historical
+``ConfigEntry`` / ``ConfigManager`` import path working for callers that still
+use ``pydoover.cloud.api``.
+"""
+
+from __future__ import annotations
 
 import base64
-import os
 import re
-
 from datetime import datetime, timezone
 
-
-class NotSet:
-    pass
+from ...api.auth import AuthProfile, ConfigManager
 
 
-class ConfigEntry:
+class ConfigEntry(AuthProfile):
     pattern = re.compile(
         r".*\[profile=(?P<profile>.+)]\n"
         r"USERNAME=(?P<username>.*)\n"
@@ -31,130 +35,92 @@ class ConfigEntry:
     def __init__(
         self,
         profile: str,
-        username: str = None,
-        password: str = None,
-        token: str = None,
-        token_expires: datetime = None,
-        agent_id: str = None,
-        base_url: str = None,
-        is_doover2: bool = None,
-        refresh_token: str = None,
-        refresh_token_id: str = None,
-        base_data_url: str = None,
-        auth_server_url: str = None,
-        auth_server_client_id: str = None,
+        username: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
+        token_expires: datetime | None = None,
+        agent_id: str | None = None,
+        base_url: str | None = None,
+        is_doover2: bool | None = None,
+        refresh_token: str | None = None,
+        refresh_token_id: str | None = None,
+        base_data_url: str | None = None,
+        auth_server_url: str | None = None,
+        auth_server_client_id: str | None = None,
     ):
-        self.profile = profile
-
+        super().__init__(
+            profile=profile,
+            token=token,
+            token_expires=token_expires,
+            agent_id=agent_id,
+            control_base_url=base_url,
+            data_base_url=base_data_url,
+            refresh_token=refresh_token,
+            refresh_token_id=refresh_token_id,
+            auth_server_url=auth_server_url,
+            auth_server_client_id=auth_server_client_id,
+        )
         self.username = username or None
         self.password = password or None
-
-        self.token = token or None
-        self.token_expires = token_expires or None
-
-        self.is_doover2 = is_doover2 or False
-        self.refresh_token = refresh_token
-        self.refresh_token_id = refresh_token_id
-        self.base_data_url = base_data_url
-        self.auth_server_url = auth_server_url
-        self.auth_server_client_id = auth_server_client_id
-
-        self.agent_id = agent_id or None
-        self.base_url = base_url or None
-
+        self._is_doover2 = True if is_doover2 is None else bool(is_doover2)
         self.valid = True
 
     def __repr__(self):
-        return f"ConfigEntry <profile={self.profile}, username={self.username}, base_url={self.base_url}>"
-
-    @classmethod
-    def from_data(cls, data):
-        match = cls.pattern.match(data.strip())
-
-        if match["token_expires"]:
-            token_expires = datetime.fromtimestamp(
-                float(match["token_expires"]), tz=timezone.utc
-            )
-        else:
-            token_expires = None
-
-        return cls(
-            match["profile"],
-            match["username"],
-            base64.b64decode(match["password"]).decode("utf-8"),
-            match["token"],
-            token_expires,
-            match["agent_id"],
-            match["base_url"],
-            True if match["is_doover2"] == "True" else False,
-            match["refresh_token"],
-            match["refresh_token_id"],
-            match["base_data_url"],
-            match["auth_server_url"],
-            match["auth_server_client_id"],
-        )
-
-    def format(self):
-        password = self.password or ""
         return (
-            f"[profile={self.profile or ''}]\n"
-            f"USERNAME={self.username or ''}\n"
-            f"PASSWORD={base64.b64encode(password.encode('utf-8')).decode('utf-8') or ''}\n"
-            f"TOKEN={self.token or ''}\n"
-            f"TOKEN_EXPIRES={self.token_expires and self.token_expires.timestamp() or ''}\n"
-            f"AGENT_ID={self.agent_id or ''}\n"
-            f"BASE_URL={self.base_url or ''}\n"
-            f"IS_DOOVER2={self.is_doover2}\n"
-            f"REFRESH_TOKEN={self.refresh_token or ''}\n"
-            f"REFRESH_TOKEN_ID={self.refresh_token_id or ''}\n"
-            f"BASE_DATA_URL={self.base_data_url or ''}\n"
-            f"AUTH_SERVER_URL={self.auth_server_url or ''}\n"
-            f"AUTH_SERVER_CLIENT_ID={self.auth_server_client_id or ''}\n"
+            "ConfigEntry "
+            f"<profile={self.profile}, username={self.username}, base_url={self.base_url}>"
         )
-
-
-class ConfigManager:
-    directory = os.path.expanduser("~/.doover")
-    filepath = os.path.join(directory, "config")
-
-    def __init__(self, current_profile: str = None):
-        self.entries = {}
-        self.current_profile = current_profile
-        self.read()
 
     @property
-    def current(self) -> ConfigEntry:
-        return self.entries.get(self.current_profile)
+    def is_doover2(self) -> bool:
+        return self._is_doover2
 
-    def create(self, entry: ConfigEntry):
-        self.entries[entry.profile] = entry
+    @classmethod
+    def from_data(cls, data: str) -> "ConfigEntry":
+        manager = ConfigManager()
+        parsed = manager._parse_block(data.strip())
+        if isinstance(parsed, AuthProfile):
+            return cls(
+                profile=parsed.profile,
+                token=parsed.token,
+                token_expires=parsed.token_expires,
+                agent_id=parsed.agent_id,
+                base_url=parsed.control_base_url,
+                is_doover2=True,
+                refresh_token=parsed.refresh_token,
+                refresh_token_id=parsed.refresh_token_id,
+                base_data_url=parsed.data_base_url,
+                auth_server_url=parsed.auth_server_url,
+                auth_server_client_id=parsed.auth_server_client_id,
+            )
 
-    def read(self):
-        if not os.path.exists(self.filepath):
-            return
-            # self.parser.error("Config file doesn't exist. Please run `pydoover configure`.")
+        match = cls.pattern.match(data.strip())
+        if not match:
+            raise ValueError("Invalid config entry format.")
 
-        with open(self.filepath, "r") as fp:
-            contents = fp.read()
+        token_expires = None
+        if match["token_expires"]:
+            token_expires = datetime.fromtimestamp(
+                float(match["token_expires"]),
+                tz=timezone.utc,
+            )
 
-        if len(contents) == 0:
-            # protect against empty file
-            return
+        password = None
+        if match["password"]:
+            password = base64.b64decode(match["password"]).decode("utf-8")
 
-        self.parse(contents)
-
-    def parse(self, contents):
-        for item in contents.split("\n\n"):
-            config = ConfigEntry.from_data(item)
-            self.entries[config.profile] = config
-
-    def write(self):
-        if not os.path.exists(self.directory):
-            os.mkdir(self.directory)
-
-        fmt = self.dump()  # do this here, so we don't write in case something breaks in formatting config
-        with open(self.filepath, "w") as fp:
-            fp.write(fmt)
-
-    def dump(self):
-        return "\n\n".join(e.format() for e in self.entries.values())
+        return cls(
+            profile=match["profile"],
+            username=match["username"] or None,
+            password=password,
+            token=match["token"] or None,
+            token_expires=token_expires,
+            agent_id=match["agent_id"] or None,
+            base_url=match["base_url"] or None,
+            is_doover2=match["is_doover2"] == "True",
+            refresh_token=match["refresh_token"] or None,
+            refresh_token_id=match["refresh_token_id"] or None,
+            base_data_url=match["base_data_url"] or None,
+            auth_server_url=match["auth_server_url"] or None,
+            auth_server_client_id=match["auth_server_client_id"] or None,
+        )

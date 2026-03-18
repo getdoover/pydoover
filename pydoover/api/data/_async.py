@@ -13,16 +13,22 @@ import json
 import logging
 import time
 from typing import Any
-from base64 import b64encode
 
 import aiohttp
 
 from datetime import datetime
 
-from ..auth._utils import decode_jwt_exp
-from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake, Unset
+from ..auth._base import AsyncAuthClient
+from ._base import (
+    UNSET,
+    BaseClient,
+    _consume_auth_kwargs,
+    _raise_for_status,
+    _to_snowflake,
+    Unset,
+    build_async_auth,
+)
 from ._iterators import AsyncMessageIterator
-from ...models.exceptions import TokenRefreshError
 from ...models import (
     Aggregate,
     AgentNotificationResponse,
@@ -56,26 +62,32 @@ log = logging.getLogger(__name__)
 class AsyncDataClient(BaseClient):
     """Asynchronous Doover Data API client using ``aiohttp``."""
 
-    def __init__(self, base_url: str, **kwargs):
-        super().__init__(base_url, **kwargs)
+    def __init__(self, base_url: str | None = None, **kwargs):
+        timeout = kwargs.get("timeout", 60.0)
+        auth, resolved_base_url, owns_auth = build_async_auth(
+            base_url=base_url,
+            timeout=timeout,
+            **_consume_auth_kwargs(kwargs),
+        )
+        super().__init__(resolved_base_url, auth=auth, owns_auth=owns_auth, **kwargs)
+        self.auth: AsyncAuthClient = auth
         self._session: aiohttp.ClientSession | None = None
-        self._token_session: aiohttp.ClientSession | None = None
 
     async def setup(self):
         """Create the underlying aiohttp session."""
         if self._session and not self._session.closed:
-            await self.close()
+            await self._session.close()
+            await asyncio.sleep(0.05)
         self._session = aiohttp.ClientSession()
 
     async def close(self):
         """Close the underlying aiohttp sessions."""
-        if self._token_session:
-            await self._token_session.close()
-            self._token_session = None
         if self._session:
             await self._session.close()
             await asyncio.sleep(0.05)  # let SSL cleanup finish
             self._session = None
+        if self._owns_auth:
+            await self.auth.close()
 
     async def __aenter__(self):
         await self.setup()
@@ -90,43 +102,6 @@ class AsyncDataClient(BaseClient):
                 "Session not initialised. Call `await client.setup()` or use `async with`."
             )
 
-    # -- Token refresh -------------------------------------------------------
-
-    async def _refresh_token(self):
-        if not self._can_refresh:
-            raise TokenRefreshError(
-                "Token expired and no client credentials configured for refresh."
-            )
-        self._ensure_session()
-        url = self._build_url("/oauth2/token")
-        credentials = b64encode(
-            f"{self._client_id}:{self._client_secret}".encode()
-        ).decode()
-        if not self._token_session or self._token_session.closed:
-            self._token_session = aiohttp.ClientSession()
-        async with self._token_session.post(
-            url,
-            data={"grant_type": "client_credentials", "scope": ""},
-            headers={
-                "Authorization": f"Basic {credentials}",
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            timeout=aiohttp.ClientTimeout(total=self.timeout),
-        ) as resp:
-            if resp.status >= 400:
-                text = await resp.text()
-                raise TokenRefreshError(f"Token refresh failed: {resp.status} {text}")
-            data = await resp.json()
-        self._token = data["access_token"]
-        self._token_expires_at = decode_jwt_exp(self._token)
-        if self._token_expires_at is None and "expires_in" in data:
-            self._token_expires_at = time.time() + data["expires_in"]
-        log.info("Refreshed access token.")
-
-    async def _ensure_token(self):
-        if self._needs_refresh:
-            await self._refresh_token()
-
     # -- Core request --------------------------------------------------------
 
     async def _request(
@@ -140,7 +115,7 @@ class AsyncDataClient(BaseClient):
     ) -> Any:
         self._ensure_session()
         assert self._session is not None
-        await self._ensure_token()
+        await self.auth.ensure_token()
         url = self._build_url(path)
         if params:
             url += self._build_query(params)
@@ -471,7 +446,7 @@ class AsyncDataClient(BaseClient):
         """Download a message attachment. Follows the redirect to S3."""
         self._ensure_session()
         assert self._session is not None
-        await self._ensure_token()
+        await self.auth.ensure_token()
         url = self._build_url(
             f"/agents/{agent_id}/channels/{channel_name}"
             f"/messages/{message_id}/attachments/{attachment_id}"
@@ -562,7 +537,7 @@ class AsyncDataClient(BaseClient):
         """Download an aggregate attachment. Follows the redirect to S3."""
         self._ensure_session()
         assert self._session is not None
-        await self._ensure_token()
+        await self.auth.ensure_token()
         url = self._build_url(
             f"/agents/{agent_id}/channels/{channel_name}"
             f"/aggregate/attachments/{attachment_id}"
