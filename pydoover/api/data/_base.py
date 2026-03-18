@@ -104,7 +104,7 @@ class BaseClient:
             headers["Authorization"] = f"Bearer {self._token}"
         org = organisation_id or self.organisation_id
         if org:
-            headers["X-Org-Id"] = str(org)
+            headers["X-Doover-Organisation"] = str(org)
         return headers
 
     def _build_url(self, path: str) -> str:
