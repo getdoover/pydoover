@@ -82,6 +82,7 @@ class HelloWorldUI(ui.UI):
 
 
 class HelloWorld(Application):
+    config_class = Schema
     tags_class = HelloWorldTags
     ui_class = HelloWorldUI
 
@@ -113,5 +114,5 @@ class HelloWorld(Application):
 
 
 if __name__ == "__main__":
-    new_app = HelloWorld(config=Schema())
+    new_app = HelloWorld()
     run_app(new_app)

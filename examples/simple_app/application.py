@@ -4,6 +4,7 @@ from app_config import SampleConfig
 
 
 class SampleApplication(DockerApplication):
+    config_class = SampleConfig
     config: SampleConfig  # not necessary, but helps your IDE provide autocomplete!
 
     def setup(self):
@@ -22,4 +23,4 @@ class SampleApplication(DockerApplication):
 
 
 if __name__ == "__main__":
-    run_app(SampleApplication(config=SampleConfig()))
+    run_app(SampleApplication())

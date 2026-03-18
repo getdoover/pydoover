@@ -67,6 +67,7 @@ class Application:
             ready = ui.BooleanVariable("ready", "Ready", curr_val=MyTags.ready)
 
         class MyApp(Application):
+            config_class = Schema
             tags_class = MyTags
             ui_class = MyUI
 
@@ -78,7 +79,7 @@ class Application:
                 pass
 
         if __name__ == "__main__":
-            run_app(MyApp(config=Schema()))
+            run_app(MyApp())
 
 
     Attributes
@@ -97,12 +98,12 @@ class Application:
         The application key for the app, used to identify it in the Doover cloud. This is globally unique.
     """
 
+    config_class: type["Schema"] | None = None
     ui_class: type[UI] | None = None
     tags_class: type[Tags] | None = None
 
     def __init__(
         self,
-        config: "Schema",
         app_key: str = None,
         is_async: bool = None,
         device_agent: DeviceAgentInterface = None,
@@ -113,7 +114,10 @@ class Application:
         config_fp: str = None,
         healthcheck_port: int = None,
     ):
-        self.config = config
+        config_class = self.__class__.config_class
+        self.config: "Schema | None" = (
+            config_class() if config_class is not None else None
+        )
         self.tags: Tags | None = None
         self.ui: UI | None = None
         self.app_key = app_key
@@ -135,7 +139,7 @@ class Application:
             self.app_key, "", self._is_async
         )
         self.modbus_iface = modbus_iface or ModbusInterface(
-            self.app_key, "", self._is_async, config
+            self.app_key, "", self._is_async, self.config
         )
 
         self.ui_manager = UIManager(
@@ -252,7 +256,8 @@ class Application:
         log.info(f"Application display name set: {self.app_display_name}")
 
         log.info(f"Deployment Config Updated: {app_config}")
-        self.config._inject_deployment_config(app_config)
+        if self.config is not None:
+            self.config._inject_deployment_config(app_config)
 
     async def __aenter__(self):
         # any more setup here...
@@ -284,7 +289,10 @@ class Application:
             from pydoover.config import Schema
 
             async def test_app():
-                app = MyApp(config=Schema(), test_mode=True)
+                class MyApp(Application):
+                    config_class = Schema
+
+                app = MyApp(test_mode=True)
                 asyncio.create_task(run_app(app, start=False))
 
                 # wait for app to start
@@ -327,8 +335,9 @@ class Application:
         await self.device_agent.await_dda_available_async(self.dda_startup_timeout)
 
         if self._config_fp is not None:
-            data = json.loads(self._config_fp.read_text())
-            self.config._inject_deployment_config(data)
+            if self.config is not None:
+                data = json.loads(self._config_fp.read_text())
+                self.config._inject_deployment_config(data)
         else:
             self.device_agent.add_subscription(
                 "deployment_config", self._on_deployment_config_update
@@ -1038,7 +1047,7 @@ def run_app(
         from .app_config import SampleConfig
 
         def main():
-            run_app(SampleApplication(config=SampleConfig()))
+            run_app(SampleApplication())
 
 
     Parameters
@@ -1108,7 +1117,6 @@ def run_app(
 
 def run_app2(
     app_cls: type[Application],
-    config: "Schema",
     dda_iface_cls: type[DeviceAgentInterface] = DeviceAgentInterface,
     plt_iface_cls: type[PlatformInterface] = PlatformInterface,
     mb_iface_cls: type[ModbusInterface] = ModbusInterface,
@@ -1129,9 +1137,9 @@ def run_app2(
     ) or asyncio.iscoroutinefunction(app_cls.main_loop)
     is_async = get_is_async(user_is_async)
     utils_setup_logging(debug)
+    config = app_cls.config_class() if app_cls.config_class is not None else None
 
     app = app_cls(
-        config,
         app_key,
         is_async,
         platform_iface=plt_iface_cls(app_key, plt_uri, is_async),
@@ -1140,6 +1148,7 @@ def run_app2(
         config_fp=config_fp,
         healthcheck_port=healthcheck_port,
     )
+    app.config = config
 
     async def runner():
         async with app:

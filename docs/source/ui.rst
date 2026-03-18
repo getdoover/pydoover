@@ -48,8 +48,10 @@ Explicit tag helper example::
 Application wiring example::
 
     from pydoover.docker import Application
+    from pydoover.config import Schema
 
     class MyApp(Application):
+        config_class = Schema
         tags_class = MyTags
         ui_class = MyUI
 

@@ -304,6 +304,7 @@ class AsyncStartupTags(Tags):
 
 
 class AsyncStartupApp(DockerApplication):
+    config_class = FakeSchema
     tags_class = AsyncStartupTags
 
     async def setup(self):
@@ -813,7 +814,6 @@ class TestDockerApplicationTagMethods:
     def test_async_app_initializes_tag_manager_as_async(self):
         device_agent = FakeRuntimeDeviceAgent()
         app = AsyncStartupApp(
-            config=FakeSchema(),
             app_key="test_app",
             device_agent=device_agent,
             platform_iface=FakeRuntimePlatformInterface(),
@@ -841,7 +841,6 @@ class TestDockerApplicationTagMethods:
 
             device_agent = FakeRuntimeDeviceAgent()
             app = AsyncStartupApp(
-                config=FakeSchema(),
                 app_key="test_app",
                 device_agent=device_agent,
                 platform_iface=FakeRuntimePlatformInterface(is_async=True),

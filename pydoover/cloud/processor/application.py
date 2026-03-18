@@ -38,14 +38,13 @@ console_handler = logging.StreamHandler(sys.stdout)
 
 
 class Application:
+    config_class: type[Schema] | None = None
     ui_class: type[UI] | None = None
     tags_class: type[Tags] | None = None
 
-    def __init__(
-        self,
-        config: Schema | None,
-    ):
-        self.config = config
+    def __init__(self):
+        config_class = self.__class__.config_class
+        self.config = config_class() if config_class is not None else None
         self.tags: Tags | None = None
         self.ui: UI | None = None
 

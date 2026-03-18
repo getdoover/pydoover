@@ -519,6 +519,7 @@ class TestApplicationUIResolution:
                 )
 
         class AsyncUIApp(DockerApplication):
+            config_class = FakeSchema
             tags_class = MyAppTags
             ui_class = DynamicStartupUI
 
@@ -531,7 +532,6 @@ class TestApplicationUIResolution:
         async def run_test():
             device_agent = FakeRuntimeDeviceAgent()
             app = AsyncUIApp(
-                config=FakeSchema(),
                 app_key="test_app",
                 device_agent=device_agent,
                 platform_iface=FakeRuntimePlatformInterface(is_async=True),
