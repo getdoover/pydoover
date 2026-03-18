@@ -1,5 +1,6 @@
 import enum
 import logging
+import warnings
 
 from datetime import datetime
 from typing import Optional, Any
@@ -288,8 +289,9 @@ class Multiplot(Element):
         The name of the multiplot.
     display_name: str
         The display name of the multiplot.
-    series: list[str]
-        A list of series names to be displayed in the multiplot.
+    series: list[str] | dict[str, dict[str, Any]]
+        Series configuration for the multiplot. New code should pass a mapping of
+        series name to series configuration.
     series_colours: list[Colour], optional
         A list of colours for each series in the multiplot.
     series_active: list[bool], optional
@@ -306,7 +308,7 @@ class Multiplot(Element):
         self,
         name: str,
         display_name: str,
-        series: list[str],
+        series: list[str] | dict[str, dict[str, Any]],
         series_colours: Optional[list[Colour]] = None,
         series_active: Optional[list[bool]] = None,
         earliest_data_time: Optional[datetime] = None,
@@ -319,7 +321,7 @@ class Multiplot(Element):
     ):
         super().__init__(name, display_name, **kwargs)
 
-        self.series = series
+        self._legacy_series_input = isinstance(series, list)
         self.series_colours = series_colours
         self.series_active = series_active
         self.earliest_data_time = earliest_data_time
@@ -328,18 +330,88 @@ class Multiplot(Element):
         self.step_labels = step_labels
         self.step_padding = step_padding
         self.default_zoom = default_zoom
+        self.series = self._normalize_series(series)
+
+        if self._legacy_series_input or any(
+            value is not None
+            for value in (
+                series_colours,
+                series_active,
+                shared_axis,
+                step_labels,
+                step_padding,
+            )
+        ):
+            warnings.warn(
+                "Legacy uiMultiPlot list-based schema is deprecated. "
+                "Pass series as a record keyed by series name instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+    def _normalize_series(self, series: list[str] | dict[str, dict[str, Any]]):
+        if isinstance(series, dict):
+            return {
+                name: self._normalize_series_entry(name, config, index)
+                for index, (name, config) in enumerate(series.items())
+            }
+
+        return {
+            series_name: self._normalize_legacy_series_entry(series_name, index)
+            for index, series_name in enumerate(series)
+        }
+
+    def _normalize_series_entry(
+        self, name: str, config: dict[str, Any] | str | None, index: int
+    ) -> dict[str, Any]:
+        if isinstance(config, str):
+            result: dict[str, Any] = {"displayString": config}
+        else:
+            result = dict(config or {})
+
+        result.setdefault("name", name)
+        result.setdefault("displayString", result["name"])
+        result.setdefault("dataType", "unknown")
+
+        if "shared_axis" in result and "sharedAxis" not in result:
+            result["sharedAxis"] = result.pop("shared_axis")
+        if "step_labels" in result and "stepLabels" not in result:
+            result["stepLabels"] = result.pop("step_labels")
+
+        if self.series_colours is not None and "colour" not in result:
+            colour = self._get_legacy_index_value(self.series_colours, index)
+            if colour is not None:
+                result["colour"] = colour
+        if self.series_active is not None and "active" not in result:
+            active = self._get_legacy_index_value(self.series_active, index)
+            if active is not None:
+                result["active"] = active
+        if self.shared_axis is not None and "sharedAxis" not in result:
+            shared_axis = self._get_legacy_index_value(self.shared_axis, index)
+            if shared_axis is not None:
+                result["sharedAxis"] = shared_axis
+        if self.step_labels is not None and "stepLabels" not in result:
+            result["stepLabels"] = self.step_labels
+
+        return normalize_ui_value(result)
+
+    def _normalize_legacy_series_entry(
+        self, series_name: str, index: int
+    ) -> dict[str, Any]:
+        return self._normalize_series_entry(series_name, {}, index)
+
+    @staticmethod
+    def _get_legacy_index_value(values: list[Any], index: int):
+        if index >= len(values):
+            return None
+        return values[index]
 
     def to_dict(self):
         result = super().to_dict()
         result["series"] = self.series
-        result["colours"] = self.series_colours
 
-        if self.series_active is not None:
+        if self.series_active is not None and not self._legacy_series_input:
             result["activeSeries"] = self.series_active
-        if self.shared_axis is not None:
-            result["sharedAxis"] = self.shared_axis
-        if self.step_labels is not None:
-            result["stepLabels"] = self.step_labels
         if self.step_padding is not None:
             result["stepPadding"] = self.step_padding
         if self.default_zoom is not None:

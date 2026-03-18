@@ -1,5 +1,6 @@
 import logging
 import re
+import warnings
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -12,6 +13,15 @@ if TYPE_CHECKING:
     from .manager import UIManager
 
 log = logging.getLogger(__name__)
+
+
+def _warn_legacy_ui_alias(old_name: str, new_name: str) -> None:
+    warnings.warn(
+        f"{old_name} is deprecated and will be removed in a future release. "
+        f"Use {new_name} instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 class Interaction(Element):
@@ -220,8 +230,8 @@ class Interaction(Element):
             )
 
 
-class Action(Interaction):
-    """Represents a UI action (button).
+class Button(Interaction):
+    """Represents a UI button.
 
     Parameters
     ----------
@@ -237,7 +247,7 @@ class Action(Interaction):
         Whether the button appears disabled in the UI. Defaults to False.
     """
 
-    type = "uiAction"
+    type = "uiButton"
 
     def __init__(
         self,
@@ -245,17 +255,31 @@ class Action(Interaction):
         display_name: str,
         colour: Colour = Colour.blue,
         disabled: bool = False,
+        label_string: str | None = None,
         **kwargs,
     ):
         super().__init__(name, display_name, **kwargs)
         self.colour = colour
         self.disabled = disabled
+        self.label_string = label_string
 
     def to_dict(self):
         result = super().to_dict()
         result["colour"] = str(self.colour)
         result["disabled"] = self.disabled
+        if self.label_string is not None:
+            result["labelString"] = self.label_string
         return normalize_ui_value(result)
+
+
+class Action(Button):
+    """Deprecated Doover 1.0 alias for :class:`Button`."""
+
+    type = "uiAction"
+
+    def __init__(self, *args, **kwargs):
+        _warn_legacy_ui_alias("Action", "Button")
+        super().__init__(*args, **kwargs)
 
 
 class WarningIndicator(Interaction):
@@ -296,14 +320,8 @@ class HiddenValue(Interaction):
         })
 
 
-class SlimCommand(Interaction):
-    """Base class for UI commands."""
-
-    type = "uiStateCommand"
-
-
-class StateCommand(SlimCommand):
-    """Represents a state command in the UI (ie. a dropdown that the user can select a state)
+class Select(Interaction):
+    """Represents a selectable input in the UI.
 
     Parameters
     ----------
@@ -311,33 +329,33 @@ class StateCommand(SlimCommand):
         The name of the state command, used to identify it in the UI.
     display_name: str, optional
         The display name of the state command, shown in the UI.
-    user_options: list[Option]
+    options: list[Option]
         A list of options that the user can select from. Each option is an instance of the Option class.
         If not provided, an empty list will be created.
     """
 
-    type = "uiStateCommand"
+    type = "uiSelect"
 
     def __init__(
         self,
         name: str,
         display_name: str = None,
-        user_options: list[Option] = None,
+        options: list[Option] = None,
         **kwargs,
     ):
+        user_options = kwargs.pop("user_options", None)
         super().__init__(name, display_name, **kwargs)
 
-        # A list of doover_ui_element's
-        self.user_options = []
-        self.add_user_options(*user_options)
+        self.options = []
+        self.add_options(*(options or user_options or []))
 
     def to_dict(self):
         result = super().to_dict()
-        result["userOptions"] = {o.name: o.to_dict() for o in self.user_options}
+        result["options"] = {o.name: o.to_dict() for o in self.options}
         return normalize_ui_value(result)
 
-    def add_user_options(self, *option: Option):
-        """Add user options to the state command.
+    def add_options(self, *option: Option):
+        """Add selectable options to the input.
 
         Parameters
         ----------
@@ -347,11 +365,40 @@ class StateCommand(SlimCommand):
         for o in option:
             # still support legacy dict passing of option values.
             if isinstance(o, Option):
-                self.user_options.append(o)
+                self.options.append(o)
             elif isinstance(o, dict):
-                self.user_options.append(Option.from_dict(o))
+                self.options.append(Option.from_dict(o))
 
-    add_user_option = add_user_options
+    add_option = add_options
+    add_user_options = add_options
+    add_user_option = add_options
+
+
+class SlimCommand(Select):
+    """Deprecated Doover 1.0 alias for :class:`Select`."""
+
+    type = "uiStateCommand"
+
+    def __init__(self, *args, **kwargs):
+        if self.__class__ is SlimCommand:
+            _warn_legacy_ui_alias("SlimCommand", "Select")
+        super().__init__(*args, **kwargs)
+
+    def to_dict(self):
+        result = super().to_dict()
+        result["type"] = self.type
+        result["userOptions"] = result.pop("options", {})
+        return normalize_ui_value(result)
+
+
+class StateCommand(SlimCommand):
+    """Deprecated Doover 1.0 alias for :class:`Select`."""
+
+    type = "uiStateCommand"
+
+    def __init__(self, *args, **kwargs):
+        _warn_legacy_ui_alias("StateCommand", "Select")
+        super().__init__(*args, **kwargs)
 
 
 class Slider(Interaction):
@@ -439,14 +486,14 @@ class Switch(Interaction):
         return normalize_ui_value(res)
 
 
-def action(
+def button(
     name: str,
     display_name: str = None,
     colour: Colour = Colour.blue,
     requires_confirm: bool = True,
     **kwargs,
 ):
-    """Decorator to mark a function as a UI action.
+    """Decorator to mark a function as a UI button.
 
     This decorator will add the function to the UI as an action button.
 
@@ -461,6 +508,29 @@ def action(
     requires_confirm: bool, optional
         Whether the action requires confirmation before execution on the site. Defaults to True.
     """
+
+    def decorator(func):
+        func._ui_type = Button
+        func._ui_kwargs = {
+            "name": name,
+            "display_name": display_name,
+            "colour": colour,
+            "requires_confirm": requires_confirm,
+            **kwargs,
+        }
+        return func
+
+    return decorator
+
+
+def action(
+    name: str,
+    display_name: str = None,
+    colour: Colour = Colour.blue,
+    requires_confirm: bool = True,
+    **kwargs,
+):
+    """Deprecated Doover 1.0 alias for :func:`button`."""
 
     def decorator(func):
         func._ui_type = Action
@@ -504,10 +574,13 @@ def warning_indicator(
     return decorator
 
 
-def state_command(
-    name: str, display_name: str = None, user_options: list[Option] = None, **kwargs
+def select(
+    name: str,
+    display_name: str = None,
+    options: list[Option] = None,
+    **kwargs,
 ):
-    """Decorator to mark a function as a UI state command.
+    """Decorator to mark a function as a selectable UI input.
 
     The decorated function will be added to the UI as a state command,
     which allows the user to select a state from a dropdown menu.
@@ -542,6 +615,24 @@ def state_command(
         A list of options that the user can select from. Each option is an instance of the Option class.
         If not provided, an empty list will be created.
     """
+
+    def decorator(func):
+        func._ui_type = Select
+        func._ui_kwargs = {
+            "name": name,
+            "display_name": display_name,
+            "options": options,
+            **kwargs,
+        }
+        return func
+
+    return decorator
+
+
+def state_command(
+    name: str, display_name: str = None, user_options: list[Option] = None, **kwargs
+):
+    """Deprecated Doover 1.0 alias for :func:`select`."""
 
     def decorator(func):
         func._ui_type = StateCommand
