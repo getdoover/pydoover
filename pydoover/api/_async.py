@@ -406,17 +406,12 @@ class AsyncDataClient(BaseClient):
             payload["ts"] = ts
 
         if message_id is not None:
-            method, path = (
-                "PUT",
-                f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
-            )
+            path = f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}"
         else:
-            method, path = (
-                "POST",
-                f"/agents/{agent_id}/channels/{channel_name}/messages",
-            )
+            path = f"/agents/{agent_id}/channels/{channel_name}/messages"
+
         result = await self._request(
-            method,
+            "POST",
             path,
             data=payload,
             files=files,
