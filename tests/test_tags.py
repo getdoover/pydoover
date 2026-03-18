@@ -82,19 +82,23 @@ class FakeTagsManager:
 
     def get_tag(self, key, default=None, app_key=None):
         self.get_calls.append((key, default, app_key))
-        return self.values.get(key, default)
+        if app_key is None:
+            return self.values.get(key, default)
+        return self.values.get((app_key, key), default)
 
     def set_tag(self, key, value, app_key=None):
         self.set_calls.append((key, value, app_key))
-        self.values[key] = value
+        if app_key is None:
+            self.values[key] = value
+        else:
+            self.values[(app_key, key)] = value
 
 
 class AsyncFakeTagsManager(FakeTagsManager):
     _is_async = True
 
     async def set_tag_async(self, key, value, app_key=None):
-        self.set_calls.append((key, value, app_key))
-        self.values[key] = value
+        self.set_tag(key, value, app_key=app_key)
 
 
 class FakeTagClient:
@@ -277,13 +281,14 @@ def make_docker_app(tag_manager=None, app_key="test_app", is_async=False):
     return app
 
 
-def make_processor_app(config=None, tags_class=None, tag_manager=None):
+def make_processor_app(config=None, tags_class=None, tag_manager=None, app_key="test_app"):
     app_cls = type(
         "ConfiguredProcessorApplication",
         (ProcessorApplication,),
         {"tags_class": tags_class},
     )
     app = object.__new__(app_cls)
+    app.app_key = app_key
     app.config = config
     app.tags = None
     app.tag_manager = tag_manager or FakeProcessorTagManager()
@@ -356,6 +361,18 @@ class TestTags:
 
         assert manager.set_calls == [("voltage", 13.1, None)]
         assert manager.values["voltage"] == 13.1
+
+    def test_register_manager_with_app_key_scopes_manager_calls(self):
+        manager = FakeTagsManager()
+        tags = MyAppTags()
+        tags.register_manager(manager, app_key="test_app")
+
+        tags.voltage.set(13.1)
+
+        assert manager.set_calls == [("voltage", 13.1, "test_app")]
+        assert manager.values[("test_app", "voltage")] == 13.1
+        assert tags.voltage.get() == 13.1
+        assert manager.get_calls[-1] == ("voltage", NotSet, "test_app")
 
     def test_assignment_still_sets_via_manager(self):
         manager = FakeTagsManager()
@@ -705,6 +722,17 @@ class TestTagsManagerDocker:
         assert tags.voltage > 10
         assert client.sync_publishes[-1]["payload"] == {"voltage": 12.7}
 
+    def test_tags_object_passes_app_key_to_docker_tag_manager(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client, is_async=False)
+        tags = MyAppTags()
+        tags.register_manager(manager, app_key="test_app")
+
+        tags.voltage.set(12.7)
+
+        assert tags.voltage.get() == 12.7
+        assert client.sync_publishes[-1]["payload"] == {"test_app": {"voltage": 12.7}}
+
     def test_tags_object_works_with_async_docker_tag_manager(self):
         import asyncio
 
@@ -780,7 +808,7 @@ class TestDockerApplicationTagMethods:
 
         app.set_tag("voltage", 12.7)
 
-        assert manager.set_calls == [("voltage", 12.7, None, True, {})]
+        assert manager.set_calls == [("voltage", 12.7, "test_app", True, {})]
 
     def test_async_set_tag_routes_to_manager_async(self):
         import asyncio
@@ -790,7 +818,7 @@ class TestDockerApplicationTagMethods:
 
         asyncio.run(app.set_tag("voltage", 12.7))
 
-        assert manager.set_calls == [("voltage", 12.7, None, True, {})]
+        assert manager.set_calls == [("voltage", 12.7, "test_app", True, {})]
 
     def test_sync_set_tags_routes_to_manager(self):
         manager = FakeDockerAppTagManager()
@@ -798,7 +826,7 @@ class TestDockerApplicationTagMethods:
 
         app.set_tags({"voltage": 12.7})
 
-        assert manager.set_tags_calls == [({"voltage": 12.7}, None, True, {})]
+        assert manager.set_tags_calls == [({"voltage": 12.7}, "test_app", True, {})]
 
     def test_set_global_tag_routes_to_manager_with_none_app_key(self):
         manager = FakeDockerAppTagManager()
@@ -870,7 +898,7 @@ class TestDockerApplicationTagMethods:
                 await asyncio.sleep(0.05)
 
                 assert app.setup_tag_manager_is_async is True
-                assert app.tag_manager.get_tag("some_tag") == "ready"
+                assert app.tag_manager.get_tag("some_tag", app_key="test_app") == "ready"
                 assert len(app.shutdown_events) == 1
                 assert app.shutdown_events[0].timestamp() == pytest.approx(
                     initial_shutdown_at
@@ -881,7 +909,7 @@ class TestDockerApplicationTagMethods:
                     TAG_CHANNEL_NAME,
                     {
                         "shutdown_at": updated_shutdown_at,
-                        "some_tag": "ready",
+                        "test_app": {"some_tag": "ready"},
                     },
                 )
 
@@ -908,6 +936,7 @@ class TestTagClassResolution:
         assert isinstance(resolved, MyAppTags)
         assert app.tags is resolved
         assert resolved._manager is manager
+        assert resolved._app_key == "test_app"
 
     def test_docker_resolve_tags_setup_receives_injected_config(self):
         manager = FakeDockerAppTagManager()
@@ -928,6 +957,7 @@ class TestTagClassResolution:
         assert isinstance(resolved, ConfiguredTags)
         assert calls == [config]
         assert resolved._manager is manager
+        assert resolved._app_key == "test_app"
 
     def test_docker_tag_setup_can_change_available_tags_based_on_config(self):
         manager = FakeDockerAppTagManager()
@@ -998,6 +1028,7 @@ class TestTagClassResolution:
         assert isinstance(resolved, ConfiguredTags)
         assert calls == [True]
         assert resolved._manager is manager
+        assert resolved._app_key == "test_app"
 
     def test_processor_tag_setup_can_change_available_tags_based_on_config(self):
         config = FakeSchema()
@@ -1035,3 +1066,4 @@ class TestTagClassResolution:
 
         assert isinstance(resolved, MyAppTags)
         assert resolved._manager is manager
+        assert resolved._app_key == "test_app"

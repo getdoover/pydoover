@@ -274,7 +274,7 @@ def _bind_value(value: Any, tags: Tags | None, visited: set[int]) -> Any:
 
 def _binding_from_bound_tag(tag: BoundTag) -> UITagBinding:
     return UITagBinding(
-        tag_name=tag.name,
+        tag_name=_qualify_tag_name(tag.name, getattr(tag._tags, "_app_key", None)),
         tag_type=tag.tag_type,
         default_value=_normalize_default(tag.default),
     )
@@ -293,12 +293,12 @@ def _binding_from_declared_tag(tag: Tag, tags: Tags | None) -> UITagBinding:
             f"UI tag reference '{tag_name}' is not available in the resolved application tags."
         )
 
-    return _binding_from_tag(resolved)
+    return _binding_from_tag(resolved, app_key=getattr(tags, "_app_key", None))
 
 
-def _binding_from_tag(tag: Tag) -> UITagBinding:
+def _binding_from_tag(tag: Tag, app_key: str | None = None) -> UITagBinding:
     return UITagBinding(
-        tag_name=_get_tag_name(tag),
+        tag_name=_qualify_tag_name(_get_tag_name(tag), app_key),
         tag_type=tag.tag_type,
         default_value=_normalize_default(tag.default),
     )
@@ -309,6 +309,12 @@ def _get_tag_name(tag: Tag) -> str:
     if not tag_name:
         raise ValueError("Unable to resolve a name for UI tag reference.")
     return tag_name
+
+
+def _qualify_tag_name(tag_name: str, app_key: str | None) -> str:
+    if not app_key or tag_name.startswith(f"{app_key}."):
+        return tag_name
+    return f"{app_key}.{tag_name}"
 
 
 def _normalize_default(value: Any) -> Any:

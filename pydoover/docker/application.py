@@ -234,7 +234,7 @@ class Application:
             await self.tags.setup(self.config)
 
         if self._tags is not None:
-            self._tags.register_manager(self.tag_manager)
+            self._tags.register_manager(self.tag_manager, app_key=self.app_key)
         return self.tags
 
     async def _resolve_ui(self) -> UI | None:
@@ -792,7 +792,12 @@ class Application:
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        self.tag_manager.set_tag(tag_key, value, app_key=app_key, only_if_changed=only_if_changed)
+        self.tag_manager.set_tag(
+            tag_key,
+            value,
+            app_key=app_key or self.app_key,
+            only_if_changed=only_if_changed,
+        )
 
     async def set_tag_async(
         self,
@@ -801,19 +806,32 @@ class Application:
         app_key: str = None,
         only_if_changed: bool = True,
     ) -> None:
-        await self.tag_manager.set_tag_async(tag_key, value, app_key=app_key, only_if_changed=only_if_changed)
+        await self.tag_manager.set_tag_async(
+            tag_key,
+            value,
+            app_key=app_key or self.app_key,
+            only_if_changed=only_if_changed,
+        )
 
     @maybe_async()
     def set_tags(
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
         """Set multiple tags at once."""
-        self.tag_manager.set_tags(tags, app_key=app_key, only_if_changed=only_if_changed)
+        self.tag_manager.set_tags(
+            tags,
+            app_key=app_key or self.app_key,
+            only_if_changed=only_if_changed,
+        )
 
     async def set_tags_async(
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
-        await self.tag_manager.set_tags_async(tags, app_key=app_key, only_if_changed=only_if_changed)
+        await self.tag_manager.set_tags_async(
+            tags,
+            app_key=app_key or self.app_key,
+            only_if_changed=only_if_changed,
+        )
 
     @maybe_async()
     def set_global_tag(
@@ -856,11 +874,11 @@ class Application:
         .. note:: This method can be called in both sync and asynchronous contexts.
         """
         log.info("Requesting shutdown")
-        self.set_tag("shutdown_requested", True)
+        self.set_global_tag("shutdown_requested", True)
 
     async def request_shutdown_async(self) -> None:
         log.info("Requesting shutdown")
-        await self.set_tag_async("shutdown_requested", True)
+        await self.set_global_tag_async("shutdown_requested", True)
 
     async def on_shutdown_at(self, dt: datetime) -> None:
         """Callback for when a shutdown is scheduled.

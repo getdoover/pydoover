@@ -95,7 +95,7 @@ class Application:
             await self.tags.setup(self.config)
 
         if self._tags is not None:
-            self._tags.register_manager(self.tag_manager)
+            self._tags.register_manager(self.tag_manager, app_key=self.app_key)
         return self.tags
 
     async def _resolve_ui(self) -> UI | None:

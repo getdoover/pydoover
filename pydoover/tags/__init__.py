@@ -306,6 +306,7 @@ class Tags:
 
     def __init__(self):
         self._manager: Any | None = None
+        self._app_key: str | None = None
         self._is_async = False
         # Keep runtime declaration changes isolated to this instance.
         self._tag_declarations = OrderedDict(self.__class__.__tag_declarations__)
@@ -328,9 +329,10 @@ class Tags:
             if self._get_tag_value(attr_name) is not NotSet
         }
 
-    def register_manager(self, manager: Any) -> None:
+    def register_manager(self, manager: Any, app_key: str | None = None) -> None:
         """Bind this tag collection to a tag manager."""
         self._manager = manager
+        self._app_key = app_key if app_key is not None else getattr(manager, "app_key", None)
         self._is_async = get_is_async(bool(getattr(manager, "_is_async", False)))
 
     def _get_declaration(self, name: str) -> _DeclaredTag | None:
@@ -375,6 +377,7 @@ class Tags:
         return self._manager.get_tag(
             declaration.name,
             default=declaration.template.default,
+            app_key=self._app_key,
         )
 
     def _set_tag_value(self, name: str, value: Any) -> None:
@@ -384,7 +387,7 @@ class Tags:
         if self._manager is None:
             raise RuntimeError("Tags manager has not been registered.")
 
-        self._manager.set_tag(declaration.name, value)
+        self._manager.set_tag(declaration.name, value, app_key=self._app_key)
 
     async def _set_tag_value_async(self, name: str, value: Any) -> None:
         declaration = self._get_declaration(name)
@@ -396,10 +399,19 @@ class Tags:
         if getattr(self._manager, "_is_async", False) and hasattr(
             self._manager, "set_tag_async"
         ):
-            await self._manager.set_tag_async(declaration.name, value)
+            await self._manager.set_tag_async(
+                declaration.name,
+                value,
+                app_key=self._app_key,
+            )
             return
 
-        await call_maybe_async(self._manager.set_tag, declaration.name, value)
+        await call_maybe_async(
+            self._manager.set_tag,
+            declaration.name,
+            value,
+            app_key=self._app_key,
+        )
 
     def get(self, name: str) -> BoundTag | None:
         """Return the bound runtime proxy for a tag, if it exists."""

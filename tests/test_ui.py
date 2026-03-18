@@ -185,6 +185,21 @@ class TestTagReferenceSerialization:
         assert voltage["ranges"][0]["max"] == "$tag.voltage:number"
         assert mode["options"]["auto"]["displayString"] == '$tag.mode:string:"idle"'
 
+    def test_bound_tag_reference_uses_app_key_when_available(self):
+        tags = UITags()
+        tags.register_manager(FakeDockerAppTagManager(), app_key="test_app")
+
+        class FactoryUI(ui.UI):
+            voltage = ui.NumericVariable(
+                "voltage",
+                "Voltage",
+                curr_val=tags.speed,
+            )
+
+        ui_obj = FactoryUI().bind_tags(tags)
+
+        assert ui_obj.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
+
     def test_name_field_cannot_reference_a_tag(self):
         bad = ui.TextVariable("bad", "Bad")
         bad.name = MyAppTags.voltage
@@ -409,7 +424,7 @@ class TestApplicationUIResolution:
 
         assert isinstance(resolved, ui.UI)
         assert calls == [(True, app.tags)]
-        assert resolved.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
+        assert resolved.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
 
     def test_docker_ui_setup_supports_dynamic_children_with_manager_bound_tags(self):
         class DynamicUI(ui.UI):
@@ -441,9 +456,12 @@ class TestApplicationUIResolution:
         app = make_docker_app(config=FakeSchema(), tags_class=MyAppTags, ui_class=DynamicUI)
         resolved = resolve_app(app)
 
-        assert resolved.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
+        assert resolved.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
         telemetry = resolved.telemetry.to_dict()
-        assert telemetry["children"]["inner_voltage"]["currentValue"] == "$tag.speed:number:0"
+        assert (
+            telemetry["children"]["inner_voltage"]["currentValue"]
+            == "$tag.test_app.speed:number:0"
+        )
 
     def test_docker_ui_class_none_is_allowed(self):
         app = make_docker_app(tags_class=MyAppTags, ui_class=None)
@@ -547,10 +565,13 @@ class TestApplicationUIResolution:
             task = asyncio.create_task(app._run())
             try:
                 await app.wait_until_ready()
-                assert app.ui.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
+                assert (
+                    app.ui.voltage.to_dict()["currentValue"]
+                    == "$tag.test_app.speed:number:0"
+                )
                 assert (
                     app.ui.telemetry.to_dict()["children"]["inner_voltage"]["currentValue"]
-                    == "$tag.speed:number:0"
+                    == "$tag.test_app.speed:number:0"
                 )
             finally:
                 task.cancel()
