@@ -447,3 +447,19 @@ class GetAggregateResponse(_message.Message):
     response_header: ResponseHeader
     aggregate: Aggregate
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., aggregate: _Optional[_Union[Aggregate, _Mapping]] = ...) -> None: ...
+
+class FetchAttachmentRequest(_message.Message):
+    __slots__ = ("header", "attachment")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    ATTACHMENT_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    attachment: Attachment
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., attachment: _Optional[_Union[Attachment, _Mapping]] = ...) -> None: ...
+
+class FetchAttachmentResponse(_message.Message):
+    __slots__ = ("response_header", "file")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    FILE_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    file: File
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., file: _Optional[_Union[File, _Mapping]] = ...) -> None: ...

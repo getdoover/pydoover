@@ -1,19 +1,20 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_BASE="$SCRIPT_DIR/../pydoover/models/generated"
 
-# Map each proto file to its output subdirectory
-declare -A PROTO_MAP=(
-    ["device_agent.proto"]="device_agent"
-    ["modbus_iface.proto"]="modbus"
-    ["platform_iface.proto"]="platform"
-)
+# Proto file:output subdirectory pairs
+PROTO_PAIRS="
+device_agent.proto:device_agent
+modbus_iface.proto:modbus
+platform_iface.proto:platform
+"
 
-for proto in "${!PROTO_MAP[@]}"; do
-    subdir="${PROTO_MAP[$proto]}"
+for pair in $PROTO_PAIRS; do
+    proto="${pair%%:*}"
+    subdir="${pair##*:}"
     out_dir="$OUTPUT_BASE/$subdir"
 
     echo "Generating $proto -> $out_dir"
