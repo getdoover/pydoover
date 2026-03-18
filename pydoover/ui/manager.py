@@ -693,7 +693,9 @@ class UIManager:
                 )
             return None
 
-        await self.client.update_aggregate(channel_name, data, max_age_secs=max_age)
+        await self.client.update_channel_aggregate(
+            channel_name, data, max_age_secs=max_age
+        )
         if record_log:
             await self.client.create_message(channel_name, data, timestamp=timestamp)
         return None

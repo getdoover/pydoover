@@ -192,7 +192,7 @@ class DeviceAgentInterface(GRPCInterface):
                 f"Channel '{channel_name}' not found, creating with empty aggregate"
             )
             try:
-                agg = await self.update_aggregate(channel_name, {})
+                agg = await self.update_channel_aggregate(channel_name, {})
             except Exception as e:
                 log.error(f"Failed to create channel '{channel_name}': {e}")
             else:
@@ -394,7 +394,7 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return Aggregate.from_proto(resp.aggregate)
 
-    async def fetch_turn_credential(
+    async def fetch_turn_token(
         self,
     ) -> TurnCredential:
         resp = await self.make_request(
@@ -452,7 +452,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("UpdateMessage", req)
         return Message.from_proto(resp.message)
 
-    async def update_aggregate(
+    async def update_channel_aggregate(
         self,
         channel_name: str,
         data: dict[str, Any],
@@ -548,7 +548,7 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
     async def make_request(self, *args, **kwargs):
         raise NotImplementedError("make_request is not implemented")
 
-    async def update_aggregate(self, channel_name, data, **kwargs):
+    async def update_channel_aggregate(self, channel_name, data, **kwargs):
         existing = self._aggregates.get(
             channel_name, Aggregate(data={}, attachments=[], last_updated=None)
         )

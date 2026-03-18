@@ -52,7 +52,9 @@ def _make_create_message_response(message_id=1, success=True, code=200, message=
     )
 
 
-def _make_update_aggregate_response(data: dict, success=True, code=200, message=None):
+def _make_update_channel_aggregate_response(
+    data: dict, success=True, code=200, message=None
+):
     return device_agent_pb2.UpdateAggregateResponse(
         response_header=_make_response_header(success, code, message),
         aggregate=_make_aggregate_proto(data),
@@ -202,7 +204,7 @@ class TestCreateMessage:
         assert exc_info.value.status == 500
 
 
-# ── update_aggregate ────────────────────────────────────────────────────
+# ── update_channel_aggregate ────────────────────────────────────────────────────
 
 
 class TestUpdateAggregate:
@@ -211,10 +213,10 @@ class TestUpdateAggregate:
 
     @pytest.mark.asyncio
     async def test_returns_aggregate(self):
-        resp = _make_update_aggregate_response({"updated": True})
+        resp = _make_update_channel_aggregate_response({"updated": True})
         self.dda.make_request = AsyncMock(return_value=resp)
 
-        result = await self.dda.update_aggregate("ch", {"updated": True})
+        result = await self.dda.update_channel_aggregate("ch", {"updated": True})
         assert isinstance(result, Aggregate)
         assert result.data == {"updated": True}
 
@@ -225,7 +227,7 @@ class TestUpdateAggregate:
         )
 
         with pytest.raises(NotFoundError):
-            await self.dda.update_aggregate("nonexistent", {"data": 1})
+            await self.dda.update_channel_aggregate("nonexistent", {"data": 1})
 
 
 # ── MockDeviceAgentInterface ─────────────────────────────────────────────────────
@@ -252,24 +254,24 @@ class TestMockDeviceAgentInterface:
         assert result.data == {}
 
     @pytest.mark.asyncio
-    async def test_update_aggregate_returns_aggregate(self):
-        result = await self.mock.update_aggregate("ch", {"key": "val"})
+    async def test_update_channel_aggregate_returns_aggregate(self):
+        result = await self.mock.update_channel_aggregate("ch", {"key": "val"})
         assert isinstance(result, Aggregate)
         assert result.data == {"key": "val"}
 
     @pytest.mark.asyncio
-    async def test_update_aggregate_merges_data(self):
+    async def test_update_channel_aggregate_merges_data(self):
         self.mock._aggregates["ch"] = Aggregate(
             data={"a": 1}, attachments=[], last_updated=None
         )
-        await self.mock.update_aggregate("ch", {"b": 2})
+        await self.mock.update_channel_aggregate("ch", {"b": 2})
 
         result = await self.mock.fetch_channel_aggregate("ch")
         assert result.data == {"a": 1, "b": 2}
 
     @pytest.mark.asyncio
-    async def test_update_aggregate_updates_cache(self):
-        await self.mock.update_aggregate("ch", {"x": 1})
+    async def test_update_channel_aggregate_updates_cache(self):
+        await self.mock.update_channel_aggregate("ch", {"x": 1})
         assert "ch" in self.mock._aggregates
         assert isinstance(self.mock._aggregates["ch"], Aggregate)
         assert self.mock._aggregates["ch"].data == {"x": 1}
@@ -340,11 +342,11 @@ class TestRunChannelStreamSeeding:
         self.dda.fetch_channel_aggregate = AsyncMock(
             side_effect=NotFoundError("Channel not found")
         )
-        self.dda.update_aggregate = AsyncMock(return_value=created_agg)
+        self.dda.update_channel_aggregate = AsyncMock(return_value=created_agg)
 
         await self.dda._run_channel_stream("new_ch")
 
-        self.dda.update_aggregate.assert_awaited_once_with("new_ch", {})
+        self.dda.update_channel_aggregate.assert_awaited_once_with("new_ch", {})
         assert isinstance(self.dda._aggregates["new_ch"], Aggregate)
         assert self.dda._synced_channels["new_ch"] is True
 
@@ -354,7 +356,7 @@ class TestRunChannelStreamSeeding:
         self.dda.fetch_channel_aggregate = AsyncMock(
             side_effect=NotFoundError("Channel not found")
         )
-        self.dda.update_aggregate = AsyncMock(
+        self.dda.update_channel_aggregate = AsyncMock(
             side_effect=HTTPError(500, "Server error")
         )
 

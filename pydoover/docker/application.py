@@ -622,7 +622,7 @@ class Application:
             clear_attachments=clear_attachments,
         )
 
-    async def update_aggregate(
+    async def update_channel_aggregate(
         self,
         channel_name: str,
         data: dict[str, Any],
@@ -653,7 +653,7 @@ class Application:
         Aggregate
             The updated aggregate.
         """
-        return await self.device_agent.update_aggregate(
+        return await self.device_agent.update_channel_aggregate(
             channel_name,
             data,
             files=files,
@@ -1020,7 +1020,7 @@ class Application:
             self._pending_tag_aggregate = {}
             self._tags_dirty = False
 
-            await self.device_agent.update_aggregate(TAG_CHANNEL_NAME, data)
+            await self.device_agent.update_channel_aggregate(TAG_CHANNEL_NAME, data)
 
         now = time.time()
         if self._pending_tag_log and (
@@ -1046,7 +1046,7 @@ class Application:
             self._pending_tag_aggregate = {}
             self._tags_dirty = False
 
-            await self.device_agent.update_aggregate(TAG_CHANNEL_NAME, data)
+            await self.device_agent.update_channel_aggregate(TAG_CHANNEL_NAME, data)
 
         if self._pending_tag_log:
             log_data = self._pending_tag_log
