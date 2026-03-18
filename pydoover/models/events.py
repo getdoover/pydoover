@@ -83,7 +83,7 @@ class MessageUpdateEvent:
         return cls(
             ChannelID.from_dict(data["channel"]),
             data["author_id"],
-            data["organisation_id"],
+            data.get("organisation_id"),
             Message.from_dict(data["message"]),
             data.get("request_data", {}),
         )
