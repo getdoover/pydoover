@@ -65,8 +65,9 @@ class DeviceAgentInterface(GRPCInterface):
         dda_timeout: int = 7,
         max_conn_attempts: int = 5,
         time_between_connection_attempts: int = 10,
+        service_name: str = "doover.DeviceAgent",
     ):
-        super().__init__(app_key, dda_uri, dda_timeout)
+        super().__init__(app_key, dda_uri, service_name, dda_timeout)
 
         self.dda_timeout = dda_timeout
         self.max_connection_attempts = max_conn_attempts

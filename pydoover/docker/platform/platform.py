@@ -239,8 +239,13 @@ class PlatformInterface(GRPCInterface):
 
     stub = platform_iface_pb2_grpc.platformIfaceStub
 
-    def __init__(self, app_key: str, plt_uri: str = "localhost:50053"):
-        super().__init__(app_key, plt_uri)
+    def __init__(
+        self,
+        app_key: str,
+        plt_uri: str = "localhost:50053",
+        service_name: str = "doover.PlatformInterface",
+    ):
+        super().__init__(app_key, plt_uri, service_name)
         self.pulse_counter_listeners = []
 
     async def close(self):

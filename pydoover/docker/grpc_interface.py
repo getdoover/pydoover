@@ -20,10 +20,11 @@ class GRPCInterface:
 
     stub = NotImplemented
 
-    def __init__(self, app_key: str, uri: str, timeout: int = 7):
+    def __init__(self, app_key: str, uri: str, service_name: str, timeout: int = 7):
         self.app_key = app_key
         self.uri = uri
         self.timeout = timeout
+        self.service_name = service_name
 
     async def make_request(self, stub_call, request, *args, **kwargs):
         try:
@@ -65,7 +66,7 @@ class GRPCInterface:
             async with grpc.aio.insecure_channel(self.uri) as channel:
                 stub = health_pb2_grpc.HealthStub(channel)
                 resp = await stub.Check(
-                    health_pb2.HealthCheckRequest(service="helloworld.Greeter")
+                    health_pb2.HealthCheckRequest(service=self.service_name)
                 )
                 if resp.status == health_pb2.HealthCheckResponse.SERVING:
                     log.debug("Server is healthy.")

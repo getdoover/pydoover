@@ -43,10 +43,11 @@ class ModbusInterface(GRPCInterface):
         self,
         app_key: str,
         modbus_uri: str = "127.0.0.1:50054",
+        service_name: str = "doover.ModbusInterface",
         timeout: int = 7,
         config: Schema = None,
     ):
-        super().__init__(app_key, modbus_uri, timeout)
+        super().__init__(app_key, modbus_uri, service_name, timeout)
 
         self.subscription_tasks = []
 
