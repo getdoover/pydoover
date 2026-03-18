@@ -16,7 +16,6 @@ classifiers = [
 dependencies = [
     "aiohttp>=3.12.13",
     "httpx>=0.28.0",
-    "requests==2.32.3",
 ]
 
 [project.optional-dependencies]
