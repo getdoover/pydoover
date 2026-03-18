@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import logging
+import re
 import sys
 
 from collections.abc import Callable
@@ -31,6 +32,45 @@ from ...models.exceptions import NotFoundError
 from ...cli.decorators import command as cli_command
 
 log = logging.getLogger(__name__)
+
+_VALID_KEY_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+_SCALAR_TYPES = (bool, int, float, str, type(None))
+
+
+def validate_payload(data, _path=""):
+    """Validate that a payload is compatible with doover channel data.
+
+    The top level must be a dict. Keys must be strings containing only
+    alphanumeric characters, hyphens, and underscores. Values may be
+    dicts, lists, strings, numbers, booleans, or None.
+
+    Raises ValueError with a clear path to the offending key/value.
+    """
+    if not _path and not isinstance(data, dict):
+        raise ValueError(f"Payload must be a dict, got {type(data).__name__}")
+
+    if isinstance(data, dict):
+        for key, value in data.items():
+            key_path = f"{_path}.{key}" if _path else key
+            if not isinstance(key, str):
+                raise ValueError(
+                    f"Keys must be strings, "
+                    f"got {type(key).__name__} ({key!r}) at '{_path or 'root'}'"
+                )
+            if not _VALID_KEY_RE.match(key):
+                raise ValueError(
+                    f"Key '{key}' at '{_path or 'root'}' contains invalid characters — "
+                    f"only a-z, A-Z, 0-9, hyphens and underscores are allowed"
+                )
+            validate_payload(value, key_path)
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            validate_payload(item, f"{_path}[{i}]")
+    elif not isinstance(data, _SCALAR_TYPES):
+        raise ValueError(
+            f"Unsupported type {type(data).__name__} at '{_path}' — "
+            f"allowed types: dict, list, str, int, float, bool, None"
+        )
 
 
 class DeviceAgentInterface(GRPCInterface):
@@ -413,6 +453,7 @@ class DeviceAgentInterface(GRPCInterface):
         files: list[File] = None,
         timestamp: datetime = None,
     ) -> int:
+        validate_payload(data)
         d = Struct()
         json_format.ParseDict(data, d)
 
@@ -437,6 +478,7 @@ class DeviceAgentInterface(GRPCInterface):
         replace_data: bool = False,
         clear_attachments: bool = False,
     ) -> Message:
+        validate_payload(data)
         d = Struct()
         json_format.ParseDict(data, d)
 
@@ -462,6 +504,7 @@ class DeviceAgentInterface(GRPCInterface):
         replace_data: bool = False,
         max_age_secs: float = None,
     ):
+        validate_payload(data)
         d = Struct()
         json_format.ParseDict(data, d)
 
