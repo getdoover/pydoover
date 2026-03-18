@@ -374,14 +374,27 @@ class DataClient(BaseClient):
         data: dict[str, Any],
         ts: int | None = None,
         files: list[File] | None = None,
+        message_id: int = None,
         organisation_id: int | None = None,
     ) -> Message:
         payload: dict[str, Any] = {"data": data}
         if ts is not None:
             payload["ts"] = ts
+
+        if message_id is not None:
+            method, path = (
+                "PUT",
+                f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
+            )
+        else:
+            method, path = (
+                "POST",
+                f"/agents/{agent_id}/channels/{channel_name}/messages",
+            )
+
         result = self._request(
-            "POST",
-            f"/agents/{agent_id}/channels/{channel_name}/messages",
+            method,
+            path,
             data=payload,
             files=files,
             organisation_id=organisation_id,
