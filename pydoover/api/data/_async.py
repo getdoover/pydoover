@@ -19,11 +19,11 @@ import aiohttp
 
 from datetime import datetime
 
-from ._auth import decode_jwt_exp
+from ..auth._utils import decode_jwt_exp
 from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake, Unset
 from ._iterators import AsyncMessageIterator
-from ..models.exceptions import TokenRefreshError
-from ..models import (
+from ...models.exceptions import TokenRefreshError
+from ...models import (
     Aggregate,
     AgentNotificationResponse,
     Alarm,
@@ -37,14 +37,14 @@ from ..models import (
     TimeseriesResponse,
     TurnCredential,
 )
-from ..models.alarm import AlarmOperator
-from ..models.notification import (
+from ...models.alarm import AlarmOperator
+from ...models.notification import (
     NotificationEndpoint,
     NotificationSeverity,
     NotificationSubscription,
     NotificationType,
 )
-from ..models.wss_connection import (
+from ...models.wss_connection import (
     ConnectionDetail,
     ConnectionSubscription,
     ConnectionSubscriptionLog,

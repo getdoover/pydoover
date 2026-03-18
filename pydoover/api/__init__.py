@@ -1,6 +1,6 @@
-from ._async import AsyncDataClient
-from ._base import UNSET
-from ._sync import DataClient
+from .data._async import AsyncDataClient
+from .data._base import UNSET
+from .data._sync import DataClient
 from ..models.exceptions import (
     DooverAPIError,
     ForbiddenError,
