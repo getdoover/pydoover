@@ -9,7 +9,7 @@ import re
 from collections import OrderedDict
 from enum import Enum as _Enum
 from enum import EnumType
-from typing import Any, Generic, Iterator, TypeVar, overload
+from typing import Any, Generic, Iterator, Self, TypeVar, overload
 
 log = logging.getLogger(__name__)
 KEY_VALIDATOR = re.compile(r"^[ a-zA-Z0-9_-]*$")
@@ -38,9 +38,9 @@ def _unwrap_runtime_value(element: "ConfigElement") -> Any:
 
 
 def _build_runtime_elements(
-    declarations: "OrderedDict[str, _DeclaredConfigElement]",
-) -> "OrderedDict[str, ConfigElement]":
-    elements: "OrderedDict[str, ConfigElement]" = OrderedDict()
+    declarations: "OrderedDict[str, _DeclaredConfigElement[Any, ConfigElement[Any]]]",
+) -> "OrderedDict[str, ConfigElement[Any]]":
+    elements: "OrderedDict[str, ConfigElement[Any]]" = OrderedDict()
     schema_keys: set[str] = set()
 
     for attr_name, declaration in declarations.items():
@@ -58,10 +58,11 @@ def _build_runtime_elements(
     return elements
 
 
-ConfigElementT = TypeVar("ConfigElementT", bound="ConfigElement")
+RuntimeValueT = TypeVar("RuntimeValueT")
+ConfigElementT = TypeVar("ConfigElementT", bound="ConfigElement[Any]")
 
 
-class _DeclaredConfigElement(Generic[ConfigElementT]):
+class _DeclaredConfigElement(Generic[RuntimeValueT, ConfigElementT]):
     def __init__(self, attr_name: str, template: ConfigElementT):
         self.attr_name = attr_name
         self.template = template
@@ -74,16 +75,16 @@ class _DeclaredConfigElement(Generic[ConfigElementT]):
     def __get__(self, instance: None, owner: type["Object"]) -> ConfigElementT: ...
 
     @overload
-    def __get__(self, instance: "Schema", owner: type["Schema"]) -> Any: ...
+    def __get__(self, instance: "Schema", owner: type["Schema"]) -> RuntimeValueT: ...
 
     @overload
-    def __get__(self, instance: "Object", owner: type["Object"]) -> Any: ...
+    def __get__(self, instance: "Object", owner: type["Object"]) -> RuntimeValueT: ...
 
     def __get__(
         self,
         instance: "Schema | Object | None",
         owner: type["Schema"] | type["Object"],
-    ) -> ConfigElementT | Any:
+    ) -> ConfigElementT | RuntimeValueT:
         if instance is None:
             return self.template
         instance._ensure_runtime_state()
@@ -98,8 +99,8 @@ class _DeclaredConfigElement(Generic[ConfigElementT]):
 
 def _collect_config_declarations(
     cls: type,
-) -> "OrderedDict[str, _DeclaredConfigElement]":
-    declarations: "OrderedDict[str, _DeclaredConfigElement]" = OrderedDict()
+) -> "OrderedDict[str, _DeclaredConfigElement[Any, ConfigElement[Any]]]":
+    declarations: "OrderedDict[str, _DeclaredConfigElement[Any, ConfigElement[Any]]]" = OrderedDict()
     for base in reversed(cls.__mro__[1:]):
         declarations.update(getattr(base, "__config_declarations__", {}))
 
@@ -117,7 +118,7 @@ def _collect_config_declarations(
 class Schema:
     """Represents the configuration schema for a Doover application."""
 
-    __config_declarations__: "OrderedDict[str, _DeclaredConfigElement]" = OrderedDict()
+    __config_declarations__: "OrderedDict[str, _DeclaredConfigElement[Any, ConfigElement[Any]]]" = OrderedDict()
 
     def __init__(self):
         self._ensure_runtime_state()
@@ -218,7 +219,7 @@ class Schema:
         fp.write_text(json.dumps(data, indent=4))
 
 
-class ConfigElement:
+class ConfigElement(Generic[RuntimeValueT]):
     """Represents a config element declaration and bound runtime value container."""
 
     _type = "unknown"
@@ -270,6 +271,38 @@ class ConfigElement:
                     raise ValueError(
                         "You cannot set default values for arrays and objects. It's confusing."
                     )
+
+    @overload
+    def __get__(self, instance: None, owner: type["Schema"]) -> Self: ...
+
+    @overload
+    def __get__(self, instance: None, owner: type["Object"]) -> Self: ...
+
+    @overload
+    def __get__(self, instance: "Schema", owner: type["Schema"]) -> RuntimeValueT: ...
+
+    @overload
+    def __get__(self, instance: "Object", owner: type["Object"]) -> RuntimeValueT: ...
+
+    def __get__(
+        self,
+        instance: "Schema | Object | None",
+        owner: type["Schema"] | type["Object"],
+    ) -> Self | RuntimeValueT:
+        if instance is None:
+            return self
+        instance._ensure_runtime_state()
+        if self._declared_attr_name is None:
+            raise AttributeError(
+                "Config elements must be declared on a Schema or Object subclass."
+            )
+        return _unwrap_runtime_value(instance._elements[self._declared_attr_name])
+
+    def __set__(self, instance: "Schema | Object", value: Any) -> None:
+        raise AttributeError(
+            "Config fields are read-only at runtime. "
+            "Use element(name).value for explicit metadata/value access."
+        )
 
     @property
     def required(self):
@@ -325,7 +358,7 @@ class ConfigElement:
         self.value = data
 
 
-class Integer(ConfigElement):
+class Integer(ConfigElement[int]):
     _type = "integer"
     value: int
 
@@ -367,12 +400,12 @@ class Number(Integer):
     value: float
 
 
-class Boolean(ConfigElement):
+class Boolean(ConfigElement[bool]):
     _type = "boolean"
     value: bool
 
 
-class String(ConfigElement):
+class String(ConfigElement[str]):
     _type = "string"
     value: str
 
@@ -392,7 +425,7 @@ class String(ConfigElement):
         return res
 
 
-class DateTime(ConfigElement):
+class DateTime(ConfigElement[str]):
     _type = "string"
     value: str
 
@@ -402,7 +435,7 @@ class DateTime(ConfigElement):
         return res
 
 
-class Enum(ConfigElement):
+class Enum(ConfigElement[Any]):
     _type = None
 
     def __init__(
@@ -442,7 +475,7 @@ class Enum(ConfigElement):
         return {"enum": self.choices, **super().to_dict()}
 
 
-class Array(ConfigElement):
+class Array(ConfigElement["Array"]):
     _type = "array"
 
     def __init__(
@@ -506,9 +539,9 @@ class Array(ConfigElement):
             self._elements.append(element)
 
 
-class Object(ConfigElement):
+class Object(ConfigElement["Object"]):
     _type = "object"
-    __config_declarations__: "OrderedDict[str, _DeclaredConfigElement]" = OrderedDict()
+    __config_declarations__: "OrderedDict[str, _DeclaredConfigElement[Any, ConfigElement[Any]]]" = OrderedDict()
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

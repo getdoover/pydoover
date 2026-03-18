@@ -399,6 +399,12 @@ class TestTags:
         assert isinstance(voltage, BoundTag)
         assert voltage.get() == 12.4
 
+    def test_get_tag_raises_key_error_for_missing_tag(self):
+        tags = MyAppTags()
+
+        with pytest.raises(KeyError, match="missing_tag"):
+            tags.get_tag("missing_tag")
+
     def test_get_definition_returns_declared_tag_definition(self):
         tags = MyAppTags()
 
@@ -428,7 +434,7 @@ class TestTags:
 
         tags.remove_tag("speed")
 
-        assert tags.get_tag("speed") is None
+        assert tags.find_tag("speed") is None
         assert tags.get_definition("speed") is None
         assert {tag.name for tag in tags} == {"voltage", "enabled"}
 
@@ -944,8 +950,8 @@ class TestTagClassResolution:
 
         assert resolved.get_tag("voltage") is not None
         assert resolved.get_tag("extra_sensor") is not None
-        assert resolved.get_tag("legacy_sensor") is None
-        assert resolved.get_tag("enabled") is None
+        assert resolved.find_tag("legacy_sensor") is None
+        assert resolved.find_tag("enabled") is None
         assert {tag.name for tag in resolved} == {"voltage", "speed", "extra_sensor"}
 
     def test_docker_tags_class_none_is_allowed(self):
@@ -1016,8 +1022,8 @@ class TestTagClassResolution:
 
         assert resolved.get_tag("voltage") is not None
         assert resolved.get_tag("legacy_sensor") is not None
-        assert resolved.get_tag("extra_sensor") is None
-        assert resolved.get_tag("enabled") is None
+        assert resolved.find_tag("extra_sensor") is None
+        assert resolved.find_tag("enabled") is None
         assert {tag.name for tag in resolved} == {"voltage", "speed", "legacy_sensor"}
 
     def test_processor_resolve_tags_instantiates_declared_class(self):

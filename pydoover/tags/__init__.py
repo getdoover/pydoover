@@ -402,15 +402,28 @@ class Tags:
         await call_maybe_async(self._manager.set_tag, declaration.name, value)
 
     def get(self, name: str) -> BoundTag | None:
-        """Alias for :meth:`get_tag`."""
-        return self.get_tag(name)
+        """Return the bound runtime proxy for a tag, if it exists."""
+        return self.find_tag(name)
 
-    def get_tag(self, name: str) -> BoundTag | None:
+    def find_tag(self, name: str) -> BoundTag | None:
         """Return the bound runtime proxy for a tag, if it exists."""
         declaration = self._get_declaration(name)
         if declaration is None:
             return None
         return BoundTag(self, declaration)
+
+    def get_tag(self, name: str) -> BoundTag:
+        """Return the bound runtime proxy for a tag.
+
+        Raises
+        ------
+        KeyError
+            If the tag does not exist on this collection.
+        """
+        tag = self.find_tag(name)
+        if tag is None:
+            raise KeyError(name)
+        return tag
 
     def get_definition(self, name: str) -> Tag | None:
         """Return the declared :class:`Tag` definition for a tag, if it exists."""
@@ -422,7 +435,7 @@ class Tags:
     def update(self, values: dict[str, Any]) -> None:
         """Update multiple tag values through their bound runtime proxies."""
         for key, value in values.items():
-            tag = self.get_tag(key)
+            tag = self.find_tag(key)
             if tag is not None:
                 tag.set(value)
 
@@ -439,7 +452,7 @@ class Tags:
 
     def __iter__(self) -> Iterator[BoundTag]:
         for name in self._tag_declarations:
-            tag = self.get_tag(name)
+            tag = self.find_tag(name)
             if tag is not None:
                 yield tag
 
@@ -447,13 +460,10 @@ class Tags:
         return len(self._tag_declarations)
 
     def __getitem__(self, item: str) -> BoundTag:
-        tag = self.get_tag(item)
-        if tag is None:
-            raise KeyError(item)
-        return tag
+        return self.get_tag(item)
 
     def __getattr__(self, name: str) -> BoundTag:
-        tag = self.get_tag(name)
+        tag = self.find_tag(name)
         if tag is None:
             raise AttributeError(name)
         return tag
