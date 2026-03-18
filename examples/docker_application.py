@@ -82,6 +82,9 @@ class HelloWorldUI(ui.UI):
 
 
 class HelloWorld(Application):
+    tags_class = HelloWorldTags
+    ui_class = HelloWorldUI
+
     started: time.time
 
     def setup(self):
@@ -110,5 +113,5 @@ class HelloWorld(Application):
 
 
 if __name__ == "__main__":
-    new_app = HelloWorld(config=Schema(), tags=HelloWorldTags(), ui=HelloWorldUI)
+    new_app = HelloWorld(config=Schema())
     run_app(new_app)

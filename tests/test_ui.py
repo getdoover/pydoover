@@ -59,30 +59,45 @@ class TagBoundUI(ui.UI):
     )
 
 
-def make_docker_app(config=None, tags=None, ui_source=None, app_key="test_app"):
-    app = object.__new__(DockerApplication)
+def make_docker_app(config=None, tags_class=None, ui_class=None, app_key="test_app"):
+    app_cls = type(
+        "ConfiguredDockerApplication",
+        (DockerApplication,),
+        {"tags_class": tags_class, "ui_class": ui_class},
+    )
+    app = object.__new__(app_cls)
     app.config = config or FakeSchema()
     app.app_key = app_key
     app.tag_manager = FakeDockerAppTagManager()
     app.ui_manager = ui.UIManager(app_key=app_key)
-    app._tags_source = tags
-    app.tags = tags if isinstance(tags, Tags) else None
-    app._ui_source = ui_source
-    app.ui = ui_source if isinstance(ui_source, ui.UI) else None
+    app.tags = None
+    app.ui = None
     return app
 
 
-def make_processor_app(config=None, tags=None, ui_source=None, app_key="test_app"):
-    app = object.__new__(ProcessorApplication)
+def make_processor_app(config=None, tags_class=None, ui_class=None, app_key="test_app"):
+    app_cls = type(
+        "ConfiguredProcessorApplication",
+        (ProcessorApplication,),
+        {"tags_class": tags_class, "ui_class": ui_class},
+    )
+    app = object.__new__(app_cls)
     app.config = config or FakeSchema()
     app.app_key = app_key
     app.tag_manager = FakeProcessorTagManager()
     app.ui_manager = ui.UIManager(app_key=app_key)
-    app._tags_source = tags
-    app.tags = tags if isinstance(tags, Tags) else None
-    app._ui_source = ui_source
-    app.ui = ui_source if isinstance(ui_source, ui.UI) else None
+    app.tags = None
+    app.ui = None
     return app
+
+
+async def _resolve_app_async(app):
+    await app._resolve_tags()
+    return await app._resolve_ui()
+
+
+def resolve_app(app):
+    return asyncio.run(_resolve_app_async(app))
 
 
 class TestDeclarativeUI:
@@ -265,105 +280,73 @@ class TestCallbacksAndInteractions:
 
 class TestApplicationUIResolution:
     def test_docker_resolves_ui_subclass_and_installs_it(self):
-        app = make_docker_app(tags=UITags(), ui_source=TagBoundUI)
-
-        app._resolve_tags()
-        resolved = app._resolve_ui()
+        app = make_docker_app(tags_class=UITags, ui_class=TagBoundUI)
+        resolved = resolve_app(app)
 
         assert isinstance(resolved, TagBoundUI)
         assert app.ui is resolved
         assert app.ui_manager.get_element("voltage") is resolved.voltage
 
-    def test_docker_preserves_prebuilt_ui_instance(self):
-        ui_obj = BaseUI()
-        app = make_docker_app(tags=MyAppTags(), ui_source=ui_obj)
-
-        app._resolve_tags()
-        resolved = app._resolve_ui()
-
-        assert resolved is ui_obj
-
-    def test_docker_ui_factory_receives_config_and_tags(self):
+    def test_docker_ui_setup_receives_config_and_tags(self):
         config = FakeSchema()
         config._inject_deployment_config({"some_flag": True})
         calls = []
 
-        def build_ui(resolved_config, resolved_tags):
-            calls.append((resolved_config.some_flag, resolved_tags))
-
-            class FactoryUI(ui.UI):
-                voltage = ui.NumericVariable(
+        class ConfiguredUI(ui.UI):
+            async def setup(self, resolved_config, resolved_tags):
+                calls.append((resolved_config.some_flag, resolved_tags))
+                self.add_element(
                     "voltage",
-                    "Voltage",
-                    curr_val=resolved_tags.speed,
+                    ui.NumericVariable(
+                        "voltage",
+                        "Voltage",
+                        curr_val=resolved_tags.speed,
+                    ),
                 )
 
-            return FactoryUI()
-
-        app = make_docker_app(config=config, tags=MyAppTags(), ui_source=build_ui)
-        app._resolve_tags()
-
-        resolved = app._resolve_ui()
+        app = make_docker_app(config=config, tags_class=MyAppTags, ui_class=ConfiguredUI)
+        resolved = resolve_app(app)
 
         assert isinstance(resolved, ui.UI)
         assert calls == [(True, app.tags)]
         assert resolved.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
 
-    def test_docker_ui_factory_with_one_argument_remains_supported(self):
-        calls = []
-
-        def build_ui(resolved_config):
-            calls.append(resolved_config)
-            return BaseUI()
-
-        app = make_docker_app(config=FakeSchema(), tags=MyAppTags(), ui_source=build_ui)
-        app._resolve_tags()
-
-        resolved = app._resolve_ui()
-
-        assert isinstance(resolved, BaseUI)
-        assert calls == [app.config]
-
-    def test_docker_ui_factory_supports_dynamic_children_with_manager_bound_tags(self):
-        def build_ui(_config, tags):
-            class FactoryUI(ui.UI):
-                voltage = ui.NumericVariable(
+    def test_docker_ui_setup_supports_dynamic_children_with_manager_bound_tags(self):
+        class DynamicUI(ui.UI):
+            async def setup(self, _config, tags):
+                self.add_element(
                     "voltage",
-                    "Voltage",
-                    curr_val=tags.speed,
+                    ui.NumericVariable(
+                        "voltage",
+                        "Voltage",
+                        curr_val=tags.speed,
+                    ),
+                )
+                self.add_element(
+                    "telemetry",
+                    ui.Submodule(
+                        "telemetry",
+                        "Telemetry",
+                        children=[
+                            ui.NumericVariable(
+                                "inner_voltage",
+                                "Inner Voltage",
+                                curr_val=tags.get_tag("speed"),
+                            )
+                        ],
+                    ),
                 )
 
-            ui_obj = FactoryUI()
-            ui_obj.add_element(
-                "telemetry",
-                ui.Submodule(
-                    "telemetry",
-                    "Telemetry",
-                    children=[
-                        ui.NumericVariable(
-                            "inner_voltage",
-                            "Inner Voltage",
-                            curr_val=tags.get_tag("speed"),
-                        )
-                    ],
-                ),
-            )
-            return ui_obj
-
-        app = make_docker_app(config=FakeSchema(), tags=MyAppTags(), ui_source=build_ui)
-        app._resolve_tags()
-
-        resolved = app._resolve_ui()
+        app = make_docker_app(config=FakeSchema(), tags_class=MyAppTags, ui_class=DynamicUI)
+        resolved = resolve_app(app)
 
         assert resolved.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
         telemetry = resolved.telemetry.to_dict()
         assert telemetry["children"]["inner_voltage"]["currentValue"] == "$tag.speed:number:0"
 
-    def test_docker_ui_factory_returning_none_is_allowed(self):
-        app = make_docker_app(tags=MyAppTags(), ui_source=lambda config: None)
-        app._resolve_tags()
-
-        resolved = app._resolve_ui()
+    def test_docker_ui_class_none_is_allowed(self):
+        app = make_docker_app(tags_class=MyAppTags, ui_class=None)
+        resolved = resolve_app(app)
 
         assert resolved is None
         assert app.ui is None
@@ -371,83 +354,85 @@ class TestApplicationUIResolution:
     def test_processor_resolves_ui_after_tags(self):
         config = FakeSchema()
         config._inject_deployment_config({"some_flag": True})
-        app = make_processor_app(config=config, tags=UITags(), ui_source=TagBoundUI)
-
-        app._resolve_tags()
-        resolved = app._resolve_ui()
+        app = make_processor_app(config=config, tags_class=UITags, ui_class=TagBoundUI)
+        resolved = resolve_app(app)
 
         assert isinstance(resolved, TagBoundUI)
         assert app.ui_manager.get_command("mode") is resolved.mode
 
-    def test_processor_ui_factory_receives_config_and_tags(self):
+    def test_processor_ui_setup_receives_config_and_tags(self):
         config = FakeSchema()
         calls = []
 
-        def build_ui(resolved_config, resolved_tags):
-            calls.append((resolved_config, resolved_tags))
-            return TagBoundUI()
+        class ConfiguredUI(TagBoundUI):
+            async def setup(self, resolved_config, resolved_tags):
+                calls.append((resolved_config, resolved_tags))
 
-        app = make_processor_app(config=config, tags=UITags(), ui_source=build_ui)
-        app._resolve_tags()
-
-        resolved = app._resolve_ui()
+        app = make_processor_app(config=config, tags_class=UITags, ui_class=ConfiguredUI)
+        resolved = resolve_app(app)
 
         assert isinstance(resolved, TagBoundUI)
         assert calls == [(config, app.tags)]
 
     def test_processor_missing_tag_reference_raises_deterministically(self):
         config = FakeSchema()
-        tags = UITags()
-        tags.remove_tag("enabled")
-        app = make_processor_app(config=config, tags=tags, ui_source=TagBoundUI)
+        
+        class MissingEnabledTags(UITags):
+            async def setup(self, _config):
+                self.remove_tag("enabled")
 
-        app._resolve_tags()
+        app = make_processor_app(
+            config=config,
+            tags_class=MissingEnabledTags,
+            ui_class=TagBoundUI,
+        )
 
         with pytest.raises(ValueError, match="enabled"):
-            app._resolve_ui()
+            resolve_app(app)
 
-    def test_async_docker_startup_handles_factory_ui_with_runtime_bound_tags(self, monkeypatch):
+    def test_async_docker_startup_handles_ui_setup_with_runtime_bound_tags(self, monkeypatch):
         docker_application_module = pytest.importorskip("pydoover.docker.application")
         monkeypatch.setattr(docker_application_module, "RUN_HEALTHCHECK", False)
 
+        class DynamicStartupUI(ui.UI):
+            async def setup(self, _config, tags):
+                self.add_element(
+                    "voltage",
+                    ui.NumericVariable(
+                        "voltage",
+                        "Voltage",
+                        curr_val=tags.speed,
+                    ),
+                )
+                self.add_element(
+                    "telemetry",
+                    ui.Submodule(
+                        "telemetry",
+                        "Telemetry",
+                        children=[
+                            ui.NumericVariable(
+                                "inner_voltage",
+                                "Inner Voltage",
+                                curr_val=tags.get_tag("speed"),
+                            )
+                        ],
+                    ),
+                )
+
         class AsyncUIApp(DockerApplication):
+            tags_class = MyAppTags
+            ui_class = DynamicStartupUI
+
             async def setup(self):
                 return None
 
             async def main_loop(self):
                 return None
 
-        def build_ui(_config, tags):
-            class FactoryUI(ui.UI):
-                voltage = ui.NumericVariable(
-                    "voltage",
-                    "Voltage",
-                    curr_val=tags.speed,
-                )
-
-            ui_obj = FactoryUI()
-            ui_obj.add_element(
-                "telemetry",
-                ui.Submodule(
-                    "telemetry",
-                    "Telemetry",
-                    children=[
-                        ui.NumericVariable(
-                            "inner_voltage",
-                            "Inner Voltage",
-                            curr_val=tags.get_tag("speed"),
-                        )
-                    ],
-                ),
-            )
-            return ui_obj
-
         async def run_test():
             device_agent = FakeRuntimeDeviceAgent()
             app = AsyncUIApp(
                 config=FakeSchema(),
-                tags=MyAppTags(),
-                ui=build_ui,
                 app_key="test_app",
                 device_agent=device_agent,
                 platform_iface=FakeRuntimePlatformInterface(is_async=True),

@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Callable
+from typing import Any
 
 from ..utils import call_maybe_async, get_is_async, maybe_async
 
@@ -245,6 +245,10 @@ class Tags:
         # Keep runtime declaration changes isolated to this instance.
         self._tag_declarations = OrderedDict(self.__class__.__tag_declarations__)
 
+    async def setup(self, config: Any) -> None:
+        """Mutate this tag collection before it is bound to a manager."""
+        return None
+
     @property
     def definitions(self) -> list[Tag]:
         """list[Tag]: The declared tag definitions for this instance."""
@@ -382,6 +386,3 @@ class Tags:
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({list(self._tag_declarations)})"
-
-
-TagsFactory = Callable[[Any], Tags | None]

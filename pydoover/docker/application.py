@@ -1,6 +1,5 @@
 import asyncio
 import argparse
-import inspect
 import json
 import os
 import logging
@@ -11,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, Awaitable, Callable
 
-from pydoover.tags import Tags, TagsFactory
+from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
 
 try:
@@ -25,8 +24,7 @@ from .device_agent import DeviceAgentInterface
 from .modbus import ModbusInterface
 from .platform import PlatformInterface
 
-from ..ui import UI, UIFactory, UIManager
-from ..ui.declarative import resolve_ui_factory
+from ..ui import UI, UIManager
 from ..utils import (
     call_maybe_async,
     get_is_async,
@@ -59,10 +57,21 @@ class Application:
 
         from pydoover.docker import Application, run_app
         from pydoover.config import Schema
+        from pydoover import ui
+        from pydoover.tags import Tag, Tags
+
+        class MyTags(Tags):
+            ready = Tag("boolean", default=False)
+
+        class MyUI(ui.UI):
+            ready = ui.BooleanVariable("ready", "Ready", curr_val=MyTags.ready)
 
         class MyApp(Application):
+            tags_class = MyTags
+            ui_class = MyUI
+
             def setup(self):
-                self.set_tag("my_app_ready", True)
+                self.tags.ready.set(True)
 
             def main_loop(self):
                 # Your main loop logic here
@@ -88,11 +97,12 @@ class Application:
         The application key for the app, used to identify it in the Doover cloud. This is globally unique.
     """
 
+    ui_class: type[UI] | None = None
+    tags_class: type[Tags] | None = None
+
     def __init__(
         self,
         config: "Schema",
-        tags: Tags | TagsFactory | None = None,
-        ui: UI | type[UI] | UIFactory | None = None,
         app_key: str = None,
         is_async: bool = None,
         device_agent: DeviceAgentInterface = None,
@@ -104,10 +114,8 @@ class Application:
         healthcheck_port: int = None,
     ):
         self.config = config
-        self._tags_source = tags
-        self.tags: Tags | None = tags if isinstance(tags, Tags) else None
-        self._ui_source = ui
-        self.ui: UI | None = ui if isinstance(ui, UI) else None
+        self.tags: Tags | None = None
+        self.ui: UI | None = None
         self.app_key = app_key
         self.app_display_name = ""
         self._is_async = self._resolve_is_async_mode(is_async)
@@ -197,27 +205,25 @@ class Application:
 
         return resolved
 
-    def _resolve_tags(self) -> Tags | None:
-        if self._tags_source is None:
+    async def _resolve_tags(self) -> Tags | None:
+        tags_class = self.__class__.tags_class
+        if tags_class is None:
             self.tags = None
-        elif isinstance(self._tags_source, Tags):
-            self.tags = self._tags_source
         else:
-            self.tags = self._tags_source(self.config)
+            self.tags = tags_class()
+            await self.tags.setup(self.config)
 
         if self.tags is not None:
             self.tags.register_manager(self.tag_manager)
         return self.tags
 
-    def _resolve_ui(self) -> UI | None:
-        if self._ui_source is None:
+    async def _resolve_ui(self) -> UI | None:
+        ui_class = self.__class__.ui_class
+        if ui_class is None:
             self.ui = None
-        elif isinstance(self._ui_source, UI):
-            self.ui = self._ui_source
-        elif inspect.isclass(self._ui_source) and issubclass(self._ui_source, UI):
-            self.ui = self._ui_source()
         else:
-            self.ui = resolve_ui_factory(self._ui_source, self.config, self.tags)
+            self.ui = ui_class()
+            await self.ui.setup(self.config, self.tags)
 
         if self.ui is not None:
             self.ui.bind_tags(self.tags)
@@ -329,8 +335,8 @@ class Application:
             )
             await self.device_agent.wait_for_channels_sync_async(["deployment_config"])
 
-        self._resolve_tags()
-        self._resolve_ui()
+        await self._resolve_tags()
+        await self._resolve_ui()
 
         await self.modbus_iface.setup()
 

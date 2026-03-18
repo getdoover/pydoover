@@ -24,7 +24,6 @@ from .interaction import (
 from .manager import UIManager as UIManager
 from .declarative import (
     UI as UI,
-    UIFactory as UIFactory,
     bind_tag as bind_tag,
     tag_ref as tag_ref,
 )

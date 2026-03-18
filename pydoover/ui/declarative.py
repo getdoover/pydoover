@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import copy
-import inspect
 import json
 from collections import OrderedDict
-from typing import Any, Callable
+from typing import Any
 
 from pydoover.tags import BoundTag, NotSet, Tag, Tags
 
@@ -117,6 +116,10 @@ class UI:
             for name, declaration in self.__class__.__ui_declarations__.items()
         )
 
+    async def setup(self, config: Any, tags: Tags | None) -> None:
+        """Mutate this UI instance before it is bound and installed."""
+        return None
+
     @property
     def children(self) -> list[Any]:
         return list(self._elements.values())
@@ -145,9 +148,6 @@ class UI:
         for element in self._elements.values():
             _bind_value(element, tags=tags, visited=visited)
         return self
-
-
-UIFactory = Callable[..., UI | None]
 
 
 def tag_ref(
@@ -186,30 +186,6 @@ def is_tag_reference(value: Any) -> bool:
     if isinstance(value, (list, tuple, set)):
         return any(is_tag_reference(v) for v in value)
     return False
-
-
-def resolve_ui_factory(factory: UIFactory, config: Any, tags: Tags | None) -> UI | None:
-    params = list(inspect.signature(factory).parameters.values())
-    positional = [
-        param
-        for param in params
-        if param.kind
-        in (
-            inspect.Parameter.POSITIONAL_ONLY,
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        )
-    ]
-
-    if any(param.kind is inspect.Parameter.VAR_POSITIONAL for param in params):
-        return factory(config, tags)
-
-    if len(positional) >= 2:
-        return factory(config, tags)
-
-    if len(positional) == 1:
-        return factory(config)
-
-    return factory()
 
 
 def normalize_ui_value(value: Any, field_name: str | None = None) -> Any:

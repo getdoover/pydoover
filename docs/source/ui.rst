@@ -11,8 +11,8 @@ Declarative UI
 
 ``ui.UI`` is the preferred way to declare application UI structure.
 It mirrors the declarative ``Tags`` API: define elements as class attributes,
-pass the UI class or instance into your application via ``ui=``, and keep
-dynamic values tag-backed where appropriate.
+declare the UI and tags classes on your application via ``ui_class`` and
+``tags_class``, and keep dynamic values tag-backed where appropriate.
 By default, tag-backed fields serialize to the compact frontend lookup format
 such as ``$tag.voltage:number`` rather than the expanded object form.
 
@@ -45,22 +45,36 @@ Explicit tag helper example::
             curr_val=ui.tag_ref("voltage", tag_type="number"),
         )
 
-Config-aware UI example::
+Application wiring example::
+
+    from pydoover.docker import Application
+
+    class MyApp(Application):
+        tags_class = MyTags
+        ui_class = MyUI
+
+Config-aware setup example::
 
     from pydoover import ui
+    from pydoover.tags import Tag, Tags
 
-    def build_ui(config, tags):
-        class ConfiguredUI(ui.UI):
-            voltage = ui.NumericVariable(
-                "voltage",
-                "Voltage",
-                curr_val=tags.voltage,
-            )
+    class ConfiguredTags(Tags):
+        voltage = Tag("number")
 
-        ui_obj = ConfiguredUI()
-        if config.show_extra.value:
-            ui_obj.add_element("extra", ui.TextVariable("extra", "Extra"))
-        return ui_obj
+        async def setup(self, config):
+            if config.show_extra.value:
+                self.add_tag("extra", Tag("string"))
+
+    class ConfiguredUI(ui.UI):
+        voltage = ui.NumericVariable(
+            "voltage",
+            "Voltage",
+            curr_val=ConfiguredTags.voltage,
+        )
+
+        async def setup(self, config, tags):
+            if config.show_extra.value:
+                self.add_element("extra", ui.TextVariable("extra", "Extra"))
 
 Legacy note:
 Existing instance-based UI construction through ``UIManager.add_children()``,

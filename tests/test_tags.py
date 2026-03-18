@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import sys
 import types
@@ -265,20 +266,31 @@ class FakeProcessorTagManager:
 
 
 def make_docker_app(tag_manager=None, app_key="test_app", is_async=False):
-    app = object.__new__(DockerApplication)
+    app_cls = type("ConfiguredDockerApplication", (DockerApplication,), {})
+    app = object.__new__(app_cls)
     app.app_key = app_key
     app.tag_manager = tag_manager or FakeDockerAppTagManager()
     app._is_async = is_async
+    app.config = FakeSchema()
+    app.tags = None
     return app
 
 
-def make_processor_app(config=None, tags=None, tag_manager=None):
-    app = object.__new__(ProcessorApplication)
+def make_processor_app(config=None, tags_class=None, tag_manager=None):
+    app_cls = type(
+        "ConfiguredProcessorApplication",
+        (ProcessorApplication,),
+        {"tags_class": tags_class},
+    )
+    app = object.__new__(app_cls)
     app.config = config
-    app._tags_source = tags
-    app.tags = tags if isinstance(tags, Tags) else None
+    app.tags = None
     app.tag_manager = tag_manager or FakeProcessorTagManager()
     return app
+
+
+def resolve_tags(app):
+    return asyncio.run(app._resolve_tags())
 
 
 class MyAppTags(Tags):
@@ -292,6 +304,8 @@ class AsyncStartupTags(Tags):
 
 
 class AsyncStartupApp(DockerApplication):
+    tags_class = AsyncStartupTags
+
     async def setup(self):
         self.setup_tag_manager_is_async = self.tag_manager._is_async
         await self.tags.some_tag.set("ready")
@@ -800,7 +814,6 @@ class TestDockerApplicationTagMethods:
         device_agent = FakeRuntimeDeviceAgent()
         app = AsyncStartupApp(
             config=FakeSchema(),
-            tags=AsyncStartupTags(),
             app_key="test_app",
             device_agent=device_agent,
             platform_iface=FakeRuntimePlatformInterface(),
@@ -829,7 +842,6 @@ class TestDockerApplicationTagMethods:
             device_agent = FakeRuntimeDeviceAgent()
             app = AsyncStartupApp(
                 config=FakeSchema(),
-                tags=AsyncStartupTags(),
                 app_key="test_app",
                 device_agent=device_agent,
                 platform_iface=FakeRuntimePlatformInterface(is_async=True),
@@ -873,65 +885,56 @@ class TestDockerApplicationTagMethods:
         asyncio.run(run_test())
 
 
-class TestTagFactories:
-    def test_docker_resolve_tags_keeps_prebuilt_instance(self):
+class TestTagClassResolution:
+    def test_docker_resolve_tags_instantiates_declared_class(self):
         manager = FakeDockerAppTagManager()
-        tags = MyAppTags()
         app = make_docker_app(tag_manager=manager)
-        app.config = FakeSchema()
-        app._tags_source = tags
-        app.tags = tags
+        app.__class__.tags_class = MyAppTags
 
-        resolved = app._resolve_tags()
+        resolved = resolve_tags(app)
 
-        assert resolved is tags
-        assert app.tags is tags
-        assert tags._manager is manager
+        assert isinstance(resolved, MyAppTags)
+        assert app.tags is resolved
+        assert resolved._manager is manager
 
-    def test_docker_resolve_tags_calls_factory_with_injected_config(self):
+    def test_docker_resolve_tags_setup_receives_injected_config(self):
         manager = FakeDockerAppTagManager()
         config = FakeSchema()
         config._inject_deployment_config({"some_flag": True})
         calls = []
 
-        def build_tags(resolved_config):
-            calls.append(resolved_config)
-            tags = MyAppTags()
-            if resolved_config.some_flag:
-                return tags
-            return None
+        class ConfiguredTags(MyAppTags):
+            async def setup(self, resolved_config):
+                calls.append(resolved_config)
 
         app = make_docker_app(tag_manager=manager)
         app.config = config
-        app._tags_source = build_tags
-        app.tags = None
+        app.__class__.tags_class = ConfiguredTags
 
-        resolved = app._resolve_tags()
+        resolved = resolve_tags(app)
 
-        assert isinstance(resolved, MyAppTags)
+        assert isinstance(resolved, ConfiguredTags)
         assert calls == [config]
         assert resolved._manager is manager
 
-    def test_docker_factory_can_change_available_tags_based_on_config(self):
+    def test_docker_tag_setup_can_change_available_tags_based_on_config(self):
         manager = FakeDockerAppTagManager()
         config = FakeSchema()
         config._inject_deployment_config({"some_flag": True})
 
-        def build_tags(resolved_config):
-            tags = MyAppTags()
-            tags.remove_tag("enabled")
-            if resolved_config.some_flag:
-                tags.add_tag("extra_sensor", Tag("number"))
-            else:
-                tags.add_tag("legacy_sensor", Tag("number"))
-            return tags
+        class ConfiguredTags(MyAppTags):
+            async def setup(self, resolved_config):
+                self.remove_tag("enabled")
+                if resolved_config.some_flag:
+                    self.add_tag("extra_sensor", Tag("number"))
+                else:
+                    self.add_tag("legacy_sensor", Tag("number"))
 
         app = make_docker_app(tag_manager=manager)
         app.config = config
-        app._tags_source = build_tags
-        app.tags = None
+        app.__class__.tags_class = ConfiguredTags
 
-        resolved = app._resolve_tags()
+        resolved = resolve_tags(app)
 
         assert resolved.get_tag("voltage") is not None
         assert resolved.get_tag("extra_sensor") is not None
@@ -939,65 +942,70 @@ class TestTagFactories:
         assert resolved.get_tag("enabled") is None
         assert {tag.name for tag in resolved} == {"voltage", "speed", "extra_sensor"}
 
-    def test_docker_resolve_tags_allows_factory_returning_none(self):
+    def test_docker_tags_class_none_is_allowed(self):
         manager = FakeDockerAppTagManager()
         app = make_docker_app(tag_manager=manager)
-        app.config = FakeSchema()
-        app._tags_source = lambda config: None
-        app.tags = None
 
-        resolved = app._resolve_tags()
+        resolved = resolve_tags(app)
 
         assert resolved is None
         assert app.tags is None
 
-    def test_docker_resolve_tags_propagates_factory_error(self):
+    def test_docker_resolve_tags_propagates_setup_error(self):
         app = make_docker_app()
         app.config = FakeSchema()
 
-        def build_tags(_config):
-            raise RuntimeError("boom")
+        class BrokenTags(MyAppTags):
+            async def setup(self, _config):
+                raise RuntimeError("boom")
 
-        app._tags_source = build_tags
+        app.__class__.tags_class = BrokenTags
 
         with pytest.raises(RuntimeError, match="boom"):
-            app._resolve_tags()
+            resolve_tags(app)
 
-    def test_processor_resolve_tags_calls_factory_after_config_injection(self):
+    def test_processor_resolve_tags_setup_runs_after_config_injection(self):
         config = FakeSchema()
         manager = FakeProcessorTagManager()
         calls = []
 
-        def build_tags(resolved_config):
-            calls.append(resolved_config.some_flag)
-            return MyAppTags()
+        class ConfiguredTags(MyAppTags):
+            async def setup(self, resolved_config):
+                calls.append(resolved_config.some_flag)
 
         config._inject_deployment_config({"some_flag": True})
-        app = make_processor_app(config=config, tags=build_tags, tag_manager=manager)
+        app = make_processor_app(
+            config=config,
+            tags_class=ConfiguredTags,
+            tag_manager=manager,
+        )
 
-        resolved = app._resolve_tags()
+        resolved = resolve_tags(app)
 
-        assert isinstance(resolved, MyAppTags)
+        assert isinstance(resolved, ConfiguredTags)
         assert calls == [True]
         assert resolved._manager is manager
 
-    def test_processor_factory_can_change_available_tags_based_on_config(self):
+    def test_processor_tag_setup_can_change_available_tags_based_on_config(self):
         config = FakeSchema()
         config._inject_deployment_config({"some_flag": False})
         manager = FakeProcessorTagManager()
 
-        def build_tags(resolved_config):
-            tags = MyAppTags()
-            tags.remove_tag("enabled")
-            if resolved_config.some_flag:
-                tags.add_tag("extra_sensor", Tag("number"))
-            else:
-                tags.add_tag("legacy_sensor", Tag("number"))
-            return tags
+        class ConfiguredTags(MyAppTags):
+            async def setup(self, resolved_config):
+                self.remove_tag("enabled")
+                if resolved_config.some_flag:
+                    self.add_tag("extra_sensor", Tag("number"))
+                else:
+                    self.add_tag("legacy_sensor", Tag("number"))
 
-        app = make_processor_app(config=config, tags=build_tags, tag_manager=manager)
+        app = make_processor_app(
+            config=config,
+            tags_class=ConfiguredTags,
+            tag_manager=manager,
+        )
 
-        resolved = app._resolve_tags()
+        resolved = resolve_tags(app)
 
         assert resolved.get_tag("voltage") is not None
         assert resolved.get_tag("legacy_sensor") is not None
@@ -1005,13 +1013,12 @@ class TestTagFactories:
         assert resolved.get_tag("enabled") is None
         assert {tag.name for tag in resolved} == {"voltage", "speed", "legacy_sensor"}
 
-    def test_processor_resolve_tags_keeps_prebuilt_instance(self):
+    def test_processor_resolve_tags_instantiates_declared_class(self):
         config = FakeSchema()
-        tags = MyAppTags()
         manager = FakeProcessorTagManager()
-        app = make_processor_app(config=config, tags=tags, tag_manager=manager)
+        app = make_processor_app(config=config, tags_class=MyAppTags, tag_manager=manager)
 
-        resolved = app._resolve_tags()
+        resolved = resolve_tags(app)
 
-        assert resolved is tags
-        assert tags._manager is manager
+        assert isinstance(resolved, MyAppTags)
+        assert resolved._manager is manager

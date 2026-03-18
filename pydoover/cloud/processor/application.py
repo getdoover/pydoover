@@ -5,12 +5,11 @@ import logging
 import os
 import time
 import sys
-import inspect
 from datetime import datetime, timedelta, timezone
 
 from typing import Any
 
-from pydoover.tags import Tags, TagsFactory
+from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerProcessor
 
 from .types import (
@@ -25,8 +24,7 @@ from .types import (
     DooverConnectionStatus,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
-from ...ui import UI, UIFactory, UIManager
-from ...ui.declarative import resolve_ui_factory
+from ...ui import UI, UIManager
 from ...config import Schema
 
 
@@ -40,17 +38,16 @@ console_handler = logging.StreamHandler(sys.stdout)
 
 
 class Application:
+    ui_class: type[UI] | None = None
+    tags_class: type[Tags] | None = None
+
     def __init__(
         self,
         config: Schema | None,
-        tags: Tags | TagsFactory | None = None,
-        ui: UI | type[UI] | UIFactory | None = None,
     ):
         self.config = config
-        self._tags_source = tags
-        self.tags: Tags | None = tags if isinstance(tags, Tags) else None
-        self._ui_source = ui
-        self.ui: UI | None = ui if isinstance(ui, UI) else None
+        self.tags: Tags | None = None
+        self.ui: UI | None = None
 
         self.received_deployment_config = None
 
@@ -74,27 +71,25 @@ class Application:
 
         self._record_tag_update: bool = True
 
-    def _resolve_tags(self) -> Tags | None:
-        if self._tags_source is None:
+    async def _resolve_tags(self) -> Tags | None:
+        tags_class = self.__class__.tags_class
+        if tags_class is None:
             self.tags = None
-        elif isinstance(self._tags_source, Tags):
-            self.tags = self._tags_source
         else:
-            self.tags = self._tags_source(self.config)
+            self.tags = tags_class()
+            await self.tags.setup(self.config)
 
         if self.tags is not None:
             self.tags.register_manager(self.tag_manager)
         return self.tags
 
-    def _resolve_ui(self) -> UI | None:
-        if self._ui_source is None:
+    async def _resolve_ui(self) -> UI | None:
+        ui_class = self.__class__.ui_class
+        if ui_class is None:
             self.ui = None
-        elif isinstance(self._ui_source, UI):
-            self.ui = self._ui_source
-        elif inspect.isclass(self._ui_source) and issubclass(self._ui_source, UI):
-            self.ui = self._ui_source()
         else:
-            self.ui = resolve_ui_factory(self._ui_source, self.config, self.tags)
+            self.ui = ui_class()
+            await self.ui.setup(self.config, self.tags)
 
         if self.ui is not None:
             self.ui.bind_tags(self.tags)
@@ -182,8 +177,8 @@ class Application:
             # if there's no config defined this can legitimately be None in which case don't bother.
             self.config._inject_deployment_config(data["deployment_config"])
 
-        self._resolve_tags()
-        self._resolve_ui()
+        await self._resolve_tags()
+        await self._resolve_ui()
 
         # Store the deployment config for later use
         self.received_deployment_config = data["deployment_config"]
