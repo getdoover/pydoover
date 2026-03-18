@@ -7,13 +7,13 @@ class SampleApplication(DockerApplication):
     config: SampleConfig  # not necessary, but helps your IDE provide autocomplete!
 
     def setup(self):
-        print(f"Hello! The funny config message is: {self.config.funny_message.value}!")
+        print(f"Hello! The funny config message is: {self.config.funny_message}!")
 
     def main_loop(self):
-        if self.config.outputs_enabled.value is True:
+        if self.config.outputs_enabled is True:
             print("We are allowed to set outputs!")
 
-        for i in range(self.config.num_di.value):
+        for i in range(self.config.num_di):
             status = self.platform_iface.get_di(i)
             if status:
                 print(f"DI {i} is active!")
