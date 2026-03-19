@@ -4,7 +4,7 @@ import logging
 import grpc
 
 from ..models.generated.health import health_pb2, health_pb2_grpc
-from ..models.exceptions import DooverAPIError, HTTPError, NotFoundError
+from ..models.data.exceptions import DooverAPIError, HTTPError, NotFoundError
 
 log = logging.getLogger(__name__)
 

@@ -20,9 +20,9 @@ from ..auth._base import (
     _normalise_datetime,
 )
 from ... import __version__
-from ...models.attachment import File
+from ...models.data import File
 from ...utils.snowflake import generate_snowflake_id_at
-from ...models.exceptions import (
+from ...models.data.exceptions import (
     ForbiddenError,
     HTTPError,
     NotFoundError,

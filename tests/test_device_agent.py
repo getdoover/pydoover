@@ -13,9 +13,9 @@ import pytest
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from pydoover.models import Aggregate
+from pydoover.models.data import Aggregate
 from pydoover.models.generated.device_agent import device_agent_pb2
-from pydoover.models.exceptions import DooverAPIError, HTTPError, NotFoundError
+from pydoover.models.data.exceptions import DooverAPIError, HTTPError, NotFoundError
 from pydoover.docker.device_agent import DeviceAgentInterface, MockDeviceAgentInterface
 
 

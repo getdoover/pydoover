@@ -32,7 +32,7 @@ from ._base import (
 from ..auth import decode_jwt_exp
 
 from ._iterators import MessageIterator
-from ...models import (
+from ...models.data import (
     Aggregate,
     AgentNotificationResponse,
     Alarm,
@@ -47,14 +47,14 @@ from ...models import (
     TurnCredential,
     Attachment,
 )
-from ...models.alarm import AlarmOperator
-from ...models.notification import (
+from ...models.data.alarm import AlarmOperator
+from ...models.data.notification import (
     NotificationEndpoint,
     NotificationSeverity,
     NotificationSubscription,
     NotificationType,
 )
-from ...models.wss_connection import (
+from ...models.data.wss_connection import (
     ConnectionDetail,
     ConnectionSubscription,
     ConnectionSubscriptionLog,

@@ -1,5 +1,5 @@
 from .data import AsyncDataClient, DataClient, UNSET
-from ..models.exceptions import (
+from ..models.data.exceptions import (
     DooverAPIError,
     ForbiddenError,
     HTTPError,

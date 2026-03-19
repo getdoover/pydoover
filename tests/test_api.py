@@ -20,9 +20,8 @@ import os
 import pytest
 
 from pydoover.api import AsyncDataClient, DataClient
-from pydoover.models.exceptions import NotFoundError
-from pydoover.models import Aggregate, Channel, Message
-from pydoover.models.alarm import Alarm, AlarmOperator
+from pydoover.models.data import Aggregate, Alarm, AlarmOperator, Channel, Message
+from pydoover.models.data.exceptions import NotFoundError
 
 # ── env helpers ────────────────────────────────────────────────────────────
 

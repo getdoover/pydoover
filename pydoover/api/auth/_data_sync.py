@@ -5,7 +5,7 @@ from base64 import b64encode
 
 import httpx
 
-from ...models.exceptions import TokenRefreshError
+from ...models.data.exceptions import TokenRefreshError
 from ._base import DEFAULT_DATA_BASE_URL, SyncAuthBase
 
 log = logging.getLogger(__name__)

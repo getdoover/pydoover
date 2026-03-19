@@ -10,7 +10,7 @@ import logging
 from collections.abc import Callable
 from typing import Any, TYPE_CHECKING
 
-from .models import (
+from .models.data import (
     ChannelID,
     EventSubscription,
     MessageCreateEvent,

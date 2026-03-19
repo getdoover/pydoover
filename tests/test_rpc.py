@@ -11,7 +11,12 @@ from pydoover.rpc import (
     RPC_KEY,
     handler,
 )
-from pydoover.models import ChannelID, MessageCreateEvent, MessageUpdateEvent, Message
+from pydoover.models.data import (
+    ChannelID,
+    Message,
+    MessageCreateEvent,
+    MessageUpdateEvent,
+)
 
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ from base64 import b64encode
 
 import aiohttp
 
-from ...models.exceptions import TokenRefreshError
+from ...models.data.exceptions import TokenRefreshError
 from ._base import AsyncAuthBase, DEFAULT_DATA_BASE_URL
 
 log = logging.getLogger(__name__)

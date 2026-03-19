@@ -15,7 +15,7 @@ from pydoover.api.auth import (
     DataServiceAuthClient,
     Doover2AuthClient,
 )
-from pydoover.models.exceptions import TokenRefreshError
+from pydoover.models.data.exceptions import TokenRefreshError
 
 
 def make_jwt(expires_at: datetime) -> str:

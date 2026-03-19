@@ -1,5 +1,5 @@
 try:
-    from .generated.device_agent.device_agent_pb2 import (
+    from ..generated.device_agent.device_agent_pb2 import (
         TurnCredential as ProtoTurnCredential,
     )
 

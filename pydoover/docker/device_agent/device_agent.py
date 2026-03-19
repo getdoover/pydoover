@@ -18,7 +18,7 @@ from google.protobuf.json_format import MessageToDict
 
 
 from ...models.generated.device_agent import device_agent_pb2, device_agent_pb2_grpc
-from ...models import (
+from ...models.data import (
     Aggregate,
     AggregateUpdateEvent,
     EventSubscription,
@@ -31,7 +31,7 @@ from ...models import (
     Attachment,
 )
 from ..grpc_interface import GRPCInterface
-from ...models.exceptions import NotFoundError
+from ...models.data.exceptions import NotFoundError
 from ...cli.decorators import command as cli_command
 
 log = logging.getLogger(__name__)

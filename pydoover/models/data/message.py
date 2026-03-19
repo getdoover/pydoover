@@ -1,6 +1,6 @@
 from typing import Any
 
-from ..utils.snowflake import get_datetime_from_snowflake
+from ...utils.snowflake import get_datetime_from_snowflake
 
 from .attachment import Attachment
 from .channel import ChannelID
@@ -9,7 +9,7 @@ try:
     from google.protobuf import json_format
     from google.protobuf.json_format import MessageToDict
     from google.protobuf.struct_pb2 import Struct
-    from .generated.device_agent.device_agent_pb2 import (
+    from ..generated.device_agent.device_agent_pb2 import (
         Message as ProtoMessage,
     )
 

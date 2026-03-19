@@ -4,7 +4,7 @@ import logging
 
 import httpx
 
-from ...models.exceptions import TokenRefreshError
+from ...models.data.exceptions import TokenRefreshError
 from ._base import (
     DEFAULT_AUTH_SERVER_URL,
     DEFAULT_CONTROL_BASE_URL,

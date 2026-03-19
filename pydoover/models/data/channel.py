@@ -3,7 +3,7 @@ from typing import Any
 from .aggregate import Aggregate
 
 try:
-    from .generated.device_agent.device_agent_pb2 import (
+    from ..generated.device_agent.device_agent_pb2 import (
         ChannelID as ProtoChannelID,
     )
 

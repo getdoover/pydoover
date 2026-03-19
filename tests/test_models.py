@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from pydoover.utils.snowflake import generate_snowflake_id_at
-from pydoover.models import (
+from pydoover.models.data import (
     Aggregate,
     AggregateUpdateEvent,
     Attachment,
