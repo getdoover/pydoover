@@ -10,6 +10,7 @@ from .parsers import (
     int_or_list,
     bool_or_list,
     float_or_list,
+    comma_separated_list,
     BoolFlag,
 )
 
@@ -183,18 +184,62 @@ class SubSection:
                 self.section_params.append((param_name, kwargs))
 
     def parse_arg_type(self, param, kwargs):
-        if param.annotation is BoolFlag:
+        annotation = param.annotation
+
+        if annotation is BoolFlag:
             kwargs["action"] = (
                 "store_false" if kwargs["default"] is True else "store_true"
             )
-        elif param.annotation == typing.Union[int, list[int]]:
+        elif annotation == typing.Union[int, list[int]]:
             kwargs["type"] = int_or_list
-        elif param.annotation == typing.Union[bool, list[bool]]:
+        elif annotation == typing.Union[bool, list[bool]]:
             kwargs["type"] = bool_or_list
-        elif param.annotation == typing.Union[float, list[float]]:
+        elif annotation == typing.Union[float, list[float]]:
             kwargs["type"] = float_or_list
-        elif param.annotation == typing.Union[dict, str]:
+        elif annotation == typing.Union[dict, str]:
             kwargs["type"] = json_or_str
-        elif param.annotation is not inspect.Parameter.empty:
-            kwargs["type"] = param.annotation
+        elif annotation is not inspect.Parameter.empty:
+            # Handle union types (e.g. int | None, list[str] | None)
+            cli_type = self._resolve_cli_type(annotation)
+            if cli_type is not None:
+                kwargs["type"] = cli_type
+            else:
+                kwargs["type"] = annotation
         return kwargs
+
+    @staticmethod
+    def _resolve_cli_type(annotation):
+        """Extract a CLI-friendly type from a union annotation.
+
+        For unions like ``int | None`` or ``int | datetime | None``, returns
+        the first concrete scalar type suitable for argparse.  For
+        ``list[str] | None`` returns a comma-separated-list parser.
+
+        Returns ``None`` when the annotation is not a union or cannot be
+        simplified.
+        """
+        # Normalise both typing.Union and PEP 604 (int | None) forms
+        args = typing.get_args(annotation)
+        if not args:
+            return None
+
+        # Filter out NoneType
+        non_none = [a for a in args if a is not type(None)]
+        if not non_none:
+            return None
+
+        # list[str] | None  ->  comma_separated_list
+        if len(non_none) == 1:
+            origin = typing.get_origin(non_none[0])
+            if origin is list:
+                inner = typing.get_args(non_none[0])
+                if inner and inner[0] is str:
+                    return comma_separated_list
+
+        # Pick the best scalar type from the remaining args
+        # Prefer int > float > str, skip datetime (CLI will pass ints)
+        for preferred in (int, float, str):
+            if preferred in non_none:
+                return preferred
+
+        return None

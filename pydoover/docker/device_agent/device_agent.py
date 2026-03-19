@@ -471,6 +471,8 @@ class DeviceAgentInterface(GRPCInterface):
         if limit is not None:
             kwargs["limit"] = limit
         if field_names is not None:
+            if isinstance(field_names, str):
+                field_names = [f.strip() for f in field_names.split(",")]
             kwargs["field_names"] = field_names
 
         resp = await self.make_request(
