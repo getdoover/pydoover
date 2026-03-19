@@ -842,13 +842,13 @@ class UIManager:
             ui_state_update is not None
             and (only_channels is None or "ui_state" in only_channels)
         ):
-                self._publish_to_channel(
-                    "ui_state",
-                    self._wrap_ui_state(ui_state_update),
-                    record_log=record_log,
-                    timestamp=timestamp,
-                    max_age=max_age or 1,
-                )
+            self._publish_to_channel(
+                "ui_state",
+                self._wrap_ui_state(ui_state_update),
+                record_log=record_log,
+                timestamp=timestamp,
+                max_age=max_age or 1,
+            )
         else:
             print("not pushing empty ui state")
 
@@ -1007,7 +1007,9 @@ class UIManager:
             # outside of a submodule and hasn't been registered yet),
             # instead we'll silently register it and proceed as-is
             if not isinstance(element, Interaction) and hasattr(element, "_ui_type"):
-                element = self._register_interaction(element, getattr(element, "__self__", None))
+                element = self._register_interaction(
+                    element, getattr(element, "__self__", None)
+                )
 
             if isinstance(element, Container):
                 self._maybe_add_interaction_from_elems(*element.children)
@@ -1021,7 +1023,9 @@ class UIManager:
         if len(children) == 1 and isinstance(children[0], list):
             # for backwards compatibility, this used to accept a single list of children
             child_list = children[0]
-            children = tuple(child for child in child_list if isinstance(child, Element))
+            children = tuple(
+                child for child in child_list if isinstance(child, Element)
+            )
 
         updated = self._maybe_add_interaction_from_elems(*children)
         self._base_container.add_children(*updated)
@@ -1030,7 +1034,9 @@ class UIManager:
         if len(children) == 1 and isinstance(children[0], list):
             # for backwards compatibility, this used to accept a single list of children
             child_list = children[0]
-            children = tuple(child for child in child_list if isinstance(child, Element))
+            children = tuple(
+                child for child in child_list if isinstance(child, Element)
+            )
 
         for elem in children:
             if not isinstance(elem, Element):

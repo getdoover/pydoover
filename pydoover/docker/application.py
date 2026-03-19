@@ -48,6 +48,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+
 class Application:
     """Base class for a Doover application. All apps will inherit from this class, and override the setup and main_loop methods.
 
@@ -145,7 +146,7 @@ class Application:
             app_key=self.app_key,
             client=self.device_agent,
         )
-        
+
         self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
         )
@@ -849,7 +850,6 @@ class Application:
             return
         await self._check_shutdown_at(shutdown_at)
 
-
     async def _check_shutdown_at(self, shutdown_at):
         if not self.is_ready:
             log.info("Ignoring check shutdown request, app not ready yet.")
@@ -874,7 +874,9 @@ class Application:
         if global_tag:
             self.tag_manager.subscribe_to_tag(tag_key, callback=callback)
         else:
-            self.tag_manager.subscribe_to_tag(tag_key, callback=callback, app_key=app_key or self.app_key)
+            self.tag_manager.subscribe_to_tag(
+                tag_key, callback=callback, app_key=app_key or self.app_key
+            )
 
     def get_tag(
         self, tag_key: str, app_key: str = None, default: Any = None
@@ -908,8 +910,10 @@ class Application:
         Any
             The value of the tag, or None if the tag does not exist.
         """
-        
-        return self.tag_manager.get_tag(tag_key, default=default, app_key=app_key or self.app_key)
+
+        return self.tag_manager.get_tag(
+            tag_key, default=default, app_key=app_key or self.app_key
+        )
 
     def get_global_tag(self, tag_key: str, default: Any = None) -> Any | None:
         """Get a global tag value.
@@ -1016,7 +1020,6 @@ class Application:
             only_if_changed=only_if_changed,
         )
 
-
     def _do_set_tags(
         self,
         tags: dict[str, Any],
@@ -1042,7 +1045,7 @@ class Application:
         apply_diff(self._tag_values, data, clone=False)
         apply_diff(self._pending_tag_aggregate, data, clone=False)
         self._tags_dirty = True
-        
+
     ## Power Manager Functions
     async def request_shutdown(self) -> None:
         """Request a system shutdown."""
@@ -1308,8 +1311,6 @@ def run_app(
         app.tag_manager,
     ):
         inst.app_key = app_key
-
-
 
     app.platform_iface.uri = plt_uri
     app.modbus_iface.uri = modbus_uri

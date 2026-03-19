@@ -116,7 +116,6 @@ class Application:
         return self.ui
 
     async def _setup(self, initial_payload: dict[str, Any]):
-
         # this is ok to setup because it doesn't store any state
         await self.api.setup()
 

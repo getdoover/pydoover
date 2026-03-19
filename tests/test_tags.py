@@ -185,9 +185,7 @@ class FakeRuntimeDeviceAgent:
         return types.SimpleNamespace(data=self.aggregates.get(channel_name, {}))
 
     async def update_channel_aggregate(self, channel_name, data, max_age_secs=None):
-        self.aggregate_updates.append(
-            (channel_name, data, max_age_secs)
-        )
+        self.aggregate_updates.append((channel_name, data, max_age_secs))
         self.aggregates[channel_name] = data
 
     async def create_message(self, channel_name, data, **kwargs):
@@ -279,7 +277,6 @@ class FakeProcessorTagManager:
         self.registered_tags = None
 
 
-
 def make_docker_app(tag_manager=None, app_key="test_app", is_async=False):
     app_cls = type("ConfiguredDockerApplication", (DockerApplication,), {})
     app = object.__new__(app_cls)
@@ -291,7 +288,9 @@ def make_docker_app(tag_manager=None, app_key="test_app", is_async=False):
     return app
 
 
-def make_processor_app(config=None, tags_class=None, tag_manager=None, app_key="test_app"):
+def make_processor_app(
+    config=None, tags_class=None, tag_manager=None, app_key="test_app"
+):
     app_cls = type(
         "ConfiguredProcessorApplication",
         (ProcessorApplication,),
@@ -553,7 +552,7 @@ class TestKeyPath:
 
         with pytest.raises(ValueError):
             KeyPath(["valid", ""])
-            
+
     def test_equality(self):
         assert KeyPath("voltage") == ["voltage"]
         assert KeyPath(["metrics", "voltage"]) == ["metrics", "voltage"]
@@ -561,7 +560,7 @@ class TestKeyPath:
         assert not KeyPath(["metrics", "voltage"]) == "metrics.voltage"
         assert KeyPath("voltage") == KeyPath(["voltage"])
         assert KeyPath(["metrics", "voltage"]) == KeyPath(["metrics", "voltage"])
-        
+
     def test_dict(self):
         tags_dict = {
             KeyPath("voltage"): 1,
@@ -867,7 +866,9 @@ class TestDockerApplicationTagMethods:
         import asyncio
         import time
 
-        docker_application_module = importlib.import_module("pydoover.docker.application")
+        docker_application_module = importlib.import_module(
+            "pydoover.docker.application"
+        )
         monkeypatch.setattr(docker_application_module, "RUN_HEALTHCHECK", False)
 
         async def run_test():
@@ -1054,7 +1055,9 @@ class TestTagClassResolution:
     def test_processor_resolve_tags_instantiates_declared_class(self):
         config = FakeSchema()
         manager = FakeProcessorTagManager()
-        app = make_processor_app(config=config, tags_class=MyAppTags, tag_manager=manager)
+        app = make_processor_app(
+            config=config, tags_class=MyAppTags, tag_manager=manager
+        )
 
         resolved = resolve_tags(app)
 

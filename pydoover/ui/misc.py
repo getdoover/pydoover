@@ -135,11 +135,13 @@ class Option:
         self.display_name = display_name
 
     def to_dict(self) -> dict[str, Any]:
-        return normalize_ui_value({
-            "name": self.name,
-            "displayString": self.display_name,
-            "type": "uiElement",
-        })
+        return normalize_ui_value(
+            {
+                "name": self.name,
+                "displayString": self.display_name,
+                "type": "uiElement",
+            }
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):

@@ -145,6 +145,7 @@ class TestConfigSchemaA:
 
     def test_schema_init_assignment_raises_helpful_error(self):
         with pytest.raises(TypeError, match="class attributes"):
+
             class BadSchema(config.Schema):
                 def __init__(self):
                     self.foo = config.Integer("Foo", default=1)
@@ -153,6 +154,7 @@ class TestConfigSchemaA:
 
     def test_object_init_assignment_raises_helpful_error(self):
         with pytest.raises(TypeError, match="class attributes"):
+
             class BadObject(config.Object):
                 def __init__(self):
                     super().__init__("Bad Object")

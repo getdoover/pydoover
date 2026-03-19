@@ -122,7 +122,7 @@ class BoundTag:
     def default(self) -> Any:
         """Any: The default value returned when no runtime value exists."""
         return self._declaration.template.default
-    
+
     @property
     def value(self) -> Any:
         """Any: Convenience alias for :meth:`get`."""
@@ -332,7 +332,9 @@ class Tags:
     def register_manager(self, manager: Any, app_key: str | None = None) -> None:
         """Bind this tag collection to a tag manager."""
         self._manager = manager
-        self._app_key = app_key if app_key is not None else getattr(manager, "app_key", None)
+        self._app_key = (
+            app_key if app_key is not None else getattr(manager, "app_key", None)
+        )
         self._is_async = get_is_async(bool(getattr(manager, "_is_async", False)))
 
     def _get_declaration(self, name: str) -> _DeclaredTag | None:

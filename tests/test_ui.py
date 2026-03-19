@@ -173,7 +173,9 @@ class TestTagReferenceSerialization:
 
         assert ui_obj.voltage.to_dict()["currentValue"] == "$tag.speed:number:0"
 
-    def test_recursive_serialization_handles_nested_objects_lists_ranges_and_options(self):
+    def test_recursive_serialization_handles_nested_objects_lists_ranges_and_options(
+        self,
+    ):
         ui_obj = TagBoundUI().bind_tags(UITags())
 
         voltage = ui_obj.voltage.to_dict()
@@ -198,7 +200,9 @@ class TestTagReferenceSerialization:
 
         ui_obj = FactoryUI().bind_tags(tags)
 
-        assert ui_obj.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
+        assert (
+            ui_obj.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
+        )
 
     def test_name_field_cannot_reference_a_tag(self):
         bad = ui.TextVariable("bad", "Bad")
@@ -254,7 +258,9 @@ class TestRuntimeGuards:
 
 
 class TestCallbacksAndInteractions:
-    def test_tag_bound_interactions_do_not_autowrite_but_callbacks_can_update_tags(self):
+    def test_tag_bound_interactions_do_not_autowrite_but_callbacks_can_update_tags(
+        self,
+    ):
         class Handler:
             def __init__(self, tags):
                 self.tags = tags
@@ -385,7 +391,10 @@ class TestLegacyUiAliases:
         messages = [str(w.message) for w in caught]
         data = multiplot.to_dict()
 
-        assert any("Legacy uiMultiPlot list-based schema is deprecated" in message for message in messages)
+        assert any(
+            "Legacy uiMultiPlot list-based schema is deprecated" in message
+            for message in messages
+        )
         assert data["series"]["temperature"]["colour"] == "red"
         assert data["series"]["temperature"]["active"] is True
         assert data["series"]["pressure"]["sharedAxis"] is False
@@ -419,12 +428,16 @@ class TestApplicationUIResolution:
                     ),
                 )
 
-        app = make_docker_app(config=config, tags_class=MyAppTags, ui_class=ConfiguredUI)
+        app = make_docker_app(
+            config=config, tags_class=MyAppTags, ui_class=ConfiguredUI
+        )
         resolved = resolve_app(app)
 
         assert isinstance(resolved, ui.UI)
         assert calls == [(True, app.tags)]
-        assert resolved.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
+        assert (
+            resolved.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
+        )
 
     def test_docker_ui_setup_supports_dynamic_children_with_manager_bound_tags(self):
         class DynamicUI(ui.UI):
@@ -453,10 +466,14 @@ class TestApplicationUIResolution:
                     ),
                 )
 
-        app = make_docker_app(config=FakeSchema(), tags_class=MyAppTags, ui_class=DynamicUI)
+        app = make_docker_app(
+            config=FakeSchema(), tags_class=MyAppTags, ui_class=DynamicUI
+        )
         resolved = resolve_app(app)
 
-        assert resolved.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
+        assert (
+            resolved.voltage.to_dict()["currentValue"] == "$tag.test_app.speed:number:0"
+        )
         telemetry = resolved.telemetry.to_dict()
         assert (
             telemetry["children"]["inner_voltage"]["currentValue"]
@@ -487,7 +504,9 @@ class TestApplicationUIResolution:
             async def setup(self, config: Any = None, tags: Any = None) -> None:
                 calls.append((config, tags))
 
-        app = make_processor_app(config=config, tags_class=UITags, ui_class=ConfiguredUI)
+        app = make_processor_app(
+            config=config, tags_class=UITags, ui_class=ConfiguredUI
+        )
         resolved = resolve_app(app)
 
         assert isinstance(resolved, TagBoundUI)
@@ -495,7 +514,7 @@ class TestApplicationUIResolution:
 
     def test_processor_missing_tag_reference_raises_deterministically(self):
         config = FakeSchema()
-        
+
         class MissingEnabledTags(UITags):
             async def setup(self, config: Any = None) -> None:
                 del config
@@ -510,7 +529,9 @@ class TestApplicationUIResolution:
         with pytest.raises(ValueError, match="enabled"):
             resolve_app(app)
 
-    def test_async_docker_startup_handles_ui_setup_with_runtime_bound_tags(self, monkeypatch):
+    def test_async_docker_startup_handles_ui_setup_with_runtime_bound_tags(
+        self, monkeypatch
+    ):
         docker_application_module = pytest.importorskip("pydoover.docker.application")
         monkeypatch.setattr(docker_application_module, "RUN_HEALTHCHECK", False)
 
@@ -570,7 +591,9 @@ class TestApplicationUIResolution:
                     == "$tag.test_app.speed:number:0"
                 )
                 assert (
-                    app.ui.telemetry.to_dict()["children"]["inner_voltage"]["currentValue"]
+                    app.ui.telemetry.to_dict()["children"]["inner_voltage"][
+                        "currentValue"
+                    ]
                     == "$tag.test_app.speed:number:0"
                 )
             finally:

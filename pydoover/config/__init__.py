@@ -396,11 +396,11 @@ class Integer(ConfigElement[int]):
         if self.multiple_of is not None:
             res["multipleOf"] = self.multiple_of
         return res
-    
+
     @property
     def value(self):
         return self._value
-    
+
     @value.setter
     def value(self, value):
         self._value = int(value)
@@ -421,7 +421,12 @@ class String(ConfigElement[str]):
     value: str
 
     def __init__(
-        self, display_name, *, length: int | None = None, pattern: str | None = None, **kwargs
+        self,
+        display_name,
+        *,
+        length: int | None = None,
+        pattern: str | None = None,
+        **kwargs,
     ):
         super().__init__(display_name, **kwargs)
         self.length = length

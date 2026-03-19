@@ -118,7 +118,9 @@ class TagsManager:
         """Fetch a tag value from the backing store."""
         raise NotImplementedError
 
-    async def set_tag(self, key: str, value: Any, app_key: str | None = None, flush: bool = False) -> None:
+    async def set_tag(
+        self, key: str, value: Any, app_key: str | None = None, flush: bool = False
+    ) -> None:
         """Set a tag value in the backing store."""
         raise NotImplementedError
 
@@ -130,13 +132,17 @@ class TagsManager:
 class TagsManagerDocker(TagsManager):
     """Tag manager for docker applications backed by the device agent channels."""
 
-    def __init__(self, client: "DeviceAgentInterface" = None, tag_log_interval: int = TAG_CLOUD_MAX_AGE):
+    def __init__(
+        self,
+        client: "DeviceAgentInterface" = None,
+        tag_log_interval: int = TAG_CLOUD_MAX_AGE,
+    ):
         self.client: DeviceAgentInterface = client
         self._is_async = True
 
         self._tag_values: dict[str, Any] = {}
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
-        
+
         self.tag_log_interval = tag_log_interval
 
         self._last_tag_log_time: float = 0.0
@@ -259,7 +265,9 @@ class TagsManagerDocker(TagsManager):
 
         if only_if_changed:
             diff = generate_diff(
-                apply_diff(self._tag_values, self._pending_tag_aggregate, do_delete=False),
+                apply_diff(
+                    self._tag_values, self._pending_tag_aggregate, do_delete=False
+                ),
                 tags,
                 do_delete=False,
             )
@@ -292,7 +300,7 @@ class TagsManagerDocker(TagsManager):
     async def commit_tags(self):
         """Publish a mesage with the changed tag values to the tag channel."""
         await self.flush_tags()
-        
+
         now = time.time()
         if self._pending_tag_log and (
             now - self._last_tag_log_time >= self.tag_log_interval
@@ -301,27 +309,29 @@ class TagsManagerDocker(TagsManager):
 
     async def flush_tags(self):
         """Flush any buffered tag changes."""
-        
+
         if not self._tags_dirty:
-            return False # Nothing to flush
-        
+            return False  # Nothing to flush
+
         data = self._pending_tag_aggregate
         self._pending_tag_aggregate: dict[str, Any] = {}
         self._tags_dirty = False
 
-        await self.client.update_channel_aggregate(TAG_CHANNEL_NAME, data, max_age_secs=TAG_CLOUD_MAX_AGE)
+        await self.client.update_channel_aggregate(
+            TAG_CHANNEL_NAME, data, max_age_secs=TAG_CLOUD_MAX_AGE
+        )
         apply_diff(self._tag_values, data, clone=False)
 
     async def flush_logs(self):
-            
         if not self._pending_tag_log:
-            return False # Nothing to flush
-        
+            return False  # Nothing to flush
+
         log_data = self._pending_tag_log
         self._pending_tag_log = {}
         self._last_tag_log_time = time.time()
 
         await self.client.create_message(TAG_CHANNEL_NAME, log_data)
+
 
 class TagsManagerProcessor(TagsManager):
     """Tag manager for cloud processor execution contexts."""

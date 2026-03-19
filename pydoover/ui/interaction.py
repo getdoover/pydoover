@@ -316,10 +316,12 @@ class HiddenValue(Interaction):
         super().__init__(name, display_name=None, **kwargs)
 
     def to_dict(self):
-        return normalize_ui_value({
-            "name": self.name,
-            "type": self.type,
-        })
+        return normalize_ui_value(
+            {
+                "name": self.name,
+                "type": self.type,
+            }
+        )
 
 
 class Select(Interaction):

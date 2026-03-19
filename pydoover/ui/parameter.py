@@ -365,9 +365,7 @@ def boolean_parameter(name: str, display_name: str, **kwargs):
     return decorator
 
 
-def datetime_input(
-    name: str, display_name: str, include_time: bool = False, **kwargs
-):
+def datetime_input(name: str, display_name: str, include_time: bool = False, **kwargs):
     """Decorator to create a datetime input for a function.
 
     The function decorated by this decorator will be called whenever the value of the datetime parameter (picker) changes.

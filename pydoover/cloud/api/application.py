@@ -88,7 +88,11 @@ class Application:
 
         self.description = description or ""
 
-        path = app_base / long_description if isinstance(long_description, str) else long_description
+        path = (
+            app_base / long_description
+            if isinstance(long_description, str)
+            else long_description
+        )
         if isinstance(path, Path) and path.exists():
             self.long_description = path.read_text()
         else:

@@ -215,8 +215,7 @@ def normalize_ui_value(value: Any, field_name: str | None = None) -> Any:
 
     if isinstance(value, dict):
         return {
-            key: normalize_ui_value(item, field_name=key)
-            for key, item in value.items()
+            key: normalize_ui_value(item, field_name=key) for key, item in value.items()
         }
 
     if isinstance(value, list):
