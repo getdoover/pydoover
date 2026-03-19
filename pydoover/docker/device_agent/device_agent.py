@@ -436,6 +436,7 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return Aggregate.from_proto(resp.aggregate)
 
+    @cli_command()
     async def fetch_turn_token(
         self,
     ) -> TurnCredential:
@@ -447,6 +448,7 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return TurnCredential.from_proto(resp.turn_credential)
 
+    @cli_command()
     async def create_message(
         self,
         channel_name: str,
@@ -470,6 +472,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("CreateMessage", req)
         return resp.message_id
 
+    @cli_command()
     async def update_message(
         self,
         channel_name: str,
@@ -496,6 +499,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("UpdateMessage", req)
         return Message.from_proto(resp.message)
 
+    @cli_command()
     async def update_channel_aggregate(
         self,
         channel_name: str,
@@ -521,6 +525,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("UpdateAggregate", req)
         return Aggregate.from_proto(resp.aggregate)
 
+    @cli_command()
     async def fetch_message_attachment(self, attachment: Attachment) -> File:
         req = device_agent_pb2.FetchAttachmentRequest(
             attachment=attachment.to_proto(),
