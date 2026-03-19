@@ -134,7 +134,7 @@ def param_hint(schema: dict, required: bool) -> str:
     elif schema_type == "boolean":
         base = "bool"
     elif schema_type == "array":
-        base = "list[Any]"
+        base = "Sequence[Any]"
     else:
         base = "str" if schema_type == "string" else "Any"
     return base if required else f"{base} | None"
@@ -271,6 +271,18 @@ def expand_group_paths(group_paths: set[str]) -> list[str]:
     return sorted(expanded)
 
 
+def child_groups_for(group_paths: list[str]) -> dict[str, list[str]]:
+    children: dict[str, list[str]] = defaultdict(list)
+    for group_path in group_paths:
+        parts = group_path.split(".")
+        if len(parts) == 1:
+            continue
+        children[".".join(parts[:-1])].append(group_path)
+    for child_list in children.values():
+        child_list.sort()
+    return children
+
+
 def class_name(group_path: str, suffix: str) -> str:
     return camelize(group_path.split(".")) + suffix
 
@@ -352,12 +364,14 @@ def render_method(operation: dict, async_mode: bool) -> list[str]:
 
 def render_generated_module(operations: list[dict], async_mode: bool) -> str:
     suffix = "AsyncGroup" if async_mode else "SyncGroup"
+    executor = "_AsyncControlExecutor" if async_mode else "_SyncControlExecutor"
+    mixin_name = "AsyncControlClientGroups" if async_mode else "ControlClientGroups"
     blocks = [
         "from __future__ import annotations",
         "",
-        "from typing import Any",
+        "from typing import Any, Sequence",
         "",
-        "from ._base import _ControlGroupBase",
+        f"from ._base import {executor}, _ControlGroupBase",
         "",
         "",
     ]
@@ -367,12 +381,37 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
         by_group[operation["group_path"]].append(operation)
 
     all_group_paths = expand_group_paths({operation["group_path"] for operation in operations})
+    child_groups = child_groups_for(all_group_paths)
+    root_groups = [group_path for group_path in all_group_paths if "." not in group_path]
+
+    blocks.append(f"class {mixin_name}:")
+    for group_path in root_groups:
+        blocks.append(f"    {group_path}: {class_name(group_path, suffix)}")
+    if async_mode:
+        blocks.append("")
+        blocks.append("    async def _execute(self, *args: Any, **kwargs: Any) -> Any:")
+        blocks.append("        raise NotImplementedError")
+    else:
+        blocks.append("")
+        blocks.append("    def _execute(self, *args: Any, **kwargs: Any) -> Any:")
+        blocks.append("        raise NotImplementedError")
+    if not root_groups:
+        blocks.append("    pass")
+    blocks.append("")
+
     for group_path in all_group_paths:
-        blocks.append(f"class {class_name(group_path, suffix)}(_ControlGroupBase):")
+        blocks.append(f"class {class_name(group_path, suffix)}(_ControlGroupBase[{executor}]):")
         group_ops = by_group.get(group_path) or []
-        if not group_ops:
-            blocks.append("    pass")
+        child_paths = child_groups.get(group_path, [])
+        for child_path in child_paths:
+            attr = child_path.rsplit(".", 1)[-1]
+            blocks.append(f"    {attr}: {class_name(child_path, suffix)}")
+        if child_paths:
             blocks.append("")
+        if not group_ops:
+            if not child_paths:
+                blocks.append("    pass")
+                blocks.append("")
             continue
         counts = Counter(operation["method_name"] for operation in group_ops)
         seen = set()
@@ -391,7 +430,7 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
             blocks.extend(render_method(unique_operation, async_mode))
 
     attach_name = "_attach_async_groups" if async_mode else "_attach_sync_groups"
-    blocks.append(f"def {attach_name}(root):")
+    blocks.append(f"def {attach_name}(root: {mixin_name}):")
     created = set()
     for group_path in all_group_paths:
         parts = group_path.split(".")
@@ -411,6 +450,7 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
     blocks.append(f"OPERATION_COUNT = {len(operations)}")
     blocks.append("")
     blocks.append("__all__ = [")
+    blocks.append(f'    "{mixin_name}",')
     blocks.append(f'    "{attach_name}",')
     blocks.append('    "OPERATION_COUNT",')
     for group_path in all_group_paths:

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Collection
 from pathlib import Path
 from typing import Any
 
 import httpx
 
+from ..auth._base import SyncAuthClient
 from ._base import (
     BaseControlClient,
     _build_user_agent,
@@ -14,7 +16,7 @@ from ._base import (
     _raise_for_status,
     build_sync_control_auth,
 )
-from ._generated_sync import _attach_sync_groups
+from ._generated_sync import ControlClientGroups, _attach_sync_groups
 
 
 def _coerce_file_value(field_name: str, value: Any) -> tuple[str, bytes, str]:
@@ -30,7 +32,9 @@ def _coerce_file_value(field_name: str, value: Any) -> tuple[str, bytes, str]:
     return f"{field_name}.bin", json.dumps(value).encode(), "application/json"
 
 
-class ControlClient(BaseControlClient):
+class ControlClient(ControlClientGroups, BaseControlClient):
+    auth: SyncAuthClient
+
     def __init__(self, base_url: str | None = None, **kwargs):
         timeout = kwargs.get("timeout", 60.0)
         self._user_agent = _build_user_agent("httpx", httpx.__version__)
@@ -40,6 +44,7 @@ class ControlClient(BaseControlClient):
             **_consume_auth_kwargs(kwargs),
         )
         super().__init__(resolved_base_url, auth=auth, owns_auth=owns_auth, **kwargs)
+        self.auth = auth
         self._session = httpx.Client(
             timeout=self.timeout,
             follow_redirects=True,
@@ -67,7 +72,7 @@ class ControlClient(BaseControlClient):
         body: Any = None,
         body_schema: str | None = None,
         body_mode: str = "json",
-        binary_fields: set[str] | None = None,
+        binary_fields: Collection[str] | None = None,
         organisation_id: int | None = None,
         response_kind: str = "raw",
         response_schema: str | None = None,

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import inspect
-import json
-import keyword
 import platform
-from pathlib import Path
-from typing import Any
+from collections.abc import Collection
+from typing import Any, Generic, Protocol, TypeVar
 from urllib.parse import urlencode
 
 from ..auth import (
@@ -326,6 +324,45 @@ class BaseControlClient:
         return [model_cls.from_version(info["version"], item) for item in data]
 
 
-class _ControlGroupBase:
-    def __init__(self, root: BaseControlClient):
+class _SyncControlExecutor(Protocol):
+    def _execute(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        body: Any = None,
+        body_schema: str | None = None,
+        body_mode: str = "json",
+        binary_fields: Collection[str] | None = None,
+        organisation_id: int | None = None,
+        response_kind: str = "raw",
+        response_schema: str | None = None,
+        item_schema: str | None = None,
+    ) -> Any: ...
+
+
+class _AsyncControlExecutor(Protocol):
+    async def _execute(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        body: Any = None,
+        body_schema: str | None = None,
+        body_mode: str = "json",
+        binary_fields: Collection[str] | None = None,
+        organisation_id: int | None = None,
+        response_kind: str = "raw",
+        response_schema: str | None = None,
+        item_schema: str | None = None,
+    ) -> Any: ...
+
+
+TRoot = TypeVar("TRoot")
+
+
+class _ControlGroupBase(Generic[TRoot]):
+    def __init__(self, root: TRoot):
         self._root = root

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Collection
 from pathlib import Path
-from typing import Any
+from typing import Any, AsyncContextManager, Protocol
 
 import aiohttp
 
+from ..auth._base import AsyncAuthClient
 from ._base import (
     BaseControlClient,
     _build_user_agent,
@@ -14,7 +16,20 @@ from ._base import (
     _raise_for_status,
     build_async_control_auth,
 )
-from ._generated_async import _attach_async_groups
+from ._generated_async import AsyncControlClientGroups, _attach_async_groups
+
+
+class _AsyncSessionLike(Protocol):
+    closed: bool
+
+    def request(
+        self,
+        method: str,
+        url: str,
+        **kwargs: Any,
+    ) -> AsyncContextManager[aiohttp.ClientResponse]: ...
+
+    async def close(self) -> None: ...
 
 
 def _coerce_file_value(field_name: str, value: Any) -> tuple[str, bytes, str]:
@@ -30,7 +45,9 @@ def _coerce_file_value(field_name: str, value: Any) -> tuple[str, bytes, str]:
     return f"{field_name}.bin", json.dumps(value).encode(), "application/json"
 
 
-class AsyncControlClient(BaseControlClient):
+class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
+    auth: AsyncAuthClient
+
     def __init__(self, base_url: str | None = None, **kwargs):
         timeout = kwargs.get("timeout", 60.0)
         self._user_agent = _build_user_agent("aiohttp", aiohttp.__version__)
@@ -40,7 +57,8 @@ class AsyncControlClient(BaseControlClient):
             **_consume_auth_kwargs(kwargs),
         )
         super().__init__(resolved_base_url, auth=auth, owns_auth=owns_auth, **kwargs)
-        self._session: aiohttp.ClientSession | None = None
+        self.auth = auth
+        self._session: _AsyncSessionLike | None = None
         _attach_async_groups(self)
 
     async def setup(self):
@@ -81,7 +99,7 @@ class AsyncControlClient(BaseControlClient):
         body: Any = None,
         body_schema: str | None = None,
         body_mode: str = "json",
-        binary_fields: set[str] | None = None,
+        binary_fields: Collection[str] | None = None,
         organisation_id: int | None = None,
         response_kind: str = "raw",
         response_schema: str | None = None,

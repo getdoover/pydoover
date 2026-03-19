@@ -1,11 +1,37 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Sequence
 
-from ._base import _ControlGroupBase
+from ._base import _SyncControlExecutor, _ControlGroupBase
 
 
-class AgentsSyncGroup(_ControlGroupBase):
+class ControlClientGroups:
+    agents: AgentsSyncGroup
+    analytics: AnalyticsSyncGroup
+    app_deployments: AppDeploymentsSyncGroup
+    app_installs: AppInstallsSyncGroup
+    applications: ApplicationsSyncGroup
+    assistant: AssistantSyncGroup
+    container: ContainerSyncGroup
+    devices: DevicesSyncGroup
+    groups: GroupsSyncGroup
+    integrations: IntegrationsSyncGroup
+    organisations: OrganisationsSyncGroup
+    permissions: PermissionsSyncGroup
+    reports: ReportsSyncGroup
+    shared_devices: SharedDevicesSyncGroup
+    shared_groups: SharedGroupsSyncGroup
+    site: SiteSyncGroup
+    solution_installs: SolutionInstallsSyncGroup
+    solutions: SolutionsSyncGroup
+    themes: ThemesSyncGroup
+    tunnels: TunnelsSyncGroup
+    users: UsersSyncGroup
+
+    def _execute(self, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
+class AgentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def retrieve(self, organisation_id: int | None = None):
         path = f"/agents/"
         params = None
@@ -23,7 +49,7 @@ class AgentsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class AnalyticsSyncGroup(_ControlGroupBase):
+class AnalyticsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def summary(self, organisation_id: int | None = None):
         path = f"/analytics/summary/"
         params = None
@@ -58,7 +84,7 @@ class AnalyticsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class AppDeploymentsSyncGroup(_ControlGroupBase):
+class AppDeploymentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/app_deployments/"
         params = None
@@ -115,7 +141,7 @@ class AppDeploymentsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class AppInstallsSyncGroup(_ControlGroupBase):
+class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def archive(self, id: str, organisation_id: int | None = None):
         path = f"/app_installs/{id}/archive/"
         params = None
@@ -347,7 +373,7 @@ class AppInstallsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class ApplicationsSyncGroup(_ControlGroupBase):
+class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def archive(self, id: str, organisation_id: int | None = None):
         path = f"/applications/{id}/archive/"
         params = None
@@ -695,7 +721,7 @@ class ApplicationsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class AssistantSyncGroup(_ControlGroupBase):
+class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def message(self, organisation_id: int | None = None):
         path = f"/assistant/message/"
         params = None
@@ -791,10 +817,10 @@ class AssistantSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class ContainerSyncGroup(_ControlGroupBase):
-    pass
+class ContainerSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
+    registry: ContainerRegistrySyncGroup
 
-class ContainerRegistrySyncGroup(_ControlGroupBase):
+class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def archive(self, id: str, organisation_id: int | None = None):
         path = f"/container/registry/{id}/archive/"
         params = None
@@ -934,7 +960,7 @@ class ContainerRegistrySyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class DevicesSyncGroup(_ControlGroupBase):
+class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def app_installs_list(self, parent_lookup_device: str, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None):
         path = f"/devices/{parent_lookup_device}/app_installs/"
         params = {
@@ -1110,7 +1136,7 @@ class DevicesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-    def list(self, application: str | None = None, archived: bool | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, group: str | None = None, id: list[Any] | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, type: str | None = None, organisation_id: int | None = None):
+    def list(self, application: str | None = None, archived: bool | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, group: str | None = None, id: Sequence[Any] | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, type: str | None = None, organisation_id: int | None = None):
         path = f"/devices/"
         params = {
             "application": application,
@@ -1527,7 +1553,7 @@ class DevicesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class GroupsSyncGroup(_ControlGroupBase):
+class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def archive(self, id: str, organisation_id: int | None = None):
         path = f"/groups/{id}/archive/"
         params = None
@@ -1930,7 +1956,7 @@ class GroupsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class IntegrationsSyncGroup(_ControlGroupBase):
+class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def archive(self, id: str, organisation_id: int | None = None):
         path = f"/integrations/{id}/archive/"
         params = None
@@ -2106,7 +2132,15 @@ class IntegrationsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsSyncGroup(_ControlGroupBase):
+class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
+    billing: OrganisationsBillingSyncGroup
+    domains: OrganisationsDomainsSyncGroup
+    pending_users: OrganisationsPendingUsersSyncGroup
+    roles: OrganisationsRolesSyncGroup
+    shared_profiles: OrganisationsSharedProfilesSyncGroup
+    sharing_profiles: OrganisationsSharingProfilesSyncGroup
+    users: OrganisationsUsersSyncGroup
+
     def archive(self, id: str, organisation_id: int | None = None):
         path = f"/organisations/{id}/archive/"
         params = None
@@ -2331,7 +2365,22 @@ class OrganisationsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingSyncGroup(_ControlGroupBase):
+class OrganisationsBillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
+    account: OrganisationsBillingAccountSyncGroup
+    admin: OrganisationsBillingAdminSyncGroup
+    agent_items: OrganisationsBillingAgentItemsSyncGroup
+    app_configs: OrganisationsBillingAppConfigsSyncGroup
+    device_type_configs: OrganisationsBillingDeviceTypeConfigsSyncGroup
+    devices: OrganisationsBillingDevicesSyncGroup
+    group: OrganisationsBillingGroupSyncGroup
+    invoices: OrganisationsBillingInvoicesSyncGroup
+    metering_runs: OrganisationsBillingMeteringRunsSyncGroup
+    products: OrganisationsBillingProductsSyncGroup
+    seller_customers: OrganisationsBillingSellerCustomersSyncGroup
+    stripe: OrganisationsBillingStripeSyncGroup
+    subscriptions: OrganisationsBillingSubscriptionsSyncGroup
+    usage_records: OrganisationsBillingUsageRecordsSyncGroup
+
     def checkout(self, organisation_id: int | None = None):
         path = f"/organisations/billing/checkout/"
         params = None
@@ -2383,7 +2432,7 @@ class OrganisationsBillingSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAccountSyncGroup(_ControlGroupBase):
+class OrganisationsBillingAccountSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/organisations/billing/account/"
         params = {
@@ -2457,7 +2506,7 @@ class OrganisationsBillingAccountSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAdminSyncGroup(_ControlGroupBase):
+class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def group_seller_customer_overview(self, group_id: int, organisation_id: int | None = None):
         path = f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
         params = None
@@ -2713,7 +2762,7 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase):
+class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/agent_items/"
         params = None
@@ -2831,7 +2880,7 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase):
+class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/app_configs/"
         params = None
@@ -2943,7 +2992,7 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase):
+class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/device_type_configs/"
         params = None
@@ -3055,7 +3104,7 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingDevicesSyncGroup(_ControlGroupBase):
+class OrganisationsBillingDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/organisations/billing/devices/"
         params = {
@@ -3112,7 +3161,7 @@ class OrganisationsBillingDevicesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingGroupSyncGroup(_ControlGroupBase):
+class OrganisationsBillingGroupSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def billing_create(self, group_id: int, organisation_id: int | None = None):
         path = f"/organisations/billing/group/{group_id}/billing/"
         params = None
@@ -3147,7 +3196,7 @@ class OrganisationsBillingGroupSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingInvoicesSyncGroup(_ControlGroupBase):
+class OrganisationsBillingInvoicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def pdf(self, id: str, organisation_id: int | None = None):
         path = f"/organisations/billing/invoices/{id}/pdf/"
         params = None
@@ -3216,7 +3265,7 @@ class OrganisationsBillingInvoicesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingMeteringRunsSyncGroup(_ControlGroupBase):
+class OrganisationsBillingMeteringRunsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, organisation_id: int | None = None):
         path = f"/organisations/billing/metering_runs/"
         params = None
@@ -3278,7 +3327,7 @@ class OrganisationsBillingMeteringRunsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingProductsSyncGroup(_ControlGroupBase):
+class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/products/"
         params = None
@@ -3393,7 +3442,7 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase):
+class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/seller_customers/"
         params = None
@@ -3505,7 +3554,7 @@ class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingStripeSyncGroup(_ControlGroupBase):
+class OrganisationsBillingStripeSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def accounts(self, organisation_id: int | None = None):
         path = f"/organisations/billing/stripe/accounts/"
         params = None
@@ -3557,7 +3606,7 @@ class OrganisationsBillingStripeSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingSubscriptionsSyncGroup(_ControlGroupBase):
+class OrganisationsBillingSubscriptionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/organisations/billing/subscriptions/"
         params = {
@@ -3597,7 +3646,7 @@ class OrganisationsBillingSubscriptionsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingUsageRecordsSyncGroup(_ControlGroupBase):
+class OrganisationsBillingUsageRecordsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def list(self, agent_billing_item: str | None = None, billing_product: str | None = None, device_online: bool | None = None, metering_run: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, record_type: str | None = None, revenue_target: str | None = None, search: str | None = None, seller_customer: str | None = None, seller_customer__isnull: bool | None = None, organisation_id: int | None = None):
         path = f"/organisations/billing/usage_records/"
         params = {
@@ -3646,7 +3695,7 @@ class OrganisationsBillingUsageRecordsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsDomainsSyncGroup(_ControlGroupBase):
+class OrganisationsDomainsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, id: str, body: Any, organisation_id: int | None = None):
         path = f"/organisations/{id}/domains/"
         params = None
@@ -3737,7 +3786,7 @@ class OrganisationsDomainsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsPendingUsersSyncGroup(_ControlGroupBase):
+class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def approve(self, id: str, body: Any, organisation_id: int | None = None):
         path = f"/organisations/pending_users/{id}/approve/"
         params = None
@@ -3879,7 +3928,7 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsRolesSyncGroup(_ControlGroupBase):
+class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def archive(self, id: str, organisation_id: int | None = None):
         path = f"/organisations/roles/{id}/archive/"
         params = None
@@ -4027,7 +4076,7 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase):
+class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/shared_profiles/"
         params = None
@@ -4152,7 +4201,7 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase):
+class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/sharing_profiles/"
         params = None
@@ -4260,7 +4309,7 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsUsersSyncGroup(_ControlGroupBase):
+class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/users/"
         params = None
@@ -4390,7 +4439,7 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class PermissionsSyncGroup(_ControlGroupBase):
+class PermissionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def sync(self, organisation_id: int | None = None):
         path = f"/permissions/sync"
         params = None
@@ -4408,7 +4457,7 @@ class PermissionsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class ReportsSyncGroup(_ControlGroupBase):
+class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/reports/"
         params = None
@@ -4612,7 +4661,7 @@ class ReportsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SharedDevicesSyncGroup(_ControlGroupBase):
+class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/shared_devices/"
         params = None
@@ -4720,7 +4769,7 @@ class SharedDevicesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SharedGroupsSyncGroup(_ControlGroupBase):
+class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/shared_groups/"
         params = None
@@ -4828,7 +4877,7 @@ class SharedGroupsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SiteSyncGroup(_ControlGroupBase):
+class SiteSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def retrieve(self, hostname: str | None = None, organisation_id: int | None = None):
         path = f"/site/"
         params = {
@@ -4848,7 +4897,7 @@ class SiteSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SolutionInstallsSyncGroup(_ControlGroupBase):
+class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, body: Any, organisation_id: int | None = None):
         path = f"/solution_installs/"
         params = None
@@ -4990,7 +5039,7 @@ class SolutionInstallsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SolutionsSyncGroup(_ControlGroupBase):
+class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def application_templates_create(self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None):
         path = f"/solutions/{parent_lookup_solution}/application_templates/"
         params = None
@@ -5287,7 +5336,7 @@ class SolutionsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class ThemesSyncGroup(_ControlGroupBase):
+class ThemesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/themes/"
         params = {
@@ -5361,7 +5410,7 @@ class ThemesSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class TunnelsSyncGroup(_ControlGroupBase):
+class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def activate(self, id: str, body: Any, organisation_id: int | None = None):
         path = f"/tunnels/{id}/activate/"
         params = None
@@ -5503,7 +5552,7 @@ class TunnelsSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class UsersSyncGroup(_ControlGroupBase):
+class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/users/"
         params = {
@@ -5594,7 +5643,7 @@ class UsersSyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-def _attach_sync_groups(root):
+def _attach_sync_groups(root: ControlClientGroups):
     root.agents = AgentsSyncGroup(root)
     root.analytics = AnalyticsSyncGroup(root)
     root.app_deployments = AppDeploymentsSyncGroup(root)
@@ -5642,6 +5691,7 @@ def _attach_sync_groups(root):
 OPERATION_COUNT = 299
 
 __all__ = [
+    "ControlClientGroups",
     "_attach_sync_groups",
     "OPERATION_COUNT",
     "AgentsSyncGroup",

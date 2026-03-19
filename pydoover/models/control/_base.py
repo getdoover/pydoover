@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, ClassVar, Generic, TypeVar, get_args, get_origin
+from typing import Any, Callable, ClassVar, Generic, TypeVar, cast
 
 
 @dataclass(frozen=True, slots=True)
@@ -351,10 +349,12 @@ class ControlPage(Generic[T]):
                 f"ControlPage.from_dict expected dict, got {type(data).__name__}"
             )
         results = data.get("results") or []
-        if hasattr(item_type, "from_dict"):
-            parsed = [item_type.from_dict(item) for item in results]
+        from_dict = getattr(item_type, "from_dict", None)
+        if callable(from_dict):
+            loader = cast(Callable[[dict[str, Any]], T], from_dict)
+            parsed = [loader(item) for item in results]
         else:
-            parsed = list(results)
+            parsed = cast(list[T], list(results))
         return cls(
             count=data.get("count", 0),
             next=data.get("next"),
@@ -365,8 +365,9 @@ class ControlPage(Generic[T]):
     def to_dict(self) -> dict[str, Any]:
         results = []
         for item in self.results:
-            if hasattr(item, "to_dict"):
-                results.append(item.to_dict())
+            to_dict = getattr(item, "to_dict", None)
+            if callable(to_dict):
+                results.append(cast(Callable[[], dict[str, Any]], to_dict)())
             else:
                 results.append(item)
         return {

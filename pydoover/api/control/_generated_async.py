@@ -1,11 +1,37 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Sequence
 
-from ._base import _ControlGroupBase
+from ._base import _AsyncControlExecutor, _ControlGroupBase
 
 
-class AgentsAsyncGroup(_ControlGroupBase):
+class AsyncControlClientGroups:
+    agents: AgentsAsyncGroup
+    analytics: AnalyticsAsyncGroup
+    app_deployments: AppDeploymentsAsyncGroup
+    app_installs: AppInstallsAsyncGroup
+    applications: ApplicationsAsyncGroup
+    assistant: AssistantAsyncGroup
+    container: ContainerAsyncGroup
+    devices: DevicesAsyncGroup
+    groups: GroupsAsyncGroup
+    integrations: IntegrationsAsyncGroup
+    organisations: OrganisationsAsyncGroup
+    permissions: PermissionsAsyncGroup
+    reports: ReportsAsyncGroup
+    shared_devices: SharedDevicesAsyncGroup
+    shared_groups: SharedGroupsAsyncGroup
+    site: SiteAsyncGroup
+    solution_installs: SolutionInstallsAsyncGroup
+    solutions: SolutionsAsyncGroup
+    themes: ThemesAsyncGroup
+    tunnels: TunnelsAsyncGroup
+    users: UsersAsyncGroup
+
+    async def _execute(self, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
+class AgentsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def retrieve(self, organisation_id: int | None = None):
         path = f"/agents/"
         params = None
@@ -23,7 +49,7 @@ class AgentsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class AnalyticsAsyncGroup(_ControlGroupBase):
+class AnalyticsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def summary(self, organisation_id: int | None = None):
         path = f"/analytics/summary/"
         params = None
@@ -58,7 +84,7 @@ class AnalyticsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class AppDeploymentsAsyncGroup(_ControlGroupBase):
+class AppDeploymentsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/app_deployments/"
         params = None
@@ -115,7 +141,7 @@ class AppDeploymentsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class AppInstallsAsyncGroup(_ControlGroupBase):
+class AppInstallsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def archive(self, id: str, organisation_id: int | None = None):
         path = f"/app_installs/{id}/archive/"
         params = None
@@ -347,7 +373,7 @@ class AppInstallsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class ApplicationsAsyncGroup(_ControlGroupBase):
+class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def archive(self, id: str, organisation_id: int | None = None):
         path = f"/applications/{id}/archive/"
         params = None
@@ -695,7 +721,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class AssistantAsyncGroup(_ControlGroupBase):
+class AssistantAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def message(self, organisation_id: int | None = None):
         path = f"/assistant/message/"
         params = None
@@ -791,10 +817,10 @@ class AssistantAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class ContainerAsyncGroup(_ControlGroupBase):
-    pass
+class ContainerAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
+    registry: ContainerRegistryAsyncGroup
 
-class ContainerRegistryAsyncGroup(_ControlGroupBase):
+class ContainerRegistryAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def archive(self, id: str, organisation_id: int | None = None):
         path = f"/container/registry/{id}/archive/"
         params = None
@@ -934,7 +960,7 @@ class ContainerRegistryAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class DevicesAsyncGroup(_ControlGroupBase):
+class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def app_installs_list(self, parent_lookup_device: str, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None):
         path = f"/devices/{parent_lookup_device}/app_installs/"
         params = {
@@ -1110,7 +1136,7 @@ class DevicesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-    async def list(self, application: str | None = None, archived: bool | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, group: str | None = None, id: list[Any] | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, type: str | None = None, organisation_id: int | None = None):
+    async def list(self, application: str | None = None, archived: bool | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, group: str | None = None, id: Sequence[Any] | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, type: str | None = None, organisation_id: int | None = None):
         path = f"/devices/"
         params = {
             "application": application,
@@ -1527,7 +1553,7 @@ class DevicesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class GroupsAsyncGroup(_ControlGroupBase):
+class GroupsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def archive(self, id: str, organisation_id: int | None = None):
         path = f"/groups/{id}/archive/"
         params = None
@@ -1930,7 +1956,7 @@ class GroupsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class IntegrationsAsyncGroup(_ControlGroupBase):
+class IntegrationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def archive(self, id: str, organisation_id: int | None = None):
         path = f"/integrations/{id}/archive/"
         params = None
@@ -2106,7 +2132,15 @@ class IntegrationsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsAsyncGroup(_ControlGroupBase):
+class OrganisationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
+    billing: OrganisationsBillingAsyncGroup
+    domains: OrganisationsDomainsAsyncGroup
+    pending_users: OrganisationsPendingUsersAsyncGroup
+    roles: OrganisationsRolesAsyncGroup
+    shared_profiles: OrganisationsSharedProfilesAsyncGroup
+    sharing_profiles: OrganisationsSharingProfilesAsyncGroup
+    users: OrganisationsUsersAsyncGroup
+
     async def archive(self, id: str, organisation_id: int | None = None):
         path = f"/organisations/{id}/archive/"
         params = None
@@ -2331,7 +2365,22 @@ class OrganisationsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
+    account: OrganisationsBillingAccountAsyncGroup
+    admin: OrganisationsBillingAdminAsyncGroup
+    agent_items: OrganisationsBillingAgentItemsAsyncGroup
+    app_configs: OrganisationsBillingAppConfigsAsyncGroup
+    device_type_configs: OrganisationsBillingDeviceTypeConfigsAsyncGroup
+    devices: OrganisationsBillingDevicesAsyncGroup
+    group: OrganisationsBillingGroupAsyncGroup
+    invoices: OrganisationsBillingInvoicesAsyncGroup
+    metering_runs: OrganisationsBillingMeteringRunsAsyncGroup
+    products: OrganisationsBillingProductsAsyncGroup
+    seller_customers: OrganisationsBillingSellerCustomersAsyncGroup
+    stripe: OrganisationsBillingStripeAsyncGroup
+    subscriptions: OrganisationsBillingSubscriptionsAsyncGroup
+    usage_records: OrganisationsBillingUsageRecordsAsyncGroup
+
     async def checkout(self, organisation_id: int | None = None):
         path = f"/organisations/billing/checkout/"
         params = None
@@ -2383,7 +2432,7 @@ class OrganisationsBillingAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAccountAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingAccountAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/organisations/billing/account/"
         params = {
@@ -2457,7 +2506,7 @@ class OrganisationsBillingAccountAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAdminAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingAdminAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def group_seller_customer_overview(self, group_id: int, organisation_id: int | None = None):
         path = f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
         params = None
@@ -2713,7 +2762,7 @@ class OrganisationsBillingAdminAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAgentItemsAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingAgentItemsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/agent_items/"
         params = None
@@ -2831,7 +2880,7 @@ class OrganisationsBillingAgentItemsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingAppConfigsAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingAppConfigsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/app_configs/"
         params = None
@@ -2943,7 +2992,7 @@ class OrganisationsBillingAppConfigsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingDeviceTypeConfigsAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingDeviceTypeConfigsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/device_type_configs/"
         params = None
@@ -3055,7 +3104,7 @@ class OrganisationsBillingDeviceTypeConfigsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingDevicesAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingDevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/organisations/billing/devices/"
         params = {
@@ -3112,7 +3161,7 @@ class OrganisationsBillingDevicesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingGroupAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingGroupAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def billing_create(self, group_id: int, organisation_id: int | None = None):
         path = f"/organisations/billing/group/{group_id}/billing/"
         params = None
@@ -3147,7 +3196,7 @@ class OrganisationsBillingGroupAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingInvoicesAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingInvoicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def pdf(self, id: str, organisation_id: int | None = None):
         path = f"/organisations/billing/invoices/{id}/pdf/"
         params = None
@@ -3216,7 +3265,7 @@ class OrganisationsBillingInvoicesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingMeteringRunsAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingMeteringRunsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, organisation_id: int | None = None):
         path = f"/organisations/billing/metering_runs/"
         params = None
@@ -3278,7 +3327,7 @@ class OrganisationsBillingMeteringRunsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingProductsAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingProductsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/products/"
         params = None
@@ -3393,7 +3442,7 @@ class OrganisationsBillingProductsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingSellerCustomersAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingSellerCustomersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/billing/seller_customers/"
         params = None
@@ -3505,7 +3554,7 @@ class OrganisationsBillingSellerCustomersAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingStripeAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingStripeAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def accounts(self, organisation_id: int | None = None):
         path = f"/organisations/billing/stripe/accounts/"
         params = None
@@ -3557,7 +3606,7 @@ class OrganisationsBillingStripeAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingSubscriptionsAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingSubscriptionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/organisations/billing/subscriptions/"
         params = {
@@ -3597,7 +3646,7 @@ class OrganisationsBillingSubscriptionsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsBillingUsageRecordsAsyncGroup(_ControlGroupBase):
+class OrganisationsBillingUsageRecordsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def list(self, agent_billing_item: str | None = None, billing_product: str | None = None, device_online: bool | None = None, metering_run: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, record_type: str | None = None, revenue_target: str | None = None, search: str | None = None, seller_customer: str | None = None, seller_customer__isnull: bool | None = None, organisation_id: int | None = None):
         path = f"/organisations/billing/usage_records/"
         params = {
@@ -3646,7 +3695,7 @@ class OrganisationsBillingUsageRecordsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsDomainsAsyncGroup(_ControlGroupBase):
+class OrganisationsDomainsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, id: str, body: Any, organisation_id: int | None = None):
         path = f"/organisations/{id}/domains/"
         params = None
@@ -3737,7 +3786,7 @@ class OrganisationsDomainsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsPendingUsersAsyncGroup(_ControlGroupBase):
+class OrganisationsPendingUsersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def approve(self, id: str, body: Any, organisation_id: int | None = None):
         path = f"/organisations/pending_users/{id}/approve/"
         params = None
@@ -3879,7 +3928,7 @@ class OrganisationsPendingUsersAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsRolesAsyncGroup(_ControlGroupBase):
+class OrganisationsRolesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def archive(self, id: str, organisation_id: int | None = None):
         path = f"/organisations/roles/{id}/archive/"
         params = None
@@ -4027,7 +4076,7 @@ class OrganisationsRolesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsSharedProfilesAsyncGroup(_ControlGroupBase):
+class OrganisationsSharedProfilesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/shared_profiles/"
         params = None
@@ -4152,7 +4201,7 @@ class OrganisationsSharedProfilesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsSharingProfilesAsyncGroup(_ControlGroupBase):
+class OrganisationsSharingProfilesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/sharing_profiles/"
         params = None
@@ -4260,7 +4309,7 @@ class OrganisationsSharingProfilesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class OrganisationsUsersAsyncGroup(_ControlGroupBase):
+class OrganisationsUsersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/organisations/users/"
         params = None
@@ -4390,7 +4439,7 @@ class OrganisationsUsersAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class PermissionsAsyncGroup(_ControlGroupBase):
+class PermissionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def sync(self, organisation_id: int | None = None):
         path = f"/permissions/sync"
         params = None
@@ -4408,7 +4457,7 @@ class PermissionsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class ReportsAsyncGroup(_ControlGroupBase):
+class ReportsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/reports/"
         params = None
@@ -4612,7 +4661,7 @@ class ReportsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SharedDevicesAsyncGroup(_ControlGroupBase):
+class SharedDevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/shared_devices/"
         params = None
@@ -4720,7 +4769,7 @@ class SharedDevicesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SharedGroupsAsyncGroup(_ControlGroupBase):
+class SharedGroupsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/shared_groups/"
         params = None
@@ -4828,7 +4877,7 @@ class SharedGroupsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SiteAsyncGroup(_ControlGroupBase):
+class SiteAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def retrieve(self, hostname: str | None = None, organisation_id: int | None = None):
         path = f"/site/"
         params = {
@@ -4848,7 +4897,7 @@ class SiteAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SolutionInstallsAsyncGroup(_ControlGroupBase):
+class SolutionInstallsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(self, body: Any, organisation_id: int | None = None):
         path = f"/solution_installs/"
         params = None
@@ -4990,7 +5039,7 @@ class SolutionInstallsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class SolutionsAsyncGroup(_ControlGroupBase):
+class SolutionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def application_templates_create(self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None):
         path = f"/solutions/{parent_lookup_solution}/application_templates/"
         params = None
@@ -5287,7 +5336,7 @@ class SolutionsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class ThemesAsyncGroup(_ControlGroupBase):
+class ThemesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/themes/"
         params = {
@@ -5361,7 +5410,7 @@ class ThemesAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class TunnelsAsyncGroup(_ControlGroupBase):
+class TunnelsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def activate(self, id: str, body: Any, organisation_id: int | None = None):
         path = f"/tunnels/{id}/activate/"
         params = None
@@ -5503,7 +5552,7 @@ class TunnelsAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-class UsersAsyncGroup(_ControlGroupBase):
+class UsersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
         path = f"/users/"
         params = {
@@ -5594,7 +5643,7 @@ class UsersAsyncGroup(_ControlGroupBase):
             item_schema=None,
         )
 
-def _attach_async_groups(root):
+def _attach_async_groups(root: AsyncControlClientGroups):
     root.agents = AgentsAsyncGroup(root)
     root.analytics = AnalyticsAsyncGroup(root)
     root.app_deployments = AppDeploymentsAsyncGroup(root)
@@ -5642,6 +5691,7 @@ def _attach_async_groups(root):
 OPERATION_COUNT = 299
 
 __all__ = [
+    "AsyncControlClientGroups",
     "_attach_async_groups",
     "OPERATION_COUNT",
     "AgentsAsyncGroup",
