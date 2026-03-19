@@ -31,6 +31,12 @@ class MessageCreateEvent:
         self.channel = channel
         self.message = message
 
+    def to_dict(self):
+        return {
+            "channel": self.channel.to_dict(),
+            "message": self.message.to_dict(),
+        }
+
     @classmethod
     def from_dict(cls, data):
         try:
@@ -78,6 +84,15 @@ class MessageUpdateEvent:
         self.message = message
         self.request_data = request_data
 
+    def to_dict(self):
+        return {
+            "channel": self.channel.to_dict(),
+            "author_id": self.author_id,
+            "organisation_id": self.organisation_id,
+            "message": self.message.to_dict(),
+            "request_data": self.request_data,
+        }
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
         return cls(
@@ -111,6 +126,15 @@ class AggregateUpdateEvent:
         self.request_data = request_data
         self.organisation_id = organisation_id
 
+    def to_dict(self):
+        return {
+            "author_id": self.author_id,
+            "channel": self.channel.to_dict(),
+            "aggregate": self.aggregate.to_dict(),
+            "request_data": self.request_data.to_dict(),
+            "organisation_id": self.organisation_id,
+        }
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
         return cls(
@@ -128,6 +152,13 @@ class DeploymentEvent:
         self.app_id = app_id
         self.app_install_id = app_install_id
 
+    def to_dict(self):
+        return {
+            "agent_id": self.agent_id,
+            "app_id": self.app_id,
+            "app_install_id": self.app_install_id,
+        }
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
         return cls(
@@ -140,6 +171,11 @@ class DeploymentEvent:
 class ScheduleEvent:
     def __init__(self, schedule_id: int):
         self.schedule_id = schedule_id
+
+    def to_dict(self):
+        return {
+            "schedule_id": self.schedule_id,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -162,6 +198,14 @@ class IngestionEndpointEvent:
         self.organisation_id = organisation_id
         self.payload = parser(payload)
 
+    def to_dict(self):
+        return {
+            "ingestion_id": self.ingestion_id,
+            "agent_id": self.agent_id,
+            "organisation_id": self.organisation_id,
+            "payload": self.payload,
+        }
+
     @classmethod
     def from_dict(cls, data: dict[str, Any], parser: Callable[[str], Any]):
         return cls(
@@ -181,6 +225,12 @@ class ManualInvokeEvent:
     ):
         self.organisation_id = organisation_id
         self.payload = payload
+
+    def to_dict(self):
+        return {
+            "organisation_id": self.organisation_id,
+            "payload": self.payload,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):

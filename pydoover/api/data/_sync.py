@@ -21,7 +21,14 @@ import httpx
 from datetime import datetime
 
 from ..auth import decode_jwt_exp
-from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake, Unset
+from ._base import (
+    UNSET,
+    _build_user_agent,
+    BaseClient,
+    _raise_for_status,
+    _to_snowflake,
+    Unset,
+)
 from ._iterators import MessageIterator
 from ...models.exceptions import TokenRefreshError
 from ...models import (
@@ -60,7 +67,12 @@ class DataClient(BaseClient):
 
     def __init__(self, base_url: str, **kwargs):
         super().__init__(base_url, **kwargs)
-        self._session = httpx.Client(timeout=self.timeout, follow_redirects=True)
+        self._user_agent = _build_user_agent("httpx", httpx.__version__)
+        self._session = httpx.Client(
+            timeout=self.timeout,
+            follow_redirects=True,
+            headers={"User-Agent": self._user_agent},
+        )
         self._update_session_auth()
 
     def _update_session_auth(self):

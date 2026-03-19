@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import json
 import logging
 import re
 import sys
@@ -436,6 +437,7 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return Aggregate.from_proto(resp.aggregate)
 
+    @cli_command()
     async def fetch_turn_token(
         self,
     ) -> TurnCredential:
@@ -447,6 +449,7 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return TurnCredential.from_proto(resp.turn_credential)
 
+    @cli_command()
     async def create_message(
         self,
         channel_name: str,
@@ -470,6 +473,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("CreateMessage", req)
         return resp.message_id
 
+    @cli_command()
     async def update_message(
         self,
         channel_name: str,
@@ -496,6 +500,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("UpdateMessage", req)
         return Message.from_proto(resp.message)
 
+    @cli_command()
     async def update_channel_aggregate(
         self,
         channel_name: str,
@@ -521,6 +526,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("UpdateAggregate", req)
         return Aggregate.from_proto(resp.aggregate)
 
+    @cli_command()
     async def fetch_message_attachment(self, attachment: Attachment) -> File:
         req = device_agent_pb2.FetchAttachmentRequest(
             attachment=attachment.to_proto(),
@@ -535,7 +541,7 @@ class DeviceAgentInterface(GRPCInterface):
         logging.info("Closing device agent interface...")
 
     @cli_command()
-    def listen_channel(self, channel_name: str) -> None:
+    async def listen_channel(self, channel_name: str) -> None:
         """Listen to channel events, printing the output to the console.
 
         Parameters
@@ -544,16 +550,15 @@ class DeviceAgentInterface(GRPCInterface):
             Name of channel to listen to.
         """
         try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(self._run_channel_listening(channel_name))
-        else:
-            asyncio.create_task(self._run_channel_listening(channel_name))
-
-    async def _run_channel_listening(self, channel_name: str):
-        try:
             async for event in self.stream_channel_events(channel_name):
-                print(channel_name, event)
+                print(
+                    json.dumps(
+                        {
+                            "event_name": event.__class__.__name__,
+                            "payload": event.to_dict(),
+                        }
+                    )
+                )
                 sys.stdout.flush()
         except asyncio.CancelledError:
             await self.close()

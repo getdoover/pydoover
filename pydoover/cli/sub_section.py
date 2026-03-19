@@ -93,6 +93,8 @@ class SubSection:
                     return
 
                 if result is not None:
+                    if hasattr(result, "to_dict"):
+                        result = result.to_dict()
                     print(result)
 
             parser.set_defaults(callback=func_caller)
