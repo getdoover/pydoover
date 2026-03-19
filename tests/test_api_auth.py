@@ -553,11 +553,11 @@ def test_data_client_org_header_behavior_is_unchanged():
     try:
         assert client._auth_headers() == {
             "Authorization": "Bearer sync-token",
-            "X-Org-Id": "123",
+            "X-Doover-Organisation": "123",
         }
         assert client._auth_headers(456) == {
             "Authorization": "Bearer sync-token",
-            "X-Org-Id": "456",
+            "X-Doover-Organisation": "456",
         }
     finally:
         client.close()
