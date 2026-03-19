@@ -551,7 +551,14 @@ class DeviceAgentInterface(GRPCInterface):
         """
         try:
             async for event in self.stream_channel_events(channel_name):
-                print(json.dumps(event.to_dict()))
+                print(
+                    json.dumps(
+                        {
+                            "event_name": event.__class__.__name__,
+                            "payload": event.to_dict(),
+                        }
+                    )
+                )
                 sys.stdout.flush()
         except asyncio.CancelledError:
             await self.close()
