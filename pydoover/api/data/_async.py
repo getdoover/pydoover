@@ -20,7 +20,14 @@ import aiohttp
 from datetime import datetime
 
 from ..auth import decode_jwt_exp
-from ._base import UNSET, BaseClient, _raise_for_status, _to_snowflake, Unset
+from ._base import (
+    UNSET,
+    _build_user_agent,
+    BaseClient,
+    _raise_for_status,
+    _to_snowflake,
+    Unset,
+)
 from ._iterators import AsyncMessageIterator
 from ...models.exceptions import TokenRefreshError
 from ...models import (
@@ -59,6 +66,7 @@ class AsyncDataClient(BaseClient):
 
     def __init__(self, base_url: str, **kwargs):
         super().__init__(base_url, **kwargs)
+        self._user_agent = _build_user_agent("aiohttp", aiohttp.__version__)
         self._session: aiohttp.ClientSession | None = None
         self._token_session: aiohttp.ClientSession | None = None
 
@@ -66,7 +74,9 @@ class AsyncDataClient(BaseClient):
         """Create the underlying aiohttp session."""
         if self._session and not self._session.closed:
             await self.close()
-        self._session = aiohttp.ClientSession()
+        self._session = aiohttp.ClientSession(
+            headers={"User-Agent": self._user_agent},
+        )
 
     async def close(self):
         """Close the underlying aiohttp sessions."""
