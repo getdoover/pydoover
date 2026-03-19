@@ -22,7 +22,6 @@ dependencies = [
 grpc = [
     "grpcio==1.65.1",
     "protobuf==5.28.2",
-    "grpcio-health-checking==1.65.1",
 ]
 reports = [
     "croniter>=6.0.0",

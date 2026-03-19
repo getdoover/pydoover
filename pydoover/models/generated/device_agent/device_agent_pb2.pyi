@@ -311,12 +311,20 @@ class GetMessageResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., message: _Optional[_Union[Message, _Mapping]] = ...) -> None: ...
 
 class GetMessagesRequest(_message.Message):
-    __slots__ = ("header", "channel_name")
+    __slots__ = ("header", "channel_name", "before", "after", "limit", "field_names")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    BEFORE_FIELD_NUMBER: _ClassVar[int]
+    AFTER_FIELD_NUMBER: _ClassVar[int]
+    LIMIT_FIELD_NUMBER: _ClassVar[int]
+    FIELD_NAMES_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ...) -> None: ...
+    before: int
+    after: int
+    limit: int
+    field_names: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., before: _Optional[int] = ..., after: _Optional[int] = ..., limit: _Optional[int] = ..., field_names: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class GetMessagesResponse(_message.Message):
     __slots__ = ("response_header", "messages")

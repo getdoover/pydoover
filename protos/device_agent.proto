@@ -210,6 +210,10 @@ message GetMessageResponse {
 message GetMessagesRequest {
   RequestHeader header = 1;
   string channel_name = 2;
+  optional uint64 before = 3;
+  optional uint64 after = 4;
+  optional uint32 limit = 5;
+  repeated string field_names = 6;
 }
 
 message GetMessagesResponse {
