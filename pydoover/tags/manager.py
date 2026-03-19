@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import time
+from pydoover.models import Aggregate
+
 import asyncio
 import logging
 from typing import Any, Awaitable, Callable
@@ -9,9 +12,11 @@ from pydoover.utils.utils import call_maybe_async
 
 from ..utils import get_is_async, maybe_async
 
+from ..docker.device_agent.device_agent import DeviceAgentInterface, EventSubscription
+
 TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
 TAG_CHANNEL_NAME = "tag_values"
-log = logging.getLogger(__name__)
+log = logging.getLogger("pydoover.tags.manager")
 
 
 class KeyPath:
@@ -23,15 +28,17 @@ class KeyPath:
             self.app_key = key.app_key
             self.key = key.key
             return
-        
+
         if isinstance(key, str):
             path = [key]
         else:
             path = list(key)
 
         if not path or any(not isinstance(part, str) or not part for part in path):
-            raise ValueError("KeyPath requires one or more non-empty string path segments.")
-          
+            raise ValueError(
+                "KeyPath requires one or more non-empty string path segments."
+            )
+
         if app_key is not None:
             if not isinstance(app_key, str):
                 raise ValueError("App key must be a string.")
@@ -44,7 +51,7 @@ class KeyPath:
     def get(self) -> list[str]:
         """Return the normalized path segments."""
         return list(self._path)
-    
+
     @property
     def path(self) -> list[str]:
         return self._path
@@ -69,7 +76,7 @@ class KeyPath:
                     raise e
                 return None
         return current
-    
+
     def in_dict(self, d: dict[str, Any]):
         """Return ``True`` when this key path exists in a nested dictionary."""
         current = d
@@ -102,8 +109,6 @@ class KeyPath:
 class TagsManager:
     """Base interface for manager-backed tag access."""
 
-    _is_async = False
-
     def get_tag(
         self,
         key: str | list[str] | KeyPath,
@@ -114,8 +119,7 @@ class TagsManager:
         """Fetch a tag value from the backing store."""
         raise NotImplementedError
 
-    @maybe_async()
-    def set_tag(self, key: str, value: Any, app_key: str | None = None) -> None:
+    async def set_tag(self, key: str, value: Any, app_key: str | None = None, flush: bool = False) -> None:
         """Set a tag value in the backing store."""
         raise NotImplementedError
 
@@ -127,32 +131,38 @@ class TagsManager:
 class TagsManagerDocker(TagsManager):
     """Tag manager for docker applications backed by the device agent channels."""
 
-    def __init__(self, client = None, is_async = None):
-        self.client = client
-        self._is_async = get_is_async(is_async)
-        
-        self._tag_values = {}
-        self._tag_subscriptions: dict[KeyPath, Callable] = {}
-        self._tag_ready = asyncio.Event()
+    def __init__(self, client: DeviceAgentInterface = None, tag_log_interval: int = TAG_CLOUD_MAX_AGE):
+        self.client: DeviceAgentInterface = client
 
-    def setup(self):
-        """Register the tag channel subscription with the backing client."""
-        self.client.add_subscription(TAG_CHANNEL_NAME, self._on_tag_update)
+        self._tag_values: dict[str, Any] = {}
+        self._tag_subscriptions: dict[KeyPath, Callable] = {}
         
-    async def await_tags_ready(self):
-        """Wait until at least one tag update has been received."""
-        if self._tag_ready.is_set():
+        self.tag_log_interval = tag_log_interval
+
+        self._last_tag_log_time: float = 0.0
+        self._pending_tag_log: dict[str, Any] = {}
+        self._pending_tag_aggregate: dict[str, Any] = {}
+
+        self._tags_dirty = False
+
+    async def setup(self, skip_sync: bool = False):
+        """Register the tag channel subscription with the backing client. Blocks until tags are synced."""
+        self.client.add_event_callback(
+            TAG_CHANNEL_NAME, self._on_tag_update, EventSubscription.aggregate_update
+        )
+
+        if skip_sync:
             return
-        await self._tag_ready.wait()
+
+        await self.client.wait_for_channels_sync([TAG_CHANNEL_NAME], timeout=10)
+        tag_agg: Aggregate = await self.client.fetch_channel_aggregate(TAG_CHANNEL_NAME)
+        self._tag_values = tag_agg.data
 
     async def _on_tag_update(self, _, tag_values: dict[str, Any]):
         diff = generate_diff(self._tag_values, tag_values, do_delete=False)
         self._tag_values = tag_values or {}
         await self.fulfill_tag_subscriptions(diff)
 
-        # signifies the first tag update (or any subsequent tag update) has run and we are ready to start.
-        self._tag_ready.set()
-            
     async def fulfill_tag_subscriptions(self, diff):
         """Invoke any callbacks whose subscribed tag paths changed."""
         if diff is None or len(diff) == 0:
@@ -180,8 +190,10 @@ class TagsManagerDocker(TagsManager):
         """Register a callback for updates to a tag path."""
         key_path = KeyPath(key, app_key=app_key)
         self._tag_subscriptions[key_path] = callback
-        
-    def unsubscribe_from_tag(self, key: str | list[str] | KeyPath, app_key: str | None = None):
+
+    def unsubscribe_from_tag(
+        self, key: str | list[str] | KeyPath, app_key: str | None = None
+    ):
         """Remove a previously registered tag subscription."""
         key_path = KeyPath(key, app_key=app_key)
         if key_path in self._tag_subscriptions:
@@ -203,72 +215,96 @@ class TagsManagerDocker(TagsManager):
             return default
         return key_path.lookup_dict(self._tag_values)
 
-    @maybe_async()
-    def set_tag(
+    async def set_tag(
         self,
         key: str | list[str] | KeyPath,
         value: Any,
         app_key: str | None = None,
         only_if_changed: bool = True,
+        flush: bool = False,
     ) -> None:
         """Set a single tag value and publish the resulting diff to the tag channel."""
         key_path = KeyPath(key, app_key=app_key)
-        self.set_tags(key_path.construct_dict(value), only_if_changed=only_if_changed)
+        await self.set_tags(
+            key_path.construct_dict(value), only_if_changed, flush=flush
+        )
 
-    async def set_tag_async(
-        self,
-        key: str | list[str] | KeyPath,
-        value: Any,
-        app_key: str | None = None,
-        only_if_changed: bool = True,
-    ) -> None:
-        """Async variant of :meth:`set_tag`."""
-        key_path = KeyPath(key, app_key=app_key)
-        await self.set_tags_async(key_path.construct_dict(value), only_if_changed)
-
-    @maybe_async()
-    def set_tags(
+    async def set_tags(
         self,
         tags: dict[str, Any],
         only_if_changed: bool = True,
-        key = None,
+        key=None,
         app_key: str | None = None,
+        flush: bool = False,
     ):
         """Publish multiple tag values to the device agent tag channel."""
         if key is not None or app_key is not None:
             tags = KeyPath(key, app_key=app_key).construct_dict(tags)
-            
+
         if only_if_changed:
-            diff = generate_diff(self._tag_values, tags, do_delete=False)
+            diff = generate_diff(
+                apply_diff(self._tag_values, self._pending_tag_aggregate, do_delete=False),
+                tags,
+                do_delete=False,
+            )
             if len(diff) == 0:
+                log.debug(
+                    f"set_tags: tags={tags} Value did not change existing values {self._tag_values}"
+                )
                 return
 
-        apply_diff(self._tag_values, tags, clone=False)
-        self.client.publish_to_channel(
-            TAG_CHANNEL_NAME, tags, max_age=TAG_CLOUD_MAX_AGE, record_log=True
-        )
+        # Add to list of changes to be sent to the log
+        apply_diff(self._pending_tag_log, tags, clone=False)
 
-    async def set_tags_async(
-        self,
-        tags: dict[str, Any],
-        only_if_changed: bool = True,
-        key = None,
-        app_key: str | None = None,
-    ):
-        """Async variant of :meth:`set_tags`."""
-        if key is not None or app_key is not None:
-            tags = KeyPath(key, app_key=app_key).construct_dict(tags)
+        if flush:
+            log.debug(f"set_tags: tags={tags} Flushing to dda")
+            apply_diff(self._pending_tag_aggregate, tags, clone=False)
+            await self.client.update_channel_aggregate(
+                TAG_CHANNEL_NAME,
+                self._pending_tag_aggregate,
+                max_age_secs=TAG_CLOUD_MAX_AGE,
+            )
+            apply_diff(self._tag_values, self._pending_tag_aggregate, clone=False)
+            self._tags_dirty = False
+            return
+
+        # Just add to the pending aggregate to be flushed at the end of the main loop
+        log.debug(f"set_tags: tags={tags} Added to pending aggregate")
+        apply_diff(self._pending_tag_aggregate, tags, clone=False)
+        self._tags_dirty = True
+
+    async def commit_tags(self):
+        """Publish a mesage with the changed tag values to the tag channel."""
+        self.flush_tags()
         
-        if only_if_changed:
-            diff = generate_diff(self._tag_values, tags, do_delete=False)
-            if len(diff) == 0:
-                return
+        now = time.time()
+        if self._pending_tag_log and (
+            now - self._last_tag_log_time >= self.tag_log_interval
+        ):
+            self.flush_logs()
 
-        apply_diff(self._tag_values, tags, clone=False)
-        await self.client.publish_to_channel_async(
-            TAG_CHANNEL_NAME, tags, max_age=TAG_CLOUD_MAX_AGE, record_log=True
-        )
+    async def flush_tags(self):
+        """Flush any buffered tag changes."""
+        
+        if not self._tags_dirty:
+            return False # Nothing to flush
+        
+        data = self._pending_tag_aggregate
+        self._pending_tag_aggregate: dict[str, Any] = {}
+        self._tags_dirty = False
 
+        await self.client.update_channel_aggregate(TAG_CHANNEL_NAME, data, max_age_secs=TAG_CLOUD_MAX_AGE)
+
+    async def flush_logs(self):
+            
+        if not self._pending_tag_log:
+            return False # Nothing to flush
+        
+        log_data = self._pending_tag_log
+        self._pending_tag_log = {}
+        self._last_tag_log_time = time.time()
+
+        await self.client.create_message(TAG_CHANNEL_NAME, log_data)
 
 class TagsManagerProcessor(TagsManager):
     """Tag manager for cloud processor execution contexts."""
@@ -305,8 +341,7 @@ class TagsManagerProcessor(TagsManager):
                 raise KeyError(key) from exc
             return default
 
-    @maybe_async()
-    def set_tag(self, key: str, value: Any, app_key: str | None = None) -> None:
+    async def set_tag(self, key: str, value: Any, app_key: str | None = None) -> None:
         """Update a tag value in the buffered processor payload."""
         app_key = app_key or self.app_key
 
@@ -324,12 +359,6 @@ class TagsManagerProcessor(TagsManager):
             self._tag_values[app_key] = {key: value}
 
         self._update_tags = True
-
-    async def set_tag_async(
-        self, key: str, value: Any, app_key: str | None = None
-    ) -> None:
-        """Async variant of :meth:`set_tag`."""
-        self.set_tag(key, value, app_key=app_key, run_sync=True)
 
     async def commit_tags(self) -> None:
         """Flush any buffered tag changes back to the processor data API."""

@@ -8,11 +8,11 @@ from collections import deque
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, Awaitable, Callable, cast
+from typing import Any, TYPE_CHECKING, Callable, cast
 
 from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
-from collections.abc import Callable, Coroutine
+from collections.abc import Coroutine
 
 try:
     from aiohttp.web import Response, Server, ServerRunner, TCPSite
@@ -128,7 +128,6 @@ class Application:
         self._ui: UI | None = None
         self.app_key = app_key
         self.app_display_name = ""
-        self._is_async = self._resolve_is_async_mode(is_async)
 
         if config_fp:
             path = Path(config_fp)
@@ -140,19 +139,16 @@ class Application:
 
         self.device_agent = device_agent or DeviceAgentInterface(app_key, "")
         self.platform_iface = platform_iface or PlatformInterface(app_key, "")
-        self.modbus_iface = modbus_iface or ModbusInterface(app_key, "", config)
+        self.modbus_iface = modbus_iface or ModbusInterface(app_key, "", self.config)
 
         self.ui_manager = UIManager(
             app_key=self.app_key,
             client=self.device_agent,
-            is_async=self._is_async,
         )
         
         self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
-            is_async=self._is_async,
         )
-        self._set_async_mode(self._is_async)
         self._ready = asyncio.Event()
 
         self.rpc = RPCManager(self)
@@ -184,37 +180,6 @@ class Application:
 
         self._is_healthy = False
         self._healthcheck_port = healthcheck_port
-
-    def _resolve_is_async_mode(self, is_async: bool | None) -> bool:
-        if is_async is not None:
-            return get_is_async(is_async)
-
-        user_is_async = asyncio.iscoroutinefunction(self.setup) or asyncio.iscoroutinefunction(
-            self.main_loop
-        )
-        if user_is_async:
-            return True
-
-        return get_is_async(None)
-
-    def _set_async_mode(self, is_async: bool | None) -> bool:
-        resolved = self._resolve_is_async_mode(is_async)
-        self._is_async = resolved
-
-        for inst in (
-            getattr(self, "device_agent", None),
-            getattr(self, "platform_iface", None),
-            getattr(self, "modbus_iface", None),
-            getattr(self, "ui_manager", None),
-            getattr(self, "tag_manager", None),
-        ):
-            if inst is not None:
-                inst._is_async = resolved
-
-        if self._tags is not None:
-            self._tags._is_async = resolved
-
-        return resolved
 
     @property
     def tags(self) -> Tags:
@@ -256,21 +221,6 @@ class Application:
             self._ui.bind_tags(self._tags)
             self.ui_manager.set_children(self._ui.to_elements())
         return self.ui
-
-    @maybe_async()
-    def send_notification(self, message: str, record_activity: bool = True):
-        return self.ui_manager.send_notification(
-            message,
-            record_activity=record_activity,
-        )
-
-    async def send_notification_async(
-        self, message: str, record_activity: bool = True
-    ):
-        return await self.ui_manager.send_notification_async(
-            message,
-            record_activity=record_activity,
-        )
 
     async def _handle_healthcheck(self, _request):
         if self._is_healthy:
@@ -432,7 +382,7 @@ class Application:
             try:
                 await self._main_loop()
                 await self.main_loop()
-                await self._flush_tags()
+                await self.tag_manager.commit_tags()
             except Exception as e:
                 log.error(f"Error in loop function: {e}", exc_info=e)
                 log.warning(
@@ -1087,49 +1037,7 @@ class Application:
         apply_diff(self._tag_values, data, clone=False)
         apply_diff(self._pending_tag_aggregate, data, clone=False)
         self._tags_dirty = True
-
-    async def _flush_tags(self):
-        """Flush pending tag updates to the aggregate and optionally log a message."""
-        if self._tags_dirty:
-            data = self._pending_tag_aggregate
-            self._pending_tag_aggregate = {}
-            self._tags_dirty = False
-
-            await self.device_agent.update_channel_aggregate(TAG_CHANNEL_NAME, data)
-
-        now = time.time()
-        if self._pending_tag_log and (
-            now - self._last_tag_log_time >= self.tag_log_interval
-        ):
-            log_data = self._pending_tag_log
-            self._pending_tag_log = {}
-            self._last_tag_log_time = now
-
-            await self.device_agent.create_message(TAG_CHANNEL_NAME, log_data)
-
-    async def flush_tags(self):
-        """Force an immediate flush of all pending tag updates and log a message.
-
-        By default, tag aggregate updates are flushed once per main loop cycle,
-        and tag log messages are created at most once per :attr:`tag_log_interval` seconds.
-
-        Call this method to force both an immediate aggregate update and a log message,
-        regardless of timing.
-        """
-        if self._tags_dirty:
-            data = self._pending_tag_aggregate
-            self._pending_tag_aggregate = {}
-            self._tags_dirty = False
-
-            await self.device_agent.update_channel_aggregate(TAG_CHANNEL_NAME, data)
-
-        if self._pending_tag_log:
-            log_data = self._pending_tag_log
-            self._pending_tag_log = {}
-            self._last_tag_log_time = time.time()
-
-            await self.device_agent.create_message(TAG_CHANNEL_NAME, log_data)
-
+        
     ## Power Manager Functions
     async def request_shutdown(self) -> None:
         """Request a system shutdown."""
@@ -1205,27 +1113,20 @@ class Application:
         self.ui_manager.register_callbacks(self)
         self.rpc.register_handlers(self)
         self.ui_manager.set_display_name(self.app_display_name)
-        self.tag_manager.setup()
 
         if self.test_mode:
             ## Quit out of setup if we are in test mode.
+            await self.tag_manager.setup(skip_sync=True)
             return
 
         # Fetch initial tag values from the aggregate cache (seeded by _run_channel_stream)
-        await self.device_agent.wait_for_channels_sync([TAG_CHANNEL_NAME], timeout=10)
         try:
             # wait for tag values to sync from DDA - but only for 10sec.
-            await asyncio.wait_for(self.tag_manager.await_tags_ready(), timeout=10.0)
+            await asyncio.wait_for(self.tag_manager.setup(), timeout=10.0)
         except TimeoutError:
             log.warning("Timed out waiting for tag values to be set")
 
-        #     tag_agg = await self.device_agent.fetch_channel_aggregate(TAG_CHANNEL_NAME)
-        #     self._tag_values = tag_agg.data
-        #     self._tag_ready.set()
-        # except Exception:
-        #     log.warning("No initial tag values available from DDA")
-
-        # await self.ui_manager.clear_ui_async()
+        await self.ui_manager.clear_ui_async()
 
     async def _main_loop(self):
         log.debug(f"Running internal main_loop: {self.name}")
@@ -1239,7 +1140,7 @@ class Application:
                 )
                 resp = False
 
-            self.set_tag("shutdown_check_ok", resp)
+            await self.set_tag("shutdown_check_ok", resp)
 
         await self._update_ui()
 
