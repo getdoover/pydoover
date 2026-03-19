@@ -396,6 +396,14 @@ class Integer(ConfigElement[int]):
         if self.multiple_of is not None:
             res["multipleOf"] = self.multiple_of
         return res
+    
+    @property
+    def value(self):
+        return self._value
+    
+    @value.setter
+    def value(self, value):
+        self._value = int(value)
 
 
 class Number(Integer):
