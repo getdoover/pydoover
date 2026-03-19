@@ -11,25 +11,37 @@ from pydoover.tags.manager import TAG_CHANNEL_NAME, KeyPath, TagsManagerDocker
 
 
 def _load_docker_application_class():
-    for module_name, class_names in (
+    module_specs = (
         (
             "pydoover.docker.device_agent",
+            "pydoover.docker.device_agent.device_agent",
             ["DeviceAgentInterface", "MockDeviceAgentInterface"],
         ),
         (
             "pydoover.docker.modbus",
+            None,
             ["ModbusInterface", "ModbusConfig", "ManyModbusConfig"],
         ),
         (
             "pydoover.docker.platform",
+            None,
             ["PlatformInterface", "PulseCounter"],
         ),
-    ):
+    )
+    for module_name, child_module_name, class_names in module_specs:
         if module_name not in sys.modules:
             module = types.ModuleType(module_name)
+            if child_module_name is not None:
+                module.__path__ = []
             for class_name in class_names:
                 setattr(module, class_name, type(class_name, (), {}))
             sys.modules[module_name] = module
+
+        if child_module_name is not None and child_module_name not in sys.modules:
+            child = types.ModuleType(child_module_name)
+            for class_name in class_names:
+                setattr(child, class_name, type(class_name, (), {}))
+            sys.modules[child_module_name] = child
 
     return importlib.import_module("pydoover.docker.application").Application
 
@@ -47,6 +59,7 @@ def _load_processor_application_class():
             (),
             {"periodic_unknown": object()},
         )
+        module.ProcessorDataClient = type("ProcessorDataClient", (), {})
         sys.modules["pydoover.cloud.processor.data_client"] = module
 
     if "pydoover.cloud.processor.types" not in sys.modules:
@@ -102,35 +115,40 @@ class AsyncFakeTagsManager(FakeTagsManager):
 
 
 class FakeTagClient:
-    def __init__(self):
-        self.subscriptions = []
-        self.sync_publishes = []
-        self.async_publishes = []
+    def __init__(self, aggregates=None):
+        self.event_callbacks = []
+        self.aggregate_updates = []
+        self.messages = []
+        self.aggregates = dict(aggregates or {})
 
-    def add_subscription(self, channel_name, callback):
-        self.subscriptions.append((channel_name, callback))
+    def add_event_callback(self, channel_name, callback, events):
+        self.event_callbacks.append((channel_name, callback, events))
 
-    def publish_to_channel(self, channel_name, payload, max_age=None, record_log=None):
-        self.sync_publishes.append(
+    async def wait_for_channels_sync(self, channel_names=None, timeout=None):
+        del channel_names, timeout
+        return True
+
+    async def fetch_channel_aggregate(self, channel_name):
+        return types.SimpleNamespace(data=self.aggregates.get(channel_name, {}))
+
+    async def update_channel_aggregate(self, channel_name, data, max_age_secs=None):
+        self.aggregate_updates.append(
             {
                 "channel_name": channel_name,
-                "payload": payload,
-                "max_age": max_age,
-                "record_log": record_log,
+                "data": data,
+                "max_age_secs": max_age_secs,
             }
         )
+        self.aggregates[channel_name] = data
 
-    async def publish_to_channel_async(
-        self, channel_name, payload, max_age=None, record_log=None
-    ):
-        self.async_publishes.append(
+    async def create_message(self, channel_name, data):
+        self.messages.append(
             {
                 "channel_name": channel_name,
-                "payload": payload,
-                "max_age": max_age,
-                "record_log": record_log,
+                "data": data,
             }
         )
+        return len(self.messages)
 
 
 class FakeRuntimeDeviceAgent:
@@ -139,39 +157,43 @@ class FakeRuntimeDeviceAgent:
         self.agent_id = None
         self.uri = ""
         self.subscriptions = {}
-        self.sync_publishes = []
-        self.async_publishes = []
+        self.aggregate_updates = []
+        self.messages = []
+        self.aggregates = {
+            "deployment_config": {"applications": {self.app_key: {}}},
+            "ui_state": {},
+            "ui_cmds": {},
+            TAG_CHANNEL_NAME: {},
+        }
 
     def has_persistent_connection(self):
         return True
 
-    async def await_dda_available_async(self, timeout):
+    async def wait_until_healthy(self, timeout):
+        del timeout
         return True
 
-    def add_subscription(self, channel_name, callback):
+    def add_event_callback(self, channel_name, callback, events):
+        del events
         self.subscriptions[channel_name] = callback
 
-    async def wait_for_channels_sync_async(self, channel_names=None, timeout=None):
-        if channel_names and "deployment_config" in channel_names:
-            callback = self.subscriptions.get("deployment_config")
-            if callback is not None:
-                await callback(
-                    "deployment_config",
-                    {"applications": {self.app_key: {}}},
-                )
+    async def wait_for_channels_sync(self, channel_names=None, timeout=None):
+        del channel_names, timeout
         return True
 
-    def publish_to_channel(self, channel_name, payload, max_age=None, record_log=None):
-        self.sync_publishes.append(
-            (channel_name, payload, max_age, record_log)
-        )
+    async def fetch_channel_aggregate(self, channel_name):
+        return types.SimpleNamespace(data=self.aggregates.get(channel_name, {}))
 
-    async def publish_to_channel_async(
-        self, channel_name, payload, max_age=None, record_log=None
-    ):
-        self.async_publishes.append(
-            (channel_name, payload, max_age, record_log)
+    async def update_channel_aggregate(self, channel_name, data, max_age_secs=None):
+        self.aggregate_updates.append(
+            (channel_name, data, max_age_secs)
         )
+        self.aggregates[channel_name] = data
+
+    async def create_message(self, channel_name, data, **kwargs):
+        del kwargs
+        self.messages.append((channel_name, data))
+        return len(self.messages)
 
     async def close(self):
         return None
@@ -211,6 +233,8 @@ class FakeRuntimeModbusInterface:
 
 
 class FakeDockerAppTagManager:
+    _is_async = True
+
     def __init__(self):
         self.get_calls = []
         self.set_calls = []
@@ -224,29 +248,15 @@ class FakeDockerAppTagManager:
             return self.values.get(key, default)
         return self.values.get((app_key, key), default)
 
-    def set_tag(self, key, value, app_key=None, only_if_changed=True, **kwargs):
+    async def set_tag(self, key, value, app_key=None, only_if_changed=True, **kwargs):
         self.set_calls.append((key, value, app_key, only_if_changed, kwargs))
         if app_key is None:
             self.values[key] = value
         else:
             self.values[(app_key, key)] = value
 
-    async def set_tag_async(
-        self, key, value, app_key=None, only_if_changed=True, **kwargs
-    ):
-        self.set_tag(
-            key,
-            value,
-            app_key=app_key,
-            only_if_changed=only_if_changed,
-            **kwargs,
-        )
-
-    def set_tags(self, tags, app_key=None, only_if_changed=True, **kwargs):
+    async def set_tags(self, tags, app_key=None, only_if_changed=True, **kwargs):
         self.set_tags_calls.append((tags, app_key, only_if_changed, kwargs))
-
-    async def set_tags_async(self, tags, app_key=None, only_if_changed=True, **kwargs):
-        self.set_tags(tags, app_key=app_key, only_if_changed=only_if_changed, **kwargs)
 
     def subscribe_to_tag(self, key, callback, app_key=None, **kwargs):
         self.subscribe_calls.append((key, callback, app_key, kwargs))
@@ -314,7 +324,6 @@ class AsyncStartupApp(DockerApplication):
     tags_class = AsyncStartupTags
 
     async def setup(self):
-        self.setup_tag_manager_is_async = self.tag_manager._is_async
         await self.tags.some_tag.set("ready")
 
     async def main_loop(self):
@@ -567,78 +576,127 @@ class TestKeyPath:
 class TestTagsManagerDocker:
     def test_setup_registers_tag_subscription(self):
         client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
+        manager = TagsManagerDocker(client=client)
 
-        manager.setup()
+        asyncio.run(manager.setup(skip_sync=True))
 
-        assert len(client.subscriptions) == 1
-        assert client.subscriptions[0][0] == TAG_CHANNEL_NAME
+        assert len(client.event_callbacks) == 1
+        assert client.event_callbacks[0][0] == TAG_CHANNEL_NAME
 
-    def test_sync_set_tag_publishes_and_updates_local_state(self):
-        client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
+    def test_setup_fetches_initial_aggregate_state(self):
+        client = FakeTagClient({TAG_CHANNEL_NAME: {"voltage": 12.7}})
+        manager = TagsManagerDocker(client=client)
 
-        manager.set_tag("voltage", 12.7)
+        asyncio.run(manager.setup())
 
         assert manager.get_tag("voltage") == 12.7
-        assert client.sync_publishes == [
-            {
-                "channel_name": TAG_CHANNEL_NAME,
-                "payload": {"voltage": 12.7},
-                "max_age": 60 * 60,
-                "record_log": True,
-            }
-        ]
 
-    def test_sync_set_tag_skips_publish_when_unchanged(self):
+    def test_set_tag_buffers_until_commit(self):
         client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
-
-        manager.set_tag("voltage", 12.7)
-        manager.set_tag("voltage", 12.7)
-
-        assert len(client.sync_publishes) == 1
-
-    def test_sync_set_tag_with_app_key_builds_nested_payload(self):
-        client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
-
-        manager.set_tag("voltage", 12.7, app_key="my_app")
-
-        assert manager.get_tag("voltage", app_key="my_app") == 12.7
-        assert client.sync_publishes[-1]["payload"] == {"my_app": {"voltage": 12.7}}
-
-    def test_get_tag_raise_key_error(self):
-        client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
-
-        with pytest.raises(KeyError):
-            manager.get_tag("missing", raise_key_error=True)
-
-    def test_async_set_tag_uses_async_publish_path(self):
-        import asyncio
-
-        client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=True)
+        manager = TagsManagerDocker(client=client)
 
         asyncio.run(manager.set_tag("voltage", 12.7))
 
         assert manager.get_tag("voltage") == 12.7
-        assert client.async_publishes == [
+        assert manager._pending_tag_aggregate == {"voltage": 12.7}
+        assert manager._pending_tag_log == {"voltage": 12.7}
+        assert client.aggregate_updates == []
+        assert client.messages == []
+
+    def test_commit_tags_flushes_aggregate_and_logs(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        async def run_test():
+            await manager.set_tag("voltage", 12.7)
+            await manager.commit_tags()
+
+        asyncio.run(run_test())
+
+        assert client.aggregate_updates == [
             {
                 "channel_name": TAG_CHANNEL_NAME,
-                "payload": {"voltage": 12.7},
-                "max_age": 60 * 60,
-                "record_log": True,
+                "data": {"voltage": 12.7},
+                "max_age_secs": 60 * 60,
             }
         ]
-        assert client.sync_publishes == []
+        assert client.messages == [
+            {
+                "channel_name": TAG_CHANNEL_NAME,
+                "data": {"voltage": 12.7},
+            }
+        ]
+        assert manager._pending_tag_aggregate == {}
+        assert manager._pending_tag_log == {}
+        assert manager._tags_dirty is False
+
+    def test_set_tag_skips_duplicate_pending_values(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        async def run_test():
+            await manager.set_tag("voltage", 12.7)
+            await manager.set_tag("voltage", 12.7)
+            await manager.commit_tags()
+
+        asyncio.run(run_test())
+
+        assert len(client.aggregate_updates) == 1
+        assert len(client.messages) == 1
+
+    def test_set_tag_with_app_key_builds_nested_payload(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        async def run_test():
+            await manager.set_tag("voltage", 12.7, app_key="my_app")
+            await manager.commit_tags()
+
+        asyncio.run(run_test())
+
+        assert client.aggregate_updates[-1]["data"] == {"my_app": {"voltage": 12.7}}
+        assert client.messages[-1]["data"] == {"my_app": {"voltage": 12.7}}
+
+    def test_get_tag_raise_key_error(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        with pytest.raises(KeyError):
+            manager.get_tag("missing", raise_key_error=True)
+
+    def test_commit_tags_respects_log_interval(self, monkeypatch):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client, tag_log_interval=10)
+        current_time = 100.0
+
+        monkeypatch.setattr("pydoover.tags.manager.time.time", lambda: current_time)
+
+        async def run_test():
+            nonlocal current_time
+            await manager.set_tag("voltage", 12.7)
+            await manager.commit_tags()
+            await manager.set_tag("voltage", 13.0)
+
+            current_time += 5
+            await manager.commit_tags()
+
+            current_time += 5
+            await manager.commit_tags()
+
+        asyncio.run(run_test())
+
+        assert [update["data"] for update in client.aggregate_updates] == [
+            {"voltage": 12.7},
+            {"voltage": 13.0},
+        ]
+        assert [message["data"] for message in client.messages] == [
+            {"voltage": 12.7},
+            {"voltage": 13.0},
+        ]
 
     def test_on_tag_update_updates_state_and_invokes_subscription(self):
-        import asyncio
-
         client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
+        manager = TagsManagerDocker(client=client)
         received = []
 
         def callback(key, value):
@@ -647,112 +705,59 @@ class TestTagsManagerDocker:
         manager.subscribe_to_tag(["metrics", "voltage"], callback)
 
         asyncio.run(
-            manager._on_tag_update(
-                TAG_CHANNEL_NAME,
-                {"metrics": {"voltage": 12.7, "current": 4.1}},
-            )
+            manager._on_tag_update({"metrics": {"voltage": 12.7, "current": 4.1}})
         )
 
         assert manager.get_tag(["metrics", "voltage"]) == 12.7
-        assert manager._tag_ready.is_set() is True
         assert received == [(["metrics", "voltage"], 12.7)]
 
-    def test_await_tags_ready_waits_for_first_update(self):
-        import asyncio
-
+    def test_tags_object_buffers_with_docker_tag_manager_until_commit(self):
         client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
-
-        async def run_test():
-            waiter = asyncio.create_task(manager.await_tags_ready())
-            await asyncio.sleep(0)
-            assert waiter.done() is False
-
-            await manager._on_tag_update(TAG_CHANNEL_NAME, {"voltage": 12.7})
-            await waiter
-
-            assert manager._tag_ready.is_set() is True
-            assert manager.get_tag("voltage") == 12.7
-
-        asyncio.run(run_test())
-
-    def test_await_tags_ready_works_with_asyncio_wait_for(self):
-        import asyncio
-
-        client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
-
-        async def run_test():
-            async def publish_later():
-                await asyncio.sleep(0.01)
-                await manager._on_tag_update(TAG_CHANNEL_NAME, {"voltage": 12.7})
-
-            publisher = asyncio.create_task(publish_later())
-            await asyncio.wait_for(manager.await_tags_ready(), timeout=10.0)
-            await publisher
-
-            assert manager._tag_ready.is_set() is True
-            assert manager.get_tag("voltage") == 12.7
-
-        asyncio.run(run_test())
-
-    def test_await_tags_ready_wait_for_times_out_when_no_update_arrives(self):
-        import asyncio
-
-        client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
-
-        async def run_test():
-            with pytest.raises(asyncio.TimeoutError):
-                await asyncio.wait_for(manager.await_tags_ready(), timeout=0.01)
-
-            assert manager._tag_ready.is_set() is False
-
-        asyncio.run(run_test())
-
-    def test_tags_object_works_with_sync_docker_tag_manager(self):
-        client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
+        manager = TagsManagerDocker(client=client)
         tags = MyAppTags()
         tags.register_manager(manager)
 
-        tags.voltage.set(12.7)
+        async def run_test():
+            await tags.voltage.set(12.7)
+            await manager.commit_tags()
 
-        assert tags.voltage.get() == 12.7
-        assert tags.voltage > 10
-        assert client.sync_publishes[-1]["payload"] == {"voltage": 12.7}
+        asyncio.run(run_test())
+
+        assert client.aggregate_updates[-1]["data"] == {"voltage": 12.7}
+        assert client.messages[-1]["data"] == {"voltage": 12.7}
 
     def test_tags_object_passes_app_key_to_docker_tag_manager(self):
         client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=False)
+        manager = TagsManagerDocker(client=client)
         tags = MyAppTags()
         tags.register_manager(manager, app_key="test_app")
 
-        tags.voltage.set(12.7)
+        async def run_test():
+            await tags.voltage.set(12.7)
+            await manager.commit_tags()
 
-        assert tags.voltage.get() == 12.7
-        assert client.sync_publishes[-1]["payload"] == {"test_app": {"voltage": 12.7}}
+        asyncio.run(run_test())
+
+        assert client.aggregate_updates[-1]["data"] == {"test_app": {"voltage": 12.7}}
+        assert client.messages[-1]["data"] == {"test_app": {"voltage": 12.7}}
 
     def test_tags_object_works_with_async_docker_tag_manager(self):
-        import asyncio
-
         client = FakeTagClient()
-        manager = TagsManagerDocker(client=client, is_async=True)
+        manager = TagsManagerDocker(client=client)
         tags = MyAppTags()
         tags.register_manager(manager)
 
         async def run_test():
             await tags.voltage.set(12.7)
             new_value = await tags.voltage.increment(0.3)
+            await manager.commit_tags()
 
             assert new_value == 13.0
-            assert tags.voltage.get() == 13.0
-            assert tags.to_dict() == {"voltage": 13.0, "speed": 0, "enabled": False}
 
         asyncio.run(run_test())
 
-        assert client.async_publishes[0]["payload"] == {"voltage": 12.7}
-        assert client.async_publishes[1]["payload"] == {"voltage": 13.0}
+        assert client.aggregate_updates[-1]["data"] == {"voltage": 13.0}
+        assert client.messages[-1]["data"] == {"voltage": 13.0}
 
 
 class TestDockerApplicationTagMethods:
@@ -802,29 +807,19 @@ class TestDockerApplicationTagMethods:
 
         assert manager.subscribe_calls == [("shutdown_requested", callback, None, {})]
 
-    def test_sync_set_tag_routes_to_manager(self):
+    def test_set_tag_routes_to_manager(self):
         manager = FakeDockerAppTagManager()
         app = make_docker_app(tag_manager=manager, is_async=False)
-
-        app.set_tag("voltage", 12.7)
-
-        assert manager.set_calls == [("voltage", 12.7, "test_app", True, {})]
-
-    def test_async_set_tag_routes_to_manager_async(self):
-        import asyncio
-
-        manager = FakeDockerAppTagManager()
-        app = make_docker_app(tag_manager=manager, is_async=True)
 
         asyncio.run(app.set_tag("voltage", 12.7))
 
         assert manager.set_calls == [("voltage", 12.7, "test_app", True, {})]
 
-    def test_sync_set_tags_routes_to_manager(self):
+    def test_set_tags_routes_to_manager(self):
         manager = FakeDockerAppTagManager()
-        app = make_docker_app(tag_manager=manager, is_async=False)
+        app = make_docker_app(tag_manager=manager, is_async=True)
 
-        app.set_tags({"voltage": 12.7})
+        asyncio.run(app.set_tags({"voltage": 12.7}))
 
         assert manager.set_tags_calls == [({"voltage": 12.7}, "test_app", True, {})]
 
@@ -832,7 +827,7 @@ class TestDockerApplicationTagMethods:
         manager = FakeDockerAppTagManager()
         app = make_docker_app(tag_manager=manager, is_async=False)
 
-        app.set_global_tag("system_status", "ok")
+        asyncio.run(app.set_global_tag("system_status", "ok"))
 
         assert manager.set_calls == [("system_status", "ok", None, True, {})]
 
@@ -840,7 +835,7 @@ class TestDockerApplicationTagMethods:
         manager = FakeDockerAppTagManager()
         app = make_docker_app(tag_manager=manager, is_async=False)
 
-        app.request_shutdown()
+        asyncio.run(app.request_shutdown())
 
         assert manager.set_calls == [("shutdown_requested", True, None, True, {})]
 
@@ -852,7 +847,7 @@ class TestDockerApplicationTagMethods:
         assert app._shutdown_requested is True
         assert manager.get_calls == [("shutdown_requested", None, None, {})]
 
-    def test_async_app_initializes_tag_manager_as_async(self):
+    def test_async_app_initializes_runtime_helpers(self):
         device_agent = FakeRuntimeDeviceAgent()
         app = AsyncStartupApp(
             app_key="test_app",
@@ -863,9 +858,8 @@ class TestDockerApplicationTagMethods:
             healthcheck_port=0,
         )
 
-        assert app._is_async is True
-        assert app.tag_manager._is_async is True
-        assert app.ui_manager._is_async is True
+        assert isinstance(app.tag_manager, TagsManagerDocker)
+        assert app.ui_manager.client is device_agent
 
     def test_async_run_startup_handles_declarative_tags_and_shutdown_subscription(
         self, monkeypatch
@@ -897,8 +891,9 @@ class TestDockerApplicationTagMethods:
                 await app.wait_until_ready()
                 await asyncio.sleep(0.05)
 
-                assert app.setup_tag_manager_is_async is True
-                assert app.tag_manager.get_tag("some_tag", app_key="test_app") == "ready"
+                assert app.tag_manager._pending_tag_aggregate == {
+                    "test_app": {"some_tag": "ready"}
+                }
                 assert len(app.shutdown_events) == 1
                 assert app.shutdown_events[0].timestamp() == pytest.approx(
                     initial_shutdown_at
@@ -906,7 +901,6 @@ class TestDockerApplicationTagMethods:
                 assert KeyPath("shutdown_at") in app.tag_manager._tag_subscriptions
 
                 await app.tag_manager._on_tag_update(
-                    TAG_CHANNEL_NAME,
                     {
                         "shutdown_at": updated_shutdown_at,
                         "test_app": {"some_tag": "ready"},

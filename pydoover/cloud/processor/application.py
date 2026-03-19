@@ -427,7 +427,7 @@ class Application:
     async def set_tag(self, key: str, value: Any):
         if self.tag_manager is None:
             raise RuntimeError("Tag manager has not been initialized.")
-        self.tag_manager.set_tag(key, value)
+        await self.tag_manager.set_tag(key, value)
 
     async def ping_connection(
         self,

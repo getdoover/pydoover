@@ -261,9 +261,9 @@ class TestCallbacksAndInteractions:
                 self.values = []
 
             @ui.callback("mode")
-            def on_mode(self, _command, new_value):
+            async def on_mode(self, _command, new_value):
                 self.values.append(new_value)
-                self.tags.mode.set(new_value)
+                await self.tags.mode.set(new_value)
 
         tags = UITags()
         tags.register_manager(FakeDockerAppTagManager())
@@ -274,7 +274,7 @@ class TestCallbacksAndInteractions:
         manager.register_callbacks(handler)
         manager.set_children(ui_obj.to_elements())
 
-        asyncio.run(manager.on_command_update_async(None, {"test_app_mode": "manual"}))
+        asyncio.run(manager.on_command_update_async({"test_app_mode": "manual"}))
 
         assert handler.values == ["manual"]
         assert tags.mode.get() == "manual"
@@ -289,7 +289,7 @@ class TestCallbacksAndInteractions:
 
         manager.set_children(ui_obj.to_elements())
 
-        asyncio.run(manager.on_command_update_async(None, {"test_app_mode": "manual"}))
+        asyncio.run(manager.on_command_update_async({"test_app_mode": "manual"}))
 
         assert tags.mode.get() == "idle"
         assert manager_backend.values == {}

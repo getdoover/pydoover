@@ -971,7 +971,7 @@ class Application:
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        await self.tag_manager.set_tag_async(
+        await self.tag_manager.set_tag(
             tag_key,
             value,
             app_key=app_key or self.app_key,
@@ -982,7 +982,7 @@ class Application:
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
         """Set multiple tags at once."""
-        await self.tag_manager.set_tags_async(
+        await self.tag_manager.set_tags(
             tags,
             app_key=app_key or self.app_key,
             only_if_changed=only_if_changed,
@@ -1009,7 +1009,12 @@ class Application:
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        await self.set_tag_async(tag_key, value, app_key=None, only_if_changed=only_if_changed)
+        await self.tag_manager.set_tag(
+            tag_key,
+            value,
+            app_key=None,
+            only_if_changed=only_if_changed,
+        )
 
 
     def _do_set_tags(

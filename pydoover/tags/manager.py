@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import time
-from pydoover.models import Aggregate
+from pydoover.models import Aggregate, EventSubscription
 
 import asyncio
 import logging
-from typing import Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from pydoover.utils.diff import apply_diff, generate_diff
 from pydoover.utils.utils import call_maybe_async
 
-from ..utils import get_is_async, maybe_async
-
-from ..docker.device_agent.device_agent import DeviceAgentInterface, EventSubscription
+if TYPE_CHECKING:
+    from ..docker.device_agent.device_agent import DeviceAgentInterface
 
 TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
 TAG_CHANNEL_NAME = "tag_values"
@@ -131,8 +130,9 @@ class TagsManager:
 class TagsManagerDocker(TagsManager):
     """Tag manager for docker applications backed by the device agent channels."""
 
-    def __init__(self, client: DeviceAgentInterface = None, tag_log_interval: int = TAG_CLOUD_MAX_AGE):
+    def __init__(self, client: "DeviceAgentInterface" = None, tag_log_interval: int = TAG_CLOUD_MAX_AGE):
         self.client: DeviceAgentInterface = client
+        self._is_async = True
 
         self._tag_values: dict[str, Any] = {}
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
@@ -148,7 +148,9 @@ class TagsManagerDocker(TagsManager):
     async def setup(self, skip_sync: bool = False):
         """Register the tag channel subscription with the backing client. Blocks until tags are synced."""
         self.client.add_event_callback(
-            TAG_CHANNEL_NAME, self._on_tag_update, EventSubscription.aggregate_update
+            TAG_CHANNEL_NAME,
+            self._wrap_aggregate_callback(self._on_tag_update),
+            EventSubscription.aggregate_update,
         )
 
         if skip_sync:
@@ -158,7 +160,15 @@ class TagsManagerDocker(TagsManager):
         tag_agg: Aggregate = await self.client.fetch_channel_aggregate(TAG_CHANNEL_NAME)
         self._tag_values = tag_agg.data
 
-    async def _on_tag_update(self, _, tag_values: dict[str, Any]):
+    @staticmethod
+    def _wrap_aggregate_callback(callback):
+        async def _wrapper(event):
+            data = event.aggregate.data if event.aggregate else {}
+            await callback(data)
+
+        return _wrapper
+
+    async def _on_tag_update(self, tag_values: dict[str, Any]):
         diff = generate_diff(self._tag_values, tag_values, do_delete=False)
         self._tag_values = tag_values or {}
         await self.fulfill_tag_subscriptions(diff)
@@ -208,12 +218,18 @@ class TagsManagerDocker(TagsManager):
     ) -> Any | None:
         """Read a tag value from the locally cached tag channel state."""
         key_path = KeyPath(key, app_key=app_key)
-        if not key_path.in_dict(self._tag_values):
+        current_values = apply_diff(
+            self._tag_values,
+            self._pending_tag_aggregate,
+            do_delete=False,
+        )
+
+        if not key_path.in_dict(current_values):
             log.debug(f"Tag {key_path} not found in current tags")
             if raise_key_error:
                 raise KeyError(key_path)
             return default
-        return key_path.lookup_dict(self._tag_values)
+        return key_path.lookup_dict(current_values)
 
     async def set_tag(
         self,
@@ -275,13 +291,13 @@ class TagsManagerDocker(TagsManager):
 
     async def commit_tags(self):
         """Publish a mesage with the changed tag values to the tag channel."""
-        self.flush_tags()
+        await self.flush_tags()
         
         now = time.time()
         if self._pending_tag_log and (
             now - self._last_tag_log_time >= self.tag_log_interval
         ):
-            self.flush_logs()
+            await self.flush_logs()
 
     async def flush_tags(self):
         """Flush any buffered tag changes."""
@@ -294,6 +310,7 @@ class TagsManagerDocker(TagsManager):
         self._tags_dirty = False
 
         await self.client.update_channel_aggregate(TAG_CHANNEL_NAME, data, max_age_secs=TAG_CLOUD_MAX_AGE)
+        apply_diff(self._tag_values, data, clone=False)
 
     async def flush_logs(self):
             
