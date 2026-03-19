@@ -360,11 +360,10 @@ class ConfigElement(Generic[RuntimeValueT]):
     def load_data(self, data):
         self.value = data
 
-
-class Integer(ConfigElement[int]):
-    _type = "integer"
-    value: int
-
+class Number(ConfigElement[int]):
+    _type = "number"
+    value: float
+    
     def __init__(
         self,
         display_name,
@@ -397,6 +396,10 @@ class Integer(ConfigElement[int]):
             res["multipleOf"] = self.multiple_of
         return res
 
+class Integer(Number):
+    _type = "integer"
+    value: int
+
     @property
     def value(self):
         return self._value
@@ -406,9 +409,7 @@ class Integer(ConfigElement[int]):
         self._value = int(value)
 
 
-class Number(Integer):
-    _type = "number"
-    value: float
+
 
 
 class Boolean(ConfigElement[bool]):
