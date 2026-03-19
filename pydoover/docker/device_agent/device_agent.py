@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import json
 import logging
 import re
 import sys
@@ -540,7 +541,7 @@ class DeviceAgentInterface(GRPCInterface):
         logging.info("Closing device agent interface...")
 
     @cli_command()
-    def listen_channel(self, channel_name: str) -> None:
+    async def listen_channel(self, channel_name: str) -> None:
         """Listen to channel events, printing the output to the console.
 
         Parameters
@@ -549,16 +550,8 @@ class DeviceAgentInterface(GRPCInterface):
             Name of channel to listen to.
         """
         try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(self._run_channel_listening(channel_name))
-        else:
-            asyncio.create_task(self._run_channel_listening(channel_name))
-
-    async def _run_channel_listening(self, channel_name: str):
-        try:
             async for event in self.stream_channel_events(channel_name):
-                print(channel_name, event)
+                print(json.dumps(event.to_dict()))
                 sys.stdout.flush()
         except asyncio.CancelledError:
             await self.close()
