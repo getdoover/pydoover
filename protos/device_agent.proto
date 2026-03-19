@@ -6,7 +6,6 @@ package device_agent;
 
 // The doover device agent service definition.
 service deviceAgent {
-
   rpc TestComms (TestCommsRequest) returns (TestCommsResponse) {}
 
   //  rpc GetChannelDetails (ChannelDetailsRequest) returns (ChannelDetailsResponse) {}
@@ -23,6 +22,7 @@ service deviceAgent {
   rpc UpdateAggregate (UpdateAggregateRequest) returns (UpdateAggregateResponse) {}
   rpc GetMessage (GetMessageRequest) returns (GetMessageResponse) {}
   rpc GetMessages (GetMessagesRequest) returns (GetMessagesResponse) {}
+  rpc FetchAttachment (FetchAttachmentRequest) returns (FetchAttachmentResponse) {}
 }
 
 message RequestHeader {
@@ -210,6 +210,10 @@ message GetMessageResponse {
 message GetMessagesRequest {
   RequestHeader header = 1;
   string channel_name = 2;
+  optional uint64 before = 3;
+  optional uint64 after = 4;
+  optional uint32 limit = 5;
+  repeated string field_names = 6;
 }
 
 message GetMessagesResponse {
@@ -292,4 +296,14 @@ message GetAggregateRequest {
 message GetAggregateResponse {
   ResponseHeader response_header = 1;
   Aggregate aggregate = 2;
+}
+
+message FetchAttachmentRequest {
+  RequestHeader header = 1;
+  Attachment attachment = 2;
+}
+
+message FetchAttachmentResponse {
+  ResponseHeader response_header = 1;
+  File file = 2;
 }

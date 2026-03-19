@@ -92,6 +92,10 @@ def extract_description(docstring: str) -> str:
     return match.group(1).strip() if match else docstring.strip()
 
 
+def comma_separated_list(data: str):
+    return [f.strip() for f in data.split(",")]
+
+
 class BoolFlag:
     def __call__(self, *args, **kwargs):
         return

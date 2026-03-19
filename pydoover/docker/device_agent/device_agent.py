@@ -8,6 +8,8 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
+from ...utils.snowflake import generate_snowflake_id_at
+
 import grpc
 
 from google.protobuf import json_format
@@ -26,6 +28,7 @@ from ...models import (
     MessageUpdateEvent,
     OneShotMessage,
     TurnCredential,
+    Attachment,
 )
 from ..grpc_interface import GRPCInterface
 from ...models.exceptions import NotFoundError
@@ -435,6 +438,7 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return Aggregate.from_proto(resp.aggregate)
 
+    @cli_command()
     async def fetch_turn_token(
         self,
     ) -> TurnCredential:
@@ -446,6 +450,41 @@ class DeviceAgentInterface(GRPCInterface):
         )
         return TurnCredential.from_proto(resp.turn_credential)
 
+    @cli_command()
+    async def list_messages(
+        self,
+        channel_name: str,
+        before: int | datetime | None = None,
+        after: int | datetime | None = None,
+        limit: int | None = None,
+        field_names: list[str] | None = None,
+    ) -> list[Message]:
+        kwargs = {}
+        if before is not None:
+            kwargs["before"] = (
+                before if isinstance(before, int) else generate_snowflake_id_at(before)
+            )
+        if after is not None:
+            kwargs["after"] = (
+                after if isinstance(after, int) else generate_snowflake_id_at(after)
+            )
+        if limit is not None:
+            kwargs["limit"] = limit
+        if field_names is not None:
+            if isinstance(field_names, str):
+                field_names = [f.strip() for f in field_names.split(",")]
+            kwargs["field_names"] = field_names
+
+        resp = await self.make_request(
+            "GetMessages",
+            device_agent_pb2.GetMessagesRequest(
+                channel_name=channel_name,
+                **kwargs,
+            ),
+        )
+        return [Message.from_proto(m) for m in resp.messages]
+
+    @cli_command()
     async def create_message(
         self,
         channel_name: str,
@@ -469,6 +508,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("CreateMessage", req)
         return resp.message_id
 
+    @cli_command()
     async def update_message(
         self,
         channel_name: str,
@@ -495,6 +535,7 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("UpdateMessage", req)
         return Message.from_proto(resp.message)
 
+    @cli_command()
     async def update_channel_aggregate(
         self,
         channel_name: str,
@@ -520,6 +561,14 @@ class DeviceAgentInterface(GRPCInterface):
         resp = await self.make_request("UpdateAggregate", req)
         return Aggregate.from_proto(resp.aggregate)
 
+    @cli_command()
+    async def fetch_message_attachment(self, attachment: Attachment) -> File:
+        req = device_agent_pb2.FetchAttachmentRequest(
+            attachment=attachment.to_proto(),
+        )
+        resp = await self.make_request("FetchAttachment", req)
+        return File.from_proto(resp.file)
+
     async def close(self):
         for task in self._stream_tasks.values():
             task.cancel()
@@ -527,7 +576,7 @@ class DeviceAgentInterface(GRPCInterface):
         logging.info("Closing device agent interface...")
 
     @cli_command()
-    def listen_channel(self, channel_name: str) -> None:
+    async def listen_channel(self, channel_name: str) -> None:
         """Listen to channel events, printing the output to the console.
 
         Parameters
@@ -536,16 +585,9 @@ class DeviceAgentInterface(GRPCInterface):
             Name of channel to listen to.
         """
         try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(self._run_channel_listening(channel_name))
-        else:
-            asyncio.create_task(self._run_channel_listening(channel_name))
-
-    async def _run_channel_listening(self, channel_name: str):
-        try:
             async for event in self.stream_channel_events(channel_name):
-                print(channel_name, event)
+                if isinstance(event, AggregateUpdateEvent):
+                    print(event.channel.name, event.aggregate.data)
                 sys.stdout.flush()
         except asyncio.CancelledError:
             await self.close()

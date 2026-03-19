@@ -4,7 +4,10 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Callable
 
-import requests
+try:
+    import requests
+except ImportError:
+    print("Requests not available")
 
 from . import Agent, Channel, Message
 from .application import Application

@@ -22,12 +22,14 @@ from ..auth._base import AsyncAuthClient
 from ._base import (
     UNSET,
     BaseClient,
+    _build_user_agent,
     _consume_auth_kwargs,
     _raise_for_status,
     _to_snowflake,
     Unset,
-    build_async_auth,
+    build_async_auth
 )
+
 from ._iterators import AsyncMessageIterator
 from ...models import (
     Aggregate,
@@ -42,6 +44,7 @@ from ...models import (
     SubscriptionInfo,
     TimeseriesResponse,
     TurnCredential,
+    Attachment,
 )
 from ...models.alarm import AlarmOperator
 from ...models.notification import (
@@ -72,13 +75,17 @@ class AsyncDataClient(BaseClient):
         super().__init__(resolved_base_url, auth=auth, owns_auth=owns_auth, **kwargs)
         self.auth: AsyncAuthClient = auth
         self._session: aiohttp.ClientSession | None = None
+        self._user_agent = _build_user_agent("aiohttp", aiohttp.__version__)
 
     async def setup(self):
         """Create the underlying aiohttp session."""
         if self._session and not self._session.closed:
             await self._session.close()
             await asyncio.sleep(0.05)
-        self._session = aiohttp.ClientSession()
+
+        self._session = aiohttp.ClientSession(
+            headers={"User-Agent": self._user_agent},
+        )
 
     async def close(self):
         """Close the underlying aiohttp sessions."""
@@ -437,27 +444,21 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_message_attachment(
         self,
-        agent_id: int,
-        channel_name: str,
-        message_id: int,
-        attachment_id: int,
+        attachment: Attachment,
         organisation_id: int | None = None,
     ) -> bytes:
         """Download a message attachment. Follows the redirect to S3."""
         self._ensure_session()
         assert self._session is not None
         await self.auth.ensure_token()
-        url = self._build_url(
-            f"/agents/{agent_id}/channels/{channel_name}"
-            f"/messages/{message_id}/attachments/{attachment_id}"
-        )
+
         async with self._session.get(
-            url,
+            attachment.url,
             headers=self._auth_headers(organisation_id),
             allow_redirects=True,
         ) as resp:
             text = await resp.text() if resp.status >= 400 else ""
-            _raise_for_status(resp.status, text, url)
+            _raise_for_status(resp.status, text, attachment.url)
             return await resp.read()
 
     async def fetch_timeseries(

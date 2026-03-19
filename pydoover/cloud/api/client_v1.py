@@ -3,7 +3,10 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional, TypeVar
 
-import requests
+try:
+    import requests
+except ImportError:
+    print("Requests not available")
 
 from .client import AccessToken, Route
 from .message import Message

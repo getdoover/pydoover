@@ -16,14 +16,12 @@ classifiers = [
 dependencies = [
     "aiohttp>=3.12.13",
     "httpx>=0.28.0",
-    "requests==2.32.3",
 ]
 
 [project.optional-dependencies]
 grpc = [
     "grpcio==1.65.1",
     "protobuf==5.28.2",
-    "grpcio-health-checking==1.65.1",
 ]
 reports = [
     "croniter>=6.0.0",

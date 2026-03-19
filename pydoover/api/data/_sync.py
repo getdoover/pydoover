@@ -21,13 +21,15 @@ from datetime import datetime
 
 from ._base import (
     UNSET,
+    _build_user_agent,
     BaseClient,
     _consume_auth_kwargs,
     _raise_for_status,
     _to_snowflake,
     Unset,
-    build_sync_auth,
-)
+    build_sync_auth
+from ..auth import decode_jwt_exp
+
 from ._iterators import MessageIterator
 from ...models import (
     Aggregate,
@@ -42,6 +44,7 @@ from ...models import (
     SubscriptionInfo,
     TimeseriesResponse,
     TurnCredential,
+    Attachment,
 )
 from ...models.alarm import AlarmOperator
 from ...models.notification import (
@@ -64,6 +67,7 @@ class DataClient(BaseClient):
 
     def __init__(self, base_url: str | None = None, **kwargs):
         timeout = kwargs.get("timeout", 60.0)
+        self._user_agent = _build_user_agent("httpx", httpx.__version__)
         auth, resolved_base_url, owns_auth = build_sync_auth(
             base_url=base_url,
             timeout=timeout,
@@ -406,23 +410,18 @@ class DataClient(BaseClient):
 
     def fetch_message_attachment(
         self,
-        agent_id: int,
-        channel_name: str,
-        message_id: int,
-        attachment_id: int,
+        attachment: Attachment,
         organisation_id: int | None = None,
     ) -> bytes:
         """Download a message attachment. Follows the redirect to S3."""
+        
         self.auth.ensure_token()
-        url = self._build_url(
-            f"/agents/{agent_id}/channels/{channel_name}"
-            f"/messages/{message_id}/attachments/{attachment_id}"
-        )
+
         resp = self._session.get(
-            url,
+            attachment.url,
             headers=self._auth_headers(organisation_id),
         )
-        _raise_for_status(resp.status_code, resp.text, url)
+        _raise_for_status(resp.status_code, resp.text, attachment.url)
         return resp.content
 
     def fetch_timeseries(

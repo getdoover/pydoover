@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+import platform
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
@@ -18,6 +19,7 @@ from ..auth._base import (
     SyncAuthClient,
     _normalise_datetime,
 )
+from ... import __version__
 from ...models.attachment import File
 from ...utils.snowflake import generate_snowflake_id_at
 from ...models.exceptions import (
@@ -28,6 +30,14 @@ from ...models.exceptions import (
 )
 
 log = logging.getLogger(__name__)
+
+_python_version = platform.python_version()
+
+
+def _build_user_agent(http_lib: str, http_lib_version: str) -> str:
+    return (
+        f"pydoover/{__version__} Python/{_python_version} {http_lib}/{http_lib_version}"
+    )
 
 
 class Unset:
@@ -104,7 +114,7 @@ class BaseClient:
         headers = dict(self.auth.get_auth_headers())
         org = organisation_id or self.organisation_id
         if org:
-            headers["X-Org-Id"] = str(org)
+            headers["X-Doover-Organisation"] = str(org)
         return headers
 
     def _build_url(self, path: str) -> str:
