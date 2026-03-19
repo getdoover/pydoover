@@ -1,0 +1,105 @@
+import importlib.util
+
+import pydoover.models.control as control
+from pydoover.models.control import (
+    CONTROL_SCHEMA_REGISTRY,
+    ControlPage,
+    Device,
+    DeviceType,
+    Group,
+    Location,
+    Organisation,
+    Theme,
+)
+
+
+THEME_WITH_ID = {
+    "id": 1,
+    "accent_colour": "#112233",
+    "brand_logo_colour": "#445566",
+    "navbar_colour": "#778899",
+    "navbar_text_colour": "#ffffff",
+    "sidebar_colour": "#101010",
+    "sidebar_text_colour": "#eeeeee",
+    "banner_image": None,
+}
+
+
+def test_control_models_are_canonical_only():
+    assert importlib.util.find_spec("pydoover.models.control.transport") is None
+    assert not hasattr(control, "ThemeWithId")
+    assert not hasattr(control, "ThemeWithIdRequest")
+    assert not hasattr(control, "PaginatedThemeWithIdList")
+
+
+def test_location_round_trips():
+    location = Location.from_dict({"latitude": -33.86, "longitude": 151.21})
+
+    assert location.to_dict() == {"latitude": -33.86, "longitude": 151.21}
+
+
+def test_organisation_from_version_uses_schema_version_metadata():
+    organisation = Organisation.from_version(
+        "BasicOrganisationDetail",
+        {"id": 101, "name": "Example Org", "archived": False},
+    )
+
+    assert organisation.id == 101
+    assert organisation.name == "Example Org"
+    assert organisation.archived is False
+    assert organisation.to_version("BasicOrganisationDetail") == {
+        "id": 101,
+        "name": "Example Org",
+        "archived": False,
+    }
+
+
+def test_device_request_serialization_uses_output_id_mapping():
+    device = Device(
+        name="device-1",
+        display_name="Device One",
+        type=DeviceType(id=201),
+        group=Group(id=301),
+        fixed_location=Location(latitude=-33.86, longitude=151.21),
+        solution_config={"mode": "auto"},
+    )
+
+    payload = device.to_version("DeviceSerializerDetailRequest", method="POST")
+
+    assert payload["display_name"] == "Device One"
+    assert payload["type_id"] == 201
+    assert payload["group_id"] == 301
+    assert payload["fixed_location"] == {
+        "latitude": -33.86,
+        "longitude": 151.21,
+    }
+    assert payload["solution_config"] == {"mode": "auto"}
+
+
+def test_control_page_round_trips_with_canonical_models():
+    page = ControlPage.from_dict(
+        {
+            "count": 1,
+            "next": None,
+            "previous": None,
+            "results": [THEME_WITH_ID],
+        },
+        Theme,
+    )
+
+    assert page.count == 1
+    assert isinstance(page.results[0], Theme)
+    assert page.to_dict()["results"][0]["id"] == 1
+
+
+def test_control_schema_registry_preserves_exact_schema_names():
+    assert CONTROL_SCHEMA_REGISTRY["ThemeSerializerWithIdList"] == {
+        "kind": "model",
+        "model": "Theme",
+        "version": "ThemeSerializerWithIdList",
+    }
+    assert CONTROL_SCHEMA_REGISTRY["PaginatedThemeSerializerWithIdListList"] == {
+        "kind": "page",
+        "model": "Theme",
+        "version": "ThemeSerializerWithIdList",
+    }

@@ -1,0 +1,5691 @@
+from __future__ import annotations
+
+from typing import Any
+
+from ._base import _ControlGroupBase
+
+
+class AgentsAsyncGroup(_ControlGroupBase):
+    async def retrieve(self, organisation_id: int | None = None):
+        path = f"/agents/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+class AnalyticsAsyncGroup(_ControlGroupBase):
+    async def summary(self, organisation_id: int | None = None):
+        path = f"/analytics/summary/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def summary_retrieve_2(self, days: int, organisation_id: int | None = None):
+        path = f"/analytics/summary/{days}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+class AppDeploymentsAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/app_deployments/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationDeploymentSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationDeploymentSerializerDetail',
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/app_deployments/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationDeploymentSerializerListList',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/app_deployments/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationDeploymentSerializerDetail',
+            item_schema=None,
+        )
+
+class AppInstallsAsyncGroup(_ControlGroupBase):
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/app_installs/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/app_installs/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/app_installs/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def deployments_create(self, parent_lookup_app_install: str, body: Any, organisation_id: int | None = None):
+        path = f"/app_installs/{parent_lookup_app_install}/deployments/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationDeploymentSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationDeploymentSerializerDetail',
+            item_schema=None,
+        )
+
+    async def deployments_retrieve(self, id: str, parent_lookup_app_install: str, organisation_id: int | None = None):
+        path = f"/app_installs/{parent_lookup_app_install}/deployments/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationDeploymentSerializerDetail',
+            item_schema=None,
+        )
+
+    async def deployments_list(self, parent_lookup_app_install: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/app_installs/{parent_lookup_app_install}/deployments/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationDeploymentSerializerListList',
+            item_schema=None,
+        )
+
+    async def list(self, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None):
+        path = f"/app_installs/"
+        params = {
+            "application": application,
+            "archived": archived,
+            "device": device,
+            "display_name": display_name,
+            "display_name__contains": display_name__contains,
+            "display_name__icontains": display_name__icontains,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "solution": solution,
+            "status": status,
+            "template": template,
+            "version": version,
+            "version__contains": version__contains,
+            "version__icontains": version__icontains,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationInstallationSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/app_installs/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedApplicationInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/app_installs/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sync_config_profiles(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/app_installs/{id}/sync_config_profiles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/app_installs/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/app_installs/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+class ApplicationsAsyncGroup(_ControlGroupBase):
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/applications/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def config_profiles_create(self, parent_lookup_application: str, body: Any, organisation_id: int | None = None):
+        path = f"/applications/{parent_lookup_application}/config_profiles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationConfigProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationConfigProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def config_profiles_retrieve(self, id: str, parent_lookup_application: str, organisation_id: int | None = None):
+        path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationConfigProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def config_profiles_update(self, id: str, parent_lookup_application: str, body: Any, organisation_id: int | None = None):
+        path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationConfigProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationConfigProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def config_profiles_list(self, parent_lookup_application: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/applications/{parent_lookup_application}/config_profiles/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationConfigProfileSerializerListList',
+            item_schema=None,
+        )
+
+    async def config_profiles_partial(self, id: str, parent_lookup_application: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedApplicationConfigProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationConfigProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/applications/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, parent_lookup_application: str, organisation_id: int | None = None):
+        path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def installs_list(self, parent_lookup_application: str, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None):
+        path = f"/applications/{parent_lookup_application}/installs/"
+        params = {
+            "application": application,
+            "archived": archived,
+            "device": device,
+            "display_name": display_name,
+            "display_name__contains": display_name__contains,
+            "display_name__icontains": display_name__icontains,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "solution": solution,
+            "status": status,
+            "template": template,
+            "version": version,
+            "version__contains": version__contains,
+            "version__icontains": version__icontains,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationInstallationSerializerListList',
+            item_schema=None,
+        )
+
+    async def installs_sync_config_profiles(self, id: str, parent_lookup_application: str, body: Any, organisation_id: int | None = None):
+        path = f"/applications/{parent_lookup_application}/installs/{id}/sync_config_profiles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def list(self, allow_many: bool | None = None, approx_installs: int | None = None, approx_installs__gt: int | None = None, approx_installs__gte: int | None = None, approx_installs__lt: int | None = None, approx_installs__lte: int | None = None, archived: bool | None = None, container_registry_profile: str | None = None, description: str | None = None, description__contains: str | None = None, description__icontains: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, stars: int | None = None, stars__gt: int | None = None, stars__gte: int | None = None, stars__lt: int | None = None, stars__lte: int | None = None, type: str | None = None, visibility: str | None = None, organisation_id: int | None = None):
+        path = f"/applications/"
+        params = {
+            "allow_many": allow_many,
+            "approx_installs": approx_installs,
+            "approx_installs__gt": approx_installs__gt,
+            "approx_installs__gte": approx_installs__gte,
+            "approx_installs__lt": approx_installs__lt,
+            "approx_installs__lte": approx_installs__lte,
+            "archived": archived,
+            "container_registry_profile": container_registry_profile,
+            "description": description,
+            "description__contains": description__contains,
+            "description__icontains": description__icontains,
+            "display_name": display_name,
+            "display_name__contains": display_name__contains,
+            "display_name__icontains": display_name__icontains,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "stars": stars,
+            "stars__gt": stars__gt,
+            "stars__gte": stars__gte,
+            "stars__lt": stars__lt,
+            "stars__lte": stars__lte,
+            "type": type,
+            "visibility": visibility,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/applications/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedApplicationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def processor_source(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/applications/{id}/processor_source/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationSerializerDetailRequest',
+            body_mode="multipart",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def processor_version(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/applications/{id}/processor_version/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/applications/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/applications/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/applications/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
+class AssistantAsyncGroup(_ControlGroupBase):
+    async def message(self, organisation_id: int | None = None):
+        path = f"/assistant/message/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def messages(self, id: str, organisation_id: int | None = None):
+        path = f"/assistant/messages/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AIChatMessageSerializerDetail',
+            item_schema=None,
+        )
+
+    async def messages_list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/assistant/messages/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedAIChatMessageSerializerListList',
+            item_schema=None,
+        )
+
+    async def sessions(self, id: str, organisation_id: int | None = None):
+        path = f"/assistant/sessions/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AIChatSessionDetailSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sessions_list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/assistant/sessions/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedAIChatSessionSerializerListList',
+            item_schema=None,
+        )
+
+class ContainerAsyncGroup(_ControlGroupBase):
+    pass
+
+class ContainerRegistryAsyncGroup(_ControlGroupBase):
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/container/registry/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ContainerRegistryProfileSeraliserDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/container/registry/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ContainerRegistryProfileSeraliserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ContainerRegistryProfileSeraliserDetail',
+            item_schema=None,
+        )
+
+    async def list(self, archived: bool | None = None, description: str | None = None, description__contains: str | None = None, description__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, url: str | None = None, url__contains: str | None = None, url__icontains: str | None = None, username: str | None = None, username__contains: str | None = None, username__icontains: str | None = None, organisation_id: int | None = None):
+        path = f"/container/registry/"
+        params = {
+            "archived": archived,
+            "description": description,
+            "description__contains": description__contains,
+            "description__icontains": description__icontains,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "url": url,
+            "url__contains": url__contains,
+            "url__icontains": url__icontains,
+            "username": username,
+            "username__contains": username__contains,
+            "username__icontains": username__icontains,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedContainerRegistryProfileSeraliserListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/container/registry/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedContainerRegistryProfileSeraliserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ContainerRegistryProfileSeraliserDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/container/registry/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ContainerRegistryProfileSeraliserDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/container/registry/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ContainerRegistryProfileSeraliserDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/container/registry/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ContainerRegistryProfileSeraliserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ContainerRegistryProfileSeraliserDetail',
+            item_schema=None,
+        )
+
+class DevicesAsyncGroup(_ControlGroupBase):
+    async def app_installs_list(self, parent_lookup_device: str, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/app_installs/"
+        params = {
+            "application": application,
+            "archived": archived,
+            "device": device,
+            "display_name": display_name,
+            "display_name__contains": display_name__contains,
+            "display_name__icontains": display_name__icontains,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "solution": solution,
+            "status": status,
+            "template": template,
+            "version": version,
+            "version__contains": version__contains,
+            "version__icontains": version__icontains,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationInstallationSerializerListList',
+            item_schema=None,
+        )
+
+    async def app_installs_sync_config_profiles(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/app_installs/{id}/sync_config_profiles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/devices/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, parent_lookup_device: str, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def installer(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/{id}/installer/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def installer_info(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/{id}/installer/info/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def installer_tarball(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/{id}/installer/tarball/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="bytes",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def installer_zip(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/{id}/installer/zip/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="bytes",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, application: str | None = None, archived: bool | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, group: str | None = None, id: list[Any] | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, type: str | None = None, organisation_id: int | None = None):
+        path = f"/devices/"
+        params = {
+            "application": application,
+            "archived": archived,
+            "display_name": display_name,
+            "display_name__contains": display_name__contains,
+            "display_name__icontains": display_name__icontains,
+            "group": group,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "type": type,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedDeviceSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedDeviceSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def solution_installs_deploy(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/solution_installs/{id}/deploy/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def solution_installs_list(self, parent_lookup_device: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/solution_installs/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedSolutionInstallationSerializerListList',
+            item_schema=None,
+        )
+
+    async def solution_installs_sync(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/solution_installs/{id}/sync/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def tunnels_create(self, parent_lookup_device: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/tunnels/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='TunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def tunnels_retrieve(self, id: str, parent_lookup_device: str, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def tunnels_update(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='TunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def tunnels_activate(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/tunnels/{id}/activate/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='TunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def tunnels_deactivate(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/tunnels/{id}/deactivate/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='TunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def tunnels_list(self, parent_lookup_device: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/tunnels/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedTunnelSerializerListList',
+            item_schema=None,
+        )
+
+    async def tunnels_partial(self, id: str, parent_lookup_device: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedTunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def types_create(self, body: Any, organisation_id: int | None = None):
+        path = f"/devices/types/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceTypeSerializerDetailRequest',
+            body_mode="multipart",
+            binary_fields=['installer'],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeSerializerDetail',
+            item_schema=None,
+        )
+
+    async def types_retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/types/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeSerializerDetail',
+            item_schema=None,
+        )
+
+    async def types_update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/types/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceTypeSerializerDetailRequest',
+            body_mode="multipart",
+            binary_fields=['installer'],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeSerializerDetail',
+            item_schema=None,
+        )
+
+    async def types_archive(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/types/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeSerializerDetail',
+            item_schema=None,
+        )
+
+    async def types_list(self, archived: bool | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, stars: int | None = None, stars__gt: int | None = None, stars__gte: int | None = None, stars__lt: int | None = None, stars__lte: int | None = None, organisation_id: int | None = None):
+        path = f"/devices/types/"
+        params = {
+            "archived": archived,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "stars": stars,
+            "stars__gt": stars__gt,
+            "stars__gte": stars__gte,
+            "stars__lt": stars__lt,
+            "stars__lte": stars__lte,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedDeviceTypeSerializerListList',
+            item_schema=None,
+        )
+
+    async def types_partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/devices/types/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedDeviceTypeSerializerDetailRequest',
+            body_mode="multipart",
+            binary_fields=['installer'],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeSerializerDetail',
+            item_schema=None,
+        )
+
+    async def types_unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/types/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeSerializerDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/devices/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceSerializerDetail',
+            item_schema=None,
+        )
+
+class GroupsAsyncGroup(_ControlGroupBase):
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/groups/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/groups/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='GroupSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/groups/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def roles_delete(self, id: str, organisation_id: int | None = None):
+        path = f"/groups/roles/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def users_delete(self, parent_lookup_group: str, user: str, organisation_id: int | None = None):
+        path = f"/groups/{parent_lookup_group}/users/{user}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, archived: bool | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, permission: str | None = None, root_group: bool | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/groups/"
+        params = {
+            "archived": archived,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "permission": permission,
+            "root_group": root_group,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedGroupSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/groups/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedGroupSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/groups/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def roles_create(self, body: Any, organisation_id: int | None = None):
+        path = f"/groups/roles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='GroupRoleSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def roles_retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/groups/roles/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def roles_update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/groups/roles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='GroupRoleSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def roles_archive(self, id: str, organisation_id: int | None = None):
+        path = f"/groups/roles/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def roles_list(self, archived: bool | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/groups/roles/"
+        params = {
+            "archived": archived,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedGroupRoleSerializerListList',
+            item_schema=None,
+        )
+
+    async def roles_partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/groups/roles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedGroupRoleSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def roles_unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/groups/roles/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/groups/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/groups/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='GroupSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def users_create(self, parent_lookup_group: str, body: Any, organisation_id: int | None = None):
+        path = f"/groups/{parent_lookup_group}/users/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='GroupPermissionSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupPermissionSerializerDetail',
+            item_schema=None,
+        )
+
+    async def users_retrieve(self, parent_lookup_group: str, user: str, organisation_id: int | None = None):
+        path = f"/groups/{parent_lookup_group}/users/{user}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupPermissionSerializerDetail',
+            item_schema=None,
+        )
+
+    async def users_update(self, parent_lookup_group: str, user: str, body: Any, organisation_id: int | None = None):
+        path = f"/groups/{parent_lookup_group}/users/{user}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='GroupPermissionSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupPermissionSerializerDetail',
+            item_schema=None,
+        )
+
+    async def users_list(self, parent_lookup_group: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/groups/{parent_lookup_group}/users/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedGroupPermissionSerializerListList',
+            item_schema=None,
+        )
+
+    async def users_partial(self, parent_lookup_group: str, user: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/groups/{parent_lookup_group}/users/{user}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedGroupPermissionSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='GroupPermissionSerializerDetail',
+            item_schema=None,
+        )
+
+class IntegrationsAsyncGroup(_ControlGroupBase):
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/integrations/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='IntegrationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/integrations/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='IntegrationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='IntegrationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/integrations/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None):
+        path = f"/integrations/"
+        params = {
+            "application": application,
+            "archived": archived,
+            "device": device,
+            "display_name": display_name,
+            "display_name__contains": display_name__contains,
+            "display_name__icontains": display_name__icontains,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "solution": solution,
+            "status": status,
+            "template": template,
+            "version": version,
+            "version__contains": version__contains,
+            "version__icontains": version__icontains,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedIntegrationSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/integrations/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedIntegrationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='IntegrationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/integrations/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='IntegrationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sync_config_profiles(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/integrations/{id}/sync_config_profiles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='IntegrationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='IntegrationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/integrations/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='IntegrationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/integrations/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='IntegrationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='IntegrationSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsAsyncGroup(_ControlGroupBase):
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, archived: bool | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, page: int | None = None, per_page: int | None = None, retention_period: int | None = None, retention_period__gt: int | None = None, retention_period__gte: int | None = None, retention_period__lt: int | None = None, retention_period__lte: int | None = None, search: str | None = None, test_field_A: int | None = None, test_field_A__gt: int | None = None, test_field_A__gte: int | None = None, test_field_A__lt: int | None = None, test_field_A__lte: int | None = None, organisation_id: int | None = None):
+        path = f"/organisations/"
+        params = {
+            "archived": archived,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "retention_period": retention_period,
+            "retention_period__gt": retention_period__gt,
+            "retention_period__gte": retention_period__gte,
+            "retention_period__lt": retention_period__lt,
+            "retention_period__lte": retention_period__lte,
+            "search": search,
+            "test_field_A": test_field_A,
+            "test_field_A__gt": test_field_A__gt,
+            "test_field_A__gte": test_field_A__gte,
+            "test_field_A__lt": test_field_A__lt,
+            "test_field_A__lte": test_field_A__lte,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedOrganisationSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedOrganisationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sync_data(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/sync_data/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sync_data_create_2(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/{id}/sync_data/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sync_fusion(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/sync_fusion/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sync_fusion_create_2(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/{id}/sync_fusion/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingAsyncGroup(_ControlGroupBase):
+    async def checkout(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/checkout/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def portal(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/portal/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def usage(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/usage/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+class OrganisationsBillingAccountAsyncGroup(_ControlGroupBase):
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/account/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedBillingAccountSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/account/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedBillingAccountSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='BillingAccountSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/account/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='BillingAccountSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/account/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='BillingAccountSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='BillingAccountSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingAdminAsyncGroup(_ControlGroupBase):
+    async def group_seller_customer_overview(self, group_id: int, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_invoices_pdf(self, id: str, invoice_id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/invoices/{invoice_id}/pdf/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="bytes",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_invoices_upcoming_pdf(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/invoices/upcoming/pdf/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="bytes",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_meter(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/meter/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_metering_mode_partial(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/metering-mode/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_portal(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/portal/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_resync(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/resync/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_seller_account_link(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/seller-account-link/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_seller_customer_overview(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/seller-customer-overview/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_seller_customer_portal(self, id: str, sc_id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/seller-customer-portal/{sc_id}/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_seller_overview(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/seller-overview/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_setup(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/setup/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_setup_seller(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/setup-seller/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def org_setup_seller_customer(self, id: str, sc_id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/admin/org/{id}/setup-seller-customer/{sc_id}/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+class OrganisationsBillingAgentItemsAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/agent_items/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='AgentBillingItemSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AgentBillingItemSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/agent_items/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, billing_product: str | None = None, device: str | None = None, effective_from: str | None = None, effective_from__gte: str | None = None, effective_from__lte: str | None = None, effective_until: str | None = None, effective_until__gte: str | None = None, effective_until__isnull: bool | None = None, effective_until__lte: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/agent_items/"
+        params = {
+            "billing_product": billing_product,
+            "device": device,
+            "effective_from": effective_from,
+            "effective_from__gte": effective_from__gte,
+            "effective_from__lte": effective_from__lte,
+            "effective_until": effective_until,
+            "effective_until__gte": effective_until__gte,
+            "effective_until__isnull": effective_until__isnull,
+            "effective_until__lte": effective_until__lte,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedAgentBillingItemSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/agent_items/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedAgentBillingItemSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AgentBillingItemSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/agent_items/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AgentBillingItemSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/agent_items/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='AgentBillingItemSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AgentBillingItemSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingAppConfigsAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/app_configs/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='AppBillingConfigSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AppBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/app_configs/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, application: str | None = None, billable: bool | None = None, ordering: str | None = None, owner_organisation: str | None = None, owner_organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/app_configs/"
+        params = {
+            "application": application,
+            "billable": billable,
+            "ordering": ordering,
+            "owner_organisation": owner_organisation,
+            "owner_organisation__isnull": owner_organisation__isnull,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedAppBillingConfigSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/app_configs/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedAppBillingConfigSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AppBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/app_configs/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AppBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/app_configs/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='AppBillingConfigSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='AppBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingDeviceTypeConfigsAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/device_type_configs/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceTypeBillingConfigSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/device_type_configs/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, billing_product: str | None = None, device_type: str | None = None, ordering: str | None = None, owner_organisation: str | None = None, owner_organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/device_type_configs/"
+        params = {
+            "billing_product": billing_product,
+            "device_type": device_type,
+            "ordering": ordering,
+            "owner_organisation": owner_organisation,
+            "owner_organisation__isnull": owner_organisation__isnull,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedDeviceTypeBillingConfigSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/device_type_configs/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedDeviceTypeBillingConfigSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/device_type_configs/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/device_type_configs/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceTypeBillingConfigSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingDevicesAsyncGroup(_ControlGroupBase):
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/devices/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedDeviceBillingConfigSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedDeviceBillingConfigSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceBillingConfigSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceBillingConfigSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingGroupAsyncGroup(_ControlGroupBase):
+    async def billing_create(self, group_id: int, organisation_id: int | None = None):
+        path = f"/organisations/billing/group/{group_id}/billing/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def billing_retrieve(self, group_id: int, organisation_id: int | None = None):
+        path = f"/organisations/billing/group/{group_id}/billing/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+class OrganisationsBillingInvoicesAsyncGroup(_ControlGroupBase):
+    async def pdf(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/invoices/{id}/pdf/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="bytes",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def retrieve(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/invoices/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def retrieve_2(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/invoices/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def upcoming_pdf(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/invoices/upcoming/pdf/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="bytes",
+            response_schema=None,
+            item_schema=None,
+        )
+
+class OrganisationsBillingMeteringRunsAsyncGroup(_ControlGroupBase):
+    async def create(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/metering_runs/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='UsageMeteringRunSerializerDetail',
+            item_schema=None,
+        )
+
+    async def list(self, date: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, started_at__gte: str | None = None, started_at__lte: str | None = None, status: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/metering_runs/"
+        params = {
+            "date": date,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "started_at__gte": started_at__gte,
+            "started_at__lte": started_at__lte,
+            "status": status,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedUsageMeteringRunSerializerListList',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/metering_runs/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='UsageMeteringRunSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingProductsAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/products/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='BillingProductSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='BillingProductSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/products/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, active: bool | None = None, app_visibility_tier: str | None = None, ordering: str | None = None, owner_organisation: str | None = None, owner_organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, product_type: str | None = None, search: str | None = None, stripe_account: str | None = None, stripe_account__isnull: bool | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/products/"
+        params = {
+            "active": active,
+            "app_visibility_tier": app_visibility_tier,
+            "ordering": ordering,
+            "owner_organisation": owner_organisation,
+            "owner_organisation__isnull": owner_organisation__isnull,
+            "page": page,
+            "per_page": per_page,
+            "product_type": product_type,
+            "search": search,
+            "stripe_account": stripe_account,
+            "stripe_account__isnull": stripe_account__isnull,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedBillingProductSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/products/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedBillingProductSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='BillingProductSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/products/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='BillingProductSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/products/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='BillingProductSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='BillingProductSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingSellerCustomersAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/seller_customers/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SellerCustomerSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SellerCustomerSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/seller_customers/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, group: str | None = None, group__organisation: str | None = None, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, stripe_customer_id: str | None = None, stripe_customer_id__isnull: bool | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/seller_customers/"
+        params = {
+            "group": group,
+            "group__organisation": group__organisation,
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "stripe_customer_id": stripe_customer_id,
+            "stripe_customer_id__isnull": stripe_customer_id__isnull,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedSellerCustomerSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/seller_customers/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedSellerCustomerSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SellerCustomerSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/seller_customers/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SellerCustomerSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/billing/seller_customers/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='SellerCustomerSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SellerCustomerSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingStripeAsyncGroup(_ControlGroupBase):
+    async def accounts(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/stripe/accounts/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def products_create(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/stripe/products/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def products_retrieve(self, organisation_id: int | None = None):
+        path = f"/organisations/billing/stripe/products/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+class OrganisationsBillingSubscriptionsAsyncGroup(_ControlGroupBase):
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/subscriptions/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedBillingSubscriptionSerializerListList',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/subscriptions/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='BillingSubscriptionSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsBillingUsageRecordsAsyncGroup(_ControlGroupBase):
+    async def list(self, agent_billing_item: str | None = None, billing_product: str | None = None, device_online: bool | None = None, metering_run: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, record_type: str | None = None, revenue_target: str | None = None, search: str | None = None, seller_customer: str | None = None, seller_customer__isnull: bool | None = None, organisation_id: int | None = None):
+        path = f"/organisations/billing/usage_records/"
+        params = {
+            "agent_billing_item": agent_billing_item,
+            "billing_product": billing_product,
+            "device_online": device_online,
+            "metering_run": metering_run,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "record_type": record_type,
+            "revenue_target": revenue_target,
+            "search": search,
+            "seller_customer": seller_customer,
+            "seller_customer__isnull": seller_customer__isnull,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedUsageRecordSerializerListList',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/billing/usage_records/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='UsageRecordSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsDomainsAsyncGroup(_ControlGroupBase):
+    async def create(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/{id}/domains/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: int, organisation_id: int | None = None):
+        path = f"/organisations/domains/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/domains/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedOrganisationDomainSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: int, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/domains/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedOrganisationDomainSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationDomainSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: int, organisation_id: int | None = None):
+        path = f"/organisations/domains/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationDomainSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsPendingUsersAsyncGroup(_ControlGroupBase):
+    async def approve(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/pending_users/{id}/approve/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='PendingUserSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='PendingUserSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/pending_users/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='PendingUserSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='PendingUserSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/pending_users/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/pending_users/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedPendingUserSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/pending_users/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedPendingUserSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='PendingUserSerializerDetail',
+            item_schema=None,
+        )
+
+    async def reject(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/pending_users/{id}/reject/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='PendingUserSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='PendingUserSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/pending_users/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='PendingUserSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/pending_users/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='PendingUserSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='PendingUserSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsRolesAsyncGroup(_ControlGroupBase):
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/roles/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/roles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationRoleSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/roles/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, archived: bool | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/roles/"
+        params = {
+            "archived": archived,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedOrganisationRoleSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/roles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedOrganisationRoleSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/roles/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/roles/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationRoleSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/roles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationRoleSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationRoleSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsSharedProfilesAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/shared_profiles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSharedReceiveProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/shared_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/shared_profiles/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedOrganisationSharedReceiveProfileSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/shared_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedOrganisationSharedReceiveProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/shared_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sharing_profile(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/shared_profiles/{id}/sharing_profile/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/shared_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSharedReceiveProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsSharingProfilesAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/sharing_profiles/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSharingProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharingProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/sharing_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/sharing_profiles/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedOrganisationSharingProfileSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/sharing_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedOrganisationSharingProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharingProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/organisations/sharing_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharingProfileSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/sharing_profiles/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationSharingProfileSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationSharingProfileSerializerDetail',
+            item_schema=None,
+        )
+
+class OrganisationsUsersAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/users/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationUserSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationUserSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, user: str, organisation_id: int | None = None):
+        path = f"/organisations/users/{user}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def groups_list(self, parent_lookup_user: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/users/{parent_lookup_user}/groups/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedGroupPermissionSerializerListList',
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/organisations/users/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedOrganisationUserSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, user: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/organisations/users/{user}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedOrganisationUserSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationUserSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, user: str, organisation_id: int | None = None):
+        path = f"/organisations/users/{user}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationUserSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, user: str, body: Any, organisation_id: int | None = None):
+        path = f"/organisations/users/{user}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='OrganisationUserSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='OrganisationUserSerializerDetail',
+            item_schema=None,
+        )
+
+class PermissionsAsyncGroup(_ControlGroupBase):
+    async def sync(self, organisation_id: int | None = None):
+        path = f"/permissions/sync"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+class ReportsAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/reports/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ReportCreateSerialiserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ReportSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/reports/schedules/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, organisation_id: int | None = None):
+        path = f"/reports/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="list_model",
+            response_schema=None,
+            item_schema='ReportSerialiserList',
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/reports/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ReportSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def schedules_create(self, body: Any, organisation_id: int | None = None):
+        path = f"/reports/schedules/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ReportScheduleSerialiserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ReportScheduleSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def schedules_retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/reports/schedules/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ReportScheduleSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def schedules_update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/reports/schedules/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ReportScheduleSerialiserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ReportScheduleSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def schedules_archive(self, id: str, organisation_id: int | None = None):
+        path = f"/reports/schedules/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ReportScheduleSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def schedules_list(self, application: str | None = None, archived: bool | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, status: str | None = None, organisation_id: int | None = None):
+        path = f"/reports/schedules/"
+        params = {
+            "application": application,
+            "archived": archived,
+            "display_name": display_name,
+            "display_name__contains": display_name__contains,
+            "display_name__icontains": display_name__icontains,
+            "id": id,
+            "name": name,
+            "name__contains": name__contains,
+            "name__icontains": name__icontains,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "status": status,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedReportScheduleSerialiserListList',
+            item_schema=None,
+        )
+
+    async def schedules_partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/reports/schedules/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedReportScheduleSerialiserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ReportScheduleSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def schedules_unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/reports/schedules/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ReportScheduleSerialiserDetail',
+            item_schema=None,
+        )
+
+class SharedDevicesAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/shared_devices/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SharedDeviceSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SharedDeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/shared_devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/shared_devices/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedSharedDeviceSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/shared_devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedSharedDeviceSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SharedDeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/shared_devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SharedDeviceSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/shared_devices/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='SharedDeviceSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SharedDeviceSerializerDetail',
+            item_schema=None,
+        )
+
+class SharedGroupsAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/shared_groups/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SharedGroupSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SharedGroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/shared_groups/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/shared_groups/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedSharedGroupSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/shared_groups/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedSharedGroupSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SharedGroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/shared_groups/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SharedGroupSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/shared_groups/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='SharedGroupSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SharedGroupSerializerDetail',
+            item_schema=None,
+        )
+
+class SiteAsyncGroup(_ControlGroupBase):
+    async def retrieve(self, hostname: str | None = None, organisation_id: int | None = None):
+        path = f"/site/"
+        params = {
+            "hostname": hostname,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='CustomerSiteSerializerDetail',
+            item_schema=None,
+        )
+
+class SolutionInstallsAsyncGroup(_ControlGroupBase):
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/solution_installs/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/solution_installs/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def deploy(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/solution_installs/{id}/deploy/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/solution_installs/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedSolutionInstallationSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/solution_installs/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedSolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/solution_installs/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def sync(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/solution_installs/{id}/sync/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/solution_installs/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+class SolutionsAsyncGroup(_ControlGroupBase):
+    async def application_templates_create(self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/application_templates/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationTemplateSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationTemplateSerializerDetail',
+            item_schema=None,
+        )
+
+    async def application_templates_retrieve(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationTemplateSerializerDetail',
+            item_schema=None,
+        )
+
+    async def application_templates_update(self, id: str, parent_lookup_solution: str, body: Any, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationTemplateSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationTemplateSerializerDetail',
+            item_schema=None,
+        )
+
+    async def application_templates_list(self, parent_lookup_solution: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/application_templates/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationTemplateSerializerListList',
+            item_schema=None,
+        )
+
+    async def application_templates_partial(self, id: str, parent_lookup_solution: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedApplicationTemplateSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationTemplateSerializerDetail',
+            item_schema=None,
+        )
+
+    async def archive(self, id: str, organisation_id: int | None = None):
+        path = f"/solutions/{id}/archive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/solutions/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def installs_deploy(self, id: str, parent_lookup_solution: str, body: Any, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/installs/{id}/deploy/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def installs_list(self, parent_lookup_solution: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/installs/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedSolutionInstallationSerializerListList',
+            item_schema=None,
+        )
+
+    async def installs_sync(self, id: str, parent_lookup_solution: str, body: Any, organisation_id: int | None = None):
+        path = f"/solutions/{parent_lookup_solution}/installs/{id}/sync/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionInstallationSerializerDetail',
+            item_schema=None,
+        )
+
+    async def list(self, archived: bool | None = None, description: str | None = None, description__contains: str | None = None, description__icontains: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/solutions/"
+        params = {
+            "archived": archived,
+            "description": description,
+            "description__contains": description__contains,
+            "description__icontains": description__icontains,
+            "display_name": display_name,
+            "display_name__contains": display_name__contains,
+            "display_name__icontains": display_name__icontains,
+            "id": id,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedSolutionSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/solutions/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedSolutionSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/solutions/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionSerializerDetail',
+            item_schema=None,
+        )
+
+    async def unarchive(self, id: str, organisation_id: int | None = None):
+        path = f"/solutions/{id}/unarchive/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/solutions/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionSerializerDetail',
+            item_schema=None,
+        )
+
+class ThemesAsyncGroup(_ControlGroupBase):
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/themes/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedThemeSerializerWithIdListList',
+            item_schema=None,
+        )
+
+    async def partial(self, organisation: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/themes/{organisation}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedThemeSerializerWithIdDetailRequest',
+            body_mode="multipart",
+            binary_fields=['banner_image', 'login_banner', 'sidebar_banner_image', 'site_logo'],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ThemeSerializerWithIdDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, organisation: str, organisation_id: int | None = None):
+        path = f"/themes/{organisation}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ThemeSerializerWithIdDetail',
+            item_schema=None,
+        )
+
+    async def update(self, organisation: str, body: Any, organisation_id: int | None = None):
+        path = f"/themes/{organisation}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ThemeSerializerWithIdDetailRequest',
+            body_mode="multipart",
+            binary_fields=['banner_image', 'login_banner', 'sidebar_banner_image', 'site_logo'],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ThemeSerializerWithIdDetail',
+            item_schema=None,
+        )
+
+class TunnelsAsyncGroup(_ControlGroupBase):
+    async def activate(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/tunnels/{id}/activate/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='TunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def create(self, body: Any, organisation_id: int | None = None):
+        path = f"/tunnels/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='TunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def deactivate(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/tunnels/{id}/deactivate/"
+        params = None
+        return await self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='TunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def delete(self, id: str, organisation_id: int | None = None):
+        path = f"/tunnels/{id}/"
+        params = None
+        return await self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/tunnels/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedTunnelSerializerListList',
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/tunnels/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedTunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/tunnels/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any, organisation_id: int | None = None):
+        path = f"/tunnels/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='TunnelSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='TunnelSerializerDetail',
+            item_schema=None,
+        )
+
+class UsersAsyncGroup(_ControlGroupBase):
+    async def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None):
+        path = f"/users/"
+        params = {
+            "ordering": ordering,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedUserSerialiserListList',
+            item_schema=None,
+        )
+
+    async def me(self, organisation_id: int | None = None):
+        path = f"/users/me/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    async def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/users/{id}/"
+        params = None
+        return await self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedUserSerialiserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='UserSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def retrieve(self, id: str, organisation_id: int | None = None):
+        path = f"/users/{id}/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='UserSerialiserDetail',
+            item_schema=None,
+        )
+
+    async def update(self, id: str, body: Any | None = None, organisation_id: int | None = None):
+        path = f"/users/{id}/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='UserSerialiserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='UserSerialiserDetail',
+            item_schema=None,
+        )
+
+def _attach_async_groups(root):
+    root.agents = AgentsAsyncGroup(root)
+    root.analytics = AnalyticsAsyncGroup(root)
+    root.app_deployments = AppDeploymentsAsyncGroup(root)
+    root.app_installs = AppInstallsAsyncGroup(root)
+    root.applications = ApplicationsAsyncGroup(root)
+    root.assistant = AssistantAsyncGroup(root)
+    root.container = ContainerAsyncGroup(root)
+    root.container.registry = ContainerRegistryAsyncGroup(root)
+    root.devices = DevicesAsyncGroup(root)
+    root.groups = GroupsAsyncGroup(root)
+    root.integrations = IntegrationsAsyncGroup(root)
+    root.organisations = OrganisationsAsyncGroup(root)
+    root.organisations.billing = OrganisationsBillingAsyncGroup(root)
+    root.organisations.billing.account = OrganisationsBillingAccountAsyncGroup(root)
+    root.organisations.billing.admin = OrganisationsBillingAdminAsyncGroup(root)
+    root.organisations.billing.agent_items = OrganisationsBillingAgentItemsAsyncGroup(root)
+    root.organisations.billing.app_configs = OrganisationsBillingAppConfigsAsyncGroup(root)
+    root.organisations.billing.device_type_configs = OrganisationsBillingDeviceTypeConfigsAsyncGroup(root)
+    root.organisations.billing.devices = OrganisationsBillingDevicesAsyncGroup(root)
+    root.organisations.billing.group = OrganisationsBillingGroupAsyncGroup(root)
+    root.organisations.billing.invoices = OrganisationsBillingInvoicesAsyncGroup(root)
+    root.organisations.billing.metering_runs = OrganisationsBillingMeteringRunsAsyncGroup(root)
+    root.organisations.billing.products = OrganisationsBillingProductsAsyncGroup(root)
+    root.organisations.billing.seller_customers = OrganisationsBillingSellerCustomersAsyncGroup(root)
+    root.organisations.billing.stripe = OrganisationsBillingStripeAsyncGroup(root)
+    root.organisations.billing.subscriptions = OrganisationsBillingSubscriptionsAsyncGroup(root)
+    root.organisations.billing.usage_records = OrganisationsBillingUsageRecordsAsyncGroup(root)
+    root.organisations.domains = OrganisationsDomainsAsyncGroup(root)
+    root.organisations.pending_users = OrganisationsPendingUsersAsyncGroup(root)
+    root.organisations.roles = OrganisationsRolesAsyncGroup(root)
+    root.organisations.shared_profiles = OrganisationsSharedProfilesAsyncGroup(root)
+    root.organisations.sharing_profiles = OrganisationsSharingProfilesAsyncGroup(root)
+    root.organisations.users = OrganisationsUsersAsyncGroup(root)
+    root.permissions = PermissionsAsyncGroup(root)
+    root.reports = ReportsAsyncGroup(root)
+    root.shared_devices = SharedDevicesAsyncGroup(root)
+    root.shared_groups = SharedGroupsAsyncGroup(root)
+    root.site = SiteAsyncGroup(root)
+    root.solution_installs = SolutionInstallsAsyncGroup(root)
+    root.solutions = SolutionsAsyncGroup(root)
+    root.themes = ThemesAsyncGroup(root)
+    root.tunnels = TunnelsAsyncGroup(root)
+    root.users = UsersAsyncGroup(root)
+
+OPERATION_COUNT = 299
+
+__all__ = [
+    "_attach_async_groups",
+    "OPERATION_COUNT",
+    "AgentsAsyncGroup",
+    "AnalyticsAsyncGroup",
+    "AppDeploymentsAsyncGroup",
+    "AppInstallsAsyncGroup",
+    "ApplicationsAsyncGroup",
+    "AssistantAsyncGroup",
+    "ContainerAsyncGroup",
+    "ContainerRegistryAsyncGroup",
+    "DevicesAsyncGroup",
+    "GroupsAsyncGroup",
+    "IntegrationsAsyncGroup",
+    "OrganisationsAsyncGroup",
+    "OrganisationsBillingAsyncGroup",
+    "OrganisationsBillingAccountAsyncGroup",
+    "OrganisationsBillingAdminAsyncGroup",
+    "OrganisationsBillingAgentItemsAsyncGroup",
+    "OrganisationsBillingAppConfigsAsyncGroup",
+    "OrganisationsBillingDeviceTypeConfigsAsyncGroup",
+    "OrganisationsBillingDevicesAsyncGroup",
+    "OrganisationsBillingGroupAsyncGroup",
+    "OrganisationsBillingInvoicesAsyncGroup",
+    "OrganisationsBillingMeteringRunsAsyncGroup",
+    "OrganisationsBillingProductsAsyncGroup",
+    "OrganisationsBillingSellerCustomersAsyncGroup",
+    "OrganisationsBillingStripeAsyncGroup",
+    "OrganisationsBillingSubscriptionsAsyncGroup",
+    "OrganisationsBillingUsageRecordsAsyncGroup",
+    "OrganisationsDomainsAsyncGroup",
+    "OrganisationsPendingUsersAsyncGroup",
+    "OrganisationsRolesAsyncGroup",
+    "OrganisationsSharedProfilesAsyncGroup",
+    "OrganisationsSharingProfilesAsyncGroup",
+    "OrganisationsUsersAsyncGroup",
+    "PermissionsAsyncGroup",
+    "ReportsAsyncGroup",
+    "SharedDevicesAsyncGroup",
+    "SharedGroupsAsyncGroup",
+    "SiteAsyncGroup",
+    "SolutionInstallsAsyncGroup",
+    "SolutionsAsyncGroup",
+    "ThemesAsyncGroup",
+    "TunnelsAsyncGroup",
+    "UsersAsyncGroup",
+]
+

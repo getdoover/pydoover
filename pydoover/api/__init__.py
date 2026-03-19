@@ -1,3 +1,4 @@
+from .control import AsyncControlClient, ControlClient
 from .data import AsyncDataClient, DataClient, UNSET
 from ..models.data.exceptions import (
     DooverAPIError,
@@ -9,7 +10,9 @@ from ..models.data.exceptions import (
 )
 
 __all__ = [
+    "AsyncControlClient",
     "AsyncDataClient",
+    "ControlClient",
     "DataClient",
     "UNSET",
     "DooverAPIError",

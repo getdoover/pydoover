@@ -804,6 +804,7 @@ dev = [
     { name = "grpcio-tools" },
     { name = "pre-commit" },
     { name = "pytest" },
+    { name = "pyyaml" },
 ]
 docs = [
     { name = "sphinx" },
@@ -831,6 +832,7 @@ dev = [
     { name = "grpcio-tools", specifier = ">=1.65.1" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.5" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
 ]
 docs = [
     { name = "sphinx", specifier = ">=8.2.3" },
