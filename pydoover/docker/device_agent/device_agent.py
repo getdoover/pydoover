@@ -1,6 +1,5 @@
 import asyncio
 import copy
-import json
 import logging
 import re
 import sys
@@ -8,6 +7,8 @@ import sys
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
+
+from ...utils.snowflake import generate_snowflake_id_at
 
 import grpc
 
@@ -450,6 +451,40 @@ class DeviceAgentInterface(GRPCInterface):
         return TurnCredential.from_proto(resp.turn_credential)
 
     @cli_command()
+    async def list_messages(
+        self,
+        channel_name: str,
+        before: int | datetime | None = None,
+        after: int | datetime | None = None,
+        limit: int | None = None,
+        field_names: list[str] | None = None,
+    ) -> list[Message]:
+        kwargs = {}
+        if before is not None:
+            kwargs["before"] = (
+                before if isinstance(before, int) else generate_snowflake_id_at(before)
+            )
+        if after is not None:
+            kwargs["after"] = (
+                after if isinstance(after, int) else generate_snowflake_id_at(after)
+            )
+        if limit is not None:
+            kwargs["limit"] = limit
+        if field_names is not None:
+            if isinstance(field_names, str):
+                field_names = [f.strip() for f in field_names.split(",")]
+            kwargs["field_names"] = field_names
+
+        resp = await self.make_request(
+            "GetMessages",
+            device_agent_pb2.GetMessagesRequest(
+                channel_name=channel_name,
+                **kwargs,
+            ),
+        )
+        return [Message.from_proto(m) for m in resp.messages]
+
+    @cli_command()
     async def create_message(
         self,
         channel_name: str,
@@ -551,14 +586,8 @@ class DeviceAgentInterface(GRPCInterface):
         """
         try:
             async for event in self.stream_channel_events(channel_name):
-                print(
-                    json.dumps(
-                        {
-                            "event_name": event.__class__.__name__,
-                            "payload": event.to_dict(),
-                        }
-                    )
-                )
+                if isinstance(event, AggregateUpdateEvent):
+                    print(event.channel.name, event.aggregate.data)
                 sys.stdout.flush()
         except asyncio.CancelledError:
             await self.close()

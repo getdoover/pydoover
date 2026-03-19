@@ -1084,7 +1084,6 @@ dependencies = [
 [package.optional-dependencies]
 grpc = [
     { name = "grpcio" },
-    { name = "grpcio-health-checking" },
     { name = "protobuf" },
 ]
 reports = [
@@ -1118,7 +1117,6 @@ requires-dist = [
     { name = "croniter", marker = "extra == 'reports'", specifier = ">=6.0.0" },
     { name = "grpcio", marker = "extra == 'grpc'", specifier = "==1.65.1" },
     { name = "grpcio", marker = "extra == 'test'", specifier = "==1.65.1" },
-    { name = "grpcio-health-checking", marker = "extra == 'grpc'", specifier = "==1.65.1" },
     { name = "grpcio-health-checking", marker = "extra == 'test'", specifier = "==1.65.1" },
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.23.0" },

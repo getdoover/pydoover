@@ -10,6 +10,7 @@ PROTO_PAIRS="
 device_agent.proto:device_agent
 modbus_iface.proto:modbus
 platform_iface.proto:platform
+health.proto:health
 "
 
 for pair in $PROTO_PAIRS; do
