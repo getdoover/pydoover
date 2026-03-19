@@ -1,6 +1,5 @@
 from .application import (
     Application as Application,
-    Application as DockerApplication,
     run_app as run_app,
 )
 from .device_agent import (

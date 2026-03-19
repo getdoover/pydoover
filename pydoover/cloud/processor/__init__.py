@@ -1,4 +1,4 @@
-from .application import Application as Application, Application as ProcessorBase
+from .application import Application as Application
 from .config import (
     SubscriptionConfig as SubscriptionConfig,
     ManySubscriptionConfig as ManySubscriptionConfig,

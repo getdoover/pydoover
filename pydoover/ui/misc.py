@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Union
+from typing import Any, ClassVar
 
 from .declarative import normalize_ui_value
 

@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Optional, Any
 
 from .declarative import normalize_ui_value
-from .misc import Colour
 
 
 class NotSet:
