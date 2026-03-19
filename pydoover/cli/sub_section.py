@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import inspect
 import typing
+from typing import Any, Protocol, cast
 
 from .parsers import (
     extract_description,
@@ -17,7 +18,10 @@ from .parsers import (
 
 class SubSection:
     def __init__(
-        self, section_class, name: str = "subcommands", description: str = None
+        self,
+        section_class,
+        name: str = "subcommands",
+        description: str | None = None,
     ):
         self.name = name
         self.description = description
@@ -45,6 +49,7 @@ class SubSection:
         for name, func in inspect.getmembers(
             self.section_class, predicate=inspect.isfunction
         ):
+            func = cast(_CommandFunction, func)
             if not getattr(func, "_is_command", False):
                 continue
 
@@ -67,7 +72,8 @@ class SubSection:
                     **{
                         k: v
                         for k, v in kwargs.items()
-                        if k in self.init_signature.parameters.keys()
+                        if self.init_signature is not None
+                        and k in self.init_signature.parameters.keys()
                     }
                 )
 
@@ -98,7 +104,7 @@ class SubSection:
             arg_docs = func._command_arg_docs
 
             for param in argspec.parameters.values():
-                kwargs = {"help": arg_docs.get(param.name)}
+                kwargs: dict[str, Any] = {"help": arg_docs.get(param.name)}
                 if param.name == "self":
                     continue
                 if param.name in doc_string_paramaters:
@@ -156,7 +162,7 @@ class SubSection:
                 arg_docs = func._command_arg_docs
 
             for param in self.init_signature.parameters.values():
-                kwargs = {"help": arg_docs.get(param.name)}
+                kwargs: dict[str, Any] = {"help": arg_docs.get(param.name)}
                 if param.name == "self":
                     continue
                 # if param.name in doc_string_paramaters:
@@ -243,3 +249,14 @@ class SubSection:
                 return preferred
 
         return None
+    
+    
+class _CommandFunction(Protocol):
+    __name__: str
+    _is_command: bool
+    _command_name: str
+    _command_help: str
+    _command_arg_docs: dict[str, str]
+    _command_setup_api: bool
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...

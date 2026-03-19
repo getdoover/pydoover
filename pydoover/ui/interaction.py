@@ -1,8 +1,10 @@
 import logging
 import re
+import warnings
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
+from .declarative import is_tag_reference, normalize_ui_value
 from .element import Element
 from .misc import Colour, Option, NotSet
 from ..utils import call_maybe_async
@@ -11,6 +13,15 @@ if TYPE_CHECKING:
     from .manager import UIManager
 
 log = logging.getLogger(__name__)
+
+
+def _warn_legacy_ui_alias(old_name: str, new_name: str) -> None:
+    warnings.warn(
+        f"{old_name} is deprecated and will be removed in a future release. "
+        f"Use {new_name} instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 class Interaction(Element):
@@ -41,17 +52,19 @@ class Interaction(Element):
     def __init__(
         self,
         name: str,
-        display_name: str = None,
+        display_name: str | None = None,
         current_value: Any = NotSet,
         default: Any = None,
-        callback=None,
-        transform_check=None,
+        callback: Callable[[Any], Any] | None = None,
+        transform_check: Callable[[Any], Any] | None = None,
         show_activity: bool | None = None,
         requires_confirm: bool = True,
         **kwargs,
     ):
+        current_value = kwargs.pop("currentValue", current_value)
         super().__init__(name, display_name, **kwargs)
         self._current_value = current_value
+        self._last_command_value = NotSet
 
         if default is not None:
             self._default_value = default
@@ -62,11 +75,13 @@ class Interaction(Element):
             self._default_value = None
 
         self._manager: Optional["UIManager"] = None
+        self._callback: Callable[[Any], Any] = self.callback
+        self._transform_check: Callable[[Any], Any] = self.transform_check
 
         if callback:
-            self.callback = callback
+            self._callback = callback
         if transform_check:
-            self.transform_check = transform_check
+            self._transform_check = transform_check
 
         ## Handle default value 'statelessly' now in current_value property instead of here
         # if self._current_value in (None, NotSet) and self._default_value is not None:
@@ -89,6 +104,7 @@ class Interaction(Element):
 
         This will also convert datetime objects to epoch seconds for internal storage.
         """
+        self._ensure_current_value_writable()
         ## Store all datetime objects as epoch seconds internally
         if isinstance(new_val, datetime):
             new_val = int(new_val.timestamp())
@@ -135,28 +151,33 @@ class Interaction(Element):
             return new_value
 
     def _is_new_value(self, new_value: Any) -> bool:
+        if is_tag_reference(self._current_value):
+            return new_value != self._last_command_value
         return new_value != self.current_value
 
     def _handle_new_value_common(self, new_value: Any):
         try:
-            new_value = self.transform_check(new_value)
+            new_value = self._transform_check(new_value)
         except Exception as e:
             log.error(f"Error transforming value for {self.name}: {e}")
             return
 
         log.debug(f"updating new value: {self.name} {new_value}")
-        self.current_value = new_value
+        if is_tag_reference(self._current_value):
+            self._last_command_value = new_value
+        else:
+            self.current_value = new_value
 
     def _handle_new_value(self, new_value: Any):
         self._handle_new_value_common(new_value)
         try:
-            self.callback(new_value)
+            self._callback(new_value)
         except Exception as e:
             log.error(f"Error in callback for {self.name}: {e}")
 
     async def _handle_new_value_async(self, new_value: Any):
         self._handle_new_value_common(new_value)
-        await call_maybe_async(self.callback, new_value)
+        await call_maybe_async(self._callback, new_value)
         # try:
         #     self.callback(new_value)
         # except Exception as e:
@@ -181,6 +202,8 @@ class Interaction(Element):
         -------
         None
         """
+        self._ensure_current_value_writable()
+
         if critical and self._manager and value != self.current_value:
             self._manager._has_critical_interaction_pending = True
 
@@ -199,11 +222,18 @@ class Interaction(Element):
             res["currentValue"] = self._json_safe_current_value()
         if self.show_activity is not None:
             res["showActivity"] = self.show_activity
-        return res
+        return normalize_ui_value(res)
+
+    def _ensure_current_value_writable(self) -> None:
+        if is_tag_reference(self._current_value):
+            raise RuntimeError(
+                f"UI element '{self.name}' field 'currentValue' is tag-backed. "
+                "Update the underlying tag instead."
+            )
 
 
-class Action(Interaction):
-    """Represents a UI action (button).
+class Button(Interaction):
+    """Represents a UI button.
 
     Parameters
     ----------
@@ -219,25 +249,39 @@ class Action(Interaction):
         Whether the button appears disabled in the UI. Defaults to False.
     """
 
-    type = "uiAction"
+    type = "uiButton"
 
     def __init__(
         self,
         name: str,
         display_name: str,
-        colour: Colour = Colour.blue,
+        colour: str = Colour.blue,
         disabled: bool = False,
+        label_string: str | None = None,
         **kwargs,
     ):
         super().__init__(name, display_name, **kwargs)
         self.colour = colour
         self.disabled = disabled
+        self.label_string = label_string
 
     def to_dict(self):
         result = super().to_dict()
         result["colour"] = str(self.colour)
         result["disabled"] = self.disabled
-        return result
+        if self.label_string is not None:
+            result["labelString"] = self.label_string
+        return normalize_ui_value(result)
+
+
+class Action(Button):
+    """Deprecated Doover 1.0 alias for :class:`Button`."""
+
+    type = "uiAction"
+
+    def __init__(self, *args, **kwargs):
+        _warn_legacy_ui_alias("Action", "Button")
+        super().__init__(*args, **kwargs)
 
 
 class WarningIndicator(Interaction):
@@ -262,7 +306,7 @@ class WarningIndicator(Interaction):
     def to_dict(self):
         result = super().to_dict()
         result["can_cancel"] = self.can_cancel
-        return result
+        return normalize_ui_value(result)
 
 
 class HiddenValue(Interaction):
@@ -272,20 +316,16 @@ class HiddenValue(Interaction):
         super().__init__(name, display_name=None, **kwargs)
 
     def to_dict(self):
-        return {
-            "name": self.name,
-            "type": self.type,
-        }
+        return normalize_ui_value(
+            {
+                "name": self.name,
+                "type": self.type,
+            }
+        )
 
 
-class SlimCommand(Interaction):
-    """Base class for UI commands."""
-
-    type = "uiStateCommand"
-
-
-class StateCommand(SlimCommand):
-    """Represents a state command in the UI (ie. a dropdown that the user can select a state)
+class Select(Interaction):
+    """Represents a selectable input in the UI.
 
     Parameters
     ----------
@@ -293,33 +333,33 @@ class StateCommand(SlimCommand):
         The name of the state command, used to identify it in the UI.
     display_name: str, optional
         The display name of the state command, shown in the UI.
-    user_options: list[Option]
+    options: list[Option]
         A list of options that the user can select from. Each option is an instance of the Option class.
         If not provided, an empty list will be created.
     """
 
-    type = "uiStateCommand"
+    type = "uiSelect"
 
     def __init__(
         self,
         name: str,
-        display_name: str = None,
-        user_options: list[Option] = None,
+        display_name: str | None = None,
+        options: list[Option] | None = None,
         **kwargs,
     ):
+        user_options = kwargs.pop("user_options", None)
         super().__init__(name, display_name, **kwargs)
 
-        # A list of doover_ui_element's
-        self.user_options = []
-        self.add_user_options(*user_options)
+        self.options = []
+        self.add_options(*(options or user_options or []))
 
     def to_dict(self):
         result = super().to_dict()
-        result["userOptions"] = {o.name: o.to_dict() for o in self.user_options}
-        return result
+        result["options"] = {o.name: o.to_dict() for o in self.options}
+        return normalize_ui_value(result)
 
-    def add_user_options(self, *option: Option):
-        """Add user options to the state command.
+    def add_options(self, *option: Option | dict[str, Any]) -> None:
+        """Add selectable options to the input.
 
         Parameters
         ----------
@@ -329,11 +369,40 @@ class StateCommand(SlimCommand):
         for o in option:
             # still support legacy dict passing of option values.
             if isinstance(o, Option):
-                self.user_options.append(o)
+                self.options.append(o)
             elif isinstance(o, dict):
-                self.user_options.append(Option.from_dict(o))
+                self.options.append(Option.from_dict(o))
 
-    add_user_option = add_user_options
+    add_option = add_options
+    add_user_options = add_options
+    add_user_option = add_options
+
+
+class SlimCommand(Select):
+    """Deprecated Doover 1.0 alias for :class:`Select`."""
+
+    type = "uiStateCommand"
+
+    def __init__(self, *args, **kwargs):
+        if self.__class__ is SlimCommand:
+            _warn_legacy_ui_alias("SlimCommand", "Select")
+        super().__init__(*args, **kwargs)
+
+    def to_dict(self):
+        result = super().to_dict()
+        result["type"] = self.type
+        result["userOptions"] = result.pop("options", {})
+        return normalize_ui_value(result)
+
+
+class StateCommand(SlimCommand):
+    """Deprecated Doover 1.0 alias for :class:`Select`."""
+
+    type = "uiStateCommand"
+
+    def __init__(self, *args, **kwargs):
+        _warn_legacy_ui_alias("StateCommand", "Select")
+        super().__init__(*args, **kwargs)
 
 
 class Slider(Interaction):
@@ -366,7 +435,7 @@ class Slider(Interaction):
     def __init__(
         self,
         name: str,
-        display_name: str = None,
+        display_name: str | None = None,
         min_val: int = 0,
         max_val: int = 100,
         step_size: float = 0.1,
@@ -399,13 +468,15 @@ class Slider(Interaction):
         if self.colours:
             result["colours"] = self.colours
 
-        return result
+        return normalize_ui_value(result)
 
 
 class Switch(Interaction):
     type = "uiSwitch"
 
-    def __init__(self, name: str, icon: str = None, colour: Colour = None, **kwargs):
+    def __init__(
+        self, name: str, icon: str | None = None, colour: str | None = None, **kwargs
+    ):
         super().__init__(
             name=name.replace(" ", "_").lower(), display_name=name, **kwargs
         )
@@ -418,17 +489,17 @@ class Switch(Interaction):
             res["icon"] = self.icon
         if self.colour:
             res["colour"] = self.colour
-        return res
+        return normalize_ui_value(res)
 
 
-def action(
+def button(
     name: str,
-    display_name: str = None,
-    colour: Colour = Colour.blue,
+    display_name: str | None = None,
+    colour: str = Colour.blue,
     requires_confirm: bool = True,
     **kwargs,
 ):
-    """Decorator to mark a function as a UI action.
+    """Decorator to mark a function as a UI button.
 
     This decorator will add the function to the UI as an action button.
 
@@ -445,6 +516,29 @@ def action(
     """
 
     def decorator(func):
+        func._ui_type = Button
+        func._ui_kwargs = {
+            "name": name,
+            "display_name": display_name,
+            "colour": colour,
+            "requires_confirm": requires_confirm,
+            **kwargs,
+        }
+        return func
+
+    return decorator
+
+
+def action(
+    name: str,
+    display_name: str | None = None,
+    colour: str = Colour.blue,
+    requires_confirm: bool = True,
+    **kwargs,
+):
+    """Deprecated Doover 1.0 alias for :func:`button`."""
+
+    def decorator(func):
         func._ui_type = Action
         func._ui_kwargs = {
             "name": name,
@@ -459,7 +553,7 @@ def action(
 
 
 def warning_indicator(
-    name: str, display_name: str = None, can_cancel: bool = True, **kwargs
+    name: str, display_name: str | None = None, can_cancel: bool = True, **kwargs
 ):
     """Decorator to mark a function as a UI warning indicator.
 
@@ -486,10 +580,13 @@ def warning_indicator(
     return decorator
 
 
-def state_command(
-    name: str, display_name: str = None, user_options: list[Option] = None, **kwargs
+def select(
+    name: str,
+    display_name: str | None = None,
+    options: list[Option] | None = None,
+    **kwargs,
 ):
-    """Decorator to mark a function as a UI state command.
+    """Decorator to mark a function as a selectable UI input.
 
     The decorated function will be added to the UI as a state command,
     which allows the user to select a state from a dropdown menu.
@@ -524,6 +621,27 @@ def state_command(
         A list of options that the user can select from. Each option is an instance of the Option class.
         If not provided, an empty list will be created.
     """
+
+    def decorator(func):
+        func._ui_type = Select
+        func._ui_kwargs = {
+            "name": name,
+            "display_name": display_name,
+            "options": options,
+            **kwargs,
+        }
+        return func
+
+    return decorator
+
+
+def state_command(
+    name: str,
+    display_name: str | None = None,
+    user_options: list[Option] | None = None,
+    **kwargs,
+):
+    """Deprecated Doover 1.0 alias for :func:`select`."""
 
     def decorator(func):
         func._ui_type = StateCommand
@@ -578,7 +696,7 @@ def hidden_value(name: str, **kwargs):
 
 def slider(
     name: str,
-    display_name: str = None,
+    display_name: str | None = None,
     min_val: int = 0,
     max_val: int = 100,
     step_size: float = 0.1,

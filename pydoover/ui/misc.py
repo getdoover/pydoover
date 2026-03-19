@@ -1,4 +1,6 @@
-from typing import Union, Any
+from typing import Any, ClassVar
+
+from .declarative import normalize_ui_value
 
 
 class NotSet:
@@ -28,19 +30,19 @@ class Colour:
     grey
     """
 
-    blue = "blue"
-    yellow = "yellow"
-    red = "red"
-    green = "green"
-    magenta = "magenta"
-    limegreen = "limegreen"
-    tomato = "tomato"
-    orange = "orange"
-    purple = "purple"
-    grey = "grey"
+    blue: ClassVar[str] = "blue"
+    yellow: ClassVar[str] = "yellow"
+    red: ClassVar[str] = "red"
+    green: ClassVar[str] = "green"
+    magenta: ClassVar[str] = "magenta"
+    limegreen: ClassVar[str] = "limegreen"
+    tomato: ClassVar[str] = "tomato"
+    orange: ClassVar[str] = "orange"
+    purple: ClassVar[str] = "purple"
+    grey: ClassVar[str] = "grey"
 
     @classmethod
-    def from_hex(cls, hex_string):
+    def from_hex(cls, hex_string: str) -> str:
         """Convert a hex string to a colour string.
 
         This method takes a hex string (e.g., "#FF5733") that can be used where a Colour object is accepted.
@@ -48,7 +50,7 @@ class Colour:
         return hex_string
 
     @classmethod
-    def from_string(cls, value):
+    def from_string(cls, value: str) -> str:
         """Convert an arbitrary string to a Colour object.
 
         This method takes an HTML colour name (e.g. `brown`) and allows it to be used where a Colour object is accepted.
@@ -75,10 +77,10 @@ class Range:
 
     def __init__(
         self,
-        label: str = None,
-        min_val: Union[int, float] = None,
-        max_val: Union[int, float] = None,
-        colour: "Colour" = Colour.blue,
+        label: Any = None,
+        min_val: Any = None,
+        max_val: Any = None,
+        colour: Any = Colour.blue,
         show_on_graph: bool = True,
     ):
         self.label = label
@@ -90,12 +92,12 @@ class Range:
     def __repr__(self) -> str:
         return f"Range(label={self.label}, min={self.min}, max={self.max}, colour={self.colour}, show_on_graph={self.show_on_graph})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Range):
             return NotImplemented
         return self.to_dict() == other.to_dict()
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         to_return = {
             "min": self.min,
             "max": self.max,
@@ -104,7 +106,7 @@ class Range:
         }
         if self.label:
             to_return["label"] = self.label
-        return to_return
+        return normalize_ui_value(to_return)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -128,16 +130,18 @@ class Option:
         The display name of the option, used for user interface representation.
     """
 
-    def __init__(self, name: str, display_name: str):
+    def __init__(self, name: str, display_name: Any):
         self.name = name
         self.display_name = display_name
 
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "displayString": self.display_name,
-            "type": "uiElement",
-        }
+    def to_dict(self) -> dict[str, Any]:
+        return normalize_ui_value(
+            {
+                "name": self.name,
+                "displayString": self.display_name,
+                "type": "uiElement",
+            }
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -157,11 +161,11 @@ class Widget:
         Represents a radial gauge widget.
     """
 
-    linear = "linearGauge"
-    radial = "radialGauge"
+    linear: ClassVar[str] = "linearGauge"
+    radial: ClassVar[str] = "radialGauge"
 
     @classmethod
-    def from_string(cls, value):
+    def from_string(cls, value: str) -> str:
         """Convert an arbitrary string to a Widget object.
 
         This method takes a string (e.g. `linearGauge`) and allows it to be used where a Widget object is accepted.
@@ -184,5 +188,5 @@ class ApplicationVariant:
         Stacks applications on top of each other without submodule partitioning.
     """
 
-    submodule = "submodule"
-    stacked = "stacked"
+    submodule: ClassVar[str] = "submodule"
+    stacked: ClassVar[str] = "stacked"

@@ -5,6 +5,7 @@ import traceback
 import logging
 import os
 import sys
+from typing import Any, cast
 
 from .sub_section import SubSection
 
@@ -59,7 +60,9 @@ class CLI:
         os.environ["GRPC_VERBOSITY"] = "ERROR"
         os.environ["GRPC_TRACE"] = ""
         logging.getLogger().setLevel(logging.ERROR)
-        sys.stdout.reconfigure(line_buffering=True)
+        stdout = cast(Any, sys.stdout)
+        if hasattr(stdout, "reconfigure"):
+            stdout.reconfigure(line_buffering=True)
 
         try:
             passed_args = {

@@ -1,8 +1,19 @@
+import warnings
 from typing import Union
 from datetime import datetime
 
+from .declarative import is_tag_reference, normalize_ui_value
 from .interaction import Interaction
 from .misc import NotSet
+
+
+def _warn_legacy_ui_alias(old_name: str, new_name: str) -> None:
+    warnings.warn(
+        f"{old_name} is deprecated and will be removed in a future release. "
+        f"Use {new_name} instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 class Parameter(Interaction):
@@ -11,8 +22,8 @@ class Parameter(Interaction):
     type = NotImplemented
 
 
-class NumericParameter(Parameter):
-    """A numeric parameter that can be used to represent both integer and float values.
+class FloatInput(Parameter):
+    """A numeric input that can be used to represent both integer and float values.
 
     Attributes
     ----------
@@ -26,7 +37,7 @@ class NumericParameter(Parameter):
         The maximum value for the parameter. Defaults to None.
     """
 
-    type = "uiFloatParam"
+    type = "uiFloatInput"
 
     def __init__(
         self,
@@ -38,8 +49,8 @@ class NumericParameter(Parameter):
     ):
         super().__init__(name, display_name, **kwargs)
 
-        self.min = min_val or kwargs.pop("float_min", None)
-        self.max = max_val or kwargs.pop("float_max", None)
+        self.min = min_val if min_val is not None else kwargs.pop("float_min", None)
+        self.max = max_val if max_val is not None else kwargs.pop("float_max", None)
 
     def to_dict(self):
         result = super().to_dict()
@@ -49,11 +60,22 @@ class NumericParameter(Parameter):
         if self.max is not None:
             result["max"] = self.max
 
-        return result
+        return normalize_ui_value(result)
 
 
-class TextParameter(Parameter):
-    """A text parameter that can be used to represent string values for a user to modify.
+class NumericParameter(FloatInput):
+    """Deprecated Doover 1.0 alias for :class:`FloatInput`."""
+
+    type = "uiFloatParam"
+
+    def __init__(self, *args, **kwargs):
+        if self.__class__ is NumericParameter:
+            _warn_legacy_ui_alias("NumericParameter", "FloatInput")
+        super().__init__(*args, **kwargs)
+
+
+class TextInput(Parameter):
+    """A text input that can be used to represent string values for a user to modify.
 
     This can either be inline or a large form text area, depending on the `is_text_area` parameter.
 
@@ -67,7 +89,7 @@ class TextParameter(Parameter):
         Whether the text parameter should be displayed as a text area. Defaults to False.
     """
 
-    type = "uiTextParam"
+    type = "uiTextInput"
 
     def __init__(self, name, display_name, is_text_area: bool = False, **kwargs):
         super().__init__(name, display_name, **kwargs)
@@ -76,7 +98,18 @@ class TextParameter(Parameter):
     def to_dict(self):
         result = super().to_dict()
         result["isTextArea"] = self.is_text_area
-        return result
+        return normalize_ui_value(result)
+
+
+class TextParameter(TextInput):
+    """Deprecated Doover 1.0 alias for :class:`TextInput`."""
+
+    type = "uiTextParam"
+
+    def __init__(self, *args, **kwargs):
+        if self.__class__ is TextParameter:
+            _warn_legacy_ui_alias("TextParameter", "TextInput")
+        super().__init__(*args, **kwargs)
 
 
 class BooleanParameter(Parameter):
@@ -102,8 +135,8 @@ class BooleanParameter(Parameter):
         raise NotImplementedError("boolean parameter not implemented in doover site.")
 
 
-class DateTimeParameter(Parameter):
-    """Date and time parameter that can be used to request date/time values from a user.
+class DatetimeInput(Parameter):
+    """A datetime input that can be used to request date and time values from a user.
 
     Internally, all datetime values are stored as epoch seconds in UTC
 
@@ -117,7 +150,7 @@ class DateTimeParameter(Parameter):
         Whether to include time in the datetime picker. Defaults to False.
     """
 
-    type = "uiDatetimeParam"
+    type = "uiDatetimeInput"
 
     def __init__(
         self, name: str, display_name: str, include_time: bool = False, **kwargs
@@ -130,6 +163,8 @@ class DateTimeParameter(Parameter):
         """datetime, optional: Returns the current value of the parameter as a datetime object, or `None` if it isn't set."""
         if self._current_value is NotSet or self._current_value is None:
             return None
+        if is_tag_reference(self._current_value):
+            return self._current_value
         if isinstance(self._current_value, datetime):
             return self._current_value
         elif isinstance(self._current_value, (int, float)):
@@ -138,6 +173,7 @@ class DateTimeParameter(Parameter):
 
     @current_value.setter
     def current_value(self, new_val):
+        self._ensure_current_value_writable()
         if isinstance(new_val, datetime):
             new_val = int(new_val.timestamp())
         self._current_value = new_val
@@ -145,10 +181,30 @@ class DateTimeParameter(Parameter):
     def to_dict(self):
         result = super().to_dict()
         result["includeTime"] = self.include_time
-        return result
+        return normalize_ui_value(result)
 
 
-def numeric_parameter(
+class TimeInput(DatetimeInput):
+    """A time-only input."""
+
+    type = "uiTimeInput"
+
+    def __init__(self, name: str, display_name: str, **kwargs):
+        super().__init__(name, display_name, include_time=True, **kwargs)
+
+
+class DateTimeParameter(DatetimeInput):
+    """Deprecated Doover 1.0 alias for :class:`DatetimeInput`."""
+
+    type = "uiDatetimeParam"
+
+    def __init__(self, *args, **kwargs):
+        if self.__class__ is DateTimeParameter:
+            _warn_legacy_ui_alias("DateTimeParameter", "DatetimeInput")
+        super().__init__(*args, **kwargs)
+
+
+def float_input(
     name: str,
     display_name: str,
     min_val: Union[int, float] = None,
@@ -187,6 +243,29 @@ def numeric_parameter(
     """
 
     def decorator(func):
+        func._ui_type = FloatInput
+        func._ui_kwargs = {
+            "name": name,
+            "display_name": display_name,
+            "min_val": min_val,
+            "max_val": max_val,
+            **kwargs,
+        }
+        return func
+
+    return decorator
+
+
+def numeric_parameter(
+    name: str,
+    display_name: str,
+    min_val: Union[int, float] = None,
+    max_val: Union[int, float] = None,
+    **kwargs,
+):
+    """Deprecated Doover 1.0 alias for :func:`float_input`."""
+
+    def decorator(func):
         func._ui_type = NumericParameter
         func._ui_kwargs = {
             "name": name,
@@ -200,8 +279,8 @@ def numeric_parameter(
     return decorator
 
 
-def text_parameter(name: str, display_name: str, is_text_area: bool = False, **kwargs):
-    """Decorator to create a text parameter for a function.
+def text_input(name: str, display_name: str, is_text_area: bool = False, **kwargs):
+    """Decorator to create a text input for a function.
 
     The function decorated by this decorator will be called whenever the value of the text parameter changes.
 
@@ -227,6 +306,22 @@ def text_parameter(name: str, display_name: str, is_text_area: bool = False, **k
     is_text_area: bool
         Whether the text parameter should be displayed as a text area. Defaults to False.
     """
+
+    def decorator(func):
+        func._ui_type = TextInput
+        func._ui_kwargs = {
+            "name": name,
+            "display_name": display_name,
+            "is_text_area": is_text_area,
+            **kwargs,
+        }
+        return func
+
+    return decorator
+
+
+def text_parameter(name: str, display_name: str, is_text_area: bool = False, **kwargs):
+    """Deprecated Doover 1.0 alias for :func:`text_input`."""
 
     def decorator(func):
         func._ui_type = TextParameter
@@ -270,10 +365,8 @@ def boolean_parameter(name: str, display_name: str, **kwargs):
     return decorator
 
 
-def datetime_parameter(
-    name: str, display_name: str, include_time: bool = False, **kwargs
-):
-    """Decorator to create a datetime parameter for a function.
+def datetime_input(name: str, display_name: str, include_time: bool = False, **kwargs):
+    """Decorator to create a datetime input for a function.
 
     The function decorated by this decorator will be called whenever the value of the datetime parameter (picker) changes.
 
@@ -299,6 +392,39 @@ def datetime_parameter(
     include_time: bool
         Whether to include time in the datetime picker. Defaults to False.
     """
+
+    def decorator(func):
+        func._ui_type = DatetimeInput
+        func._ui_kwargs = {
+            "name": name,
+            "display_name": display_name,
+            "include_time": include_time,
+            **kwargs,
+        }
+        return func
+
+    return decorator
+
+
+def time_input(name: str, display_name: str, **kwargs):
+    """Decorator to create a time-only input for a function."""
+
+    def decorator(func):
+        func._ui_type = TimeInput
+        func._ui_kwargs = {
+            "name": name,
+            "display_name": display_name,
+            **kwargs,
+        }
+        return func
+
+    return decorator
+
+
+def datetime_parameter(
+    name: str, display_name: str, include_time: bool = False, **kwargs
+):
+    """Deprecated Doover 1.0 alias for :func:`datetime_input`."""
 
     def decorator(func):
         func._ui_type = DateTimeParameter

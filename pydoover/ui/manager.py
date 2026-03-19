@@ -6,10 +6,10 @@ import time
 import json
 from datetime import datetime, timezone
 
-from typing import Union, Any, Optional, TypeVar, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING, Union
 
 from .element import Element
-from .interaction import SlimCommand, Interaction, NotSet
+from .interaction import Select, Interaction, NotSet
 from .misc import ApplicationVariant
 from .submodule import Container, NAME_VALIDATOR, Application as UIApplication
 from .variable import Variable
@@ -23,8 +23,6 @@ if TYPE_CHECKING:
     from ..cloud.processor.data_client import ProcessorDataClient
 
 log = logging.getLogger(__name__)
-ElementT = TypeVar("ElementT", bound=Element)
-InteractionT = TypeVar("InteractionT", bound=Interaction)
 
 
 class UIManager:
@@ -35,7 +33,7 @@ class UIManager:
         auto_start: bool = False,
         min_ui_update_period: int = 600,
         min_observed_update_period: int = 4,
-        is_async: bool = None,
+        is_async: bool | None = None,
     ):
         self._is_async = get_is_async(is_async)
         self.client = client
@@ -215,7 +213,7 @@ class UIManager:
         # add commands that don't currently exist
         to_add = {k: v for k, v in aggregate.items() if k not in self._interactions}
         for name, current_value in to_add.items():
-            self._interactions[name] = SlimCommand(name, current_value)
+            self._interactions[name] = Select(name, current_value=current_value)
 
         return aggregate
 
@@ -330,14 +328,14 @@ class UIManager:
 
     def get_full_interaction_key(self, name: str) -> str:
         # Get the complete name of the key for the interaction
-        if self.app_key in name:
+        if self.app_key and self.app_key in name:
             return name
         return f"{self.app_key}_{name.strip()}"
 
     def _transform_interaction_name(self, name):
         # inject the app key (unique) into the interaction name
         # so we don't have namespace collisions between apps.
-        if self.app_key in name:
+        if self.app_key and self.app_key in name:
             return name
         return f"{self.app_key}_{name.strip()}"
 
@@ -370,17 +368,19 @@ class UIManager:
         except KeyError:
             return
 
-    def add_interaction(self, interaction: InteractionT):
+    def add_interaction(self, interaction: Interaction | Any):
         if not isinstance(interaction, Interaction) and hasattr(
             interaction, "_ui_type"
         ):
-            interaction = self._register_interaction(interaction, interaction.__self__)
+            interaction = self._register_interaction(
+                interaction, getattr(interaction, "__self__", None)
+            )
 
         self._add_interaction(interaction)
         self._base_container.add_children(interaction)
 
     @staticmethod
-    def _register_interaction(func, parent) -> InteractionT:
+    def _register_interaction(func: Any, parent: Any) -> Interaction:
         item = func._ui_type(**func._ui_kwargs)
         item.callback = func
 
@@ -452,12 +452,13 @@ class UIManager:
 
         command.coerce(value, critical=critical)
 
-    def get_element(self, element_name: str) -> Optional[ElementT]:
+    def get_element(self, element_name: str) -> Element | None:
         return self._base_container.get_element(element_name)
 
     def get_from_ui_state(self, element_name: str) -> Optional[dict]:
         return find_object_with_key(self.last_ui_state, element_name)
 
+    @maybe_async()
     def update_variable(
         self, variable_name: str, value: Any, critical: bool = False
     ) -> bool:
@@ -474,6 +475,17 @@ class UIManager:
         element.current_value = value
         return True
 
+    async def update_variable_async(
+        self, variable_name: str, value: Any, critical: bool = False
+    ) -> bool:
+        """Async-safe wrapper for :meth:`update_variable`."""
+        return self.update_variable(
+            variable_name,
+            value,
+            critical=critical,
+            run_sync=True,
+        )
+
     def add_cmds_update_subscription(self, callback):
         # fixme: create alias or something
         self._cmds_subscriptions.append(callback)
@@ -487,7 +499,11 @@ class UIManager:
     def get_all_variables(self) -> list[Variable]:
         if self._base_container is None:
             return []
-        return self._base_container.get_all_elements(type_filter=Variable)
+        return [
+            element
+            for element in self._base_container.get_all_elements(type_filter=Variable)
+            if isinstance(element, Variable)
+        ]
 
     get_available_commands = get_all_interaction_names
 
@@ -571,6 +587,16 @@ class UIManager:
 
     async def record_activity_async(self, message: str):
         await self._publish_to_channel_async(
+            "activity_logs",
+            {
+                "action_string": message,
+            },
+            record_log=True,
+        )
+
+    @maybe_async()
+    def record_activity(self, message: str):
+        self.publish_to_channel(
             "activity_logs",
             {
                 "action_string": message,
@@ -821,7 +847,7 @@ class UIManager:
                 self._wrap_ui_state(ui_state_update),
                 record_log=record_log,
                 timestamp=timestamp,
-                max_age=max_age,
+                max_age=max_age or 1,
             )
         else:
             print("not pushing empty ui state")
@@ -883,7 +909,7 @@ class UIManager:
                 self._wrap_ui_state(ui_state_update),
                 record_log=record_log,
                 timestamp=timestamp,
-                max_age=max_age,
+                max_age=max_age or 1,
             )
 
         self._last_pushed_time = time.time()
@@ -955,12 +981,12 @@ class UIManager:
         return result
 
     def _get_ui_state_update(
-        self, should_remove: bool = True, retain_fields: list = list
+        self, should_remove: bool = True, retain_fields: list[Any] | None = None
     ) -> Optional[dict[str, Any]]:
         cloud_state = self.last_ui_state or {}
         # this recursively evaluates and finds the diff on all children, rather than trying to do the diff here
         result = self._base_container.get_diff(
-            cloud_state, remove=should_remove, retain_fields=retain_fields
+            cloud_state, remove=should_remove, retain_fields=retain_fields or []
         )
 
         log.debug("Last UI State: " + str(cloud_state))
@@ -973,7 +999,7 @@ class UIManager:
         return result
 
     def _maybe_add_interaction_from_elems(
-        self, *elements: Union[Element, Container]
+        self, *elements: Element | Container | Any
     ) -> list[Element]:
         to_return = []
         for element in elements:
@@ -981,7 +1007,9 @@ class UIManager:
             # outside of a submodule and hasn't been registered yet),
             # instead we'll silently register it and proceed as-is
             if not isinstance(element, Interaction) and hasattr(element, "_ui_type"):
-                element = self._register_interaction(element, element.__self__)
+                element = self._register_interaction(
+                    element, getattr(element, "__self__", None)
+                )
 
             if isinstance(element, Container):
                 self._maybe_add_interaction_from_elems(*element.children)
@@ -994,7 +1022,10 @@ class UIManager:
     def add_children(self, *children: Element) -> None:
         if len(children) == 1 and isinstance(children[0], list):
             # for backwards compatibility, this used to accept a single list of children
-            children = children[0]
+            child_list = children[0]
+            children = tuple(
+                child for child in child_list if isinstance(child, Element)
+            )
 
         updated = self._maybe_add_interaction_from_elems(*children)
         self._base_container.add_children(*updated)
@@ -1002,7 +1033,10 @@ class UIManager:
     def remove_children(self, *children: Element) -> None:
         if len(children) == 1 and isinstance(children[0], list):
             # for backwards compatibility, this used to accept a single list of children
-            children = children[0]
+            child_list = children[0]
+            children = tuple(
+                child for child in child_list if isinstance(child, Element)
+            )
 
         for elem in children:
             if not isinstance(elem, Element):
@@ -1013,8 +1047,9 @@ class UIManager:
                 raise RuntimeError("You can't remove the base container!")
 
             # this should never be None, but in case some numpty does something weird...
-            if getattr(elem, "parent", None):
-                elem.parent.remove_children(elem)
+            parent = getattr(elem, "parent", None)
+            if parent is not None:
+                parent.remove_children(elem)
 
             ## Remove the element
             self._base_container.remove_children(elem)
