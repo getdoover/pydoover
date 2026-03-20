@@ -344,10 +344,81 @@ def render_control_field(defn: dict) -> str:
     return f"ControlField({', '.join(parts)})"
 
 
+def render_python_type(defn: dict) -> str:
+    if defn["type"] == "resource" and defn["ref"] is not None:
+        base = defn["ref"]
+    elif defn["type"] in {"string", "id"}:
+        base = "str"
+    elif defn["type"] == "SnowflakeId":
+        base = "int"
+    elif defn["type"] == "integer":
+        base = "int"
+    elif defn["type"] == "float":
+        base = "float"
+    elif defn["type"] == "boolean":
+        base = "bool"
+    elif defn["type"] == "json":
+        base = "Any"
+    else:
+        base = defn["type"]
+
+    if defn["is_array"]:
+        base = f"list[{base}]"
+    if defn["nullable"]:
+        base = f"{base} | None"
+    return base
+
+
+def render_constructor_type(defn: dict) -> str:
+    if defn["type"] == "resource" and defn["ref"] is not None:
+        base = f'{defn["ref"]} | dict[str, Any] | str | int'
+    elif defn["type"] == "json":
+        base = "Any"
+    elif defn["type"] in {"string", "id"}:
+        base = "str"
+    elif defn["type"] == "SnowflakeId":
+        base = "int"
+    elif defn["type"] == "integer":
+        base = "int"
+    elif defn["type"] == "float":
+        base = "float"
+    elif defn["type"] == "boolean":
+        base = "bool"
+    else:
+        base = f'{defn["type"]} | dict[str, Any]'
+
+    if defn["is_array"]:
+        base = f"list[{base}]"
+    return f"{base} | None"
+
+
+def render_init(field_names: list[str], field_defs: dict[str, dict]) -> list[str]:
+    lines = ["    def __init__(", "        self,"]
+    if field_names:
+        lines.append("        *,")
+        for field_name in field_names:
+            lines.append(
+                f"        {field_name}: {render_constructor_type(field_defs[field_name])} = None,"
+            )
+    lines.append("    ) -> None:")
+    if field_names:
+        lines.append("        super().__init__(")
+        for field_name in field_names:
+            lines.append(f"            {field_name}={field_name},")
+        lines.append("        )")
+    else:
+        lines.append("        super().__init__()")
+    return lines
+
+
 def render_object_types(object_types: dict[str, dict[str, dict]]) -> list[str]:
     blocks = []
     for name in sorted(object_types):
         blocks.append(f"class {name}(ObjectFieldType):")
+        field_names = list(object_types[name])
+        for field_name, definition in object_types[name].items():
+            blocks.append(f"    {field_name}: {render_python_type(definition)}")
+        blocks.extend(render_init(field_names, object_types[name]))
         blocks.append("    _structure = {")
         for field_name, definition in object_types[name].items():
             blocks.append(f'        "{field_name}": {render_control_field(definition)},')
@@ -361,6 +432,10 @@ def render_models(model_fields: dict[str, dict[str, dict]], model_versions: dict
     for model_name in sorted(model_fields):
         blocks.append(f"class {model_name}(ControlModel):")
         blocks.append(f'    _model_name = "{model_name}"')
+        field_names = list(model_fields[model_name])
+        for field_name, definition in model_fields[model_name].items():
+            blocks.append(f"    {field_name}: {render_python_type(definition)}")
+        blocks.extend(render_init(field_names, model_fields[model_name]))
         blocks.append("    _field_defs = {")
         for field_name, definition in model_fields[model_name].items():
             blocks.append(f'        "{field_name}": {render_control_field(definition)},')
@@ -387,6 +462,8 @@ def build_generated_module(spec: dict) -> str:
 
     blocks = [
         "from __future__ import annotations",
+        "",
+        "from typing import Any",
         "",
         "from ._base import ControlField, ControlModel, ObjectFieldType",
         "",

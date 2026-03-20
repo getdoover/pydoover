@@ -1,10 +1,12 @@
 from pydoover.api.control._generated_async import OPERATION_COUNT as ASYNC_OPERATION_COUNT
+from pydoover.api.control._generated_async import DevicesAsyncGroup
 from pydoover.api.control._generated_groups import (
     EXCLUDED_PATHS,
     GROUP_TREE,
     INCLUDED_OPERATION_IDS,
     OPERATION_COUNT,
 )
+from pydoover.api.control._generated_sync import DevicesSyncGroup
 from pydoover.api.control._generated_sync import OPERATION_COUNT as SYNC_OPERATION_COUNT
 
 
@@ -35,3 +37,12 @@ def test_included_operation_ids_cover_expected_examples():
     assert "devices_installer_tarball_retrieve" in INCLUDED_OPERATION_IDS
     assert "organisations_billing_products_list" in INCLUDED_OPERATION_IDS
     assert "organisations_pending_users_approve_create" in INCLUDED_OPERATION_IDS
+
+
+def test_codegen_emits_return_annotations_for_generated_methods():
+    assert DevicesSyncGroup.create.__annotations__["return"] == "control_models.Device"
+    assert (
+        DevicesSyncGroup.list.__annotations__["return"]
+        == "control_models.ControlPage[control_models.Device]"
+    )
+    assert DevicesAsyncGroup.create.__annotations__["return"] == "control_models.Device"

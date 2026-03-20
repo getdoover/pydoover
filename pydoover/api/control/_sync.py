@@ -4,7 +4,7 @@ import json
 import time
 from collections.abc import Collection
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
@@ -52,15 +52,15 @@ class ControlClient(ControlClientGroups, BaseControlClient):
         )
         _attach_sync_groups(self)
 
-    def close(self):
+    def close(self) -> None:
         self._session.close()
         if self._owns_auth:
             self.auth.close()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc: object) -> None:
         self.close()
 
     def _execute(

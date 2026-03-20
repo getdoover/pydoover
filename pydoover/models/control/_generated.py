@@ -1,9 +1,23 @@
 from __future__ import annotations
 
+from typing import Any
+
 from ._base import ControlField, ControlModel, ObjectFieldType
 
 
 class Location(ObjectFieldType):
+    latitude: float
+    longitude: float
+    def __init__(
+        self,
+        *,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> None:
+        super().__init__(
+            latitude=latitude,
+            longitude=longitude,
+        )
     _structure = {
         "latitude": ControlField(type="float", nullable=False),
         "longitude": ControlField(type="float", nullable=False),
@@ -11,6 +25,51 @@ class Location(ObjectFieldType):
 
 class AIChatMessage(ControlModel):
     _model_name = "AIChatMessage"
+    id: int
+    session: str
+    created_at: str
+    user_message: str
+    assistant_response: str
+    tokens_input: int
+    tokens_output: int
+    gatekeeper_stopped: bool
+    recursion_depth: int
+    tools_used: Any
+    actions_returned: Any
+    navigation_context: Any
+    debug_log: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        session: str | None = None,
+        created_at: str | None = None,
+        user_message: str | None = None,
+        assistant_response: str | None = None,
+        tokens_input: int | None = None,
+        tokens_output: int | None = None,
+        gatekeeper_stopped: bool | None = None,
+        recursion_depth: int | None = None,
+        tools_used: Any | None = None,
+        actions_returned: Any | None = None,
+        navigation_context: Any | None = None,
+        debug_log: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            session=session,
+            created_at=created_at,
+            user_message=user_message,
+            assistant_response=assistant_response,
+            tokens_input=tokens_input,
+            tokens_output=tokens_output,
+            gatekeeper_stopped=gatekeeper_stopped,
+            recursion_depth=recursion_depth,
+            tools_used=tools_used,
+            actions_returned=actions_returned,
+            navigation_context=navigation_context,
+            debug_log=debug_log,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "session": ControlField(type="string", nullable=False),
@@ -65,6 +124,54 @@ class AIChatMessage(ControlModel):
 
 class AIChatSession(ControlModel):
     _model_name = "AIChatSession"
+    id: int
+    session_key: str
+    user: User
+    organisation: Organisation
+    created_at: str
+    last_message_at: str
+    total_tokens_input: int
+    total_tokens_output: int
+    gatekeeper_count: int
+    max_recursion_depth: int
+    tools_used: Any
+    message_count: str
+    message_history: Any
+    messages: list[AIChatMessage]
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        session_key: str | None = None,
+        user: User | dict[str, Any] | str | int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        created_at: str | None = None,
+        last_message_at: str | None = None,
+        total_tokens_input: int | None = None,
+        total_tokens_output: int | None = None,
+        gatekeeper_count: int | None = None,
+        max_recursion_depth: int | None = None,
+        tools_used: Any | None = None,
+        message_count: str | None = None,
+        message_history: Any | None = None,
+        messages: list[AIChatMessage | dict[str, Any] | str | int] | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            session_key=session_key,
+            user=user,
+            organisation=organisation,
+            created_at=created_at,
+            last_message_at=last_message_at,
+            total_tokens_input=total_tokens_input,
+            total_tokens_output=total_tokens_output,
+            gatekeeper_count=gatekeeper_count,
+            max_recursion_depth=max_recursion_depth,
+            tools_used=tools_used,
+            message_count=message_count,
+            message_history=message_history,
+            messages=messages,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "session_key": ControlField(type="string", nullable=False),
@@ -120,6 +227,39 @@ class AIChatSession(ControlModel):
 
 class AgentBillingItem(ControlModel):
     _model_name = "AgentBillingItem"
+    id: int
+    billing_product: AgentItemProduct
+    device: AgentItemDevice | None
+    organisation: AgentItemOrg | None
+    effective_from: str
+    effective_until: str | None
+    notes: str
+    created_at: str
+    updated_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        billing_product: AgentItemProduct | dict[str, Any] | str | int | None = None,
+        device: AgentItemDevice | dict[str, Any] | str | int | None = None,
+        organisation: AgentItemOrg | dict[str, Any] | str | int | None = None,
+        effective_from: str | None = None,
+        effective_until: str | None = None,
+        notes: str | None = None,
+        created_at: str | None = None,
+        updated_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            billing_product=billing_product,
+            device=device,
+            organisation=organisation,
+            effective_from=effective_from,
+            effective_until=effective_until,
+            notes=notes,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "billing_product": ControlField(type="resource", nullable=False, ref="AgentItemProduct"),
@@ -184,6 +324,18 @@ class AgentBillingItem(ControlModel):
 
 class AgentItemDevice(ControlModel):
     _model_name = "AgentItemDevice"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -205,6 +357,18 @@ class AgentItemDevice(ControlModel):
 
 class AgentItemOrg(ControlModel):
     _model_name = "AgentItemOrg"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -226,6 +390,18 @@ class AgentItemOrg(ControlModel):
 
 class AgentItemProduct(ControlModel):
     _model_name = "AgentItemProduct"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -247,6 +423,33 @@ class AgentItemProduct(ControlModel):
 
 class AppBillingConfig(ControlModel):
     _model_name = "AppBillingConfig"
+    id: int
+    application: AppBillingConfigApp
+    billable: bool
+    billing_product: AppBillingConfigProduct | None
+    owner_organisation: AppBillingConfigOwnerOrg | None
+    created_at: str
+    updated_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        application: AppBillingConfigApp | dict[str, Any] | str | int | None = None,
+        billable: bool | None = None,
+        billing_product: AppBillingConfigProduct | dict[str, Any] | str | int | None = None,
+        owner_organisation: AppBillingConfigOwnerOrg | dict[str, Any] | str | int | None = None,
+        created_at: str | None = None,
+        updated_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            application=application,
+            billable=billable,
+            billing_product=billing_product,
+            owner_organisation=owner_organisation,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "application": ControlField(type="resource", nullable=False, ref="AppBillingConfigApp"),
@@ -301,6 +504,18 @@ class AppBillingConfig(ControlModel):
 
 class AppBillingConfigApp(ControlModel):
     _model_name = "AppBillingConfigApp"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -322,6 +537,18 @@ class AppBillingConfigApp(ControlModel):
 
 class AppBillingConfigOwnerOrg(ControlModel):
     _model_name = "AppBillingConfigOwnerOrg"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -343,6 +570,18 @@ class AppBillingConfigOwnerOrg(ControlModel):
 
 class AppBillingConfigProduct(ControlModel):
     _model_name = "AppBillingConfigProduct"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -364,6 +603,78 @@ class AppBillingConfigProduct(ControlModel):
 
 class Application(ControlModel):
     _model_name = "Application"
+    id: int
+    archived: bool
+    name: str
+    display_name: str
+    description: str
+    long_description: str
+    type: str
+    visibility: str
+    allow_many: bool
+    config_schema: Any
+    depends_on: list[str]
+    organisation: Organisation | None
+    approx_installs: int
+    stars: int
+    container_registry_profile: ContainerRegistry | None
+    deployment_data: str | None
+    image_name: str | None
+    lambda_arn: str | None
+    lambda_config: Any
+    config_profiles: list[ApplicationConfigProfile]
+    icon_url: str | None
+    banner_url: str | None
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        archived: bool | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
+        long_description: str | None = None,
+        type: str | None = None,
+        visibility: str | None = None,
+        allow_many: bool | None = None,
+        config_schema: Any | None = None,
+        depends_on: list[str] | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        approx_installs: int | None = None,
+        stars: int | None = None,
+        container_registry_profile: ContainerRegistry | dict[str, Any] | str | int | None = None,
+        deployment_data: str | None = None,
+        image_name: str | None = None,
+        lambda_arn: str | None = None,
+        lambda_config: Any | None = None,
+        config_profiles: list[ApplicationConfigProfile | dict[str, Any] | str | int] | None = None,
+        icon_url: str | None = None,
+        banner_url: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            archived=archived,
+            name=name,
+            display_name=display_name,
+            description=description,
+            long_description=long_description,
+            type=type,
+            visibility=visibility,
+            allow_many=allow_many,
+            config_schema=config_schema,
+            depends_on=depends_on,
+            organisation=organisation,
+            approx_installs=approx_installs,
+            stars=stars,
+            container_registry_profile=container_registry_profile,
+            deployment_data=deployment_data,
+            image_name=image_name,
+            lambda_arn=lambda_arn,
+            lambda_config=lambda_config,
+            config_profiles=config_profiles,
+            icon_url=icon_url,
+            banner_url=banner_url,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "archived": ControlField(type="boolean", nullable=False),
@@ -541,6 +852,30 @@ class Application(ControlModel):
 
 class ApplicationConfigProfile(ControlModel):
     _model_name = "ApplicationConfigProfile"
+    id: int
+    organisation: Organisation | None
+    display_name: str
+    description: str
+    deployment_config: Any
+    application: Application
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
+        deployment_config: Any | None = None,
+        application: Application | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            organisation=organisation,
+            display_name=display_name,
+            description=description,
+            deployment_config=deployment_config,
+            application=application,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
@@ -622,6 +957,33 @@ class ApplicationConfigProfile(ControlModel):
 
 class ApplicationDeployment(ControlModel):
     _model_name = "ApplicationDeployment"
+    id: int
+    app_install: str
+    status: str
+    created_at: str
+    log_output: str
+    deployment_config: Any
+    docker_message_id: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        app_install: str | None = None,
+        status: str | None = None,
+        created_at: str | None = None,
+        log_output: str | None = None,
+        deployment_config: Any | None = None,
+        docker_message_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            app_install=app_install,
+            status=status,
+            created_at=created_at,
+            log_output=log_output,
+            deployment_config=deployment_config,
+            docker_message_id=docker_message_id,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "app_install": ControlField(type="string", nullable=False),
@@ -665,6 +1027,57 @@ class ApplicationDeployment(ControlModel):
 
 class ApplicationInstallation(ControlModel):
     _model_name = "ApplicationInstallation"
+    id: int
+    archived: bool
+    name: str
+    display_name: str
+    application: Application
+    organisation: Organisation
+    device: Device | None
+    version: str | None
+    managed_by: list[str]
+    deployment_config: Any
+    latest_deployment: ApplicationDeployment
+    pre_archive_latest_deployment: str
+    config_profiles: list[ApplicationConfigProfile]
+    solution_id: str | None
+    template: ApplicationTemplate
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        archived: bool | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        application: Application | dict[str, Any] | str | int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        device: Device | dict[str, Any] | str | int | None = None,
+        version: str | None = None,
+        managed_by: list[str] | None = None,
+        deployment_config: Any | None = None,
+        latest_deployment: ApplicationDeployment | dict[str, Any] | str | int | None = None,
+        pre_archive_latest_deployment: str | None = None,
+        config_profiles: list[ApplicationConfigProfile | dict[str, Any] | str | int] | None = None,
+        solution_id: str | None = None,
+        template: ApplicationTemplate | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            archived=archived,
+            name=name,
+            display_name=display_name,
+            application=application,
+            organisation=organisation,
+            device=device,
+            version=version,
+            managed_by=managed_by,
+            deployment_config=deployment_config,
+            latest_deployment=latest_deployment,
+            pre_archive_latest_deployment=pre_archive_latest_deployment,
+            config_profiles=config_profiles,
+            solution_id=solution_id,
+            template=template,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "archived": ControlField(type="boolean", nullable=False),
@@ -751,6 +1164,39 @@ class ApplicationInstallation(ControlModel):
 
 class ApplicationTemplate(ControlModel):
     _model_name = "ApplicationTemplate"
+    id: int
+    name: str
+    display_name: str
+    description: str
+    application: Application
+    deployment_config: Any
+    synced: bool
+    config_profiles: list[ApplicationConfigProfile]
+    solution_id: str | None
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
+        application: Application | dict[str, Any] | str | int | None = None,
+        deployment_config: Any | None = None,
+        synced: bool | None = None,
+        config_profiles: list[ApplicationConfigProfile | dict[str, Any] | str | int] | None = None,
+        solution_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            display_name=display_name,
+            description=description,
+            application=application,
+            deployment_config=deployment_config,
+            synced=synced,
+            config_profiles=config_profiles,
+            solution_id=solution_id,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -817,6 +1263,24 @@ class ApplicationTemplate(ControlModel):
 
 class Attachment(ControlModel):
     _model_name = "Attachment"
+    filename: str
+    content_type: str
+    size: int
+    url: str
+    def __init__(
+        self,
+        *,
+        filename: str | None = None,
+        content_type: str | None = None,
+        size: int | None = None,
+        url: str | None = None,
+    ) -> None:
+        super().__init__(
+            filename=filename,
+            content_type=content_type,
+            size=size,
+            url=url,
+        )
     _field_defs = {
         "filename": ControlField(type="string", nullable=False),
         "content_type": ControlField(type="string", nullable=False),
@@ -844,6 +1308,33 @@ class Attachment(ControlModel):
 
 class BillingAccount(ControlModel):
     _model_name = "BillingAccount"
+    id: int
+    organisation: str
+    stripe_customer_id: str | None
+    billing_email: str | None
+    metering_mode: str
+    created_at: str
+    updated_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        organisation: str | None = None,
+        stripe_customer_id: str | None = None,
+        billing_email: str | None = None,
+        metering_mode: str | None = None,
+        created_at: str | None = None,
+        updated_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            organisation=organisation,
+            stripe_customer_id=stripe_customer_id,
+            billing_email=billing_email,
+            metering_mode=metering_mode,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "organisation": ControlField(type="string", nullable=False),
@@ -894,6 +1385,45 @@ class BillingAccount(ControlModel):
 
 class BillingProduct(ControlModel):
     _model_name = "BillingProduct"
+    id: int
+    name: str
+    description: str
+    stripe_product_id: str
+    offline_stripe_product_id: str | None
+    stripe_account: str | None
+    product_type: str
+    app_visibility_tier: str | None
+    owner_organisation: BillingProductOrg | None
+    active: bool
+    created_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        stripe_product_id: str | None = None,
+        offline_stripe_product_id: str | None = None,
+        stripe_account: str | None = None,
+        product_type: str | None = None,
+        app_visibility_tier: str | None = None,
+        owner_organisation: BillingProductOrg | dict[str, Any] | str | int | None = None,
+        active: bool | None = None,
+        created_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            description=description,
+            stripe_product_id=stripe_product_id,
+            offline_stripe_product_id=offline_stripe_product_id,
+            stripe_account=stripe_account,
+            product_type=product_type,
+            app_visibility_tier=app_visibility_tier,
+            owner_organisation=owner_organisation,
+            active=active,
+            created_at=created_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -964,6 +1494,18 @@ class BillingProduct(ControlModel):
 
 class BillingProductOrg(ControlModel):
     _model_name = "BillingProductOrg"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -979,6 +1521,39 @@ class BillingProductOrg(ControlModel):
 
 class BillingSubscription(ControlModel):
     _model_name = "BillingSubscription"
+    id: int
+    billing_account: str
+    stripe_subscription_id: str
+    status: str
+    current_period_start: str | None
+    current_period_end: str | None
+    items: list[BillingSubscriptionItem]
+    created_at: str
+    updated_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        billing_account: str | None = None,
+        stripe_subscription_id: str | None = None,
+        status: str | None = None,
+        current_period_start: str | None = None,
+        current_period_end: str | None = None,
+        items: list[BillingSubscriptionItem | dict[str, Any] | str | int] | None = None,
+        created_at: str | None = None,
+        updated_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            billing_account=billing_account,
+            stripe_subscription_id=stripe_subscription_id,
+            status=status,
+            current_period_start=current_period_start,
+            current_period_end=current_period_end,
+            items=items,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "billing_account": ControlField(type="string", nullable=False),
@@ -1018,6 +1593,30 @@ class BillingSubscription(ControlModel):
 
 class BillingSubscriptionItem(ControlModel):
     _model_name = "BillingSubscriptionItem"
+    id: int
+    billing_product: BillingProduct
+    stripe_subscription_item_id: str
+    stripe_product_id: str | None
+    is_offline: str
+    created_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        billing_product: BillingProduct | dict[str, Any] | str | int | None = None,
+        stripe_subscription_item_id: str | None = None,
+        stripe_product_id: str | None = None,
+        is_offline: str | None = None,
+        created_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            billing_product=billing_product,
+            stripe_subscription_item_id=stripe_subscription_item_id,
+            stripe_product_id=stripe_product_id,
+            is_offline=is_offline,
+            created_at=created_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "billing_product": ControlField(type="resource", nullable=False, ref="BillingProduct"),
@@ -1041,6 +1640,24 @@ class BillingSubscriptionItem(ControlModel):
 
 class ContainerRegistry(ControlModel):
     _model_name = "ContainerRegistry"
+    id: int
+    name: str
+    description: str
+    archived: bool
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        archived: bool | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            description=description,
+            archived=archived,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1068,6 +1685,36 @@ class ContainerRegistry(ControlModel):
 
 class ContainerRegistryProfile(ControlModel):
     _model_name = "ContainerRegistryProfile"
+    id: int
+    organisation: Organisation
+    archived: bool
+    name: str
+    description: str
+    url: str
+    username: str
+    password: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        archived: bool | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        url: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            organisation=organisation,
+            archived=archived,
+            name=name,
+            description=description,
+            url=url,
+            username=username,
+            password=password,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "organisation": ControlField(type="resource", nullable=False, ref="Organisation"),
@@ -1124,6 +1771,27 @@ class ContainerRegistryProfile(ControlModel):
 
 class CustomerSite(ControlModel):
     _model_name = "CustomerSite"
+    name: str
+    application_id: str
+    id: int
+    theme: Theme
+    archived: bool
+    def __init__(
+        self,
+        *,
+        name: str | None = None,
+        application_id: str | None = None,
+        id: int | None = None,
+        theme: Theme | dict[str, Any] | str | int | None = None,
+        archived: bool | None = None,
+    ) -> None:
+        super().__init__(
+            name=name,
+            application_id=application_id,
+            id=id,
+            theme=theme,
+            archived=archived,
+        )
     _field_defs = {
         "name": ControlField(type="string", nullable=False),
         "application_id": ControlField(type="id", nullable=False),
@@ -1145,6 +1813,18 @@ class CustomerSite(ControlModel):
 
 class DTBillingConfigDeviceType(ControlModel):
     _model_name = "DTBillingConfigDeviceType"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1166,6 +1846,18 @@ class DTBillingConfigDeviceType(ControlModel):
 
 class DTBillingConfigOwnerOrg(ControlModel):
     _model_name = "DTBillingConfigOwnerOrg"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1187,6 +1879,18 @@ class DTBillingConfigOwnerOrg(ControlModel):
 
 class DTBillingConfigProduct(ControlModel):
     _model_name = "DTBillingConfigProduct"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1208,6 +1912,54 @@ class DTBillingConfigProduct(ControlModel):
 
 class Device(ControlModel):
     _model_name = "Device"
+    id: int
+    archived: bool
+    name: str
+    display_name: str
+    type: DeviceType
+    organisation: Organisation
+    group: Group
+    fa_icon: str | None
+    notes: str | None
+    extra_config: Any
+    fusion_entity_id: str | None
+    fusion_entity_secret: str | None
+    fixed_location: Location | None
+    solution_config: Any
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        archived: bool | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        type: DeviceType | dict[str, Any] | str | int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        group: Group | dict[str, Any] | str | int | None = None,
+        fa_icon: str | None = None,
+        notes: str | None = None,
+        extra_config: Any | None = None,
+        fusion_entity_id: str | None = None,
+        fusion_entity_secret: str | None = None,
+        fixed_location: Location | dict[str, Any] | None = None,
+        solution_config: Any | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            archived=archived,
+            name=name,
+            display_name=display_name,
+            type=type,
+            organisation=organisation,
+            group=group,
+            fa_icon=fa_icon,
+            notes=notes,
+            extra_config=extra_config,
+            fusion_entity_id=fusion_entity_id,
+            fusion_entity_secret=fusion_entity_secret,
+            fixed_location=fixed_location,
+            solution_config=solution_config,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "archived": ControlField(type="boolean", nullable=False),
@@ -1303,6 +2055,30 @@ class Device(ControlModel):
 
 class DeviceBillingConfig(ControlModel):
     _model_name = "DeviceBillingConfig"
+    id: int
+    device: str
+    device_name: str
+    billing_mode: str
+    created_at: str
+    updated_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        device: str | None = None,
+        device_name: str | None = None,
+        billing_mode: str | None = None,
+        created_at: str | None = None,
+        updated_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            device=device,
+            device_name=device_name,
+            billing_mode=billing_mode,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "device": ControlField(type="string", nullable=False),
@@ -1348,6 +2124,60 @@ class DeviceBillingConfig(ControlModel):
 
 class DeviceType(ControlModel):
     _model_name = "DeviceType"
+    id: int
+    organisation: Organisation
+    archived: bool
+    name: str
+    config: Any
+    config_schema: Any
+    device_extra_config_schema: Any
+    installer: str | None
+    installer_info: str
+    copy_command: str
+    description: str
+    logo_url: str | None
+    extra_info: str | None
+    stars: int
+    default_icon: str | None
+    solution: Solution | None
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        archived: bool | None = None,
+        name: str | None = None,
+        config: Any | None = None,
+        config_schema: Any | None = None,
+        device_extra_config_schema: Any | None = None,
+        installer: str | None = None,
+        installer_info: str | None = None,
+        copy_command: str | None = None,
+        description: str | None = None,
+        logo_url: str | None = None,
+        extra_info: str | None = None,
+        stars: int | None = None,
+        default_icon: str | None = None,
+        solution: Solution | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            organisation=organisation,
+            archived=archived,
+            name=name,
+            config=config,
+            config_schema=config_schema,
+            device_extra_config_schema=device_extra_config_schema,
+            installer=installer,
+            installer_info=installer_info,
+            copy_command=copy_command,
+            description=description,
+            logo_url=logo_url,
+            extra_info=extra_info,
+            stars=stars,
+            default_icon=default_icon,
+            solution=solution,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "organisation": ControlField(type="resource", nullable=False, ref="Organisation"),
@@ -1447,6 +2277,33 @@ class DeviceType(ControlModel):
 
 class DeviceTypeBillingConfig(ControlModel):
     _model_name = "DeviceTypeBillingConfig"
+    id: int
+    device_type: DTBillingConfigDeviceType
+    billing_product: DTBillingConfigProduct | None
+    online_lookback_hours: int | None
+    owner_organisation: DTBillingConfigOwnerOrg | None
+    created_at: str
+    updated_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        device_type: DTBillingConfigDeviceType | dict[str, Any] | str | int | None = None,
+        billing_product: DTBillingConfigProduct | dict[str, Any] | str | int | None = None,
+        online_lookback_hours: int | None = None,
+        owner_organisation: DTBillingConfigOwnerOrg | dict[str, Any] | str | int | None = None,
+        created_at: str | None = None,
+        updated_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            device_type=device_type,
+            billing_product=billing_product,
+            online_lookback_hours=online_lookback_hours,
+            owner_organisation=owner_organisation,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "device_type": ControlField(type="resource", nullable=False, ref="DTBillingConfigDeviceType"),
@@ -1501,6 +2358,27 @@ class DeviceTypeBillingConfig(ControlModel):
 
 class Group(ControlModel):
     _model_name = "Group"
+    id: int
+    name: str
+    organisation: Organisation
+    archived: bool
+    parent_id: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        archived: bool | None = None,
+        parent_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            organisation=organisation,
+            archived=archived,
+            parent_id=parent_id,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1566,6 +2444,21 @@ class Group(ControlModel):
 
 class GroupPermission(ControlModel):
     _model_name = "GroupPermission"
+    group: Group
+    user: PermissionUser
+    role: GroupRole | None
+    def __init__(
+        self,
+        *,
+        group: Group | dict[str, Any] | str | int | None = None,
+        user: PermissionUser | dict[str, Any] | str | int | None = None,
+        role: GroupRole | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            group=group,
+            user=user,
+            role=role,
+        )
     _field_defs = {
         "group": ControlField(type="resource", nullable=False, ref="Group"),
         "user": ControlField(type="resource", nullable=False, ref="PermissionUser"),
@@ -1604,6 +2497,84 @@ class GroupPermission(ControlModel):
 
 class GroupRole(ControlModel):
     _model_name = "GroupRole"
+    id: int
+    name: str
+    organisation: Organisation
+    archived: bool
+    billing_manager: bool
+    group_move: bool
+    group_edit: bool
+    group_view: bool
+    group_users_manage: bool
+    group_users_view: bool
+    device_create: bool
+    device_configure: bool
+    device_tunnels: bool
+    device_private_view: bool
+    device_control: bool
+    device_history: bool
+    device_view: bool
+    alarms_manage: bool
+    alarms_view: bool
+    turn_client_connect: bool
+    dashboard_create: bool
+    dashboard_edit: bool
+    dashboard_control: bool
+    dashboard_view: bool
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        archived: bool | None = None,
+        billing_manager: bool | None = None,
+        group_move: bool | None = None,
+        group_edit: bool | None = None,
+        group_view: bool | None = None,
+        group_users_manage: bool | None = None,
+        group_users_view: bool | None = None,
+        device_create: bool | None = None,
+        device_configure: bool | None = None,
+        device_tunnels: bool | None = None,
+        device_private_view: bool | None = None,
+        device_control: bool | None = None,
+        device_history: bool | None = None,
+        device_view: bool | None = None,
+        alarms_manage: bool | None = None,
+        alarms_view: bool | None = None,
+        turn_client_connect: bool | None = None,
+        dashboard_create: bool | None = None,
+        dashboard_edit: bool | None = None,
+        dashboard_control: bool | None = None,
+        dashboard_view: bool | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            organisation=organisation,
+            archived=archived,
+            billing_manager=billing_manager,
+            group_move=group_move,
+            group_edit=group_edit,
+            group_view=group_view,
+            group_users_manage=group_users_manage,
+            group_users_view=group_users_view,
+            device_create=device_create,
+            device_configure=device_configure,
+            device_tunnels=device_tunnels,
+            device_private_view=device_private_view,
+            device_control=device_control,
+            device_history=device_history,
+            device_view=device_view,
+            alarms_manage=alarms_manage,
+            alarms_view=alarms_view,
+            turn_client_connect=turn_client_connect,
+            dashboard_create=dashboard_create,
+            dashboard_edit=dashboard_edit,
+            dashboard_control=dashboard_control,
+            dashboard_view=dashboard_view,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1755,6 +2726,18 @@ class GroupRole(ControlModel):
 
 class GroupRoleAssignment(ControlModel):
     _model_name = "GroupRoleAssignment"
+    group_id: str
+    role_id: str
+    def __init__(
+        self,
+        *,
+        group_id: str | None = None,
+        role_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            group_id=group_id,
+            role_id=role_id,
+        )
     _field_defs = {
         "group_id": ControlField(type="id", nullable=False),
         "role_id": ControlField(type="id", nullable=False),
@@ -1770,6 +2753,21 @@ class GroupRoleAssignment(ControlModel):
 
 class IngestionEndpoint(ControlModel):
     _model_name = "IngestionEndpoint"
+    id: int
+    url: str
+    token: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        url: str | None = None,
+        token: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            url=url,
+            token=token,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "url": ControlField(type="string", nullable=False),
@@ -1801,6 +2799,36 @@ class IngestionEndpoint(ControlModel):
 
 class Integration(ControlModel):
     _model_name = "Integration"
+    id: int
+    name: str
+    display_name: str
+    application: Application
+    deployment_config: Any
+    organisation: Organisation
+    latest_deployment: ApplicationDeployment
+    ingestion_endpoints: list[IngestionEndpoint]
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        application: Application | dict[str, Any] | str | int | None = None,
+        deployment_config: Any | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        latest_deployment: ApplicationDeployment | dict[str, Any] | str | int | None = None,
+        ingestion_endpoints: list[IngestionEndpoint | dict[str, Any] | str | int] | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            display_name=display_name,
+            application=application,
+            deployment_config=deployment_config,
+            organisation=organisation,
+            latest_deployment=latest_deployment,
+            ingestion_endpoints=ingestion_endpoints,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1858,6 +2886,18 @@ class Integration(ControlModel):
 
 class MeteringRunOrg(ControlModel):
     _model_name = "MeteringRunOrg"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1879,6 +2919,45 @@ class MeteringRunOrg(ControlModel):
 
 class Organisation(ControlModel):
     _model_name = "Organisation"
+    id: int
+    name: str
+    archived: bool
+    application_id: str
+    domains: list[OrganisationDomain]
+    root_group: Group
+    test_field_A: int
+    retention_period: int
+    legacy_doover_api_key: str | None
+    llm_api_key: str | None
+    theme: Theme
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        archived: bool | None = None,
+        application_id: str | None = None,
+        domains: list[OrganisationDomain | dict[str, Any] | str | int] | None = None,
+        root_group: Group | dict[str, Any] | str | int | None = None,
+        test_field_A: int | None = None,
+        retention_period: int | None = None,
+        legacy_doover_api_key: str | None = None,
+        llm_api_key: str | None = None,
+        theme: Theme | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            archived=archived,
+            application_id=application_id,
+            domains=domains,
+            root_group=root_group,
+            test_field_A=test_field_A,
+            retention_period=retention_period,
+            legacy_doover_api_key=legacy_doover_api_key,
+            llm_api_key=llm_api_key,
+            theme=theme,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -1999,6 +3078,21 @@ class Organisation(ControlModel):
 
 class OrganisationDomain(ControlModel):
     _model_name = "OrganisationDomain"
+    id: int
+    hostname: str
+    default: bool
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        hostname: str | None = None,
+        default: bool | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            hostname=hostname,
+            default=default,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "hostname": ControlField(type="string", nullable=False),
@@ -2036,6 +3130,75 @@ class OrganisationDomain(ControlModel):
 
 class OrganisationRole(ControlModel):
     _model_name = "OrganisationRole"
+    id: int
+    name: str
+    organisation: Organisation
+    default_root_group_role: GroupRole | None
+    archived: bool
+    billing_manager: bool
+    applications_manage: bool
+    applications_view: bool
+    device_types_manage: bool
+    device_types_view: bool
+    user_permissions_manage: bool
+    users_manage: bool
+    users_view: bool
+    users_invite: bool
+    reports_create: bool
+    integrations_manage: bool
+    theme_manage: bool
+    domains_manage: bool
+    conatiner_registry_profile_manage: bool
+    conatiner_registry_profile_view: bool
+    access_site: bool
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        default_root_group_role: GroupRole | dict[str, Any] | str | int | None = None,
+        archived: bool | None = None,
+        billing_manager: bool | None = None,
+        applications_manage: bool | None = None,
+        applications_view: bool | None = None,
+        device_types_manage: bool | None = None,
+        device_types_view: bool | None = None,
+        user_permissions_manage: bool | None = None,
+        users_manage: bool | None = None,
+        users_view: bool | None = None,
+        users_invite: bool | None = None,
+        reports_create: bool | None = None,
+        integrations_manage: bool | None = None,
+        theme_manage: bool | None = None,
+        domains_manage: bool | None = None,
+        conatiner_registry_profile_manage: bool | None = None,
+        conatiner_registry_profile_view: bool | None = None,
+        access_site: bool | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            organisation=organisation,
+            default_root_group_role=default_root_group_role,
+            archived=archived,
+            billing_manager=billing_manager,
+            applications_manage=applications_manage,
+            applications_view=applications_view,
+            device_types_manage=device_types_manage,
+            device_types_view=device_types_view,
+            user_permissions_manage=user_permissions_manage,
+            users_manage=users_manage,
+            users_view=users_view,
+            users_invite=users_invite,
+            reports_create=reports_create,
+            integrations_manage=integrations_manage,
+            theme_manage=theme_manage,
+            domains_manage=domains_manage,
+            conatiner_registry_profile_manage=conatiner_registry_profile_manage,
+            conatiner_registry_profile_view=conatiner_registry_profile_view,
+            access_site=access_site,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -2160,6 +3323,39 @@ class OrganisationRole(ControlModel):
 
 class OrganisationSharedReceiveProfile(ControlModel):
     _model_name = "OrganisationSharedReceiveProfile"
+    id: int
+    name: str
+    description: str
+    organisation: Organisation
+    sharing_organisation_id: str
+    sharing_base_url: str
+    sharing_data_url: str | None
+    sharing_auth_tenant_id: str | None
+    sharing_profile_id: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        sharing_organisation_id: str | None = None,
+        sharing_base_url: str | None = None,
+        sharing_data_url: str | None = None,
+        sharing_auth_tenant_id: str | None = None,
+        sharing_profile_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            description=description,
+            organisation=organisation,
+            sharing_organisation_id=sharing_organisation_id,
+            sharing_base_url=sharing_base_url,
+            sharing_data_url=sharing_data_url,
+            sharing_auth_tenant_id=sharing_auth_tenant_id,
+            sharing_profile_id=sharing_profile_id,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -2228,6 +3424,42 @@ class OrganisationSharedReceiveProfile(ControlModel):
 
 class OrganisationSharingProfile(ControlModel):
     _model_name = "OrganisationSharingProfile"
+    id: int
+    name: str
+    description: str
+    all_devices: list[Device]
+    devices: list[Device]
+    groups: list[Group]
+    role: OrganisationRole | None
+    dd_permission_id: str
+    organisation: Organisation
+    shared_organisation_id: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        all_devices: list[Device | dict[str, Any] | str | int] | None = None,
+        devices: list[Device | dict[str, Any] | str | int] | None = None,
+        groups: list[Group | dict[str, Any] | str | int] | None = None,
+        role: OrganisationRole | dict[str, Any] | str | int | None = None,
+        dd_permission_id: str | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        shared_organisation_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+            description=description,
+            all_devices=all_devices,
+            devices=devices,
+            groups=groups,
+            role=role,
+            dd_permission_id=dd_permission_id,
+            organisation=organisation,
+            shared_organisation_id=shared_organisation_id,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -2299,6 +3531,27 @@ class OrganisationSharingProfile(ControlModel):
 
 class OrganisationUser(ControlModel):
     _model_name = "OrganisationUser"
+    organisation: str
+    user: PermissionUser
+    role: OrganisationRole | None
+    user_email: str
+    add_to_group: list[GroupRoleAssignment]
+    def __init__(
+        self,
+        *,
+        organisation: str | None = None,
+        user: PermissionUser | dict[str, Any] | str | int | None = None,
+        role: OrganisationRole | dict[str, Any] | str | int | None = None,
+        user_email: str | None = None,
+        add_to_group: list[GroupRoleAssignment | dict[str, Any] | str | int] | None = None,
+    ) -> None:
+        super().__init__(
+            organisation=organisation,
+            user=user,
+            role=role,
+            user_email=user_email,
+            add_to_group=add_to_group,
+        )
     _field_defs = {
         "organisation": ControlField(type="string", nullable=False),
         "user": ControlField(type="resource", nullable=False, ref="PermissionUser"),
@@ -2341,6 +3594,30 @@ class OrganisationUser(ControlModel):
 
 class PendingUser(ControlModel):
     _model_name = "PendingUser"
+    email: str
+    organisation: Organisation
+    message: str | None
+    id: int
+    created_at: str
+    last_invited: str | None
+    def __init__(
+        self,
+        *,
+        email: str | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        message: str | None = None,
+        id: int | None = None,
+        created_at: str | None = None,
+        last_invited: str | None = None,
+    ) -> None:
+        super().__init__(
+            email=email,
+            organisation=organisation,
+            message=message,
+            id=id,
+            created_at=created_at,
+            last_invited=last_invited,
+        )
     _field_defs = {
         "email": ControlField(type="string", nullable=False),
         "organisation": ControlField(type="resource", nullable=False, ref="Organisation"),
@@ -2390,6 +3667,27 @@ class PendingUser(ControlModel):
 
 class PermissionUser(ControlModel):
     _model_name = "PermissionUser"
+    id: int
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        username: str | None = None,
+        email: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "username": ControlField(type="string", nullable=False),
@@ -2429,6 +3727,45 @@ class PermissionUser(ControlModel):
 
 class Report(ControlModel):
     _model_name = "Report"
+    id: int
+    devices: list[str]
+    logs: str
+    period_end: int
+    period_start: int
+    report_generator: Application
+    status: str
+    name: str
+    config: Any
+    schedule: ReportSchedule | None
+    files: list[Attachment]
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        devices: list[str] | None = None,
+        logs: str | None = None,
+        period_end: int | None = None,
+        period_start: int | None = None,
+        report_generator: Application | dict[str, Any] | str | int | None = None,
+        status: str | None = None,
+        name: str | None = None,
+        config: Any | None = None,
+        schedule: ReportSchedule | dict[str, Any] | str | int | None = None,
+        files: list[Attachment | dict[str, Any] | str | int] | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            devices=devices,
+            logs=logs,
+            period_end=period_end,
+            period_start=period_start,
+            report_generator=report_generator,
+            status=status,
+            name=name,
+            config=config,
+            schedule=schedule,
+            files=files,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "devices": ControlField(type="string", nullable=False, is_array=True),
@@ -2477,6 +3814,27 @@ class Report(ControlModel):
 
 class ReportCreate(ControlModel):
     _model_name = "ReportCreate"
+    name: str
+    config: Any
+    report_generator_id: str
+    period_start: int
+    period_end: int
+    def __init__(
+        self,
+        *,
+        name: str | None = None,
+        config: Any | None = None,
+        report_generator_id: str | None = None,
+        period_start: int | None = None,
+        period_end: int | None = None,
+    ) -> None:
+        super().__init__(
+            name=name,
+            config=config,
+            report_generator_id=report_generator_id,
+            period_start=period_start,
+            period_end=period_end,
+        )
     _field_defs = {
         "name": ControlField(type="string", nullable=False),
         "config": ControlField(type="json", nullable=False),
@@ -2499,6 +3857,36 @@ class ReportCreate(ControlModel):
 
 class ReportSchedule(ControlModel):
     _model_name = "ReportSchedule"
+    name: str
+    display_name: str
+    application: Application
+    deployment_config: Any
+    id: int
+    archived: bool
+    organisation: Organisation
+    latest_deployment: ApplicationDeployment
+    def __init__(
+        self,
+        *,
+        name: str | None = None,
+        display_name: str | None = None,
+        application: Application | dict[str, Any] | str | int | None = None,
+        deployment_config: Any | None = None,
+        id: int | None = None,
+        archived: bool | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        latest_deployment: ApplicationDeployment | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            name=name,
+            display_name=display_name,
+            application=application,
+            deployment_config=deployment_config,
+            id=id,
+            archived=archived,
+            organisation=organisation,
+            latest_deployment=latest_deployment,
+        )
     _field_defs = {
         "name": ControlField(type="string", nullable=False),
         "display_name": ControlField(type="string", nullable=False),
@@ -2556,6 +3944,39 @@ class ReportSchedule(ControlModel):
 
 class SellerCustomer(ControlModel):
     _model_name = "SellerCustomer"
+    group: SellerCustomerGroup
+    billing_email: str | None
+    stripe_customer_id: str | None
+    notes: str
+    id: int
+    seller_organisation: SellerCustomerOrg
+    has_subscription: str
+    created_at: str
+    updated_at: str
+    def __init__(
+        self,
+        *,
+        group: SellerCustomerGroup | dict[str, Any] | str | int | None = None,
+        billing_email: str | None = None,
+        stripe_customer_id: str | None = None,
+        notes: str | None = None,
+        id: int | None = None,
+        seller_organisation: SellerCustomerOrg | dict[str, Any] | str | int | None = None,
+        has_subscription: str | None = None,
+        created_at: str | None = None,
+        updated_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            group=group,
+            billing_email=billing_email,
+            stripe_customer_id=stripe_customer_id,
+            notes=notes,
+            id=id,
+            seller_organisation=seller_organisation,
+            has_subscription=has_subscription,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
     _field_defs = {
         "group": ControlField(type="resource", nullable=False, ref="SellerCustomerGroup"),
         "billing_email": ControlField(type="string", nullable=True),
@@ -2614,6 +4035,18 @@ class SellerCustomer(ControlModel):
 
 class SellerCustomerGroup(ControlModel):
     _model_name = "SellerCustomerGroup"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -2635,6 +4068,18 @@ class SellerCustomerGroup(ControlModel):
 
 class SellerCustomerOrg(ControlModel):
     _model_name = "SellerCustomerOrg"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -2656,6 +4101,27 @@ class SellerCustomerOrg(ControlModel):
 
 class SharedDevice(ControlModel):
     _model_name = "SharedDevice"
+    id: int
+    device: str
+    group: Group
+    shared_profile: OrganisationSharedReceiveProfile
+    organisation: Organisation
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        device: str | None = None,
+        group: Group | dict[str, Any] | str | int | None = None,
+        shared_profile: OrganisationSharedReceiveProfile | dict[str, Any] | str | int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            device=device,
+            group=group,
+            shared_profile=shared_profile,
+            organisation=organisation,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "device": ControlField(type="string", nullable=False),
@@ -2704,6 +4170,27 @@ class SharedDevice(ControlModel):
 
 class SharedGroup(ControlModel):
     _model_name = "SharedGroup"
+    id: int
+    group: Group
+    shared_profile: OrganisationSharedReceiveProfile
+    shared_group: str
+    organisation: Organisation
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        group: Group | dict[str, Any] | str | int | None = None,
+        shared_profile: OrganisationSharedReceiveProfile | dict[str, Any] | str | int | None = None,
+        shared_group: str | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            group=group,
+            shared_profile=shared_profile,
+            shared_group=shared_group,
+            organisation=organisation,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "group": ControlField(type="resource", nullable=False, ref="Group"),
@@ -2752,6 +4239,39 @@ class SharedGroup(ControlModel):
 
 class Solution(ControlModel):
     _model_name = "Solution"
+    display_name: str
+    description: str
+    jinja_template: str
+    config_schema: Any
+    config: Any
+    id: int
+    archived: bool
+    application_templates: list[ApplicationTemplate]
+    organisation: Organisation
+    def __init__(
+        self,
+        *,
+        display_name: str | None = None,
+        description: str | None = None,
+        jinja_template: str | None = None,
+        config_schema: Any | None = None,
+        config: Any | None = None,
+        id: int | None = None,
+        archived: bool | None = None,
+        application_templates: list[ApplicationTemplate | dict[str, Any] | str | int] | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+    ) -> None:
+        super().__init__(
+            display_name=display_name,
+            description=description,
+            jinja_template=jinja_template,
+            config_schema=config_schema,
+            config=config,
+            id=id,
+            archived=archived,
+            application_templates=application_templates,
+            organisation=organisation,
+        )
     _field_defs = {
         "display_name": ControlField(type="string", nullable=False),
         "description": ControlField(type="string", nullable=False),
@@ -2814,6 +4334,36 @@ class Solution(ControlModel):
 
 class SolutionInstallation(ControlModel):
     _model_name = "SolutionInstallation"
+    display_name: str
+    device: Device
+    solution: Solution
+    deployment_config: Any
+    id: int
+    deployed_at: str
+    status: str
+    application_installs: list[ApplicationInstallation]
+    def __init__(
+        self,
+        *,
+        display_name: str | None = None,
+        device: Device | dict[str, Any] | str | int | None = None,
+        solution: Solution | dict[str, Any] | str | int | None = None,
+        deployment_config: Any | None = None,
+        id: int | None = None,
+        deployed_at: str | None = None,
+        status: str | None = None,
+        application_installs: list[ApplicationInstallation | dict[str, Any] | str | int] | None = None,
+    ) -> None:
+        super().__init__(
+            display_name=display_name,
+            device=device,
+            solution=solution,
+            deployment_config=deployment_config,
+            id=id,
+            deployed_at=deployed_at,
+            status=status,
+            application_installs=application_installs,
+        )
     _field_defs = {
         "display_name": ControlField(type="string", nullable=False),
         "device": ControlField(type="resource", nullable=False, ref="Device"),
@@ -2871,6 +4421,45 @@ class SolutionInstallation(ControlModel):
 
 class Theme(ControlModel):
     _model_name = "Theme"
+    accent_colour: str
+    brand_logo_colour: str
+    navbar_colour: str
+    navbar_text_colour: str
+    sidebar_colour: str
+    sidebar_text_colour: str
+    banner_image: str | None
+    login_banner: str | None
+    sidebar_banner_image: str | None
+    site_logo: str | None
+    id: int
+    def __init__(
+        self,
+        *,
+        accent_colour: str | None = None,
+        brand_logo_colour: str | None = None,
+        navbar_colour: str | None = None,
+        navbar_text_colour: str | None = None,
+        sidebar_colour: str | None = None,
+        sidebar_text_colour: str | None = None,
+        banner_image: str | None = None,
+        login_banner: str | None = None,
+        sidebar_banner_image: str | None = None,
+        site_logo: str | None = None,
+        id: int | None = None,
+    ) -> None:
+        super().__init__(
+            accent_colour=accent_colour,
+            brand_logo_colour=brand_logo_colour,
+            navbar_colour=navbar_colour,
+            navbar_text_colour=navbar_text_colour,
+            sidebar_colour=sidebar_colour,
+            sidebar_text_colour=sidebar_text_colour,
+            banner_image=banner_image,
+            login_banner=login_banner,
+            sidebar_banner_image=sidebar_banner_image,
+            site_logo=site_logo,
+            id=id,
+        )
     _field_defs = {
         "accent_colour": ControlField(type="string", nullable=False),
         "brand_logo_colour": ControlField(type="string", nullable=False),
@@ -2991,6 +4580,57 @@ class Theme(ControlModel):
 
 class Tunnel(ControlModel):
     _model_name = "Tunnel"
+    name: str
+    device: Device
+    hostname: str
+    port: int
+    protocol: str
+    username: str | None
+    password: str | None
+    timeout: int
+    ip_restricted: bool
+    disable_tls_verification: bool
+    ip_whitelist: Any
+    is_favourite: bool
+    id: int
+    endpoint: str
+    is_active: bool
+    def __init__(
+        self,
+        *,
+        name: str | None = None,
+        device: Device | dict[str, Any] | str | int | None = None,
+        hostname: str | None = None,
+        port: int | None = None,
+        protocol: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        timeout: int | None = None,
+        ip_restricted: bool | None = None,
+        disable_tls_verification: bool | None = None,
+        ip_whitelist: Any | None = None,
+        is_favourite: bool | None = None,
+        id: int | None = None,
+        endpoint: str | None = None,
+        is_active: bool | None = None,
+    ) -> None:
+        super().__init__(
+            name=name,
+            device=device,
+            hostname=hostname,
+            port=port,
+            protocol=protocol,
+            username=username,
+            password=password,
+            timeout=timeout,
+            ip_restricted=ip_restricted,
+            disable_tls_verification=disable_tls_verification,
+            ip_whitelist=ip_whitelist,
+            is_favourite=is_favourite,
+            id=id,
+            endpoint=endpoint,
+            is_active=is_active,
+        )
     _field_defs = {
         "name": ControlField(type="string", nullable=False),
         "device": ControlField(type="resource", nullable=False, ref="Device"),
@@ -3085,6 +4725,48 @@ class Tunnel(ControlModel):
 
 class UsageMeteringRun(ControlModel):
     _model_name = "UsageMeteringRun"
+    id: int
+    organisation: MeteringRunOrg
+    started_at: str
+    completed_at: str | None
+    status: str
+    devices_metered: int
+    app_installs_metered: int
+    agent_items_metered: int
+    errors_count: int
+    seller_customers_metered: int
+    seller_usage_errors_count: int
+    log_output: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        organisation: MeteringRunOrg | dict[str, Any] | str | int | None = None,
+        started_at: str | None = None,
+        completed_at: str | None = None,
+        status: str | None = None,
+        devices_metered: int | None = None,
+        app_installs_metered: int | None = None,
+        agent_items_metered: int | None = None,
+        errors_count: int | None = None,
+        seller_customers_metered: int | None = None,
+        seller_usage_errors_count: int | None = None,
+        log_output: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            organisation=organisation,
+            started_at=started_at,
+            completed_at=completed_at,
+            status=status,
+            devices_metered=devices_metered,
+            app_installs_metered=app_installs_metered,
+            agent_items_metered=agent_items_metered,
+            errors_count=errors_count,
+            seller_customers_metered=seller_customers_metered,
+            seller_usage_errors_count=seller_usage_errors_count,
+            log_output=log_output,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "organisation": ControlField(type="resource", nullable=False, ref="MeteringRunOrg"),
@@ -3135,6 +4817,63 @@ class UsageMeteringRun(ControlModel):
 
 class UsageRecord(ControlModel):
     _model_name = "UsageRecord"
+    id: int
+    metering_run: str
+    organisation: UsageRecordOrg
+    subscription_item: str | None
+    record_type: str
+    device: UsageRecordDevice
+    app_install: UsageRecordAppInstall
+    agent_billing_item: str | None
+    seller_customer: str
+    billing_product: UsageRecordBillingProduct
+    quantity: int
+    revenue_target: str
+    developer_amount_cents: int
+    platform_fee_cents: int
+    device_online: bool | None
+    unit_amount_cents: int
+    created_at: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        metering_run: str | None = None,
+        organisation: UsageRecordOrg | dict[str, Any] | str | int | None = None,
+        subscription_item: str | None = None,
+        record_type: str | None = None,
+        device: UsageRecordDevice | dict[str, Any] | str | int | None = None,
+        app_install: UsageRecordAppInstall | dict[str, Any] | str | int | None = None,
+        agent_billing_item: str | None = None,
+        seller_customer: str | None = None,
+        billing_product: UsageRecordBillingProduct | dict[str, Any] | str | int | None = None,
+        quantity: int | None = None,
+        revenue_target: str | None = None,
+        developer_amount_cents: int | None = None,
+        platform_fee_cents: int | None = None,
+        device_online: bool | None = None,
+        unit_amount_cents: int | None = None,
+        created_at: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            metering_run=metering_run,
+            organisation=organisation,
+            subscription_item=subscription_item,
+            record_type=record_type,
+            device=device,
+            app_install=app_install,
+            agent_billing_item=agent_billing_item,
+            seller_customer=seller_customer,
+            billing_product=billing_product,
+            quantity=quantity,
+            revenue_target=revenue_target,
+            developer_amount_cents=developer_amount_cents,
+            platform_fee_cents=platform_fee_cents,
+            device_online=device_online,
+            unit_amount_cents=unit_amount_cents,
+            created_at=created_at,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "metering_run": ControlField(type="string", nullable=False),
@@ -3201,6 +4940,18 @@ class UsageRecord(ControlModel):
 
 class UsageRecordAppInstall(ControlModel):
     _model_name = "UsageRecordAppInstall"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -3222,6 +4973,18 @@ class UsageRecordAppInstall(ControlModel):
 
 class UsageRecordBillingProduct(ControlModel):
     _model_name = "UsageRecordBillingProduct"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -3243,6 +5006,18 @@ class UsageRecordBillingProduct(ControlModel):
 
 class UsageRecordDevice(ControlModel):
     _model_name = "UsageRecordDevice"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -3264,6 +5039,18 @@ class UsageRecordDevice(ControlModel):
 
 class UsageRecordOrg(ControlModel):
     _model_name = "UsageRecordOrg"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "name": ControlField(type="string", nullable=False),
@@ -3285,6 +5072,39 @@ class UsageRecordOrg(ControlModel):
 
 class User(ControlModel):
     _model_name = "User"
+    custom_data: Any | None
+    id: int
+    email: str
+    first_name: str
+    last_name: str
+    fusionauth_id: str | None
+    username: str
+    is_superuser: bool
+    organisation_info: str
+    def __init__(
+        self,
+        *,
+        custom_data: Any | None = None,
+        id: int | None = None,
+        email: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        fusionauth_id: str | None = None,
+        username: str | None = None,
+        is_superuser: bool | None = None,
+        organisation_info: str | None = None,
+    ) -> None:
+        super().__init__(
+            custom_data=custom_data,
+            id=id,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            fusionauth_id=fusionauth_id,
+            username=username,
+            is_superuser=is_superuser,
+            organisation_info=organisation_info,
+        )
     _field_defs = {
         "custom_data": ControlField(type="json", nullable=True),
         "id": ControlField(type="SnowflakeId", nullable=False),

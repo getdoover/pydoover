@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import yaml
+from pydoover.models.control import CONTROL_SCHEMA_REGISTRY
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -219,6 +220,15 @@ def response_info(path: str, operation: dict):
     return {"kind": "raw", "schema_name": None, "item_schema": None}
 
 
+def schema_model_name(schema_name: str | None) -> str | None:
+    if not schema_name:
+        return None
+    info = CONTROL_SCHEMA_REGISTRY.get(schema_name)
+    if not info:
+        return None
+    return info.get("model")
+
+
 def collect_operations(spec: dict):
     schemas = spec.get("components", {}).get("schemas", {})
     operations = []
@@ -313,12 +323,39 @@ def render_signature(operation: dict) -> tuple[str, list[tuple[str, str]]]:
     return ", ".join(params), param_mappings
 
 
+def render_return_hint(response: dict) -> str:
+    kind = response["kind"]
+    if kind == "none":
+        return "None"
+    if kind == "bytes":
+        return "bytes"
+    if kind == "model":
+        model_name = schema_model_name(response["schema_name"])
+        if model_name:
+            return f"control_models.{model_name}"
+        return "Any"
+    if kind == "page":
+        model_name = schema_model_name(response["schema_name"])
+        if model_name:
+            return f"control_models.ControlPage[control_models.{model_name}]"
+        return "control_models.ControlPage[Any]"
+    if kind == "list_model":
+        model_name = schema_model_name(response["item_schema"])
+        if model_name:
+            return f"list[control_models.{model_name}]"
+        return "list[Any]"
+    if kind == "raw":
+        return "Any"
+    return "Any"
+
+
 def render_method(operation: dict, async_mode: bool) -> list[str]:
     signature, param_mappings = render_signature(operation)
+    return_hint = render_return_hint(operation["response"])
     method_line = f"    {'async ' if async_mode else ''}def {operation['method_name']}(self"
     if signature:
         method_line += f", {signature}"
-    method_line += "):"
+    method_line += f") -> {return_hint}:"
     lines = [method_line]
 
     path_expr = operation["path"]
@@ -370,6 +407,8 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
         "from __future__ import annotations",
         "",
         "from typing import Any, Sequence",
+        "",
+        "from ...models import control as control_models",
         "",
         f"from ._base import {executor}, _ControlGroupBase",
         "",

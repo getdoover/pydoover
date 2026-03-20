@@ -1,4 +1,5 @@
 import importlib.util
+import inspect
 
 import pydoover.models.control as control
 from pydoover.models.control import (
@@ -74,6 +75,44 @@ def test_device_request_serialization_uses_output_id_mapping():
         "longitude": 151.21,
     }
     assert payload["solution_config"] == {"mode": "auto"}
+
+
+def test_device_resource_fields_accept_bare_ids():
+    device = Device(
+        name="device-2",
+        display_name="Device Two",
+        type=201,
+        group=301,
+    )
+
+    assert isinstance(device.type, DeviceType)
+    assert device.type.id == 201
+    assert isinstance(device.group, Group)
+    assert device.group.id == 301
+    assert device.to_version("DeviceSerializerDetailRequest", method="POST") == {
+        "name": "device-2",
+        "display_name": "Device Two",
+        "type_id": 201,
+        "group_id": 301,
+    }
+
+
+def test_control_models_expose_field_annotations_for_type_checkers():
+    assert Device.__annotations__["display_name"] == "str"
+    assert Device.__annotations__["group"] == "Group"
+    assert Device.__annotations__["fa_icon"] == "str | None"
+
+
+def test_control_models_expose_typed_constructor_signatures():
+    signature = inspect.signature(Device)
+
+    assert "display_name" in signature.parameters
+    assert "group" in signature.parameters
+    assert str(signature.parameters["display_name"].annotation) == "str | None"
+    assert (
+        str(signature.parameters["group"].annotation)
+        == "Group | dict[str, Any] | str | int | None"
+    )
 
 
 def test_control_page_round_trips_with_canonical_models():

@@ -120,6 +120,9 @@ def _convert_field_value(field: ControlField, value: Any) -> Any:
             if field.version:
                 return model.from_version(field.version, value)
             return model.from_dict(value)
+        model_fields = getattr(model, "_field_defs", {})
+        if "id" in model_fields:
+            return model(id=value)
         return value
 
     if field.ref and field.type in _OBJECT_TYPE_REGISTRY:

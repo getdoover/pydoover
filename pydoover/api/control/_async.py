@@ -4,7 +4,7 @@ import asyncio
 import json
 from collections.abc import Collection
 from pathlib import Path
-from typing import Any, AsyncContextManager, Protocol
+from typing import Any, AsyncContextManager, Protocol, Self
 
 import aiohttp
 
@@ -61,7 +61,7 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
         self._session: _AsyncSessionLike | None = None
         _attach_async_groups(self)
 
-    async def setup(self):
+    async def setup(self) -> None:
         if self._session and not self._session.closed:
             await self._session.close()
             await asyncio.sleep(0.05)
@@ -69,7 +69,7 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
             headers={"User-Agent": self._user_agent},
         )
 
-    async def close(self):
+    async def close(self) -> None:
         if self._session:
             await self._session.close()
             await asyncio.sleep(0.05)
@@ -77,11 +77,11 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
         if self._owns_auth:
             await self.auth.close()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         await self.setup()
         return self
 
-    async def __aexit__(self, *exc):
+    async def __aexit__(self, *exc: object) -> None:
         await self.close()
 
     def _ensure_session(self):
