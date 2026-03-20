@@ -7,10 +7,12 @@ Run with:
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import cast
 
 import pytest
 
 from pydoover.api import AsyncDataClient, DataClient
+from pydoover.api.auth import AsyncDoover2AuthClient, Doover2AuthClient
 from pydoover.api.auth._config import ConfigManager
 from pydoover.models.data import Aggregate, Alarm, AlarmOperator, Channel, Message
 from pydoover.models.data.exceptions import NotFoundError
@@ -31,22 +33,18 @@ skip_no_profile = pytest.mark.skipif(
 )
 
 
-def _make_sync_client(**overrides) -> DataClient:
-    kwargs = {
-        "profile": DATA_PROFILE,
-        "organisation_id": ORG_ID,
-    }
-    kwargs.update(overrides)
-    return DataClient(**kwargs)
+def _make_sync_client() -> DataClient:
+    return DataClient(
+        profile=DATA_PROFILE,
+        organisation_id=ORG_ID,
+    )
 
 
-def _make_async_client(**overrides) -> AsyncDataClient:
-    kwargs = {
-        "profile": DATA_PROFILE,
-        "organisation_id": ORG_ID,
-    }
-    kwargs.update(overrides)
-    return AsyncDataClient(**kwargs)
+def _make_async_client() -> AsyncDataClient:
+    return AsyncDataClient(
+        profile=DATA_PROFILE,
+        organisation_id=ORG_ID,
+    )
 
 
 # ── Sync client tests ─────────────────────────────────────────────────────
@@ -263,7 +261,8 @@ class TestTokenRefresh:
             organisation_id=ORG_ID,
         )
         with client:
-            client.auth._set_access_token(
+            auth = cast(Doover2AuthClient, client.auth)
+            auth._set_access_token(
                 "stale.token.value",
                 token_expires=datetime.now(timezone.utc) - timedelta(minutes=5),
             )
@@ -278,7 +277,8 @@ class TestTokenRefresh:
             profile=DATA_PROFILE,
             organisation_id=ORG_ID,
         ) as client:
-            client.auth._set_access_token(
+            auth = cast(AsyncDoover2AuthClient, client.auth)
+            auth._set_access_token(
                 "stale.token.value",
                 token_expires=datetime.now(timezone.utc) - timedelta(minutes=5),
             )

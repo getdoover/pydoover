@@ -233,7 +233,10 @@ def test_config_manager_round_trips_mixed_managed_and_preserved_blocks():
 
 
 def test_doover2_auth_client_uses_valid_token_without_refresh(monkeypatch):
-    monkeypatch.setattr("httpx.post", lambda *args, **kwargs: pytest.fail("unexpected refresh"))
+    def unexpected_refresh(*args, **kwargs):
+        raise AssertionError("unexpected refresh")
+
+    monkeypatch.setattr("httpx.post", unexpected_refresh)
     auth = Doover2AuthClient(
         token=future_token(),
         refresh_token="refresh",
@@ -345,7 +348,10 @@ def test_doover2_auth_client_from_profile_object():
 
 
 def test_data_service_auth_client_uses_valid_token_without_refresh(monkeypatch):
-    monkeypatch.setattr("httpx.post", lambda *args, **kwargs: pytest.fail("unexpected refresh"))
+    def unexpected_refresh(*args, **kwargs):
+        raise AssertionError("unexpected refresh")
+
+    monkeypatch.setattr("httpx.post", unexpected_refresh)
     auth = DataServiceAuthClient(
         token=future_token(),
         client_id="client-id",
@@ -363,6 +369,7 @@ def test_data_service_auth_client_refreshes_expired_token(monkeypatch):
     def fake_post(url, data=None, headers=None, timeout=None):
         assert url == "https://data.doover.com/api/oauth2/token"
         assert data == {"grant_type": "client_credentials", "scope": ""}
+        assert headers is not None
         assert headers["Authorization"].startswith("Basic ")
         return SyncResponse(payload={"access_token": refreshed, "expires_in": 600})
 

@@ -241,4 +241,6 @@ def test_api_control_live_staging_group_device_lifecycle():
                     cleanup_errors.append(f"group {created_group_id}: {type(exc).__name__}: {exc}")
 
             if cleanup_errors and sys.exc_info()[0] is None:
-                pytest.fail("Control API live test cleanup failed: " + "; ".join(cleanup_errors))
+                raise AssertionError(
+                    "Control API live test cleanup failed: " + "; ".join(cleanup_errors)
+                )
