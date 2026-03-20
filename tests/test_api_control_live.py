@@ -5,7 +5,7 @@ By default they use the user's ``staging`` profile and the staging organisation
 requested for these checks.
 
 Run with:
-    uv run pytest tests/test_control_api_live.py -v
+    uv run pytest tests/test_api_control_live.py -v
 """
 
 from __future__ import annotations
@@ -20,6 +20,9 @@ import pytest
 from pydoover.api import ControlClient
 from pydoover.api.auth._config import ConfigManager
 from pydoover.models.control import Device, DeviceType, Group
+
+
+pytestmark = pytest.mark.live
 
 
 CONTROL_PROFILE = os.environ.get("PYDOOVER_CONTROL_PROFILE", "staging")
@@ -109,7 +112,7 @@ def _wait_for_group_under_parent(
 
 
 @skip_no_profile
-def test_control_live_staging_group_device_lifecycle():
+def test_api_control_live_staging_group_device_lifecycle():
     group_name = _make_name("Group")
     device_y_name = _make_name("Device")
     device_z_name = _make_name("Device")
@@ -155,7 +158,14 @@ def test_control_live_staging_group_device_lifecycle():
             assert device_y.type.name == DEVICE_TYPE_NAME
             created_device_y_id = str(device_y.id)
 
-            device_z = client.devices.create(Device(name=device_z_name, display_name=device_z_name, group=group_x, type=doovit_type.id))
+            device_z = client.devices.create(
+                Device(
+                    name=device_z_name,
+                    display_name=device_z_name,
+                    group=group_x,
+                    type=doovit_type.id,
+                )
+            )
             assert isinstance(device_z, Device)
             assert device_z.display_name == device_z_name
             assert str(device_z.group.id) == created_group_id

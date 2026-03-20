@@ -61,6 +61,9 @@ pydoover = "pydoover.cli:entrypoint"
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "session"
+markers = [
+    "live: tests that call live external Doover services",
+]
 
 [tool.ruff]
 exclude = [

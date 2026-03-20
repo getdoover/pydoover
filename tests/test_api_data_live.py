@@ -1,69 +1,50 @@
-"""Integration tests for pydoover.api.
+"""Live integration tests for pydoover.api.data.
 
-These tests run against a live Doover Data API. Set the following
-environment variables before running:
-
-    DOOVER_API_URL        – e.g. https://data.doover.com/api
-    DOOVER_TOKEN          – a valid JWT bearer token
-                            (or set DOOVER_CLIENT_ID + DOOVER_CLIENT_SECRET)
-    DOOVER_CLIENT_ID      – OAuth2 client ID (for token refresh tests)
-    DOOVER_CLIENT_SECRET  – OAuth2 client secret
-    DOOVER_AGENT_ID       – agent ID to use for testing
-    DOOVER_ORG_ID         – (optional) organisation ID
+These tests run against the user's local ``staging`` auth profile.
 
 Run with:
-    uv run pytest tests/test_api.py -v
+    uv run pytest tests/test_api_data_live.py -v
 """
 
-import os
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from pydoover.api import AsyncDataClient, DataClient
+from pydoover.api.auth._config import ConfigManager
 from pydoover.models.data import Aggregate, Alarm, AlarmOperator, Channel, Message
 from pydoover.models.data.exceptions import NotFoundError
+from pydoover.models.data.timeseries import TimeseriesResponse
 
-# ── env helpers ────────────────────────────────────────────────────────────
 
-API_URL = os.environ.get("DOOVER_API_URL", "")
-TOKEN = os.environ.get("DOOVER_TOKEN", "")
-CLIENT_ID = os.environ.get("DOOVER_CLIENT_ID", "")
-CLIENT_SECRET = os.environ.get("DOOVER_CLIENT_SECRET", "")
-AGENT_ID = os.environ.get("DOOVER_AGENT_ID", "")
-ORG_ID = os.environ.get("DOOVER_ORG_ID")
+pytestmark = pytest.mark.live
+
+DATA_PROFILE = "staging"
+AGENT_ID = 160548444522423041
+ORG_ID = 160537971806708483
 
 TEST_CHANNEL = "pydoover_test_channel"
 
-skip_no_env = pytest.mark.skipif(
-    not (API_URL and (TOKEN or (CLIENT_ID and CLIENT_SECRET)) and AGENT_ID),
-    reason="DOOVER_API_URL, DOOVER_TOKEN/DOOVER_CLIENT_ID+SECRET, and DOOVER_AGENT_ID required",
+skip_no_profile = pytest.mark.skipif(
+    ConfigManager().get(DATA_PROFILE) is None,
+    reason=f"Doover auth profile {DATA_PROFILE!r} is required",
 )
 
 
 def _make_sync_client(**overrides) -> DataClient:
     kwargs = {
-        "base_url": API_URL,
+        "profile": DATA_PROFILE,
         "organisation_id": ORG_ID,
     }
-    if TOKEN:
-        kwargs["token"] = TOKEN
-    if CLIENT_ID:
-        kwargs["client_id"] = CLIENT_ID
-        kwargs["client_secret"] = CLIENT_SECRET
     kwargs.update(overrides)
     return DataClient(**kwargs)
 
 
 def _make_async_client(**overrides) -> AsyncDataClient:
     kwargs = {
-        "base_url": API_URL,
+        "profile": DATA_PROFILE,
         "organisation_id": ORG_ID,
     }
-    if TOKEN:
-        kwargs["token"] = TOKEN
-    if CLIENT_ID:
-        kwargs["client_id"] = CLIENT_ID
-        kwargs["client_secret"] = CLIENT_SECRET
     kwargs.update(overrides)
     return AsyncDataClient(**kwargs)
 
@@ -71,7 +52,7 @@ def _make_async_client(**overrides) -> AsyncDataClient:
 # ── Sync client tests ─────────────────────────────────────────────────────
 
 
-@skip_no_env
+@skip_no_profile
 class TestDataClientSync:
     def test_get_channel(self):
         with _make_sync_client() as client:
@@ -95,7 +76,12 @@ class TestDataClientSync:
             assert isinstance(msg, Message)
             assert msg.data["test"] is True
 
-            messages = client.list_messages(AGENT_ID, TEST_CHANNEL, limit=5)
+            messages = client.list_messages(
+                AGENT_ID,
+                TEST_CHANNEL,
+                after=int(msg.id) - 1,
+                limit=5,
+            )
             assert isinstance(messages, list)
             assert len(messages) > 0
             assert any(str(m.id) == str(msg.id) for m in messages)
@@ -130,13 +116,13 @@ class TestDataClientSync:
 
     def test_update_and_get_aggregate(self):
         with _make_sync_client() as client:
-            client.update_aggregate(
+            client.update_channel_aggregate(
                 AGENT_ID,
                 TEST_CHANNEL,
                 data={"agg_test": "hello"},
                 replace=False,
             )
-            agg = client.get_aggregate(AGENT_ID, TEST_CHANNEL)
+            agg = client.fetch_channel_aggregate(AGENT_ID, TEST_CHANNEL)
             assert isinstance(agg, Aggregate)
             assert agg.data.get("agg_test") == "hello"
 
@@ -183,7 +169,7 @@ class TestDataClientSync:
     def test_timeseries(self):
         with _make_sync_client() as client:
             # Ensure we have a message with a known field
-            client.create_message(
+            msg = client.create_message(
                 AGENT_ID,
                 TEST_CHANNEL,
                 data={"temperature": 22.5},
@@ -192,16 +178,19 @@ class TestDataClientSync:
                 AGENT_ID,
                 TEST_CHANNEL,
                 field_names=["temperature"],
+                after=int(msg.id) - 1,
                 limit=10,
             )
-            assert "results" in result
-            assert "count" in result
+            assert isinstance(result, TimeseriesResponse)
+            assert result.count >= 1
+            assert len(result.results) >= 1
+            assert any(point.message_id == int(msg.id) for point in result.results)
 
 
 # ── Async client tests ────────────────────────────────────────────────────
 
 
-@skip_no_env
+@skip_no_profile
 class TestDataClientAsync:
     @pytest.mark.asyncio
     async def test_get_channel(self):
@@ -227,20 +216,20 @@ class TestDataClientAsync:
             )
             assert isinstance(msg, Message)
 
-            messages = await client.list_messages(AGENT_ID, TEST_CHANNEL, limit=5)
+            messages = await client.list_messages(AGENT_ID, TEST_CHANNEL, after=0, limit=5)
             assert isinstance(messages, list)
             assert len(messages) > 0
 
     @pytest.mark.asyncio
     async def test_update_and_get_aggregate(self):
         async with _make_async_client() as client:
-            await client.update_aggregate(
+            await client.update_channel_aggregate(
                 AGENT_ID,
                 TEST_CHANNEL,
                 data={"async_agg_test": "world"},
                 replace=False,
             )
-            agg = await client.get_aggregate(AGENT_ID, TEST_CHANNEL)
+            agg = await client.fetch_channel_aggregate(AGENT_ID, TEST_CHANNEL)
             assert isinstance(agg, Aggregate)
             assert agg.data.get("async_agg_test") == "world"
 
@@ -265,39 +254,34 @@ class TestDataClientAsync:
 
 # ── Token refresh tests ───────────────────────────────────────────────────
 
-skip_no_credentials = pytest.mark.skipif(
-    not (API_URL and CLIENT_ID and CLIENT_SECRET and AGENT_ID),
-    reason="DOOVER_API_URL, DOOVER_CLIENT_ID, DOOVER_CLIENT_SECRET, and DOOVER_AGENT_ID required",
-)
-
-
-@skip_no_credentials
+@skip_no_profile
 class TestTokenRefresh:
     def test_sync_client_refreshes_token(self):
-        """Client with only client credentials (no token) should auto-fetch one."""
+        """Client with a staging profile should refresh when the token is cleared."""
         client = DataClient(
-            base_url=API_URL,
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
+            profile=DATA_PROFILE,
             organisation_id=ORG_ID,
         )
         with client:
-            assert client.token is None
-            # This should trigger a token refresh
+            client.auth._set_access_token(
+                "stale.token.value",
+                token_expires=datetime.now(timezone.utc) - timedelta(minutes=5),
+            )
             channel = client.fetch_channel(AGENT_ID, TEST_CHANNEL)
             assert isinstance(channel, Channel)
             assert client.token is not None
 
     @pytest.mark.asyncio
     async def test_async_client_refreshes_token(self):
-        """Async client with only client credentials should auto-fetch a token."""
+        """Async staging-profile client should refresh when the token is cleared."""
         async with AsyncDataClient(
-            base_url=API_URL,
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
+            profile=DATA_PROFILE,
             organisation_id=ORG_ID,
         ) as client:
-            assert client.token is None
+            client.auth._set_access_token(
+                "stale.token.value",
+                token_expires=datetime.now(timezone.utc) - timedelta(minutes=5),
+            )
             channel = await client.fetch_channel(AGENT_ID, TEST_CHANNEL)
             assert isinstance(channel, Channel)
             assert client.token is not None
