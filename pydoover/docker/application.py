@@ -1054,10 +1054,10 @@ class Application:
             log.info("Updating ui_state with runtime-generated schema.")
             schema = self.ui.to_schema()
             await self.update_channel_aggregate(
-                "ui_state", {self.app_key: None}, max_age_secs=-1
+                "ui_state", {"state": {self.app_key: None}}, max_age_secs=-1
             )
             await self.update_channel_aggregate(
-                "ui_state", {self.app_key: schema}, max_age_secs=-1
+                "ui_state", {"state": {self.app_key: schema}}, max_age_secs=-1
             )
 
         if self.test_mode:
