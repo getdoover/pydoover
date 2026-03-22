@@ -14,7 +14,7 @@ from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
 from collections.abc import Coroutine
 
-from ..ui.manager_v2 import UICommandsManager
+from ..ui import UICommandsManager
 
 try:
     from aiohttp.web import Response, Server, ServerRunner, TCPSite
