@@ -157,7 +157,7 @@ class UI:
 
     @property
     def is_static(self):
-        return self.setup.__func__ is not UI.setup
+        return self.setup.__func__ is UI.setup
 
     async def setup(self):
         """Mutate this UI instance before it is bound and installed."""
