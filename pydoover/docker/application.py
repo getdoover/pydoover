@@ -124,8 +124,6 @@ class Application:
         healthcheck_port: int = None,
     ):
         self.config: "Schema" = self.__class__.config_class()
-        self.tags = self.__class__.tags_class(self.config)
-        self.ui = self.__class__.ui_class(self.config, self.tags)
 
         self._tags: Tags | None = None
         self._ui: UI | None = None
@@ -149,6 +147,11 @@ class Application:
         self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
         )
+        self.tags = self.__class__.tags_class(
+            self.app_key, self.tag_manager, self.config
+        )
+        self.ui = self.__class__.ui_class(self.config, self.tags)
+
         self._ready = asyncio.Event()
 
         self.rpc = RPCManager(self)
