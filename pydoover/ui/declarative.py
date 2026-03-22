@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import copy
 import json
-from collections import OrderedDict
+from pathlib import Path
 from typing import Any, Generic, Self, TypeVar, overload
 
-from pydoover.tags import BoundTag, NotSet, Tag, Tags
+from ..config import Schema
+from ..tags import BoundTag, NotSet, Tag, Tags
 
 
 _TAG_TYPE_MAP = {
@@ -96,14 +97,20 @@ class _DeclaredElement(Generic[ElementT]):
 
 
 class UI:
-    __ui_declarations__: "OrderedDict[str, _DeclaredElement]" = OrderedDict()
+    __ui_declarations__: dict[str, _DeclaredElement] = dict()
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(
+        cls,
+        display_name: str = "$config.APP_DISPLAY_NAME",
+        hidden: bool | str = "$config.hidden",
+        position: int | str = "$config.position",
+        **kwargs,
+    ):
         super().__init_subclass__(**kwargs)
 
         from .element import Element
 
-        declarations: "OrderedDict[str, _DeclaredElement]" = OrderedDict()
+        declarations: dict[str, _DeclaredElement] = dict()
         for base in reversed(cls.__mro__[1:]):
             declarations.update(getattr(base, "__ui_declarations__", {}))
 
@@ -117,15 +124,68 @@ class UI:
 
         cls.__ui_declarations__ = declarations
 
-    def __init__(self):
-        self._elements: "OrderedDict[str, Any]" = OrderedDict(
+        if display_name.startswith("$"):
+            display_name = f"{display_name}:string"
+        if isinstance(hidden, str):
+            if not hidden.startswith("$"):
+                raise ValueError(
+                    "If `hidden` is a `str` it must start with `$` to represent a variable."
+                )
+            hidden = f"{hidden}:boolean:false"
+        if isinstance(position, str) and not position.startswith("$"):
+            if not position.startswith("$"):
+                raise ValueError(
+                    "If `position` is a `str` it must start with `$` to represent a variable."
+                )
+            position = f"{position}:number:50"
+
+        cls.display_name = display_name
+        cls.hidden = hidden
+        cls.position = position
+
+    def __init__(self, config: Schema, tags: Tags):
+        self.config = config
+        self.tags = tags
+
+        self._elements: dict[str, Any] = dict(
             (name, copy.deepcopy(declaration.template))
             for name, declaration in self.__class__.__ui_declarations__.items()
         )
 
+    @property
+    def is_static(self):
+        return self.setup.__func__ is not UI.setup
+
     async def setup(self, config: Any = None, tags: Tags | None = None) -> None:
         """Mutate this UI instance before it is bound and installed."""
         return None
+
+    def to_dict(self):
+        return {
+            "displayString": self.display_name,
+            "hidden": self.hidden,
+            "position": self.position,
+            "type": "uiApplication",
+            "children": {e.name: e.to_dict() for e in self._elements.values()},
+        }
+
+    def export(self, fp: Path, app_name: str):
+        if not self.is_static:
+            raise RuntimeError(
+                "Cannot statically generate a ui schema that has a `setup` override."
+            )
+
+        if fp.exists():
+            data = json.loads(fp.read_text())
+        else:
+            data = {}
+
+        try:
+            data[app_name]["ui_schema"] = self.to_dict()
+        except KeyError:
+            data[app_name] = {"ui_schema": self.to_dict()}
+
+        fp.write_text(json.dumps(data, indent=4))
 
     @property
     def children(self) -> list[Any]:

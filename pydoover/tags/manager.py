@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
 TAG_CHANNEL_NAME = "tag_values"
-log = logging.getLogger("pydoover.tags.manager")
+log = logging.getLogger(__name__)
 
 
 class KeyPath:

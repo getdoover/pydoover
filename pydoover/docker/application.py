@@ -8,7 +8,7 @@ from collections import deque
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, Callable, cast
+from typing import Any, TYPE_CHECKING, Callable
 
 from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
@@ -36,7 +36,7 @@ from ..models import (
     OneShotMessage,
 )
 from ..rpc import RPCManager
-from ..ui import UI, UIManager
+from ..ui import UI
 from ..utils import (
     setup_logging as utils_setup_logging,
     apply_diff,
@@ -121,10 +121,10 @@ class Application:
         config_fp: str = None,
         healthcheck_port: int = None,
     ):
-        config_class = self.__class__.config_class
-        self.config: "Schema | None" = (
-            config_class() if config_class is not None else None
-        )
+        self.config: "Schema" = self.__class__.config_class()
+        self.tags = self.__class__.tags_class(self.config)
+        self.ui = self.__class__.ui_class(self.config, self.tags)
+
         self._tags: Tags | None = None
         self._ui: UI | None = None
         self.app_key = app_key
@@ -140,11 +140,8 @@ class Application:
 
         self.device_agent = device_agent or DeviceAgentInterface(app_key, "")
         self.platform_iface = platform_iface or PlatformInterface(app_key, "")
-        self.modbus_iface = modbus_iface or ModbusInterface(app_key, "", self.config)
-
-        self.ui_manager = UIManager(
-            app_key=self.app_key,
-            client=self.device_agent,
+        self.modbus_iface = modbus_iface or ModbusInterface(
+            app_key, "", config=self.config
         )
 
         self.tag_manager = TagsManagerDocker(
@@ -181,47 +178,6 @@ class Application:
 
         self._is_healthy = False
         self._healthcheck_port = healthcheck_port
-
-    @property
-    def tags(self) -> Tags:
-        return cast(Tags, self._tags)
-
-    @tags.setter
-    def tags(self, value: Tags | None) -> None:
-        self._tags = value
-
-    @property
-    def ui(self) -> UI:
-        return cast(UI, self._ui)
-
-    @ui.setter
-    def ui(self, value: UI | None) -> None:
-        self._ui = value
-
-    async def _resolve_tags(self) -> Tags | None:
-        tags_class = self.__class__.tags_class
-        if tags_class is None:
-            self.tags = None
-        else:
-            self.tags = tags_class()
-            await self.tags.setup(self.config)
-
-        if self._tags is not None:
-            self._tags.register_manager(self.tag_manager, app_key=self.app_key)
-        return self.tags
-
-    async def _resolve_ui(self) -> UI | None:
-        ui_class = self.__class__.ui_class
-        if ui_class is None:
-            self.ui = None
-        else:
-            self.ui = ui_class()
-            await self.ui.setup(self.config, self.tags)
-
-        if self._ui is not None:
-            self._ui.bind_tags(self._tags)
-            self.ui_manager.set_children(self._ui.to_elements())
-        return self.ui
 
     async def _handle_healthcheck(self, _request):
         if self._is_healthy:
@@ -343,8 +299,8 @@ class Application:
             except Exception:
                 log.warning("No initial deployment config available from DDA")
 
-        await self._resolve_tags()
-        await self._resolve_ui()
+        # await self._resolve_tags()
+        # await self._resolve_ui()
 
         await self.modbus_iface.setup()
 
@@ -359,8 +315,6 @@ class Application:
             await asyncio.sleep(self._error_wait_period)
             return
 
-        self.ui_manager.start_comms()
-        await self.ui_manager.await_comms_sync(15)
         self._ready.set()
 
         try:
@@ -730,45 +684,6 @@ class Application:
             max_age_secs=max_age_secs,
         )
 
-    ## UI Manager Functions
-
-    def set_ui_elements(self, elements):
-        return self.ui_manager.set_children(elements)
-
-    def get_command(self, name):
-        return self.ui_manager.get_command(name)
-
-    def coerce_command(self, name, value):
-        return self.ui_manager.coerce_command(name, value)
-
-    def record_critical_value(self, name, value):
-        return self.ui_manager.record_critical_value(name, value)
-
-    def set_ui_status_icon(self, icon):
-        return self.ui_manager.set_status_icon(icon)
-
-    def start_ui_comms(self):
-        return self.ui_manager.start_comms()
-
-    async def await_ui_comms_sync(self, timeout=10):
-        log.debug("Awaiting UI comms sync")
-        result = await self.ui_manager.await_comms_sync(timeout=timeout)
-        if result is False:
-            log.warning("UI comms sync timed out")
-        else:
-            log.debug("UI comms sync complete")
-        return result
-
-    def set_ui(self, ui):
-        if isinstance(ui, UI):
-            self.ui = ui.bind_tags(self._tags)
-            self.ui_manager.set_children(self.ui.to_elements())
-            return
-        self.ui_manager.set_children(ui)
-
-    async def _update_ui(self, force_log: bool = False):
-        await self.ui_manager.handle_comms_async(force_log)
-
     ## Platform Interface Functions
 
     def fetch_di(self, di):
@@ -1079,8 +994,10 @@ class Application:
         dt : datetime
             The datetime when the shutdown is scheduled.
         """
-        if self.force_log_on_shutdown:
-            await self._update_ui(force_log=True)
+        pass
+        # if self.force_log_on_shutdown:
+        #     await self._update_ui(force_log=True)
+        # fixme: this should probs update tags?
 
     async def check_can_shutdown(self) -> bool:
         """Check if the application can shutdown.
@@ -1118,9 +1035,22 @@ class Application:
 
     async def _setup(self):
         log.info(f"Setting up internal app: {self.name}")
-        self.ui_manager.register_callbacks(self)
         self.rpc.register_handlers(self)
-        self.ui_manager.set_display_name(self.app_display_name)
+
+        await self.tags.setup()
+        await self.ui.setup()
+
+        # bit of a cheeky double publish to ensure the old schema is cleared before we set it.
+        # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
+        if not self.ui.is_static:
+            log.info("Updating ui_state with runtime-generated schema.")
+            schema = self.ui.to_dict()
+            await self.update_channel_aggregate(
+                "ui_state", {self.app_key: None}, max_age_secs=-1
+            )
+            await self.update_channel_aggregate(
+                "ui_state", {self.app_key: schema}, max_age_secs=-1
+            )
 
         if self.test_mode:
             ## Quit out of setup if we are in test mode.
@@ -1133,8 +1063,6 @@ class Application:
             await asyncio.wait_for(self.tag_manager.setup(), timeout=10.0)
         except TimeoutError:
             log.warning("Timed out waiting for tag values to be set")
-
-        await self.ui_manager.clear_ui_async()
 
     async def _main_loop(self):
         log.debug(f"Running internal main_loop: {self.name}")
@@ -1149,8 +1077,6 @@ class Application:
                 resp = False
 
             await self.set_tag("shutdown_check_ok", resp)
-
-        await self._update_ui()
 
     async def setup(self):
         """The main setup function for the application.
@@ -1307,7 +1233,7 @@ def run_app(
         app.platform_iface,
         app.modbus_iface,
         app.device_agent,
-        app.ui_manager,
+        # app.ui_manager,
         app.tag_manager,
     ):
         inst.app_key = app_key
@@ -1354,7 +1280,7 @@ def run_app2(
     app = app_cls(
         app_key,
         platform_iface=plt_iface_cls(app_key, plt_uri),
-        modbus_iface=mb_iface_cls(app_key, modbus_uri, config),
+        modbus_iface=mb_iface_cls(app_key, modbus_uri, config=config),
         device_agent=dda_iface_cls(app_key, dda_uri),
         config_fp=config_fp,
         healthcheck_port=healthcheck_port,
