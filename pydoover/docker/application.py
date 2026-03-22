@@ -1052,7 +1052,7 @@ class Application:
         # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
         if not self.ui.is_static:
             log.info("Updating ui_state with runtime-generated schema.")
-            schema = self.ui.to_dict()
+            schema = self.ui.to_schema()
             await self.update_channel_aggregate(
                 "ui_state", {self.app_key: None}, max_age_secs=-1
             )
