@@ -1046,7 +1046,7 @@ class Application:
 
         await self.tags.setup()
         await self.ui.setup()
-        self.ui_manager.set_interactions(self.ui.get_interactions())
+        self.ui_manager._set_interactions(self.ui.get_interactions())
 
         # bit of a cheeky double publish to ensure the old schema is cleared before we set it.
         # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
