@@ -165,8 +165,10 @@ class Submodule(Container):
 
     def to_dict(self):
         result = super().to_dict()
-        if self.status is not None:
+
+        if self.status is not NotSet:
             result["statusString"] = self.status
+
         result["defaultOpen"] = not self.is_collapsed
 
         return normalize_ui_value(result)
