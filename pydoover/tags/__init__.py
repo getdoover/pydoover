@@ -266,7 +266,7 @@ class Tags:
 
     def __init__(self, app_key: str, tag_manager: TagsManager, config: Schema):
         self.config = config
-        self.manager = tag_manager
+        self._manager = tag_manager
         self.app_key = app_key
 
         # Keep runtime declaration changes isolated to this instance.
@@ -332,7 +332,7 @@ class Tags:
         return self._manager.get_tag(
             declaration.name,
             default=declaration.template.default,
-            app_key=self._app_key,
+            app_key=self.app_key,
         )
 
     async def _set_tag_value(self, name: str, value: Any) -> None:
@@ -342,7 +342,7 @@ class Tags:
         if self._manager is None:
             raise RuntimeError("Tags manager has not been registered.")
 
-        await self._manager.set_tag(declaration.name, value, app_key=self._app_key)
+        await self._manager.set_tag(declaration.name, value, app_key=self.app_key)
 
     def get(self, name: str) -> BoundTag | None:
         """Return the bound runtime proxy for a tag, if it exists."""

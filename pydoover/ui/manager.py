@@ -76,7 +76,7 @@ class UICommandsManager(RPCManager):
             # this is the real reason we need a setter
             interaction._manager = self
 
-    async def subscribe(self, channel_name: str) -> None:
+    def subscribe(self, channel_name: str) -> None:
         super().subscribe(channel_name)
 
         self._app.device_agent.add_event_callback(
