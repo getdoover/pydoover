@@ -3,10 +3,13 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
-from typing import Any, Generic, Self, TypeVar, overload
+from typing import Any, Generic, Self, TypeVar, overload, TYPE_CHECKING
 
 from ..config import Schema
 from ..tags import BoundTag, NotSet, Tag, Tags
+
+if TYPE_CHECKING:
+    from .interaction import Interaction
 
 
 _TAG_TYPE_MAP = {
@@ -101,9 +104,9 @@ class UI:
 
     def __init_subclass__(
         cls,
-        display_name: str = "$config.APP_DISPLAY_NAME",
-        hidden: bool | str = "$config.hidden",
-        position: int | str = "$config.position",
+        display_name: str = "$config.app().APP_DISPLAY_NAME",
+        hidden: bool | str = "$config.app().hidden",
+        position: int | str = "$config.app().position",
         **kwargs,
     ):
         super().__init_subclass__(**kwargs)
@@ -156,11 +159,11 @@ class UI:
     def is_static(self):
         return self.setup.__func__ is not UI.setup
 
-    async def setup(self, config: Any = None, tags: Tags | None = None) -> None:
+    async def setup(self):
         """Mutate this UI instance before it is bound and installed."""
-        return None
+        pass
 
-    def to_dict(self):
+    def to_schema(self):
         return {
             "displayString": self.display_name,
             "hidden": self.hidden,
@@ -181,9 +184,9 @@ class UI:
             data = {}
 
         try:
-            data[app_name]["ui_schema"] = self.to_dict()
+            data[app_name]["ui_schema"] = self.to_schema()
         except KeyError:
-            data[app_name] = {"ui_schema": self.to_dict()}
+            data[app_name] = {"ui_schema": self.to_schema()}
 
         fp.write_text(json.dumps(data, indent=4))
 
@@ -191,16 +194,32 @@ class UI:
     def children(self) -> list[Any]:
         return list(self._elements.values())
 
+    def get_interactions(self) -> dict[str, "Interaction"]:
+        result: dict[str, "Interaction"] = {}
+        self._collect_interactions(self._elements.values(), result)
+        return result
+
+    @staticmethod
+    def _collect_interactions(elements, result: dict[str, "Interaction"]):
+        from .interaction import Interaction
+
+        for e in elements:
+            if isinstance(e, Interaction):
+                result[e.name] = e
+            children = getattr(e, "_children", None)
+            if children is not None:
+                UI._collect_interactions(children.values(), result)
+
     def to_elements(self) -> list[Any]:
         return self.children
 
-    def add_element(self, name: str, element: Any) -> Any:
+    def add_element(self, element: Any) -> Any:
         from .element import Element
 
         if not isinstance(element, Element):
             raise TypeError("add_element expects an Element instance.")
-        self._elements[name] = element
-        setattr(self, name, element)
+        self._elements[element.name] = element
+        setattr(self, element.name, element)
         return element
 
     def remove_element(self, name: str) -> None:

@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from typing import Any, Union
+from typing import Any
 
 from .declarative import is_tag_reference, normalize_ui_value
 from .element import Element
@@ -14,13 +14,11 @@ class Variable(Element):
 
     Parameters
     ----------
-    name: str
-        The name of the variable.
     display_name: str
         The display name of the variable.
     var_type: str
         The type of the variable (e.g., "float", "string", "bool", "time").
-    curr_val: Any
+    value: Any
         The current value of the variable. If not set, defaults to NotSet.
     precision: int, optional
         The number of decimal places to round the current value to. Defaults to None.
@@ -28,6 +26,8 @@ class Variable(Element):
         A list of ranges associated with the variable, used for display purposes.
     earliest_data_time: datetime, optional
         The earliest time for which data is available for this variable. Defaults to None.
+    default_range_since: timedelta, optional
+        The timedelta which defines how many seconds the plot should show on load. Defaults to a week if not set.
     default_zoom: str, optional
         The default zoom setting for the inbuilt plot viewer. Defaults to None.
     log_threshold: float, optional
@@ -38,149 +38,59 @@ class Variable(Element):
 
     def __init__(
         self,
-        name: str,
         display_name: str,
         var_type: str,
-        curr_val: Any = NotSet,
-        precision: int | None = None,
-        ranges: list[Union[Range, dict[str, Any]]] | None = None,
-        earliest_data_time: datetime | None = None,
-        default_zoom: str | None = None,
-        log_threshold: float | None = None,
+        value: Any = NotSet,
+        precision: int = NotSet,
+        ranges: list[Range] = NotSet,
+        earliest_data_time: datetime = NotSet,
+        default_range_since: timedelta = NotSet,
+        default_zoom: str = NotSet,
+        log_threshold: float = NotSet,
         **kwargs,
     ):
         # kwargs: verbose_str=verbose_str, show_activity=show_activity, form=form, graphic=graphic, layout=layout
-        curr_val = kwargs.pop("currentValue", curr_val)
-        super().__init__(name, display_name, **kwargs)
+        super().__init__(display_name, **kwargs)
 
         self.var_type = var_type
-        self._curr_val = curr_val
-        self.precision = (
-            precision if precision is not None else kwargs.pop("dec_precision", None)
-        )
+        self.value = value
+        self.precision = precision
         self.earliest_data_time = earliest_data_time
-        self.default_zoom = default_zoom or kwargs.pop("default_zoom", None)
-        self.log_threshold = (
-            log_threshold
-            if log_threshold is not None
-            else kwargs.pop("log_threshold", None)
-        )
+        self.default_range_since = default_range_since
+        self.default_zoom = default_zoom
+        self.log_threshold = log_threshold
 
-        self._log_request_pending = False
-
-        self.ranges = []
-        if ranges is not None:
-            self.add_ranges(*ranges)
+        self.ranges = ranges
 
     def to_dict(self) -> dict[str, Any]:
         result = super().to_dict()
         result["type"] = self.type
         result["varType"] = self.var_type
 
-        curr_val = self.current_value
-        if curr_val is not None:
-            result["currentValue"] = curr_val
+        if self.value is not NotSet:
+            result["currentValue"] = self.value
 
-        if self.precision is not None:
+        if self.precision is not NotSet:
             result["decPrecision"] = self.precision
 
-        if self.earliest_data_time is not None:
+        # fixme: this should be in milliseconds
+        if self.earliest_data_time is not NotSet:
             if isinstance(self.earliest_data_time, datetime):
                 result["earliestDataDate"] = int(self.earliest_data_time.timestamp())
             else:
                 result["earliestDataDate"] = self.earliest_data_time
 
-        if self.default_zoom is not None:
-            result["defaultZoom"] = self.default_zoom
-
-        result["ranges"] = [r.to_dict() for r in self.ranges]
-        return normalize_ui_value(result)
-
-    @property
-    def current_value(self) -> Any:
-        """Returns the current value of the variable."""
-        if self._curr_val is NotSet:
-            return None
-        return self._curr_val
-
-    @current_value.setter
-    def current_value(self, val: Any) -> None:
-        """Updates the current value of the variable."""
-        self._ensure_current_value_writable()
-        self.update(val)
-
-    def update(self, new_value: Any, force_log: bool = False) -> None:
-        """Updates the current value of the variable.
-
-        If precision is set, rounds the value to the specified number of decimal places.
-
-        Parameters
-        ----------
-        new_value: Any
-            The new value to set for the variable. If None, it sets the current value to None.
-        force_log: bool
-            If True, forces a log request to be sent to the server.
-        """
-        self._ensure_current_value_writable()
-        if force_log:
-            self._log_request_pending = True
-        elif self.assess_log_threshold(new_value):
-            self._log_request_pending = True
-
-        if self.precision is not None and new_value is not None:
-            self._curr_val = round(new_value, self.precision)
-        else:
-            self._curr_val = new_value
-
-    def assess_log_threshold(self, new_value: Any) -> bool:
-        """If log_threshold is set, and the new value is sufficiently different, return True to indicate that a log request should be sent."""
-        if self.log_threshold is None:
-            return False
-        if isinstance(self._curr_val, (int, float, bool, datetime)) and isinstance(
-            new_value, (int, float, bool, datetime)
-        ):
-            if type(self._curr_val) is not type(new_value):
-                return True
-            return abs(new_value - self._curr_val) > self.log_threshold
-        if isinstance(self._curr_val, str) and isinstance(new_value, str):
-            return new_value != self._curr_val
-        if self._curr_val in (None, NotSet) and new_value not in (None, NotSet):
-            return True
-        return False
-
-    def has_pending_log_request(self) -> bool:
-        """Returns True if a log request is pending."""
-        return self._log_request_pending
-
-    def clear_log_request(self) -> None:
-        """Clears the log request flag."""
-        self._log_request_pending = False
-
-    def recv_ui_state_update(self, state: dict[str, Any]) -> None:
-        if self._curr_val is NotSet and "currentValue" in state:
-            self.current_value = state["currentValue"]
-
-    def _ensure_current_value_writable(self) -> None:
-        if is_tag_reference(self._curr_val):
-            raise RuntimeError(
-                f"UI element '{self.name}' field 'currentValue' is tag-backed. "
-                "Update the underlying tag instead."
+        if self.default_range_since is not NotSet:
+            result["defaultRangeSince"] = (
+                int(self.default_range_since.total_seconds()) * 1000
             )
 
-    def add_ranges(self, *range_val: Range | dict[str, Any]) -> None:
-        """Adds one or more ranges to the variable.
+        if self.default_zoom is not NotSet:
+            result["defaultZoom"] = self.default_zoom
 
-        Parameters
-        ----------
-        range_val: list[Range]
-            A list of Range objects to be added.
-        """
-        for r in range_val:
-            # still support legacy dict passing of range values.
-            if isinstance(r, Range):
-                self.ranges.append(r)
-            elif isinstance(r, dict):
-                self.ranges.append(Range.from_dict(r))
+        if self.ranges is not NotSet:
+            result["ranges"] = [r.to_dict() for r in self.ranges]
+        return normalize_ui_value(result)
 
 
 class NumericVariable(Variable):
@@ -204,19 +114,17 @@ class NumericVariable(Variable):
 
     def __init__(
         self,
-        name: str,
         display_name: str,
-        curr_val: Any = None,
-        precision: int | None = None,
-        ranges: list[Range | dict[str, Any]] | None = None,
-        form: Widget | str | None = None,
+        value: Any = None,
+        precision: int = NotSet,
+        ranges: list[Range] = NotSet,
+        form: Widget = NotSet,
         **kwargs,
     ):
         super().__init__(
-            name,
             display_name,
             var_type="float",
-            curr_val=curr_val,
+            value=value,
             precision=precision,
             ranges=ranges,
             **kwargs,
@@ -225,7 +133,7 @@ class NumericVariable(Variable):
 
     def to_dict(self) -> dict[str, Any]:
         result = super().to_dict()
-        if self.form is not None:
+        if self.form is not NotSet:
             result["form"] = self.form
         return normalize_ui_value(result)
 
@@ -235,19 +143,15 @@ class TextVariable(Variable):
 
     Parameters
     ----------
-    name: str
-        The name of the variable.
     display_name: str
         The display name of the variable.
-    curr_val: str, optional
+    value: str, optional
         The current value of the variable. Defaults to None.
     """
 
-    def __init__(self, name: str, display_name: str, curr_val: Any = None, **kwargs):
+    def __init__(self, display_name: str, value: str, **kwargs):
         # fixme: double check this type
-        super().__init__(
-            name, display_name, var_type="string", curr_val=curr_val, **kwargs
-        )
+        super().__init__(display_name, var_type="string", value=value, **kwargs)
 
 
 class BooleanVariable(Variable):
@@ -255,8 +159,6 @@ class BooleanVariable(Variable):
 
     Parameters
     ----------
-    name: str
-        The name of the variable.
     display_name: str
         The display name of the variable.
     curr_val: bool, optional
@@ -267,17 +169,15 @@ class BooleanVariable(Variable):
 
     def __init__(
         self,
-        name: str,
         display_name: str,
-        curr_val: Any = None,
+        value: bool,
         log_threshold: float | None = 0,
         **kwargs,
     ):
         super().__init__(
-            name,
             display_name,
             var_type="bool",
-            curr_val=curr_val,
+            value=value,
             log_threshold=log_threshold,
             **kwargs,
         )
@@ -292,39 +192,32 @@ class DateTimeVariable(Variable):
         The name of the variable.
     display_name: str
         The display name of the variable.
-    curr_val: Union[datetime, int], optional
+    value: datetime, optional
         The current value of the variable, which can be a datetime object or a timestamp (int). Defaults to None.
     """
 
     def __init__(
         self,
-        name: str,
         display_name: str,
-        curr_val: Any = None,
+        value: datetime,
         **kwargs,
     ):
         # fixme: double check this type, and how to handle different date / time / datetime
-        super().__init__(
-            name, display_name, var_type="time", curr_val=curr_val, **kwargs
-        )
+        super().__init__(display_name, var_type="time", value=value, **kwargs)
 
 
 class Timestamp(Variable):
     type = "uiTimestamp"
 
-    def __init__(self, name: str, display_name: str, curr_val: Any = None, **kwargs):
+    def __init__(self, display_name: str, value: datetime, **kwargs):
         # this might do some weird stuff where people think they can have ranges and what not, but yeah...
         # this will do for now...
-        super().__init__(
-            name, display_name, curr_val=curr_val, var_type="timestamp", **kwargs
-        )
+        super().__init__(display_name, value=value, var_type="timestamp", **kwargs)
 
     def to_dict(self):
         result = super().to_dict()
-        if is_tag_reference(self.current_value):
-            result["currentValue"] = self.current_value
+        if is_tag_reference(self.value):
+            result["currentValue"] = self.value
         else:
-            result["currentValue"] = self.current_value and int(
-                self.current_value.timestamp() * 1000
-            )
+            result["currentValue"] = self.value and int(self.value.timestamp() * 1000)
         return normalize_ui_value(result)

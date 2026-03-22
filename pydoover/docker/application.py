@@ -14,6 +14,8 @@ from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
 from collections.abc import Coroutine
 
+from ..ui.manager_v2 import UICommandsManager
+
 try:
     from aiohttp.web import Response, Server, ServerRunner, TCPSite
 except ImportError:
@@ -150,6 +152,7 @@ class Application:
         self._ready = asyncio.Event()
 
         self.rpc = RPCManager(self)
+        self.ui_manager = UICommandsManager(self)
 
         self.app_key = app_key
         self.app_display_name = ""
@@ -1036,9 +1039,11 @@ class Application:
     async def _setup(self):
         log.info(f"Setting up internal app: {self.name}")
         self.rpc.register_handlers(self)
+        self.ui_manager.register_handlers(self)
 
         await self.tags.setup()
         await self.ui.setup()
+        self.ui_manager.set_interactions(self.ui.get_interactions())
 
         # bit of a cheeky double publish to ensure the old schema is cleared before we set it.
         # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
