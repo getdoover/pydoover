@@ -360,10 +360,11 @@ class ConfigElement(Generic[RuntimeValueT]):
     def load_data(self, data):
         self.value = data
 
+
 class Number(ConfigElement[int]):
     _type = "number"
     value: float
-    
+
     def __init__(
         self,
         display_name,
@@ -396,6 +397,7 @@ class Number(ConfigElement[int]):
             res["multipleOf"] = self.multiple_of
         return res
 
+
 class Integer(Number):
     _type = "integer"
     value: int
@@ -407,9 +409,6 @@ class Integer(Number):
     @value.setter
     def value(self, value):
         self._value = int(value)
-
-
-
 
 
 class Boolean(ConfigElement[bool]):
@@ -809,7 +808,7 @@ class ApplicationPosition(Integer):
         display_name: str = "Position",
         *,
         description: str = "Position of Application in UI Structure. Smaller numbers are closer to the top.",
-        default: int = 50,
+        default: int = 100,
         **kwargs,
     ):
         super().__init__(
