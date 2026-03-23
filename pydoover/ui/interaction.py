@@ -7,7 +7,7 @@ from .element import Element
 from .misc import Option, NotSet
 
 if TYPE_CHECKING:
-    from .manager_v2 import UICommandsManager
+    from .manager import UICommandsManager
 
 log = logging.getLogger(__name__)
 

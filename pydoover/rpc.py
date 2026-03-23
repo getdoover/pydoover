@@ -252,8 +252,23 @@ class RPCManager:
     async def _handle_request(self, event: MessageCreateEvent) -> None:
         """Dispatch an incoming RPC request to the appropriate handler."""
         try:
+            event_type = event.message.data["type"]
+        except KeyError:
+            event_type = None
+
+        if event_type != "rpc":
+            log.info("Skipping non-rpc event")
+            return
+
+        try:
             method = event.message.data["method"]
         except KeyError:
+            return
+
+        try:
+            payload = event.message.data["request"]
+        except KeyError:
+            log.info(f"Received malformed RPC request: {event.message.data}")
             return
 
         channel_name = event.channel.name
@@ -265,9 +280,10 @@ class RPCManager:
 
         ctx = self._build_context(method, event)
         if parser:
-            payload = await parser(event.message.data)
-        else:
-            payload = event.message.data
+            if asyncio.iscoroutinefunction(parser):
+                payload = await parser(payload)
+            else:
+                payload = parser(payload)
 
         try:
             result = await method_handler(ctx, payload)
@@ -321,9 +337,7 @@ class RPCManager:
     async def _send_result(
         self, channel_name: str, message_id: int, result: dict
     ) -> None:
-        await self._app.update_message(
-            channel_name, message_id, {"response": {"result": result}}
-        )
+        await self._app.update_message(channel_name, message_id, {"response": result})
 
     async def _send_error(
         self, channel_name: str, message_id: int, code: str, message: str
@@ -331,7 +345,7 @@ class RPCManager:
         await self._app.update_message(
             channel_name,
             message_id,
-            {"response": {"error": {"code": code, "message": message}}},
+            {"response": {"status": "error", "code": code, "message": message}},
         )
 
     # -- static helpers for processor usage ---------------------------------
