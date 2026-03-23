@@ -46,10 +46,12 @@ class UITagBinding:
         tag_name: str,
         tag_type: str | None = None,
         default_value: Any = _MISSING,
+        app_nested: bool = True,
     ):
         self.tag_name = tag_name
         self.tag_type = _TAG_TYPE_MAP.get(tag_type, tag_type) if tag_type else tag_type
         self.default_value = default_value
+        self.app_nested = app_nested
 
     def __copy__(self):
         return type(self)(
@@ -66,7 +68,10 @@ class UITagBinding:
         )
 
     def to_lookup(self) -> str:
-        result = f"$tag.{self.tag_name}"
+        result = "$tag."
+        if self.app_nested:
+            result += "app()."
+        result += str(self.tag_name)
         if self.tag_type is not None:
             result += f":{self.tag_type}"
         if not _is_missing_default(self.default_value):
