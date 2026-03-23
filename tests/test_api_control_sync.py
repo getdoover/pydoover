@@ -1,7 +1,10 @@
 import json
 
+import pytest
+
 from pydoover.api import ControlClient
-from pydoover.models.control import ControlPage, Theme
+from pydoover.api.control import ControlMethodUnavailableError
+from pydoover.models.control import ControlPage, DeviceType, Theme
 
 
 THEME_WITH_ID = {
@@ -143,5 +146,36 @@ def test_sync_client_can_deserialize_model_lists():
 
     assert len(items) == 1
     assert isinstance(items[0], Theme)
+
+    client.close()
+
+
+def test_sync_client_can_lookup_control_methods_by_model_name_or_class():
+    client, _ = make_client(DummyResponse(204))
+
+    by_name = client.get_control_methods("DeviceType")
+    by_class = client.get_control_methods(DeviceType)
+
+    assert by_name.model is DeviceType
+    assert by_name.model_name == "DeviceType"
+    assert by_name.available_operations() == ("get", "post", "patch", "put", "list")
+    assert by_name.model is by_class.model
+    assert by_name._get is not None
+    assert by_name._post is not None
+    assert by_name._patch is not None
+    assert by_name._put is not None
+    assert by_name._list is not None
+    assert by_name._get.__name__ == "types_retrieve"
+    assert by_name._post.__name__ == "types_create"
+    assert by_name._patch.__name__ == "types_partial"
+    assert by_name._put.__name__ == "types_update"
+    assert by_name._list.__name__ == "types_list"
+    assert client.get_control_method("DeviceType", "retrieve") == by_name._get
+    assert client.get_control_method(DeviceType, "post") == by_name._post
+
+    themes = client.get_control_methods(Theme)
+    assert themes.available_operations() == ("get", "patch", "put", "list")
+    with pytest.raises(ControlMethodUnavailableError):
+        themes.post()
 
     client.close()

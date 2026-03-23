@@ -3,7 +3,9 @@ from __future__ import annotations
 import inspect
 import platform
 from collections.abc import Collection
-from typing import Any, Generic, Protocol, TypeVar
+from dataclasses import dataclass
+from functools import cached_property
+from typing import Any, Callable, Generic, Protocol, TypeVar, cast, overload
 from urllib.parse import urlencode
 
 from ..auth import (
@@ -27,6 +29,68 @@ from ...models.data.exceptions import (
 )
 
 _python_version = platform.python_version()
+TControlModel = TypeVar("TControlModel", bound=control_models.ControlModel)
+TValue = TypeVar("TValue")
+
+
+class ControlMethodUnavailableError(AttributeError):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class ControlResourceMethods(Generic[TControlModel]):
+    model_name: str
+    model: type[TControlModel]
+    _get: Callable[..., TControlModel] | None = None
+    _post: Callable[..., TControlModel] | None = None
+    _patch: Callable[..., TControlModel] | None = None
+    _put: Callable[..., TControlModel] | None = None
+    _list: Callable[..., control_models.ControlPage[TControlModel]] | None = None
+
+    def available_operations(self) -> tuple[str, ...]:
+        operations = []
+        if self._get is not None:
+            operations.append("get")
+        if self._post is not None:
+            operations.append("post")
+        if self._patch is not None:
+            operations.append("patch")
+        if self._put is not None:
+            operations.append("put")
+        if self._list is not None:
+            operations.append("list")
+        return tuple(operations)
+
+    def supports(self, operation: str) -> bool:
+        return operation in self.available_operations()
+
+    def get(self, *args: Any, **kwargs: Any) -> TControlModel:
+        method = self._require("get", self._get)
+        return method(*args, **kwargs)
+
+    def post(self, *args: Any, **kwargs: Any) -> TControlModel:
+        method = self._require("post", self._post)
+        return method(*args, **kwargs)
+
+    def patch(self, *args: Any, **kwargs: Any) -> TControlModel:
+        method = self._require("patch", self._patch)
+        return method(*args, **kwargs)
+
+    def put(self, *args: Any, **kwargs: Any) -> TControlModel:
+        method = self._require("put", self._put)
+        return method(*args, **kwargs)
+
+    def list(self, *args: Any, **kwargs: Any) -> control_models.ControlPage[TControlModel]:
+        method = self._require("list", self._list)
+        return method(*args, **kwargs)
+
+    @staticmethod
+    def _require(operation: str, method: TValue | None) -> TValue:
+        if method is None:
+            raise ControlMethodUnavailableError(
+                f"Control resource does not support {operation!r}."
+            )
+        return method
 
 
 def _build_user_agent(http_lib: str, http_lib_version: str) -> str:
@@ -255,12 +319,101 @@ class BaseControlClient:
         self.timeout = timeout
         self._owns_auth = owns_auth
 
+    @cached_property
+    def _control_method_lookup(self) -> dict[str, dict[str, Callable[..., Any]]]:
+        lookup: dict[str, dict[str, tuple[tuple[int, int, int, int], Callable[..., Any]]]] = {}
+
+        for group_path, group in self._iter_control_groups():
+            for method_name in dir(group):
+                if method_name.startswith("_"):
+                    continue
+
+                operation = self._normalise_control_operation(method_name)
+                if operation is None:
+                    continue
+
+                method = getattr(group, method_name)
+                if not callable(method):
+                    continue
+
+                model_name = self._get_method_model_name(method)
+                if model_name is None:
+                    continue
+
+                score = self._score_control_method(group_path, method_name, method)
+                existing = lookup.setdefault(model_name, {}).get(operation)
+                if existing is None or score < existing[0]:
+                    lookup[model_name][operation] = (score, method)
+
+        return {
+            model_name: {
+                operation: method
+                for operation, (_, method) in methods.items()
+            }
+            for model_name, methods in lookup.items()
+        }
+
     @property
     def token(self) -> str | None:
         return self.auth.token
 
     def set_token(self, token: str):
         self.auth.set_token(token)
+
+    @overload
+    def get_control_methods(
+        self,
+        model: type[TControlModel],
+    ) -> ControlResourceMethods[TControlModel]: ...
+
+    @overload
+    def get_control_methods(
+        self,
+        model: str,
+    ) -> ControlResourceMethods[control_models.ControlModel]: ...
+
+    def get_control_methods(
+        self,
+        model: str | type[TControlModel],
+    ) -> ControlResourceMethods[TControlModel] | ControlResourceMethods[control_models.ControlModel]:
+        model_name, model_cls = self._resolve_control_model(model)
+        try:
+            methods = self._control_method_lookup[model_name]
+        except KeyError as exc:
+            raise KeyError(f"No control methods found for model {model_name!r}.") from exc
+
+        resource = ControlResourceMethods(
+            model_name=model_name,
+            model=cast(type[control_models.ControlModel], model_cls),
+            _get=cast(Callable[..., control_models.ControlModel] | None, methods.get("get")),
+            _post=cast(Callable[..., control_models.ControlModel] | None, methods.get("post")),
+            _patch=cast(
+                Callable[..., control_models.ControlModel] | None,
+                methods.get("patch"),
+            ),
+            _put=cast(Callable[..., control_models.ControlModel] | None, methods.get("put")),
+            _list=cast(
+                Callable[..., control_models.ControlPage[control_models.ControlModel]] | None,
+                methods.get("list"),
+            ),
+        )
+        return cast(ControlResourceMethods[TControlModel], resource)
+
+    def get_control_method(
+        self,
+        model: str | type[control_models.ControlModel],
+        operation: str,
+    ) -> Callable[..., Any]:
+        model_name, _ = self._resolve_control_model(model)
+        normalised_operation = self._coerce_control_operation_name(operation)
+
+        try:
+            return self._control_method_lookup[model_name][normalised_operation]
+        except KeyError as exc:
+            raise KeyError(
+                f"No control method found for model {model_name!r} and "
+                f"operation {normalised_operation!r}."
+            ) from exc
 
     def _auth_headers(self, organisation_id: int | None = None) -> dict[str, str]:
         headers = dict(self.auth.get_auth_headers())
@@ -322,6 +475,118 @@ class BaseControlClient:
         info = control_models.resolve_control_schema(item_schema)
         model_cls = getattr(control_models, info["model"])
         return [model_cls.from_version(info["version"], item) for item in data]
+
+    @staticmethod
+    def _coerce_control_operation_name(operation: str) -> str:
+        aliases = {
+            "retrieve": "get",
+            "get": "get",
+            "create": "post",
+            "post": "post",
+            "partial": "patch",
+            "patch": "patch",
+            "update": "put",
+            "put": "put",
+            "list": "list",
+        }
+        try:
+            return aliases[operation]
+        except KeyError as exc:
+            raise ValueError(f"Unsupported control operation {operation!r}.") from exc
+
+    @classmethod
+    def _normalise_control_operation(cls, method_name: str) -> str | None:
+        for suffix, operation in (
+            ("_retrieve", "get"),
+            ("_create", "post"),
+            ("_partial", "patch"),
+            ("_update", "put"),
+            ("_list", "list"),
+        ):
+            if method_name.endswith(suffix):
+                return operation
+        if method_name in {"retrieve", "create", "partial", "update", "list"}:
+            return cls._coerce_control_operation_name(method_name)
+        return None
+
+    def _resolve_control_model(
+        self,
+        model: str | type[TControlModel],
+    ) -> tuple[str, type[TControlModel] | type[control_models.ControlModel]]:
+        if isinstance(model, str):
+            try:
+                model_cls = getattr(control_models, model)
+            except AttributeError as exc:
+                raise KeyError(f"Unknown control model {model!r}.") from exc
+            if not isinstance(model_cls, type) or not issubclass(
+                model_cls,
+                control_models.ControlModel,
+            ):
+                raise TypeError(f"{model!r} is not a control model.")
+            return model, model_cls
+        if isinstance(model, type) and issubclass(model, control_models.ControlModel):
+            return model.__name__, model
+        raise TypeError("`model` must be a control model name or ControlModel subclass.")
+
+    def _iter_control_groups(self) -> list[tuple[tuple[str, ...], Any]]:
+        stack: list[tuple[tuple[str, ...], Any]] = [((), self)]
+        groups: list[tuple[tuple[str, ...], Any]] = []
+        seen: set[int] = set()
+
+        while stack:
+            path, node = stack.pop()
+            node_id = id(node)
+            if node_id in seen:
+                continue
+            seen.add(node_id)
+
+            for attr_name, value in vars(node).items():
+                if isinstance(value, _ControlGroupBase):
+                    child_path = (*path, attr_name)
+                    groups.append((child_path, value))
+                    stack.append((child_path, value))
+
+        return groups
+
+    @staticmethod
+    def _get_method_model_name(method: Callable[..., Any]) -> str | None:
+        return_annotation = inspect.signature(method).return_annotation
+        if return_annotation is inspect.Signature.empty:
+            return None
+
+        if isinstance(return_annotation, str):
+            marker = "control_models."
+            matches = [
+                part.split("[", 1)[0]
+                for part in return_annotation.replace("]", "").split(marker)[1:]
+            ]
+            matches = [match for match in matches if match != "ControlPage"]
+            return matches[-1] if matches else None
+
+        if isinstance(return_annotation, type) and issubclass(
+            return_annotation,
+            control_models.ControlModel,
+        ):
+            return return_annotation.__name__
+
+        return None
+
+    @staticmethod
+    def _score_control_method(
+        group_path: tuple[str, ...],
+        method_name: str,
+        method: Callable[..., Any],
+    ) -> tuple[int, int, int, int]:
+        signature = inspect.signature(method)
+        required_params = 0
+        for parameter in signature.parameters.values():
+            if parameter.name == "organisation_id":
+                continue
+            if parameter.default is inspect.Signature.empty:
+                required_params += 1
+
+        is_prefixed = 0 if "_" not in method_name else 1
+        return (is_prefixed, required_params, len(group_path), len(method_name))
 
 
 class _SyncControlExecutor(Protocol):
