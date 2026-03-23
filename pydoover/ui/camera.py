@@ -11,7 +11,6 @@ class CameraLiveView(Element):
         stream_name: str,
         allow_ptz_control: bool,
         display_name: str = "Live View",
-        name: str = "History",
         **kwargs,
     ):
         self.stream_name = stream_name
@@ -19,7 +18,7 @@ class CameraLiveView(Element):
         self.allow_ptz_control = allow_ptz_control
         self.presets = []
         self.active_preset = None
-        super().__init__(name=name, display_name=display_name, **kwargs)
+        super().__init__(display_name=display_name, **kwargs)
 
     def to_dict(self):
         res = super().to_dict()
@@ -38,13 +37,12 @@ class CameraHistory(Element):
         self,
         camera_name: str,
         display_name: str = "History",
-        name: str = "history",
         **kwargs,
     ):
         self.camera_name = camera_name
         self.presets = []
         self.active_preset = None
-        super().__init__(name=name, display_name=display_name, **kwargs)
+        super().__init__(display_name=display_name, **kwargs)
 
     def to_dict(self):
         res = super().to_dict()

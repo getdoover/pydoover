@@ -14,6 +14,8 @@ from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
 from collections.abc import Coroutine
 
+from ..ui import UICommandsManager
+
 try:
     from aiohttp.web import Response, Server, ServerRunner, TCPSite
 except ImportError:
@@ -122,8 +124,6 @@ class Application:
         healthcheck_port: int = None,
     ):
         self.config: "Schema" = self.__class__.config_class()
-        self.tags = self.__class__.tags_class(self.config)
-        self.ui = self.__class__.ui_class(self.config, self.tags)
 
         self._tags: Tags | None = None
         self._ui: UI | None = None
@@ -147,17 +147,24 @@ class Application:
         self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
         )
+
         self._ready = asyncio.Event()
 
         self.rpc = RPCManager(self)
+        self.ui_manager = UICommandsManager(self)
 
         self.app_key = app_key
         self.app_display_name = ""
 
-        self._ready = asyncio.Event()
-
         self._shutdown_at = None
         self.force_log_on_shutdown = False
+
+        # fixme: app_key isn't actually set.
+        # tags_cls should also be copied to the instance on __init__
+        self.tags = self.__class__.tags_class(
+            self.app_key, self.tag_manager, self.config
+        )
+        self.ui = self.__class__.ui_class(self.config, self.tags)
 
         if name is None:
             self.name = self.__class__.__name__
@@ -1036,20 +1043,26 @@ class Application:
     async def _setup(self):
         log.info(f"Setting up internal app: {self.name}")
         self.rpc.register_handlers(self)
+        self.ui_manager.register_handlers(self)
 
         await self.tags.setup()
         await self.ui.setup()
+        self.ui_manager._set_interactions(self.ui.get_interactions())
 
         # bit of a cheeky double publish to ensure the old schema is cleared before we set it.
         # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
         if not self.ui.is_static:
             log.info("Updating ui_state with runtime-generated schema.")
-            schema = self.ui.to_dict()
+            schema = self.ui.to_schema()
             await self.update_channel_aggregate(
-                "ui_state", {self.app_key: None}, max_age_secs=-1
+                "ui_state",
+                {"state": {"children": {self.app_key: None}}},
+                max_age_secs=-1,
             )
             await self.update_channel_aggregate(
-                "ui_state", {self.app_key: schema}, max_age_secs=-1
+                "ui_state",
+                {"state": {"children": {self.app_key: schema}}},
+                max_age_secs=-1,
             )
 
         if self.test_mode:
@@ -1233,8 +1246,9 @@ def run_app(
         app.platform_iface,
         app.modbus_iface,
         app.device_agent,
-        # app.ui_manager,
+        app.ui_manager,
         app.tag_manager,
+        app.tags,
     ):
         inst.app_key = app_key
 

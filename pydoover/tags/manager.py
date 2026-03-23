@@ -138,7 +138,6 @@ class TagsManagerDocker(TagsManager):
         tag_log_interval: int = TAG_CLOUD_MAX_AGE,
     ):
         self.client: DeviceAgentInterface = client
-        self._is_async = True
 
         self._tag_values: dict[str, Any] = {}
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
@@ -347,7 +346,6 @@ class TagsManagerProcessor(TagsManager):
         self.client = client
         self.app_key = app_key
         self.agent_id = agent_id
-        self._is_async = True
         self._tag_values = tag_values or {}
         self._update_tags = False
         self._record_tag_update = record_tag_update
@@ -368,7 +366,9 @@ class TagsManagerProcessor(TagsManager):
                 raise KeyError(key) from exc
             return default
 
-    async def set_tag(self, key: str, value: Any, app_key: str | None = None) -> None:
+    async def set_tag(
+        self, key: str, value: Any, app_key: str | None = None, flush: bool = False
+    ) -> None:
         """Update a tag value in the buffered processor payload."""
         app_key = app_key or self.app_key
 

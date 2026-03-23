@@ -1,7 +1,7 @@
-from collections import OrderedDict
 from typing import Any, Iterator, NoReturn, overload
 
-from ..utils import call_maybe_async, get_is_async, maybe_async
+from .manager import TagsManager
+from ..config import Schema
 
 
 class NotSet:
@@ -132,76 +132,36 @@ class BoundTag:
         """Return the current value of this tag from the registered manager."""
         return self._tags._get_tag_value(self._declaration.attr_name)
 
-    @maybe_async()
-    def set(self, value: Any) -> None:
-        """Set the current value of this tag.
-
-        In async contexts this follows the repo's ``maybe_async`` pattern and
-        should be awaited.
-        """
-        self._tags._set_tag_value(self._declaration.attr_name, value)
-
-    async def set_async(self, value: Any) -> None:
+    async def set(self, value: Any) -> None:
         """Async variant of :meth:`set`."""
-        await call_maybe_async(
-            self._tags._set_tag_value_async,
-            self._declaration.attr_name,
-            value,
-        )
+        await self._tags._set_tag_value(self._declaration.attr_name, value)
 
-    @maybe_async()
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Reset this tag back to its declared default value."""
-        self.set(self.default)
-
-    async def clear_async(self) -> None:
-        """Async variant of :meth:`clear`."""
-        await self.set_async(self.default)
+        await self.set(self.default)
 
     def is_set(self) -> bool:
         """Return ``True`` when this tag currently has a concrete value."""
         return self.get() is not NotSet
 
-    @maybe_async()
-    def increment(self, amount: int | float = 1) -> Any:
+    async def increment(self, amount: int | float = 1) -> Any:
         """Increment a numeric tag and return the new value."""
         self._validate_numeric("increment")
         current = self.get()
         if current is NotSet:
             raise ValueError(f"Cannot increment unset tag '{self.name}'.")
         new_value = current + amount
-        self.set(new_value)
+        await self.set(new_value)
         return new_value
 
-    async def increment_async(self, amount: int | float = 1) -> Any:
-        """Async variant of :meth:`increment`."""
-        self._validate_numeric("increment")
-        current = self.get()
-        if current is NotSet:
-            raise ValueError(f"Cannot increment unset tag '{self.name}'.")
-        new_value = current + amount
-        await self.set_async(new_value)
-        return new_value
-
-    @maybe_async()
-    def decrement(self, amount: int | float = 1) -> Any:
+    async def decrement(self, amount: int | float = 1) -> Any:
         """Decrement a numeric tag and return the new value."""
         self._validate_numeric("decrement")
         current = self.get()
         if current is NotSet:
             raise ValueError(f"Cannot decrement unset tag '{self.name}'.")
         new_value = current - amount
-        self.set(new_value)
-        return new_value
-
-    async def decrement_async(self, amount: int | float = 1) -> Any:
-        """Async variant of :meth:`decrement`."""
-        self._validate_numeric("decrement")
-        current = self.get()
-        if current is NotSet:
-            raise ValueError(f"Cannot decrement unset tag '{self.name}'.")
-        new_value = current - amount
-        await self.set_async(new_value)
+        await self.set(new_value)
         return new_value
 
     def _validate_numeric(self, operation: str) -> None:
@@ -284,12 +244,12 @@ class Tags:
     tag set at runtime via :meth:`add_tag` and :meth:`remove_tag`.
     """
 
-    __tag_declarations__: "OrderedDict[str, _DeclaredTag]" = OrderedDict()
+    __tag_declarations__: "dict[str, _DeclaredTag]" = dict()
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        declarations: "OrderedDict[str, _DeclaredTag]" = OrderedDict()
+        declarations: "dict[str, _DeclaredTag]" = dict()
         for base in reversed(cls.__mro__[1:]):
             declarations.update(getattr(base, "__tag_declarations__", {}))
 
@@ -304,16 +264,17 @@ class Tags:
 
         cls.__tag_declarations__ = declarations
 
-    def __init__(self):
-        self._manager: Any | None = None
-        self._app_key: str | None = None
-        self._is_async = False
-        # Keep runtime declaration changes isolated to this instance.
-        self._tag_declarations = OrderedDict(self.__class__.__tag_declarations__)
+    def __init__(self, app_key: str, tag_manager: TagsManager, config: Schema):
+        self.config = config
+        self._manager = tag_manager
+        self.app_key = app_key
 
-    async def setup(self, config: Any = None) -> None:
+        # Keep runtime declaration changes isolated to this instance.
+        self._tag_declarations = dict(self.__class__.__tag_declarations__)
+
+    async def setup(self):
         """Mutate this tag collection before it is bound to a manager."""
-        return None
+        pass
 
     @property
     def definitions(self) -> list[Tag]:
@@ -328,14 +289,6 @@ class Tags:
             for attr_name, declaration in self._tag_declarations.items()
             if self._get_tag_value(attr_name) is not NotSet
         }
-
-    def register_manager(self, manager: Any, app_key: str | None = None) -> None:
-        """Bind this tag collection to a tag manager."""
-        self._manager = manager
-        self._app_key = (
-            app_key if app_key is not None else getattr(manager, "app_key", None)
-        )
-        self._is_async = get_is_async(bool(getattr(manager, "_is_async", False)))
 
     def _get_declaration(self, name: str) -> _DeclaredTag | None:
         for attr_name, declaration in self._tag_declarations.items():
@@ -379,41 +332,17 @@ class Tags:
         return self._manager.get_tag(
             declaration.name,
             default=declaration.template.default,
-            app_key=self._app_key,
+            app_key=self.app_key,
         )
 
-    def _set_tag_value(self, name: str, value: Any) -> None:
+    async def _set_tag_value(self, name: str, value: Any) -> None:
         declaration = self._get_declaration(name)
         if declaration is None:
             raise AttributeError(f"Unknown tag '{name}'")
         if self._manager is None:
             raise RuntimeError("Tags manager has not been registered.")
 
-        self._manager.set_tag(declaration.name, value, app_key=self._app_key)
-
-    async def _set_tag_value_async(self, name: str, value: Any) -> None:
-        declaration = self._get_declaration(name)
-        if declaration is None:
-            raise AttributeError(f"Unknown tag '{name}'")
-        if self._manager is None:
-            raise RuntimeError("Tags manager has not been registered.")
-
-        if getattr(self._manager, "_is_async", False) and hasattr(
-            self._manager, "set_tag_async"
-        ):
-            await self._manager.set_tag_async(
-                declaration.name,
-                value,
-                app_key=self._app_key,
-            )
-            return
-
-        await call_maybe_async(
-            self._manager.set_tag,
-            declaration.name,
-            value,
-            app_key=self._app_key,
-        )
+        await self._manager.set_tag(declaration.name, value, app_key=self.app_key)
 
     def get(self, name: str) -> BoundTag | None:
         """Return the bound runtime proxy for a tag, if it exists."""
@@ -446,12 +375,12 @@ class Tags:
             return None
         return declaration.template
 
-    def update(self, values: dict[str, Any]) -> None:
+    async def update(self, values: dict[str, Any]) -> None:
         """Update multiple tag values through their bound runtime proxies."""
         for key, value in values.items():
             tag = self.find_tag(key)
             if tag is not None:
-                tag.set(value)
+                await tag.set(value)
 
     def to_dict(self) -> dict[str, Any]:
         """Return the current manager-backed tag values."""

@@ -7,14 +7,16 @@ using channel messages as the transport.
 import asyncio
 import inspect
 import logging
+import re
 from collections.abc import Callable
+from datetime import timezone, timedelta, datetime
 from typing import Any, TYPE_CHECKING
 
 from .models import (
-    ChannelID,
     EventSubscription,
     MessageCreateEvent,
     MessageUpdateEvent,
+    Message,
 )
 
 if TYPE_CHECKING:
@@ -52,7 +54,9 @@ class RPCTimeoutError(RPCError):
 # ---------------------------------------------------------------------------
 
 
-def handler(method: str, channel: str | None = None):
+def handler(
+    method: str | re.Pattern, channel: str | None = None, parser: Callable = None
+):
     """Decorator to mark an async method as an RPC handler.
 
     Parameters
@@ -68,6 +72,7 @@ def handler(method: str, channel: str | None = None):
         func._is_rpc_handler = True
         func._rpc_method = method
         func._rpc_channel = channel
+        func._rpc_parser = parser
         return func
 
     return decorator
@@ -78,60 +83,27 @@ def handler(method: str, channel: str | None = None):
 # ---------------------------------------------------------------------------
 
 
-class RPCRequest:
-    """Represents an incoming RPC request passed to handler functions."""
-
-    def __init__(
-        self,
-        method: str,
-        params: dict[str, Any],
-        message_id: int,
-        channel_name: str,
-        channel: ChannelID,
-        author_id: int,
-        _update_fn: Callable | None = None,
-    ):
+class RPCContext:
+    def __init__(self, method: str, message: Message, _update_fn: Callable):
         self.method = method
-        self.params = params
-        self.message_id = message_id
-        self.channel_name = channel_name
-        self.channel = channel
-        self.author_id = author_id
+        self.message = message
         self._update_fn = _update_fn
 
-    async def acknowledge(self) -> None:
-        """Send a non-terminal acknowledgement for this request."""
-        if self._update_fn is None:
-            raise RuntimeError("No update function available")
-        rpc_data = {
-            "method": self.method,
-            "params": self.params,
-            "status": "acknowledged",
-        }
-        await self._update_fn(self.channel_name, self.message_id, {RPC_KEY: rpc_data})
+    @property
+    def channel(self):
+        return self.message.channel
 
-    @classmethod
-    def from_event(
-        cls,
-        event: MessageCreateEvent,
-        update_fn: Callable,
-    ) -> "RPCRequest":
-        """Create an RPCRequest from a MessageCreateEvent.
+    async def acknowledge(self):
+        await self._update_fn(
+            self.channel.name, self.message.id, {"response": {"status": "acknowledged"}}
+        )
 
-        Returns ``None`` if the event is not an RPC message.
-        """
-        rpc_payload = event.message.data.get(RPC_KEY)
-        if rpc_payload is None:
-            return None
-
-        return cls(
-            method=rpc_payload["method"],
-            params=rpc_payload.get("params", {}),
-            message_id=event.message.id,
-            channel_name=event.channel.name,
-            channel=event.channel,
-            author_id=event.message.author_id,
-            _update_fn=update_fn,
+    async def defer(self, seconds: float):
+        until = datetime.now(tz=timezone.utc) + timedelta(seconds=seconds)
+        await self._update_fn(
+            self.channel.name,
+            self.message.id,
+            {"response": {"status": "deferred", "until": until}},
         )
 
 
@@ -151,9 +123,10 @@ class RPCManager:
 
     def __init__(self, app: "Application"):
         self._app = app
-        # (method_name, channel_or_None, callback)
-        self._handlers: list[tuple[str, str | None, Callable]] = []
-        # message_id → Future
+        # (channel_name, method_name) -> (parser, handler)
+        self._handlers: dict[tuple[str, str], tuple[Callable, Callable]] = {}
+        self._re_handlers: list[tuple[str, re.Pattern, Callable, Callable]] = []
+
         self._pending_calls: dict[int, asyncio.Future] = {}
         self._subscribed_channels: set[str] = set()
 
@@ -167,8 +140,14 @@ class RPCManager:
         ):
             method_name = func._rpc_method
             channel = func._rpc_channel
+            request_parser = func._rpc_parser
             log.info(f"Registering RPC handler: {method_name} (channel={channel})")
-            self._handlers.append((method_name, channel, func))
+            if isinstance(method_name, re.Pattern):
+                # this is less efficient lookup-wise, so only do it if needed
+                # but is a pretty useful / flexible feature for the user (ie. subscribe to all get_*_di handlers)
+                self._re_handlers.append((channel, method_name, request_parser, func))
+            else:
+                self._handlers[(channel, method_name)] = (request_parser, func)
 
             # Auto-subscribe to the handler's channel if specified
             if channel is not None:
@@ -228,7 +207,7 @@ class RPCManager:
         """
         self._ensure_subscribed(channel)
 
-        data = {RPC_KEY: {"method": method, "params": params or {}}}
+        data = {"method": method, "request": params or {}}
         message_id = await self._app.create_message(channel, data)
 
         loop = asyncio.get_running_loop()
@@ -253,82 +232,89 @@ class RPCManager:
         elif isinstance(event, MessageUpdateEvent):
             self._handle_response(event)
 
+    def _get_handler(self, channel_name, method):
+        try:
+            return self._handlers[(channel_name, method)]
+        except KeyError:
+            for channel, pattern, parser, req_handler in self._re_handlers:
+                if channel == channel_name and pattern.match(method):
+                    return parser, req_handler
+
+        raise KeyError("could not find appropriate parser...")
+
+    def _build_context(self, method, event: MessageCreateEvent | MessageUpdateEvent):
+        return RPCContext(
+            method=method,
+            message=event.message,
+            _update_fn=self._app.update_message,
+        )
+
     async def _handle_request(self, event: MessageCreateEvent) -> None:
         """Dispatch an incoming RPC request to the appropriate handler."""
-        rpc_payload = event.message.data.get(RPC_KEY)
-        if rpc_payload is None:
-            return
-
-        method = rpc_payload.get("method")
-        if method is None:
+        try:
+            method = event.message.data["method"]
+        except KeyError:
             return
 
         channel_name = event.channel.name
 
-        # Find matching handler
-        matched_handler = None
-        for handler_method, handler_channel, callback in self._handlers:
-            if handler_method != method:
-                continue
-            if handler_channel is not None and handler_channel != channel_name:
-                continue
-            matched_handler = callback
-            break
-
-        if matched_handler is None:
+        try:
+            parser, method_handler = self._get_handler(channel_name, method)
+        except KeyError:
             return
 
-        request = RPCRequest(
-            method=method,
-            params=rpc_payload.get("params", {}),
-            message_id=event.message.id,
-            channel_name=channel_name,
-            channel=event.channel,
-            author_id=event.message.author_id,
-            _update_fn=self._app.update_message,
-        )
+        ctx = self._build_context(method, event)
+        if parser:
+            payload = await parser(event.message.data)
+        else:
+            payload = event.message.data
 
         try:
-            result = await matched_handler(request)
+            result = await method_handler(ctx, payload)
         except RPCError as e:
             await self._send_error(channel_name, event.message.id, e.code, e.message)
         except Exception as e:
-            log.error(f"Unhandled exception in RPC handler '{method}': {e}", exc_info=e)
+            log.error(
+                f"Unhandled exception in RPC handler '{method_handler}': {e}",
+                exc_info=e,
+            )
             await self._send_error(
                 channel_name, event.message.id, "INTERNAL_ERROR", str(e)
             )
         else:
             if result is None:
                 result = {}
-            await self._send_result(channel_name, event.message.id, result)
+
+            await self._send_result(
+                channel_name, event.message.id, {"status": "success", "result": result}
+            )
 
     def _handle_response(self, event: MessageUpdateEvent) -> None:
         """Resolve a pending future if this update is an RPC response."""
-        message = event.message
-        rpc_payload = message.data.get(RPC_KEY)
-        if rpc_payload is None:
+        try:
+            response = event.message.data["response"]
+        except KeyError:
             return
 
-        message_id = message.id
-        future = self._pending_calls.get(message_id)
+        future = self._pending_calls.get(event.message.id)
         if future is None or future.done():
             return
 
         # Non-terminal status updates (e.g. "acknowledged") don't resolve
         if (
-            "status" in rpc_payload
-            and "result" not in rpc_payload
-            and "error" not in rpc_payload
+            "status" in response
+            and "result" not in response
+            and "error" not in response
         ):
             return
 
-        if "error" in rpc_payload:
-            err = rpc_payload["error"]
+        if "error" in response:
+            err = response["error"]
             future.set_exception(
                 RPCError(err.get("code", "UNKNOWN"), err.get("message", ""))
             )
-        elif "result" in rpc_payload:
-            future.set_result(rpc_payload["result"])
+        elif "result" in response:
+            future.set_result(response["result"])
 
     # -- response helpers ---------------------------------------------------
 
@@ -336,7 +322,7 @@ class RPCManager:
         self, channel_name: str, message_id: int, result: dict
     ) -> None:
         await self._app.update_message(
-            channel_name, message_id, {RPC_KEY: {"result": result}}
+            channel_name, message_id, {"response": {"result": result}}
         )
 
     async def _send_error(
@@ -345,7 +331,7 @@ class RPCManager:
         await self._app.update_message(
             channel_name,
             message_id,
-            {RPC_KEY: {"error": {"code": code, "message": message}}},
+            {"response": {"error": {"code": code, "message": message}}},
         )
 
     # -- static helpers for processor usage ---------------------------------
@@ -381,5 +367,5 @@ class RPCManager:
         int
             The created message ID.
         """
-        data = {RPC_KEY: {"method": method, "params": params or {}}}
+        data = {"request": params or {}, "method": method}
         return await client.create_message(agent_id, channel, data)

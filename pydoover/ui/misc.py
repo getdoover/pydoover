@@ -1,6 +1,7 @@
 from typing import Any, ClassVar
 
 from .declarative import normalize_ui_value
+from ..utils.utils import sanitize_display_name
 
 
 class NotSet:
@@ -124,15 +125,13 @@ class Option:
 
     Attributes
     ----------
-    name: str
-        The name of the option, used for identification.
     display_name: str
         The display name of the option, used for user interface representation.
     """
 
-    def __init__(self, name: str, display_name: Any):
-        self.name = name
+    def __init__(self, display_name: Any):
         self.display_name = display_name
+        self.name = sanitize_display_name(display_name)
 
     def to_dict(self) -> dict[str, Any]:
         return normalize_ui_value(
@@ -145,7 +144,7 @@ class Option:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
-        return cls(data["name"], data["display_str"])
+        return cls(data["display_str"])
 
 
 class Widget:
