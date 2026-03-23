@@ -150,8 +150,8 @@ class Application:
 
         self._ready = asyncio.Event()
 
-        self.rpc = RPCManager(self)
-        self.ui_manager = UICommandsManager(self)
+        self.rpc = RPCManager(self.device_agent)
+        self.ui_manager = UICommandsManager(self.device_agent)
 
         self.app_key = app_key
         self.app_display_name = ""

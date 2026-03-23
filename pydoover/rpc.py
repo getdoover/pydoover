@@ -10,7 +10,7 @@ import logging
 import re
 from collections.abc import Callable
 from datetime import timezone, timedelta, datetime
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Union
 
 from .models import (
     EventSubscription,
@@ -20,7 +20,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from .docker.application import Application
+    from .docker.application import DeviceAgentInterface
+    from .api import AsyncDataClient
 
 log = logging.getLogger(__name__)
 
@@ -117,12 +118,12 @@ class RPCManager:
 
     Parameters
     ----------
-    app : Application
+    api : DeviceAgentInterface | AsyncDataClient
         The application instance this manager is attached to.
     """
 
-    def __init__(self, app: "Application"):
-        self._app = app
+    def __init__(self, api: Union["DeviceAgentInterface", "AsyncDataClient"]):
+        self.api = api
         # (channel_name, method_name) -> (parser, handler)
         self._handlers: dict[tuple[str, str], tuple[Callable, Callable]] = {}
         self._re_handlers: list[tuple[str, re.Pattern, Callable, Callable]] = []
@@ -163,7 +164,7 @@ class RPCManager:
         if channel_name in self._subscribed_channels:
             return
         self._subscribed_channels.add(channel_name)
-        self._app.device_agent.add_event_callback(
+        self.api.add_event_callback(
             channel_name,
             self._on_event,
             EventSubscription.message_create | EventSubscription.message_update,
@@ -211,7 +212,7 @@ class RPCManager:
         self._ensure_subscribed(channel)
 
         data = {"method": method, "request": params or {}}
-        message_id = await self._app.create_message(channel, data)
+        message_id = await self.api.create_message(channel, data)
 
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
@@ -249,7 +250,7 @@ class RPCManager:
         return RPCContext(
             method=method,
             message=event.message,
-            _update_fn=self._app.update_message,
+            _update_fn=self.api.update_message,
         )
 
     async def _handle_request(self, event: MessageCreateEvent) -> None:
@@ -340,12 +341,12 @@ class RPCManager:
     async def _send_result(
         self, channel_name: str, message_id: int, result: dict
     ) -> None:
-        await self._app.update_message(channel_name, message_id, {"response": result})
+        await self.api.update_message(channel_name, message_id, {"response": result})
 
     async def _send_error(
         self, channel_name: str, message_id: int, code: str, message: str
     ) -> None:
-        await self._app.update_message(
+        await self.api.update_message(
             channel_name,
             message_id,
             {"response": {"status": "error", "code": code, "message": message}},

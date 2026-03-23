@@ -351,7 +351,7 @@ class TagsManagerDocker(TagsManager):
         )
         apply_diff(self._tag_values, data, clone=False)
 
-    async def flush_logs(self):
+    async def flush_logs(self, timestamp: datetime = None):
         if not self._pending_tag_log:
             return False  # Nothing to flush
 
@@ -359,7 +359,9 @@ class TagsManagerDocker(TagsManager):
         self._pending_tag_log = {}
         self._last_tag_log_time = time.time()
 
-        await self.client.create_message(TAG_CHANNEL_NAME, log_data)
+        await self.client.create_message(
+            TAG_CHANNEL_NAME, log_data, timestamp=timestamp
+        )
 
 
 class TagsManagerProcessor(TagsManager):
@@ -417,7 +419,9 @@ class TagsManagerProcessor(TagsManager):
 
         self._update_tags = True
 
-    async def commit_tags(self) -> None:
+    async def commit_tags(
+        self, *, record_log: bool = False, timestamp: datetime | None = None
+    ) -> None:
         """Flush any buffered tag changes back to the processor data API."""
         if not self._update_tags:
             return
@@ -428,11 +432,12 @@ class TagsManagerProcessor(TagsManager):
             self._tag_values,
         )
 
-        if self._record_tag_update:
+        if self._record_tag_update or record_log:
             await self.client.publish_message(
                 self.agent_id,
                 TAG_CHANNEL_NAME,
                 self._tag_values,
+                timestamp=timestamp,
             )
 
         self._update_tags = False

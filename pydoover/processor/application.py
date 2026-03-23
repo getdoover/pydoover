@@ -7,7 +7,7 @@ import time
 import sys
 from datetime import datetime, timedelta, timezone
 
-from typing import Any, cast
+from typing import Any
 
 from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerProcessor
@@ -25,7 +25,7 @@ from .types import (
 )
 from .data_client import ProcessorDataClient
 from ...models import ConnectionDetermination, ConnectionStatus, SubscriptionInfo
-from ...ui import UI, UIManager
+from ...ui import UI, UICommandsManager
 from ...config import Schema
 
 
@@ -46,8 +46,6 @@ class Application:
     def __init__(self):
         config_class = self.__class__.config_class
         self.config = config_class() if config_class is not None else None
-        self._tags: Tags | None = None
-        self._ui: UI | None = None
 
         self.received_deployment_config = None
 
@@ -60,7 +58,7 @@ class Application:
         # set per-task
         self.agent_id: int | None = None
         self._initial_token: str | None = None
-        self.ui_manager: UIManager | None = None
+
         self.tag_manager: TagsManagerProcessor | None = None
         self._connection_config: dict[str, Any] | None = None
 
@@ -71,49 +69,6 @@ class Application:
 
         self._record_tag_update: bool = True
         self._update_external_tags: bool = False
-
-    @property
-    def tags(self) -> Tags:
-        return cast(Tags, self._tags)
-
-    @tags.setter
-    def tags(self, value: Tags | None) -> None:
-        self._tags = value
-
-    @property
-    def ui(self) -> UI:
-        return cast(UI, self._ui)
-
-    @ui.setter
-    def ui(self, value: UI | None) -> None:
-        self._ui = value
-
-    async def _resolve_tags(self) -> Tags | None:
-        tags_class = self.__class__.tags_class
-        if tags_class is None:
-            self.tags = None
-        else:
-            self.tags = tags_class()
-            await self.tags.setup(self.config)
-
-        if self._tags is not None:
-            self._tags.register_manager(self.tag_manager, app_key=self.app_key)
-        return self.tags
-
-    async def _resolve_ui(self) -> UI | None:
-        ui_class = self.__class__.ui_class
-        if ui_class is None:
-            self.ui = None
-        else:
-            self.ui = ui_class()
-            await self.ui.setup(self.config, self.tags)
-
-        if self._ui is not None:
-            self._ui.bind_tags(self._tags)
-            if self.ui_manager is None:
-                raise RuntimeError("UI manager has not been initialized.")
-            self.ui_manager.set_children(self._ui.to_elements())
-        return self.ui
 
     async def _setup(self, initial_payload: dict[str, Any]):
         # this is ok to setup because it doesn't store any state
@@ -156,6 +111,10 @@ class Application:
             info.tag_values,
             record_tag_update=self._record_tag_update,
         )
+        self.tags = self.__class__.tags_class(
+            self.app_key, self.tag_manager, self.config
+        )
+        self.ui = self.__class__.ui_class(self.config, self.tags)
 
         connection_data = info.connection_data
         if not connection_data:
@@ -171,26 +130,23 @@ class Application:
                 self._connection_status
             )
 
-        # it's probably better to recreate this one every time
-        self.ui_manager: UIManager = UIManager(self.app_key, self.api)
+        self.ui_manager = UICommandsManager(self.api)
 
-        if info.ui_state is not None and info.ui_cmds is not None:
-            self._ui_to_set = (info.ui_state, info.ui_cmds)
-        else:
-            self._ui_to_set = None
+        if info.ui_cmds is not None:
+            self.ui_manager.values = info.ui_state
 
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
             self.config._inject_deployment_config(info.deployment_config)
 
-        await self._resolve_tags()
-        await self._resolve_ui()
+        await self.tags.setup()
+        await self.ui.setup()
+        self.ui_manager._set_interactions(self.ui.get_interactions())
 
         # Store the deployment config for later use
         self.received_deployment_config = info.deployment_config
         self.display_name = self.received_deployment_config.get("APP_DISPLAY_NAME")
         self.app_id = self.received_deployment_config.get("APP_ID")
-        self.ui_manager.set_display_name(self.display_name)
 
     async def _close(self):
         await self.api.close()
@@ -359,12 +315,6 @@ class Application:
             log.info("Post-setup filter rejected event.")
             return None
 
-        if self._ui_to_set:
-            # not valid for org apps
-            if self.ui_manager is None:
-                raise RuntimeError("UI manager has not been initialized.")
-            await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
-
         result = None
         if func is None or payload is None:
             log.error(f"Unknown event type: {event['op']}")
@@ -377,6 +327,19 @@ class Application:
                 log.error(f"Error attempting to process event: {e} ", exc_info=e)
 
         # fixme: publish UI if needed
+        if not self.ui.is_static:
+            log.info("Updating ui_state with runtime-generated schema.")
+            schema = self.ui.to_schema()
+            await self.api.update_channel_aggregate(
+                self.agent_id,
+                "ui_state",
+                {"state": {"children": {self.app_key: None}}},
+            )
+            await self.api.update_channel_aggregate(
+                self.agent_id,
+                "ui_state",
+                {"state": {"children": {self.app_key: schema}}},
+            )
 
         if self.tag_manager is None:
             raise RuntimeError("Tag manager has not been initialized.")
