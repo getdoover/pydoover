@@ -1,6 +1,6 @@
 import zoneinfo
 
-from ...config import (
+from ..config import (
     Application,
     Array,
     Boolean,
