@@ -36,7 +36,7 @@ class AsyncControlClientGroups:
 
 class AgentsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def retrieve(self, organisation_id: int | None = None) -> None:
-        path = f"/agents/"
+        path = "/agents/"
         params = None
         return await self._root._execute(
             "GET",
@@ -55,7 +55,7 @@ class AgentsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
 
 class AnalyticsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def summary(self, organisation_id: int | None = None) -> None:
-        path = f"/analytics/summary/"
+        path = "/analytics/summary/"
         params = None
         return await self._root._execute(
             "GET",
@@ -95,7 +95,7 @@ class AppDeploymentsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.ApplicationDeployment:
-        path = f"/app_deployments/"
+        path = "/app_deployments/"
         params = None
         return await self._root._execute(
             "POST",
@@ -119,7 +119,7 @@ class AppDeploymentsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.ApplicationDeployment]:
-        path = f"/app_deployments/"
+        path = "/app_deployments/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -183,7 +183,7 @@ class AppInstallsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.ApplicationInstallation:
-        path = f"/app_installs/"
+        path = "/app_installs/"
         params = None
         return await self._root._execute(
             "POST",
@@ -315,7 +315,7 @@ class AppInstallsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         version__icontains: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.ApplicationInstallation]:
-        path = f"/app_installs/"
+        path = "/app_installs/"
         params = {
             "application": application,
             "archived": archived,
@@ -592,7 +592,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Application:
-        path = f"/applications/"
+        path = "/applications/"
         params = None
         return await self._root._execute(
             "POST",
@@ -751,7 +751,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         visibility: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Application]:
-        path = f"/applications/"
+        path = "/applications/"
         params = {
             "allow_many": allow_many,
             "approx_installs": approx_installs,
@@ -915,7 +915,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
 
 class AssistantAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def message(self, organisation_id: int | None = None) -> None:
-        path = f"/assistant/message/"
+        path = "/assistant/message/"
         params = None
         return await self._root._execute(
             "POST",
@@ -958,7 +958,7 @@ class AssistantAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.AIChatMessage]:
-        path = f"/assistant/messages/"
+        path = "/assistant/messages/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -1006,7 +1006,7 @@ class AssistantAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.AIChatSession]:
-        path = f"/assistant/sessions/"
+        path = "/assistant/sessions/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -1055,7 +1055,7 @@ class ContainerRegistryAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.ContainerRegistryProfile:
-        path = f"/container/registry/"
+        path = "/container/registry/"
         params = None
         return await self._root._execute(
             "POST",
@@ -1094,7 +1094,7 @@ class ContainerRegistryAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         username__icontains: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.ContainerRegistryProfile]:
-        path = f"/container/registry/"
+        path = "/container/registry/"
         params = {
             "archived": archived,
             "description": description,
@@ -1319,7 +1319,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Device:
-        path = f"/devices/"
+        path = "/devices/"
         params = None
         return await self._root._execute(
             "POST",
@@ -1448,7 +1448,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         type: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Device]:
-        path = f"/devices/"
+        path = "/devices/"
         params = {
             "application": application,
             "archived": archived,
@@ -1758,7 +1758,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def types_create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.DeviceType:
-        path = f"/devices/types/"
+        path = "/devices/types/"
         params = None
         return await self._root._execute(
             "POST",
@@ -1850,7 +1850,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         stars__lte: int | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.DeviceType]:
-        path = f"/devices/types/"
+        path = "/devices/types/"
         params = {
             "archived": archived,
             "id": id,
@@ -1982,7 +1982,7 @@ class GroupsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Group:
-        path = f"/groups/"
+        path = "/groups/"
         params = None
         return await self._root._execute(
             "POST",
@@ -2066,7 +2066,7 @@ class GroupsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Group]:
-        path = f"/groups/"
+        path = "/groups/"
         params = {
             "archived": archived,
             "name": name,
@@ -2135,7 +2135,7 @@ class GroupsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def roles_create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.GroupRole:
-        path = f"/groups/roles/"
+        path = "/groups/roles/"
         params = None
         return await self._root._execute(
             "POST",
@@ -2222,7 +2222,7 @@ class GroupsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.GroupRole]:
-        path = f"/groups/roles/"
+        path = "/groups/roles/"
         params = {
             "archived": archived,
             "id": id,
@@ -2463,7 +2463,7 @@ class IntegrationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Integration:
-        path = f"/integrations/"
+        path = "/integrations/"
         params = None
         return await self._root._execute(
             "POST",
@@ -2521,7 +2521,7 @@ class IntegrationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         version__icontains: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Integration]:
-        path = f"/integrations/"
+        path = "/integrations/"
         params = {
             "application": application,
             "archived": archived,
@@ -2686,7 +2686,7 @@ class OrganisationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Organisation:
-        path = f"/organisations/"
+        path = "/organisations/"
         params = None
         return await self._root._execute(
             "POST",
@@ -2742,7 +2742,7 @@ class OrganisationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         test_field_A__lte: int | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Organisation]:
-        path = f"/organisations/"
+        path = "/organisations/"
         params = {
             "archived": archived,
             "id": id,
@@ -2819,7 +2819,7 @@ class OrganisationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def sync_data(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Organisation:
-        path = f"/organisations/sync_data/"
+        path = "/organisations/sync_data/"
         params = None
         return await self._root._execute(
             "POST",
@@ -2857,7 +2857,7 @@ class OrganisationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def sync_fusion(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Organisation:
-        path = f"/organisations/sync_fusion/"
+        path = "/organisations/sync_fusion/"
         params = None
         return await self._root._execute(
             "POST",
@@ -2948,7 +2948,7 @@ class OrganisationsBillingAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     usage_records: OrganisationsBillingUsageRecordsAsyncGroup
 
     async def checkout(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/checkout/"
+        path = "/organisations/billing/checkout/"
         params = None
         return await self._root._execute(
             "POST",
@@ -2965,7 +2965,7 @@ class OrganisationsBillingAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         )
 
     async def portal(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/portal/"
+        path = "/organisations/billing/portal/"
         params = None
         return await self._root._execute(
             "POST",
@@ -2982,7 +2982,7 @@ class OrganisationsBillingAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         )
 
     async def usage(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/usage/"
+        path = "/organisations/billing/usage/"
         params = None
         return await self._root._execute(
             "GET",
@@ -3008,7 +3008,7 @@ class OrganisationsBillingAccountAsyncGroup(_ControlGroupBase[_AsyncControlExecu
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.BillingAccount]:
-        path = f"/organisations/billing/account/"
+        path = "/organisations/billing/account/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -3372,7 +3372,7 @@ class OrganisationsBillingAgentItemsAsyncGroup(
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.AgentBillingItem:
-        path = f"/organisations/billing/agent_items/"
+        path = "/organisations/billing/agent_items/"
         params = None
         return await self._root._execute(
             "POST",
@@ -3423,7 +3423,7 @@ class OrganisationsBillingAgentItemsAsyncGroup(
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.AgentBillingItem]:
-        path = f"/organisations/billing/agent_items/"
+        path = "/organisations/billing/agent_items/"
         params = {
             "billing_product": billing_product,
             "device": device,
@@ -3518,7 +3518,7 @@ class OrganisationsBillingAppConfigsAsyncGroup(
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.AppBillingConfig:
-        path = f"/organisations/billing/app_configs/"
+        path = "/organisations/billing/app_configs/"
         params = None
         return await self._root._execute(
             "POST",
@@ -3563,7 +3563,7 @@ class OrganisationsBillingAppConfigsAsyncGroup(
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.AppBillingConfig]:
-        path = f"/organisations/billing/app_configs/"
+        path = "/organisations/billing/app_configs/"
         params = {
             "application": application,
             "billable": billable,
@@ -3652,7 +3652,7 @@ class OrganisationsBillingDeviceTypeConfigsAsyncGroup(
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.DeviceTypeBillingConfig:
-        path = f"/organisations/billing/device_type_configs/"
+        path = "/organisations/billing/device_type_configs/"
         params = None
         return await self._root._execute(
             "POST",
@@ -3697,7 +3697,7 @@ class OrganisationsBillingDeviceTypeConfigsAsyncGroup(
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.DeviceTypeBillingConfig]:
-        path = f"/organisations/billing/device_type_configs/"
+        path = "/organisations/billing/device_type_configs/"
         params = {
             "billing_product": billing_product,
             "device_type": device_type,
@@ -3789,7 +3789,7 @@ class OrganisationsBillingDevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecu
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.DeviceBillingConfig]:
-        path = f"/organisations/billing/devices/"
+        path = "/organisations/billing/devices/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -3908,7 +3908,7 @@ class OrganisationsBillingInvoicesAsyncGroup(_ControlGroupBase[_AsyncControlExec
         )
 
     async def retrieve(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/invoices/"
+        path = "/organisations/billing/invoices/"
         params = None
         return await self._root._execute(
             "GET",
@@ -3942,7 +3942,7 @@ class OrganisationsBillingInvoicesAsyncGroup(_ControlGroupBase[_AsyncControlExec
         )
 
     async def upcoming_pdf(self, organisation_id: int | None = None) -> bytes:
-        path = f"/organisations/billing/invoices/upcoming/pdf/"
+        path = "/organisations/billing/invoices/upcoming/pdf/"
         params = None
         return await self._root._execute(
             "GET",
@@ -3965,7 +3965,7 @@ class OrganisationsBillingMeteringRunsAsyncGroup(
     async def create(
         self, organisation_id: int | None = None
     ) -> control_models.UsageMeteringRun:
-        path = f"/organisations/billing/metering_runs/"
+        path = "/organisations/billing/metering_runs/"
         params = None
         return await self._root._execute(
             "POST",
@@ -3994,7 +3994,7 @@ class OrganisationsBillingMeteringRunsAsyncGroup(
         status: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.UsageMeteringRun]:
-        path = f"/organisations/billing/metering_runs/"
+        path = "/organisations/billing/metering_runs/"
         params = {
             "date": date,
             "ordering": ordering,
@@ -4044,7 +4044,7 @@ class OrganisationsBillingProductsAsyncGroup(_ControlGroupBase[_AsyncControlExec
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.BillingProduct:
-        path = f"/organisations/billing/products/"
+        path = "/organisations/billing/products/"
         params = None
         return await self._root._execute(
             "POST",
@@ -4092,7 +4092,7 @@ class OrganisationsBillingProductsAsyncGroup(_ControlGroupBase[_AsyncControlExec
         stripe_account__isnull: bool | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.BillingProduct]:
-        path = f"/organisations/billing/products/"
+        path = "/organisations/billing/products/"
         params = {
             "active": active,
             "app_visibility_tier": app_visibility_tier,
@@ -4184,7 +4184,7 @@ class OrganisationsBillingSellerCustomersAsyncGroup(
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.SellerCustomer:
-        path = f"/organisations/billing/seller_customers/"
+        path = "/organisations/billing/seller_customers/"
         params = None
         return await self._root._execute(
             "POST",
@@ -4229,7 +4229,7 @@ class OrganisationsBillingSellerCustomersAsyncGroup(
         stripe_customer_id__isnull: bool | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.SellerCustomer]:
-        path = f"/organisations/billing/seller_customers/"
+        path = "/organisations/billing/seller_customers/"
         params = {
             "group": group,
             "group__organisation": group__organisation,
@@ -4314,7 +4314,7 @@ class OrganisationsBillingSellerCustomersAsyncGroup(
 
 class OrganisationsBillingStripeAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def accounts(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/stripe/accounts/"
+        path = "/organisations/billing/stripe/accounts/"
         params = None
         return await self._root._execute(
             "GET",
@@ -4331,7 +4331,7 @@ class OrganisationsBillingStripeAsyncGroup(_ControlGroupBase[_AsyncControlExecut
         )
 
     async def products_create(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/stripe/products/"
+        path = "/organisations/billing/stripe/products/"
         params = None
         return await self._root._execute(
             "POST",
@@ -4348,7 +4348,7 @@ class OrganisationsBillingStripeAsyncGroup(_ControlGroupBase[_AsyncControlExecut
         )
 
     async def products_retrieve(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/stripe/products/"
+        path = "/organisations/billing/stripe/products/"
         params = None
         return await self._root._execute(
             "GET",
@@ -4376,7 +4376,7 @@ class OrganisationsBillingSubscriptionsAsyncGroup(
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.BillingSubscription]:
-        path = f"/organisations/billing/subscriptions/"
+        path = "/organisations/billing/subscriptions/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -4437,7 +4437,7 @@ class OrganisationsBillingUsageRecordsAsyncGroup(
         seller_customer__isnull: bool | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.UsageRecord]:
-        path = f"/organisations/billing/usage_records/"
+        path = "/organisations/billing/usage_records/"
         params = {
             "agent_billing_item": agent_billing_item,
             "billing_product": billing_product,
@@ -4532,7 +4532,7 @@ class OrganisationsDomainsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationDomain]:
-        path = f"/organisations/domains/"
+        path = "/organisations/domains/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -4615,7 +4615,7 @@ class OrganisationsPendingUsersAsyncGroup(_ControlGroupBase[_AsyncControlExecuto
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.PendingUser:
-        path = f"/organisations/pending_users/"
+        path = "/organisations/pending_users/"
         params = None
         return await self._root._execute(
             "POST",
@@ -4656,7 +4656,7 @@ class OrganisationsPendingUsersAsyncGroup(_ControlGroupBase[_AsyncControlExecuto
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.PendingUser]:
-        path = f"/organisations/pending_users/"
+        path = "/organisations/pending_users/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -4777,7 +4777,7 @@ class OrganisationsRolesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.OrganisationRole:
-        path = f"/organisations/roles/"
+        path = "/organisations/roles/"
         params = None
         return await self._root._execute(
             "POST",
@@ -4824,7 +4824,7 @@ class OrganisationsRolesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationRole]:
-        path = f"/organisations/roles/"
+        path = "/organisations/roles/"
         params = {
             "archived": archived,
             "id": id,
@@ -4932,7 +4932,7 @@ class OrganisationsSharedProfilesAsyncGroup(_ControlGroupBase[_AsyncControlExecu
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.OrganisationSharedReceiveProfile:
-        path = f"/organisations/shared_profiles/"
+        path = "/organisations/shared_profiles/"
         params = None
         return await self._root._execute(
             "POST",
@@ -4973,7 +4973,7 @@ class OrganisationsSharedProfilesAsyncGroup(_ControlGroupBase[_AsyncControlExecu
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationSharedReceiveProfile]:
-        path = f"/organisations/shared_profiles/"
+        path = "/organisations/shared_profiles/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5075,7 +5075,7 @@ class OrganisationsSharingProfilesAsyncGroup(_ControlGroupBase[_AsyncControlExec
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.OrganisationSharingProfile:
-        path = f"/organisations/sharing_profiles/"
+        path = "/organisations/sharing_profiles/"
         params = None
         return await self._root._execute(
             "POST",
@@ -5116,7 +5116,7 @@ class OrganisationsSharingProfilesAsyncGroup(_ControlGroupBase[_AsyncControlExec
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationSharingProfile]:
-        path = f"/organisations/sharing_profiles/"
+        path = "/organisations/sharing_profiles/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5199,7 +5199,7 @@ class OrganisationsUsersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.OrganisationUser:
-        path = f"/organisations/users/"
+        path = "/organisations/users/"
         params = None
         return await self._root._execute(
             "POST",
@@ -5270,7 +5270,7 @@ class OrganisationsUsersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationUser]:
-        path = f"/organisations/users/"
+        path = "/organisations/users/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5351,7 +5351,7 @@ class OrganisationsUsersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
 
 class PermissionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def sync(self, organisation_id: int | None = None) -> None:
-        path = f"/permissions/sync"
+        path = "/permissions/sync"
         params = None
         return await self._root._execute(
             "POST",
@@ -5372,7 +5372,7 @@ class ReportsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Report:
-        path = f"/reports/"
+        path = "/reports/"
         params = None
         return await self._root._execute(
             "POST",
@@ -5408,7 +5408,7 @@ class ReportsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def list(
         self, organisation_id: int | None = None
     ) -> list[control_models.Report]:
-        path = f"/reports/"
+        path = "/reports/"
         params = None
         return await self._root._execute(
             "GET",
@@ -5446,7 +5446,7 @@ class ReportsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def schedules_create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.ReportSchedule:
-        path = f"/reports/schedules/"
+        path = "/reports/schedules/"
         params = None
         return await self._root._execute(
             "POST",
@@ -5538,7 +5538,7 @@ class ReportsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         status: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.ReportSchedule]:
-        path = f"/reports/schedules/"
+        path = "/reports/schedules/"
         params = {
             "application": application,
             "archived": archived,
@@ -5613,7 +5613,7 @@ class SharedDevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.SharedDevice:
-        path = f"/shared_devices/"
+        path = "/shared_devices/"
         params = None
         return await self._root._execute(
             "POST",
@@ -5654,7 +5654,7 @@ class SharedDevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.SharedDevice]:
-        path = f"/shared_devices/"
+        path = "/shared_devices/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5737,7 +5737,7 @@ class SharedGroupsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.SharedGroup:
-        path = f"/shared_groups/"
+        path = "/shared_groups/"
         params = None
         return await self._root._execute(
             "POST",
@@ -5778,7 +5778,7 @@ class SharedGroupsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.SharedGroup]:
-        path = f"/shared_groups/"
+        path = "/shared_groups/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5861,7 +5861,7 @@ class SiteAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def retrieve(
         self, hostname: str | None = None, organisation_id: int | None = None
     ) -> control_models.CustomerSite:
-        path = f"/site/"
+        path = "/site/"
         params = {
             "hostname": hostname,
         }
@@ -5884,7 +5884,7 @@ class SolutionInstallsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.SolutionInstallation:
-        path = f"/solution_installs/"
+        path = "/solution_installs/"
         params = None
         return await self._root._execute(
             "POST",
@@ -5944,7 +5944,7 @@ class SolutionInstallsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.SolutionInstallation]:
-        path = f"/solution_installs/"
+        path = "/solution_installs/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -6179,7 +6179,7 @@ class SolutionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Solution:
-        path = f"/solutions/"
+        path = "/solutions/"
         params = None
         return await self._root._execute(
             "POST",
@@ -6307,7 +6307,7 @@ class SolutionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Solution]:
-        path = f"/solutions/"
+        path = "/solutions/"
         params = {
             "archived": archived,
             "description": description,
@@ -6423,7 +6423,7 @@ class ThemesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Theme]:
-        path = f"/themes/"
+        path = "/themes/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -6538,7 +6538,7 @@ class TunnelsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
     async def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Tunnel:
-        path = f"/tunnels/"
+        path = "/tunnels/"
         params = None
         return await self._root._execute(
             "POST",
@@ -6598,7 +6598,7 @@ class TunnelsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Tunnel]:
-        path = f"/tunnels/"
+        path = "/tunnels/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -6686,7 +6686,7 @@ class UsersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.User]:
-        path = f"/users/"
+        path = "/users/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -6708,7 +6708,7 @@ class UsersAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         )
 
     async def me(self, organisation_id: int | None = None) -> None:
-        path = f"/users/me/"
+        path = "/users/me/"
         params = None
         return await self._root._execute(
             "GET",

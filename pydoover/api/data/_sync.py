@@ -29,7 +29,6 @@ from ._base import (
     Unset,
     build_sync_auth,
 )
-from ..auth import decode_jwt_exp
 
 from ._iterators import MessageIterator
 from ...models.data import (

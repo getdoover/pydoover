@@ -36,7 +36,7 @@ class ControlClientGroups:
 
 class AgentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def retrieve(self, organisation_id: int | None = None) -> None:
-        path = f"/agents/"
+        path = "/agents/"
         params = None
         return self._root._execute(
             "GET",
@@ -55,7 +55,7 @@ class AgentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
 
 class AnalyticsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def summary(self, organisation_id: int | None = None) -> None:
-        path = f"/analytics/summary/"
+        path = "/analytics/summary/"
         params = None
         return self._root._execute(
             "GET",
@@ -93,7 +93,7 @@ class AppDeploymentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.ApplicationDeployment:
-        path = f"/app_deployments/"
+        path = "/app_deployments/"
         params = None
         return self._root._execute(
             "POST",
@@ -117,7 +117,7 @@ class AppDeploymentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.ApplicationDeployment]:
-        path = f"/app_deployments/"
+        path = "/app_deployments/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -181,7 +181,7 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.ApplicationInstallation:
-        path = f"/app_installs/"
+        path = "/app_installs/"
         params = None
         return self._root._execute(
             "POST",
@@ -313,7 +313,7 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         version__icontains: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.ApplicationInstallation]:
-        path = f"/app_installs/"
+        path = "/app_installs/"
         params = {
             "application": application,
             "archived": archived,
@@ -590,7 +590,7 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Application:
-        path = f"/applications/"
+        path = "/applications/"
         params = None
         return self._root._execute(
             "POST",
@@ -749,7 +749,7 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         visibility: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Application]:
-        path = f"/applications/"
+        path = "/applications/"
         params = {
             "allow_many": allow_many,
             "approx_installs": approx_installs,
@@ -913,7 +913,7 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
 
 class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def message(self, organisation_id: int | None = None) -> None:
-        path = f"/assistant/message/"
+        path = "/assistant/message/"
         params = None
         return self._root._execute(
             "POST",
@@ -956,7 +956,7 @@ class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.AIChatMessage]:
-        path = f"/assistant/messages/"
+        path = "/assistant/messages/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -1004,7 +1004,7 @@ class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.AIChatSession]:
-        path = f"/assistant/sessions/"
+        path = "/assistant/sessions/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -1053,7 +1053,7 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.ContainerRegistryProfile:
-        path = f"/container/registry/"
+        path = "/container/registry/"
         params = None
         return self._root._execute(
             "POST",
@@ -1092,7 +1092,7 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         username__icontains: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.ContainerRegistryProfile]:
-        path = f"/container/registry/"
+        path = "/container/registry/"
         params = {
             "archived": archived,
             "description": description,
@@ -1317,7 +1317,7 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Device:
-        path = f"/devices/"
+        path = "/devices/"
         params = None
         return self._root._execute(
             "POST",
@@ -1444,7 +1444,7 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         type: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Device]:
-        path = f"/devices/"
+        path = "/devices/"
         params = {
             "application": application,
             "archived": archived,
@@ -1754,7 +1754,7 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def types_create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.DeviceType:
-        path = f"/devices/types/"
+        path = "/devices/types/"
         params = None
         return self._root._execute(
             "POST",
@@ -1846,7 +1846,7 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         stars__lte: int | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.DeviceType]:
-        path = f"/devices/types/"
+        path = "/devices/types/"
         params = {
             "archived": archived,
             "id": id,
@@ -1978,7 +1978,7 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Group:
-        path = f"/groups/"
+        path = "/groups/"
         params = None
         return self._root._execute(
             "POST",
@@ -2062,7 +2062,7 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Group]:
-        path = f"/groups/"
+        path = "/groups/"
         params = {
             "archived": archived,
             "name": name,
@@ -2131,7 +2131,7 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def roles_create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.GroupRole:
-        path = f"/groups/roles/"
+        path = "/groups/roles/"
         params = None
         return self._root._execute(
             "POST",
@@ -2218,7 +2218,7 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.GroupRole]:
-        path = f"/groups/roles/"
+        path = "/groups/roles/"
         params = {
             "archived": archived,
             "id": id,
@@ -2459,7 +2459,7 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Integration:
-        path = f"/integrations/"
+        path = "/integrations/"
         params = None
         return self._root._execute(
             "POST",
@@ -2517,7 +2517,7 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         version__icontains: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Integration]:
-        path = f"/integrations/"
+        path = "/integrations/"
         params = {
             "application": application,
             "archived": archived,
@@ -2682,7 +2682,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Organisation:
-        path = f"/organisations/"
+        path = "/organisations/"
         params = None
         return self._root._execute(
             "POST",
@@ -2738,7 +2738,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         test_field_A__lte: int | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Organisation]:
-        path = f"/organisations/"
+        path = "/organisations/"
         params = {
             "archived": archived,
             "id": id,
@@ -2815,7 +2815,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def sync_data(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Organisation:
-        path = f"/organisations/sync_data/"
+        path = "/organisations/sync_data/"
         params = None
         return self._root._execute(
             "POST",
@@ -2853,7 +2853,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def sync_fusion(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Organisation:
-        path = f"/organisations/sync_fusion/"
+        path = "/organisations/sync_fusion/"
         params = None
         return self._root._execute(
             "POST",
@@ -2944,7 +2944,7 @@ class OrganisationsBillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     usage_records: OrganisationsBillingUsageRecordsSyncGroup
 
     def checkout(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/checkout/"
+        path = "/organisations/billing/checkout/"
         params = None
         return self._root._execute(
             "POST",
@@ -2961,7 +2961,7 @@ class OrganisationsBillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         )
 
     def portal(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/portal/"
+        path = "/organisations/billing/portal/"
         params = None
         return self._root._execute(
             "POST",
@@ -2978,7 +2978,7 @@ class OrganisationsBillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         )
 
     def usage(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/usage/"
+        path = "/organisations/billing/usage/"
         params = None
         return self._root._execute(
             "GET",
@@ -3004,7 +3004,7 @@ class OrganisationsBillingAccountSyncGroup(_ControlGroupBase[_SyncControlExecuto
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.BillingAccount]:
-        path = f"/organisations/billing/account/"
+        path = "/organisations/billing/account/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -3362,7 +3362,7 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExec
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.AgentBillingItem:
-        path = f"/organisations/billing/agent_items/"
+        path = "/organisations/billing/agent_items/"
         params = None
         return self._root._execute(
             "POST",
@@ -3413,7 +3413,7 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExec
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.AgentBillingItem]:
-        path = f"/organisations/billing/agent_items/"
+        path = "/organisations/billing/agent_items/"
         params = {
             "billing_product": billing_product,
             "device": device,
@@ -3506,7 +3506,7 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExec
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.AppBillingConfig:
-        path = f"/organisations/billing/app_configs/"
+        path = "/organisations/billing/app_configs/"
         params = None
         return self._root._execute(
             "POST",
@@ -3551,7 +3551,7 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExec
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.AppBillingConfig]:
-        path = f"/organisations/billing/app_configs/"
+        path = "/organisations/billing/app_configs/"
         params = {
             "application": application,
             "billable": billable,
@@ -3640,7 +3640,7 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.DeviceTypeBillingConfig:
-        path = f"/organisations/billing/device_type_configs/"
+        path = "/organisations/billing/device_type_configs/"
         params = None
         return self._root._execute(
             "POST",
@@ -3685,7 +3685,7 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.DeviceTypeBillingConfig]:
-        path = f"/organisations/billing/device_type_configs/"
+        path = "/organisations/billing/device_type_configs/"
         params = {
             "billing_product": billing_product,
             "device_type": device_type,
@@ -3777,7 +3777,7 @@ class OrganisationsBillingDevicesSyncGroup(_ControlGroupBase[_SyncControlExecuto
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.DeviceBillingConfig]:
-        path = f"/organisations/billing/devices/"
+        path = "/organisations/billing/devices/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -3894,7 +3894,7 @@ class OrganisationsBillingInvoicesSyncGroup(_ControlGroupBase[_SyncControlExecut
         )
 
     def retrieve(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/invoices/"
+        path = "/organisations/billing/invoices/"
         params = None
         return self._root._execute(
             "GET",
@@ -3928,7 +3928,7 @@ class OrganisationsBillingInvoicesSyncGroup(_ControlGroupBase[_SyncControlExecut
         )
 
     def upcoming_pdf(self, organisation_id: int | None = None) -> bytes:
-        path = f"/organisations/billing/invoices/upcoming/pdf/"
+        path = "/organisations/billing/invoices/upcoming/pdf/"
         params = None
         return self._root._execute(
             "GET",
@@ -3951,7 +3951,7 @@ class OrganisationsBillingMeteringRunsSyncGroup(
     def create(
         self, organisation_id: int | None = None
     ) -> control_models.UsageMeteringRun:
-        path = f"/organisations/billing/metering_runs/"
+        path = "/organisations/billing/metering_runs/"
         params = None
         return self._root._execute(
             "POST",
@@ -3980,7 +3980,7 @@ class OrganisationsBillingMeteringRunsSyncGroup(
         status: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.UsageMeteringRun]:
-        path = f"/organisations/billing/metering_runs/"
+        path = "/organisations/billing/metering_runs/"
         params = {
             "date": date,
             "ordering": ordering,
@@ -4030,7 +4030,7 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecut
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.BillingProduct:
-        path = f"/organisations/billing/products/"
+        path = "/organisations/billing/products/"
         params = None
         return self._root._execute(
             "POST",
@@ -4078,7 +4078,7 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecut
         stripe_account__isnull: bool | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.BillingProduct]:
-        path = f"/organisations/billing/products/"
+        path = "/organisations/billing/products/"
         params = {
             "active": active,
             "app_visibility_tier": app_visibility_tier,
@@ -4170,7 +4170,7 @@ class OrganisationsBillingSellerCustomersSyncGroup(
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.SellerCustomer:
-        path = f"/organisations/billing/seller_customers/"
+        path = "/organisations/billing/seller_customers/"
         params = None
         return self._root._execute(
             "POST",
@@ -4215,7 +4215,7 @@ class OrganisationsBillingSellerCustomersSyncGroup(
         stripe_customer_id__isnull: bool | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.SellerCustomer]:
-        path = f"/organisations/billing/seller_customers/"
+        path = "/organisations/billing/seller_customers/"
         params = {
             "group": group,
             "group__organisation": group__organisation,
@@ -4300,7 +4300,7 @@ class OrganisationsBillingSellerCustomersSyncGroup(
 
 class OrganisationsBillingStripeSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def accounts(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/stripe/accounts/"
+        path = "/organisations/billing/stripe/accounts/"
         params = None
         return self._root._execute(
             "GET",
@@ -4317,7 +4317,7 @@ class OrganisationsBillingStripeSyncGroup(_ControlGroupBase[_SyncControlExecutor
         )
 
     def products_create(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/stripe/products/"
+        path = "/organisations/billing/stripe/products/"
         params = None
         return self._root._execute(
             "POST",
@@ -4334,7 +4334,7 @@ class OrganisationsBillingStripeSyncGroup(_ControlGroupBase[_SyncControlExecutor
         )
 
     def products_retrieve(self, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/stripe/products/"
+        path = "/organisations/billing/stripe/products/"
         params = None
         return self._root._execute(
             "GET",
@@ -4362,7 +4362,7 @@ class OrganisationsBillingSubscriptionsSyncGroup(
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.BillingSubscription]:
-        path = f"/organisations/billing/subscriptions/"
+        path = "/organisations/billing/subscriptions/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -4423,7 +4423,7 @@ class OrganisationsBillingUsageRecordsSyncGroup(
         seller_customer__isnull: bool | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.UsageRecord]:
-        path = f"/organisations/billing/usage_records/"
+        path = "/organisations/billing/usage_records/"
         params = {
             "agent_billing_item": agent_billing_item,
             "billing_product": billing_product,
@@ -4518,7 +4518,7 @@ class OrganisationsDomainsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationDomain]:
-        path = f"/organisations/domains/"
+        path = "/organisations/domains/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -4601,7 +4601,7 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.PendingUser:
-        path = f"/organisations/pending_users/"
+        path = "/organisations/pending_users/"
         params = None
         return self._root._execute(
             "POST",
@@ -4642,7 +4642,7 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.PendingUser]:
-        path = f"/organisations/pending_users/"
+        path = "/organisations/pending_users/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -4763,7 +4763,7 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.OrganisationRole:
-        path = f"/organisations/roles/"
+        path = "/organisations/roles/"
         params = None
         return self._root._execute(
             "POST",
@@ -4810,7 +4810,7 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationRole]:
-        path = f"/organisations/roles/"
+        path = "/organisations/roles/"
         params = {
             "archived": archived,
             "id": id,
@@ -4918,7 +4918,7 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.OrganisationSharedReceiveProfile:
-        path = f"/organisations/shared_profiles/"
+        path = "/organisations/shared_profiles/"
         params = None
         return self._root._execute(
             "POST",
@@ -4959,7 +4959,7 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationSharedReceiveProfile]:
-        path = f"/organisations/shared_profiles/"
+        path = "/organisations/shared_profiles/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5061,7 +5061,7 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecut
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.OrganisationSharingProfile:
-        path = f"/organisations/sharing_profiles/"
+        path = "/organisations/sharing_profiles/"
         params = None
         return self._root._execute(
             "POST",
@@ -5102,7 +5102,7 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecut
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationSharingProfile]:
-        path = f"/organisations/sharing_profiles/"
+        path = "/organisations/sharing_profiles/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5185,7 +5185,7 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.OrganisationUser:
-        path = f"/organisations/users/"
+        path = "/organisations/users/"
         params = None
         return self._root._execute(
             "POST",
@@ -5256,7 +5256,7 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.OrganisationUser]:
-        path = f"/organisations/users/"
+        path = "/organisations/users/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5337,7 +5337,7 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
 
 class PermissionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def sync(self, organisation_id: int | None = None) -> None:
-        path = f"/permissions/sync"
+        path = "/permissions/sync"
         params = None
         return self._root._execute(
             "POST",
@@ -5358,7 +5358,7 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Report:
-        path = f"/reports/"
+        path = "/reports/"
         params = None
         return self._root._execute(
             "POST",
@@ -5392,7 +5392,7 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         )
 
     def list(self, organisation_id: int | None = None) -> list[control_models.Report]:
-        path = f"/reports/"
+        path = "/reports/"
         params = None
         return self._root._execute(
             "GET",
@@ -5430,7 +5430,7 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def schedules_create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.ReportSchedule:
-        path = f"/reports/schedules/"
+        path = "/reports/schedules/"
         params = None
         return self._root._execute(
             "POST",
@@ -5522,7 +5522,7 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         status: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.ReportSchedule]:
-        path = f"/reports/schedules/"
+        path = "/reports/schedules/"
         params = {
             "application": application,
             "archived": archived,
@@ -5597,7 +5597,7 @@ class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.SharedDevice:
-        path = f"/shared_devices/"
+        path = "/shared_devices/"
         params = None
         return self._root._execute(
             "POST",
@@ -5638,7 +5638,7 @@ class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.SharedDevice]:
-        path = f"/shared_devices/"
+        path = "/shared_devices/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5721,7 +5721,7 @@ class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.SharedGroup:
-        path = f"/shared_groups/"
+        path = "/shared_groups/"
         params = None
         return self._root._execute(
             "POST",
@@ -5762,7 +5762,7 @@ class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.SharedGroup]:
-        path = f"/shared_groups/"
+        path = "/shared_groups/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -5845,7 +5845,7 @@ class SiteSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def retrieve(
         self, hostname: str | None = None, organisation_id: int | None = None
     ) -> control_models.CustomerSite:
-        path = f"/site/"
+        path = "/site/"
         params = {
             "hostname": hostname,
         }
@@ -5868,7 +5868,7 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.SolutionInstallation:
-        path = f"/solution_installs/"
+        path = "/solution_installs/"
         params = None
         return self._root._execute(
             "POST",
@@ -5928,7 +5928,7 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.SolutionInstallation]:
-        path = f"/solution_installs/"
+        path = "/solution_installs/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -6163,7 +6163,7 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Solution:
-        path = f"/solutions/"
+        path = "/solutions/"
         params = None
         return self._root._execute(
             "POST",
@@ -6291,7 +6291,7 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Solution]:
-        path = f"/solutions/"
+        path = "/solutions/"
         params = {
             "archived": archived,
             "description": description,
@@ -6407,7 +6407,7 @@ class ThemesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Theme]:
-        path = f"/themes/"
+        path = "/themes/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -6522,7 +6522,7 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(
         self, body: Any, organisation_id: int | None = None
     ) -> control_models.Tunnel:
-        path = f"/tunnels/"
+        path = "/tunnels/"
         params = None
         return self._root._execute(
             "POST",
@@ -6582,7 +6582,7 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.Tunnel]:
-        path = f"/tunnels/"
+        path = "/tunnels/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -6670,7 +6670,7 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         search: str | None = None,
         organisation_id: int | None = None,
     ) -> control_models.ControlPage[control_models.User]:
-        path = f"/users/"
+        path = "/users/"
         params = {
             "ordering": ordering,
             "page": page,
@@ -6692,7 +6692,7 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         )
 
     def me(self, organisation_id: int | None = None) -> None:
-        path = f"/users/me/"
+        path = "/users/me/"
         params = None
         return self._root._execute(
             "GET",
