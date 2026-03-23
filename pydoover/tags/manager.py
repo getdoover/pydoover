@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import time
-from pydoover.models import Aggregate, EventSubscription
+from datetime import datetime, timezone
+
+from pydoover.models import EventSubscription, AggregateUpdateEvent
 
 import asyncio
 import logging
@@ -14,7 +16,10 @@ if TYPE_CHECKING:
     from ..docker.device_agent.device_agent import DeviceAgentInterface
 
 TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
+TAG_OBSERVED_MAX_AGE = 5  # 10 seconds
 TAG_CHANNEL_NAME = "tag_values"
+FASTMODE_CHANNEL_NAME = "doover_ui_fastmode"
+
 log = logging.getLogger(__name__)
 
 
@@ -143,6 +148,8 @@ class TagsManagerDocker(TagsManager):
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
 
         self.tag_log_interval = tag_log_interval
+        self.observed_max_age = TAG_OBSERVED_MAX_AGE
+        self.default_max_age = TAG_CLOUD_MAX_AGE
 
         self._last_tag_log_time: float = 0.0
         self._pending_tag_log: dict[str, Any] = {}
@@ -150,32 +157,54 @@ class TagsManagerDocker(TagsManager):
 
         self._tags_dirty = False
 
+        self.fastmode_aggregate = {}
+
     async def setup(self, skip_sync: bool = False):
         """Register the tag channel subscription with the backing client. Blocks until tags are synced."""
         self.client.add_event_callback(
             TAG_CHANNEL_NAME,
-            self._wrap_aggregate_callback(self._on_tag_update),
+            self._on_tag_update,
+            EventSubscription.aggregate_update,
+        )
+        self.client.add_event_callback(
+            FASTMODE_CHANNEL_NAME,
+            self.on_fastmode_update,
             EventSubscription.aggregate_update,
         )
 
         if skip_sync:
             return
 
-        await self.client.wait_for_channels_sync([TAG_CHANNEL_NAME], timeout=10)
-        tag_agg: Aggregate = await self.client.fetch_channel_aggregate(TAG_CHANNEL_NAME)
+        await self.client.wait_for_channels_sync(
+            [TAG_CHANNEL_NAME, FASTMODE_CHANNEL_NAME], timeout=10
+        )
+        tag_agg = await self.client.fetch_channel_aggregate(TAG_CHANNEL_NAME)
         self._tag_values = tag_agg.data
+        self.fastmode_aggregate = await self.client.fetch_channel_aggregate(
+            FASTMODE_CHANNEL_NAME
+        )
 
-    @staticmethod
-    def _wrap_aggregate_callback(callback):
-        async def _wrapper(event):
-            data = event.aggregate.data if event.aggregate else {}
-            await callback(data)
+    async def on_fastmode_update(self, event: AggregateUpdateEvent):
+        self.fastmode_aggregate = event.aggregate.data
 
-        return _wrapper
+    @property
+    def is_being_observed(self):
+        if not self.fastmode_aggregate:
+            return False
 
-    async def _on_tag_update(self, tag_values: dict[str, Any]):
-        diff = generate_diff(self._tag_values, tag_values, do_delete=False)
-        self._tag_values = tag_values or {}
+        # channel format is {"agent_id": "last_ping_ms"} for any non-default connections.
+        # basically just check if there's any active connections, where active is defined as
+        # having a heartbeat within the last 2min. (120 seconds -> milliseconds)
+        now = datetime.now(tz=timezone.utc).timestamp() * 1000
+        return any((now - v) < 120_000 for v in self.fastmode_aggregate.values())
+
+    @property
+    def max_age_secs(self):
+        return self.observed_max_age if self.is_being_observed else self.default_max_age
+
+    async def _on_tag_update(self, event: AggregateUpdateEvent):
+        diff = generate_diff(self._tag_values, event.aggregate.data, do_delete=False)
+        self._tag_values = event.aggregate.data or {}
         await self.fulfill_tag_subscriptions(diff)
 
     async def fulfill_tag_subscriptions(self, diff):
@@ -285,7 +314,7 @@ class TagsManagerDocker(TagsManager):
             await self.client.update_channel_aggregate(
                 TAG_CHANNEL_NAME,
                 self._pending_tag_aggregate,
-                max_age_secs=TAG_CLOUD_MAX_AGE,
+                max_age_secs=self.max_age_secs,
             )
             apply_diff(self._tag_values, self._pending_tag_aggregate, clone=False)
             self._tags_dirty = False
@@ -317,7 +346,7 @@ class TagsManagerDocker(TagsManager):
         self._tags_dirty = False
 
         await self.client.update_channel_aggregate(
-            TAG_CHANNEL_NAME, data, max_age_secs=TAG_CLOUD_MAX_AGE
+            TAG_CHANNEL_NAME, data, max_age_secs=self.max_age_secs
         )
         apply_diff(self._tag_values, data, clone=False)
 
