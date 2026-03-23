@@ -108,8 +108,8 @@ class UICommandsManager(RPCManager):
         try:
             return super()._get_handler(channel_name, method)
         except KeyError:
-            func = self._interactions[method]
-            return None, func
+            elem = self._interactions[method]
+            return None, elem.handler
 
     def _build_context(self, method, event: MessageCreateEvent | MessageUpdateEvent):
         return InteractionContext(
