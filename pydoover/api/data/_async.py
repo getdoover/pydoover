@@ -407,14 +407,14 @@ class AsyncDataClient(BaseClient):
         agent_id: int,
         channel_name: str,
         data: dict[str, Any],
-        ts: int | None = None,
+        timestamp: int | None = None,
         files: list[File] | None = None,
         message_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Message:
         payload: dict[str, Any] = {"data": data}
-        if ts is not None:
-            payload["ts"] = ts
+        if isinstance(timestamp, datetime):
+            timestamp = int(timestamp.timestamp() * 1000)
 
         if message_id is not None:
             path = f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}"
