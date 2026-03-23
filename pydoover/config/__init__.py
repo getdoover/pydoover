@@ -722,6 +722,16 @@ class Object(ConfigElement):
         cls._cls_elements = {}
         cls.load_elements()
 
+    def __getattribute__(self, key):
+        # Check instance _elements first for declared config elements
+        if not key.startswith("_"):
+            try:
+                return super().__getattribute__("_elements")[key]
+            except (KeyError, AttributeError):
+                pass
+
+        return super().__getattribute__(key)
+
     @classmethod
     def load_elements(cls):
         for k, v in cls.__dict__.items():
@@ -768,6 +778,8 @@ class Object(ConfigElement):
                     self._elements[name] = ConfigElement(name, default=value)
                 else:
                     raise ValueError(f"Unknown element {name} in config.")
+
+            print(f"loading, {name}, {value}, {self._elements}")
 
 
 class Variable:
