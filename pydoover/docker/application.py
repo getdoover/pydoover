@@ -159,6 +159,8 @@ class Application:
         self._shutdown_at = None
         self.force_log_on_shutdown = False
 
+        # fixme: app_key isn't actually set.
+        # tags_cls should also be copied to the instance on __init__
         self.tags = self.__class__.tags_class(
             self.app_key, self.tag_manager, self.config
         )
@@ -1244,8 +1246,9 @@ def run_app(
         app.platform_iface,
         app.modbus_iface,
         app.device_agent,
-        # app.ui_manager,
+        app.ui_manager,
         app.tag_manager,
+        app.tags,
     ):
         inst.app_key = app_key
 
