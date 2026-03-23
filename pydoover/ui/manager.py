@@ -1,3 +1,4 @@
+import inspect
 import logging
 import re
 from typing import Callable, Generic, TypeVar
@@ -30,7 +31,7 @@ def handler(
     """
 
     def decorator(func: Callable) -> Callable:
-        func._is_rpc_handler = True
+        func._is_rpc_handler = False
         func._is_ui_rpc_handler = True
 
         if isinstance(interaction, Interaction):
@@ -115,3 +116,6 @@ class UICommandsManager(RPCManager):
         return InteractionContext(
             method, event.message, self._interactions[method], self._app.update_message
         )
+
+    def check_handler(self, func: Callable):
+        return inspect.ismethod(func) and getattr(func, "_is_ui_rpc_handler", False)

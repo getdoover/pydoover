@@ -132,11 +132,14 @@ class RPCManager:
 
     # -- handler registration -----------------------------------------------
 
+    def check_handler(self, func: Callable):
+        return inspect.ismethod(func) and getattr(func, "_is_rpc_handler", False)
+
     def register_handlers(self, obj: object) -> None:
         """Scan *obj* for methods decorated with :func:`handler` and register them."""
         for _name, func in inspect.getmembers(
             obj,
-            predicate=lambda f: inspect.ismethod(f) and hasattr(f, "_is_rpc_handler"),
+            predicate=lambda f: self.check_handler(f),
         ):
             method_name = func._rpc_method
             channel = func._rpc_channel
