@@ -83,9 +83,9 @@ class HelloWorldUI(ui.UI):
 
 
 class HelloWorld(Application):
-    config_class = Schema
-    tags_class = HelloWorldTags
-    ui_class = HelloWorldUI
+    config_cls = Schema
+    tags_cls = HelloWorldTags
+    ui_cls = HelloWorldUI
 
     started: float
 

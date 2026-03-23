@@ -77,9 +77,9 @@ class Application:
             ready = ui.BooleanVariable("ready", "Ready", curr_val=MyTags.ready)
 
         class MyApp(Application):
-            config_class = Schema
-            tags_class = MyTags
-            ui_class = MyUI
+            config_cls = Schema
+            tags_cls = MyTags
+            ui_cls = MyUI
 
             def setup(self):
                 self.tags.ready.set(True)
@@ -108,9 +108,9 @@ class Application:
         The application key for the app, used to identify it in the Doover cloud. This is globally unique.
     """
 
-    config_class: type["Schema"] | None = None
-    ui_class: type[UI] | None = None
-    tags_class: type[Tags] | None = None
+    config_cls: type["Schema"] | None = None
+    ui_cls: type[UI] | None = None
+    tags_cls: type[Tags] | None = None
 
     def __init__(
         self,
@@ -123,7 +123,7 @@ class Application:
         config_fp: str = None,
         healthcheck_port: int = None,
     ):
-        self.config: "Schema" = self.__class__.config_class()
+        self.config: "Schema" = self.__class__.config_cls()
 
         self._tags: Tags | None = None
         self._ui: UI | None = None
@@ -161,10 +161,8 @@ class Application:
 
         # fixme: app_key isn't actually set.
         # tags_cls should also be copied to the instance on __init__
-        self.tags = self.__class__.tags_class(
-            self.app_key, self.tag_manager, self.config
-        )
-        self.ui = self.__class__.ui_class(self.config, self.tags)
+        self.tags = self.__class__.tags_cls(self.app_key, self.tag_manager, self.config)
+        self.ui = self.__class__.ui_cls(self.config, self.tags)
 
         if name is None:
             self.name = self.__class__.__name__
@@ -242,7 +240,7 @@ class Application:
 
             async def test_app():
                 class MyApp(Application):
-                    config_class = Schema
+                    config_cls = Schema
 
                 app = MyApp(test_mode=True)
                 asyncio.create_task(run_app(app, start=False))
@@ -1289,7 +1287,7 @@ def run_app2(
     ) = parse_args()
 
     utils_setup_logging(debug)
-    config = app_cls.config_class() if app_cls.config_class is not None else None
+    config = app_cls.config_cls() if app_cls.config_cls is not None else None
 
     app = app_cls(
         app_key,

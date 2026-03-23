@@ -289,12 +289,12 @@ def make_docker_app(tag_manager=None, app_key="test_app", is_async=False):
 
 
 def make_processor_app(
-    config=None, tags_class=None, tag_manager=None, app_key="test_app"
+    config=None, tags_cls=None, tag_manager=None, app_key="test_app"
 ):
     app_cls = type(
         "ConfiguredProcessorApplication",
         (ProcessorApplication,),
-        {"tags_class": tags_class},
+        {"tags_cls": tags_cls},
     )
     app = object.__new__(app_cls)
     app.app_key = app_key
@@ -319,8 +319,8 @@ class AsyncStartupTags(Tags):
 
 
 class AsyncStartupApp(DockerApplication):
-    config_class = FakeSchema
-    tags_class = AsyncStartupTags
+    config_cls = FakeSchema
+    tags_cls = AsyncStartupTags
 
     async def setup(self):
         await self.tags.some_tag.set("ready")
@@ -924,7 +924,7 @@ class TestTagClassResolution:
     def test_docker_resolve_tags_instantiates_declared_class(self):
         manager = FakeDockerAppTagManager()
         app = make_docker_app(tag_manager=manager)
-        app.__class__.tags_class = MyAppTags
+        app.__class__.tags_cls = MyAppTags
 
         resolved = resolve_tags(app)
 
@@ -945,7 +945,7 @@ class TestTagClassResolution:
 
         app = make_docker_app(tag_manager=manager)
         app.config = config
-        app.__class__.tags_class = ConfiguredTags
+        app.__class__.tags_cls = ConfiguredTags
 
         resolved = resolve_tags(app)
 
@@ -969,7 +969,7 @@ class TestTagClassResolution:
 
         app = make_docker_app(tag_manager=manager)
         app.config = config
-        app.__class__.tags_class = ConfiguredTags
+        app.__class__.tags_cls = ConfiguredTags
 
         resolved = resolve_tags(app)
 
@@ -979,7 +979,7 @@ class TestTagClassResolution:
         assert resolved.find_tag("enabled") is None
         assert {tag.name for tag in resolved} == {"voltage", "speed", "extra_sensor"}
 
-    def test_docker_tags_class_none_is_allowed(self):
+    def test_docker_tags_cls_none_is_allowed(self):
         manager = FakeDockerAppTagManager()
         app = make_docker_app(tag_manager=manager)
 
@@ -997,7 +997,7 @@ class TestTagClassResolution:
                 del config
                 raise RuntimeError("boom")
 
-        app.__class__.tags_class = BrokenTags
+        app.__class__.tags_cls = BrokenTags
 
         with pytest.raises(RuntimeError, match="boom"):
             resolve_tags(app)
@@ -1014,7 +1014,7 @@ class TestTagClassResolution:
         config._inject_deployment_config({"some_flag": True})
         app = make_processor_app(
             config=config,
-            tags_class=ConfiguredTags,
+            tags_cls=ConfiguredTags,
             tag_manager=manager,
         )
 
@@ -1040,7 +1040,7 @@ class TestTagClassResolution:
 
         app = make_processor_app(
             config=config,
-            tags_class=ConfiguredTags,
+            tags_cls=ConfiguredTags,
             tag_manager=manager,
         )
 
@@ -1055,9 +1055,7 @@ class TestTagClassResolution:
     def test_processor_resolve_tags_instantiates_declared_class(self):
         config = FakeSchema()
         manager = FakeProcessorTagManager()
-        app = make_processor_app(
-            config=config, tags_class=MyAppTags, tag_manager=manager
-        )
+        app = make_processor_app(config=config, tags_cls=MyAppTags, tag_manager=manager)
 
         resolved = resolve_tags(app)
 

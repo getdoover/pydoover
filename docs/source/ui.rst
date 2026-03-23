@@ -11,8 +11,8 @@ Declarative UI
 
 ``ui.UI`` is the preferred way to declare application UI structure.
 It mirrors the declarative ``Tags`` API: define elements as class attributes,
-declare the UI and tags classes on your application via ``ui_class`` and
-``tags_class``, and keep dynamic values tag-backed where appropriate.
+declare the UI and tags classes on your application via ``ui_cls`` and
+``tags_cls``, and keep dynamic values tag-backed where appropriate.
 By default, tag-backed fields serialize to the compact frontend lookup format
 such as ``$tag.voltage:number`` rather than the expanded object form.
 
@@ -51,9 +51,9 @@ Application wiring example::
     from pydoover.config import Schema
 
     class MyApp(Application):
-        config_class = Schema
-        tags_class = MyTags
-        ui_class = MyUI
+        config_cls = Schema
+        tags_cls = MyTags
+        ui_cls = MyUI
 
 Config-aware setup example::
 

@@ -6,7 +6,7 @@ from app_config import SampleConfig
 
 
 class SampleApplication(DockerApplication):
-    config_class = SampleConfig
+    config_cls = SampleConfig
     config: SampleConfig  # not necessary, but helps your IDE provide autocomplete!
 
     def setup(self):
