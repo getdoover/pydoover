@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from pathlib import Path
 from typing import Any, Generic, Self, TypeVar, overload, TYPE_CHECKING
 
@@ -163,14 +164,17 @@ class UI:
         """Mutate this UI instance before it is bound and installed."""
         pass
 
-    def to_schema(self):
-        return {
+    def to_schema(self, resolve_config: bool = True):
+        schema = {
             "displayString": self.display_name,
             "hidden": self.hidden,
             "position": self.position,
             "type": "uiApplication",
             "children": {e.name: e.to_dict() for e in self._elements.values()},
         }
+        if resolve_config and self.config is not None:
+            schema = _resolve_config_refs(schema, self.config)
+        return schema
 
     def export(self, fp: Path, app_name: str):
         if not self.is_static:
@@ -183,10 +187,11 @@ class UI:
         else:
             data = {}
 
+        schema = self.to_schema(resolve_config=False)
         try:
-            data[app_name]["ui_schema"] = self.to_schema()
+            data[app_name]["ui_schema"] = schema
         except KeyError:
-            data[app_name] = {"ui_schema": self.to_schema()}
+            data[app_name] = {"ui_schema": schema}
 
         fp.write_text(json.dumps(data, indent=4))
 
@@ -403,3 +408,52 @@ def _normalize_default(value: Any) -> Any:
 
 def _is_missing_default(value: Any) -> bool:
     return value is _MISSING or isinstance(value, _MissingDefault)
+
+
+_CONFIG_REF_RE = re.compile(r"\$config\.app\(\)\.(\w+)(?::(\w+))?(?::(.+))?")
+
+
+def _resolve_config_refs(obj: Any, config: Schema) -> Any:
+    """Recursively resolve $config.app().KEY[:type[:default]] references using the Schema."""
+    if isinstance(obj, dict):
+        return {k: _resolve_config_refs(v, config) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_resolve_config_refs(v, config) for v in obj]
+    if isinstance(obj, str) and "$config.app()." in obj:
+        return _resolve_single_config_ref(obj, config)
+    return obj
+
+
+def _resolve_single_config_ref(value: str, config: Schema) -> Any:
+    """Resolve a single $config.app().KEY[:type[:default]] reference."""
+    match = _CONFIG_REF_RE.fullmatch(value)
+    if not match:
+        return value
+
+    key, type_hint, default = match.groups()
+
+    try:
+        element = config.element(key)
+        raw = element.value
+    except (KeyError, ValueError):
+        raw = None
+
+    if raw is None:
+        raw = default
+
+    if raw is None:
+        return None
+
+    if type_hint == "boolean":
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).lower() in ("true", "1", "yes")
+    if type_hint == "number":
+        try:
+            return float(raw) if "." in str(raw) else int(raw)
+        except (ValueError, TypeError):
+            return raw
+    if type_hint == "string":
+        return str(raw)
+
+    return raw
