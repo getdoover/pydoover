@@ -9,10 +9,10 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Any
 
-from pydoover.tags import Tags
-from pydoover.tags.manager import TagsManagerProcessor
+from ..tags import Tags
+from ..tags.manager import TagsManagerProcessor
 
-from .types import (
+from ..models import (
     ManualInvokeEvent,
     MessageCreateEvent,
     Channel,
@@ -21,12 +21,14 @@ from .types import (
     IngestionEndpointEvent,
     ConnectionConfig,
     AggregateUpdateEvent,
+    ConnectionDetermination,
+    ConnectionStatus,
+    SubscriptionInfo,
     DooverConnectionStatus,
 )
 from .data_client import ProcessorDataClient
-from ...models import ConnectionDetermination, ConnectionStatus, SubscriptionInfo
-from ...ui import UI, UICommandsManager
-from ...config import Schema
+from ..ui import UI, UICommandsManager
+from ..config import Schema
 
 
 log = logging.getLogger(__name__)
