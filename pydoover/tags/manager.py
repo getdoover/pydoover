@@ -178,11 +178,12 @@ class TagsManagerDocker(TagsManager):
         await self.client.wait_for_channels_sync(
             [TAG_CHANNEL_NAME, FASTMODE_CHANNEL_NAME], timeout=10
         )
-        tag_agg = await self.client.fetch_channel_aggregate(TAG_CHANNEL_NAME)
-        self._tag_values = tag_agg.data
-        self.fastmode_aggregate = await self.client.fetch_channel_aggregate(
-            FASTMODE_CHANNEL_NAME
-        )
+        self._tag_values = (
+            await self.client.fetch_channel_aggregate(TAG_CHANNEL_NAME)
+        ).data
+        self.fastmode_aggregate = (
+            await self.client.fetch_channel_aggregate(FASTMODE_CHANNEL_NAME)
+        ).data
 
     async def on_fastmode_update(self, event: AggregateUpdateEvent):
         self.fastmode_aggregate = event.aggregate.data
