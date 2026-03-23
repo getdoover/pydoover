@@ -251,10 +251,14 @@ class ControlModel:
             result[name] = _dump_field_value(field, value)
         return result
 
-    def to_version(self, version_name: str, *, method: str | None = None) -> dict[str, Any]:
+    def to_version(
+        self, version_name: str, *, method: str | None = None
+    ) -> dict[str, Any]:
         version = type(self)._versions.get(version_name)
         if version is None:
-            raise KeyError(f"Unknown version {version_name!r} for {type(self).__name__}")
+            raise KeyError(
+                f"Unknown version {version_name!r} for {type(self).__name__}"
+            )
 
         methods = version.get("methods")
         if method is not None and methods is not None and method.upper() not in methods:
@@ -299,8 +303,7 @@ class ControlModel:
                 if config.get("output_id"):
                     if field.is_array:
                         result[output_key] = [
-                            getattr(item, "id", item)
-                            for item in value
+                            getattr(item, "id", item) for item in value
                         ]
                     else:
                         result[output_key] = getattr(value, "id", value)

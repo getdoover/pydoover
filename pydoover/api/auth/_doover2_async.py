@@ -38,7 +38,9 @@ class AsyncDoover2AuthClient(AsyncAuthBase):
         )
         self.refresh_token = refresh_token
         self.refresh_token_id = refresh_token_id
-        self.control_base_url = (control_base_url or DEFAULT_CONTROL_BASE_URL).rstrip("/")
+        self.control_base_url = (control_base_url or DEFAULT_CONTROL_BASE_URL).rstrip(
+            "/"
+        )
         self.data_base_url = (data_base_url or DEFAULT_DATA_BASE_URL).rstrip("/")
         self.auth_server_url = (auth_server_url or DEFAULT_AUTH_SERVER_URL).rstrip("/")
         self.auth_server_client_id = auth_server_client_id

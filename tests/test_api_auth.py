@@ -35,7 +35,9 @@ def expired_token(minutes: int = 5) -> str:
 
 
 class SyncResponse:
-    def __init__(self, *, payload: dict[str, object], status_code: int = 200, text: str = ""):
+    def __init__(
+        self, *, payload: dict[str, object], status_code: int = 200, text: str = ""
+    ):
         self._payload = payload
         self.status_code = status_code
         self.text = text
@@ -46,7 +48,9 @@ class SyncResponse:
 
 
 class AsyncResponse:
-    def __init__(self, *, payload: dict[str, object], status: int = 200, text: str = ""):
+    def __init__(
+        self, *, payload: dict[str, object], status: int = 200, text: str = ""
+    ):
         self._payload = payload
         self.status = status
         self._text = text
@@ -73,7 +77,9 @@ class AsyncSession:
 
 
 class InjectedSyncAuth:
-    def __init__(self, token: str = "sync-token", data_base_url: str = "https://example.test/api"):
+    def __init__(
+        self, token: str = "sync-token", data_base_url: str = "https://example.test/api"
+    ):
         self.token = token
         self.data_base_url = data_base_url
         self.ensure_calls = 0
@@ -93,7 +99,11 @@ class InjectedSyncAuth:
 
 
 class InjectedAsyncAuth:
-    def __init__(self, token: str = "async-token", data_base_url: str = "https://example.test/api"):
+    def __init__(
+        self,
+        token: str = "async-token",
+        data_base_url: str = "https://example.test/api",
+    ):
         self.token = token
         self.data_base_url = data_base_url
         self.ensure_calls = 0

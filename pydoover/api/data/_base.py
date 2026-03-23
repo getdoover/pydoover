@@ -177,7 +177,9 @@ def _normalize_data_base_url(
     data_base_url: str | None,
 ) -> str:
     if base_url and data_base_url and base_url.rstrip("/") != data_base_url.rstrip("/"):
-        raise ValueError("`base_url` and `data_base_url` must match when both are provided.")
+        raise ValueError(
+            "`base_url` and `data_base_url` must match when both are provided."
+        )
     return (data_base_url or base_url or DEFAULT_DATA_BASE_URL).rstrip("/")
 
 
@@ -269,7 +271,17 @@ def build_sync_auth(
         auth = _validate_sync_auth(auth)
         if any(_has_value(value) for value in raw_inputs.values()):
             raise ValueError("`auth` cannot be combined with other auth configuration.")
-        return auth, getattr(auth, "data_base_url", resolved_data_base_url := _normalize_data_base_url(base_url, data_base_url)), False
+        return (
+            auth,
+            getattr(
+                auth,
+                "data_base_url",
+                resolved_data_base_url := _normalize_data_base_url(
+                    base_url, data_base_url
+                ),
+            ),
+            False,
+        )
 
     if profile is not None:
         auth_client = Doover2AuthClient.from_profile(profile, timeout=timeout)
@@ -285,7 +297,9 @@ def build_sync_auth(
         if control_base_url is not None:
             auth_client.control_base_url = control_base_url.rstrip("/")
         if data_base_url is not None or base_url is not None:
-            auth_client.data_base_url = _normalize_data_base_url(base_url, data_base_url)
+            auth_client.data_base_url = _normalize_data_base_url(
+                base_url, data_base_url
+            )
         if refresh_token is not None:
             auth_client.refresh_token = refresh_token
         if refresh_token_id is not None:
@@ -402,7 +416,17 @@ def build_async_auth(
         auth = _validate_async_auth(auth)
         if any(_has_value(value) for value in raw_inputs.values()):
             raise ValueError("`auth` cannot be combined with other auth configuration.")
-        return auth, getattr(auth, "data_base_url", resolved_data_base_url := _normalize_data_base_url(base_url, data_base_url)), False
+        return (
+            auth,
+            getattr(
+                auth,
+                "data_base_url",
+                resolved_data_base_url := _normalize_data_base_url(
+                    base_url, data_base_url
+                ),
+            ),
+            False,
+        )
 
     if profile is not None:
         auth_client = AsyncDoover2AuthClient.from_profile(profile, timeout=timeout)
@@ -418,7 +442,9 @@ def build_async_auth(
         if control_base_url is not None:
             auth_client.control_base_url = control_base_url.rstrip("/")
         if data_base_url is not None or base_url is not None:
-            auth_client.data_base_url = _normalize_data_base_url(base_url, data_base_url)
+            auth_client.data_base_url = _normalize_data_base_url(
+                base_url, data_base_url
+            )
         if refresh_token is not None:
             auth_client.refresh_token = refresh_token
         if refresh_token_id is not None:

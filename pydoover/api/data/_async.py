@@ -27,7 +27,7 @@ from ._base import (
     _raise_for_status,
     _to_snowflake,
     Unset,
-    build_async_auth
+    build_async_auth,
 )
 
 from ._iterators import AsyncMessageIterator

@@ -37,7 +37,9 @@ class DummySyncAuth:
 
 
 class DummyResponse:
-    def __init__(self, status_code: int, *, json_body=None, content: bytes | None = None):
+    def __init__(
+        self, status_code: int, *, json_body=None, content: bytes | None = None
+    ):
         self.status_code = status_code
         if json_body is not None:
             self._json_body = json_body

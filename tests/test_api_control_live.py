@@ -48,7 +48,9 @@ def _find_group_by_name(client: ControlClient, name: str) -> Group:
     for group in page.results:
         if group.name == name:
             return group
-    raise AssertionError(f"Expected group {name!r} to exist in organisation {CONTROL_ORGANISATION_ID}.")
+    raise AssertionError(
+        f"Expected group {name!r} to exist in organisation {CONTROL_ORGANISATION_ID}."
+    )
 
 
 def _find_device_type_by_name(client: ControlClient, name: str) -> DeviceType:
@@ -56,7 +58,9 @@ def _find_device_type_by_name(client: ControlClient, name: str) -> DeviceType:
     for device_type in page.results:
         if device_type.name == name:
             return device_type
-    raise AssertionError(f"Expected device type {name!r} to exist in organisation {CONTROL_ORGANISATION_ID}.")
+    raise AssertionError(
+        f"Expected device type {name!r} to exist in organisation {CONTROL_ORGANISATION_ID}."
+    )
 
 
 def _find_group_in_tree(groups: list[dict], name: str) -> dict | None:
@@ -69,7 +73,9 @@ def _find_group_in_tree(groups: list[dict], name: str) -> dict | None:
     return None
 
 
-def _wait_for_agents_payload(client: ControlClient, group_name: str, timeout: float = 15.0) -> dict:
+def _wait_for_agents_payload(
+    client: ControlClient, group_name: str, timeout: float = 15.0
+) -> dict:
     deadline = time.monotonic() + timeout
     last_payload: dict | None = None
     while time.monotonic() < deadline:
@@ -178,11 +184,15 @@ def test_api_control_live_staging_group_device_lifecycle():
                 parent_name=GROUP_A1_NAME,
                 child_name=group_name,
             )
-            assert {"agents", "groups", "organisation_users", "superusers"} <= set(agents_payload)
+            assert {"agents", "groups", "organisation_users", "superusers"} <= set(
+                agents_payload
+            )
             assert group_x_node["id"] == created_group_id
             assert group_x_node["archived"] is False
 
-            group_x = client.groups.partial(created_group_id, {"name": renamed_group_name})
+            group_x = client.groups.partial(
+                created_group_id, {"name": renamed_group_name}
+            )
             assert group_x.name == renamed_group_name
 
             device_y = client.devices.partial(
@@ -196,7 +206,9 @@ def test_api_control_live_staging_group_device_lifecycle():
             assert device_y.display_name == renamed_device_y_name
             assert device_y.fa_icon == RENAMED_ICON
 
-            client.groups.partial(created_group_id, {"parent_id": str(parent_group_c.id)})
+            client.groups.partial(
+                created_group_id, {"parent_id": str(parent_group_c.id)}
+            )
             _, group_x_node = _wait_for_group_under_parent(
                 client,
                 parent_name=GROUP_C_NAME,
@@ -230,7 +242,9 @@ def test_api_control_live_staging_group_device_lifecycle():
                     if not device.archived:
                         client.devices.archive(device_id)
                 except Exception as exc:  # pragma: no cover - best-effort live cleanup
-                    cleanup_errors.append(f"device {device_id}: {type(exc).__name__}: {exc}")
+                    cleanup_errors.append(
+                        f"device {device_id}: {type(exc).__name__}: {exc}"
+                    )
 
             if created_group_id is not None:
                 try:
@@ -238,7 +252,9 @@ def test_api_control_live_staging_group_device_lifecycle():
                     if not group.archived:
                         client.groups.archive(created_group_id)
                 except Exception as exc:  # pragma: no cover - best-effort live cleanup
-                    cleanup_errors.append(f"group {created_group_id}: {type(exc).__name__}: {exc}")
+                    cleanup_errors.append(
+                        f"group {created_group_id}: {type(exc).__name__}: {exc}"
+                    )
 
             if cleanup_errors and sys.exc_info()[0] is None:
                 raise AssertionError(

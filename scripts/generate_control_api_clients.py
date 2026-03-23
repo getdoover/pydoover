@@ -70,7 +70,9 @@ def operation_remainder(operation_id: str, group_path: str) -> str:
 
 
 def group_path_for(path: str, tag: str) -> str:
-    parts = [segment for segment in path.strip("/").split("/") if not segment.startswith("{")]
+    parts = [
+        segment for segment in path.strip("/").split("/") if not segment.startswith("{")
+    ]
     if tag == "organisations":
         if len(parts) >= 2 and parts[1] in {
             "domains",
@@ -143,7 +145,10 @@ def param_hint(schema: dict, required: bool) -> str:
 
 def extract_parameters(path_item: dict, operation: dict):
     merged = []
-    for source in (path_item.get("parameters") or [], operation.get("parameters") or []):
+    for source in (
+        path_item.get("parameters") or [],
+        operation.get("parameters") or [],
+    ):
         for parameter in source:
             if parameter.get("name") == "X-Doover-Organisation":
                 continue
@@ -170,7 +175,9 @@ def request_schema_info(operation: dict, schemas: dict[str, dict]):
     if set(media_types) == {"multipart/form-data"}:
         body_mode = "multipart"
     if schema_name and schema_name in schemas:
-        for field_name, field_schema in (schemas[schema_name].get("properties") or {}).items():
+        for field_name, field_schema in (
+            schemas[schema_name].get("properties") or {}
+        ).items():
             if field_schema.get("format") == "binary":
                 binary_fields.add(field_name)
         if binary_fields:
@@ -214,7 +221,11 @@ def response_info(path: str, operation: dict):
     if media_schema.get("type") == "array":
         item_schema = ref_name(media_schema.get("items") or {})
         if item_schema:
-            return {"kind": "list_model", "schema_name": None, "item_schema": item_schema}
+            return {
+                "kind": "list_model",
+                "schema_name": None,
+                "item_schema": item_schema,
+            }
         return {"kind": "raw", "schema_name": None, "item_schema": None}
 
     return {"kind": "raw", "schema_name": None, "item_schema": None}
@@ -251,7 +262,9 @@ def collect_operations(spec: dict):
                     "http_method": http_method.upper(),
                     "path": path,
                     "group_path": group_path,
-                    "remainder": operation_remainder(operation["operationId"], group_path),
+                    "remainder": operation_remainder(
+                        operation["operationId"], group_path
+                    ),
                     "method_name": method_name,
                     "path_params": path_params,
                     "query_params": query_params,
@@ -316,7 +329,9 @@ def render_signature(operation: dict) -> tuple[str, list[tuple[str, str]]]:
     for parameter in operation["query_params"]:
         name = parameter["name"]
         var_name = sanitize_name(name)
-        params.append(f"{var_name}: {param_hint(parameter.get('schema') or {}, False)} = None")
+        params.append(
+            f"{var_name}: {param_hint(parameter.get('schema') or {}, False)} = None"
+        )
         param_mappings.append((name, var_name))
 
     params.append("organisation_id: int | None = None")
@@ -352,7 +367,9 @@ def render_return_hint(response: dict) -> str:
 def render_method(operation: dict, async_mode: bool) -> list[str]:
     signature, param_mappings = render_signature(operation)
     return_hint = render_return_hint(operation["response"])
-    method_line = f"    {'async ' if async_mode else ''}def {operation['method_name']}(self"
+    method_line = (
+        f"    {'async ' if async_mode else ''}def {operation['method_name']}(self"
+    )
     if signature:
         method_line += f", {signature}"
     method_line += f") -> {return_hint}:"
@@ -382,7 +399,7 @@ def render_method(operation: dict, async_mode: bool) -> list[str]:
     lines.append("            params=params,")
     if request is not None:
         lines.append("            body=body,")
-        lines.append(f'            body_schema={request["schema_name"]!r},')
+        lines.append(f"            body_schema={request['schema_name']!r},")
         lines.append(f'            body_mode="{request["body_mode"]}",')
         lines.append(f"            binary_fields={binary_fields!r},")
     else:
@@ -419,9 +436,13 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
     for operation in operations:
         by_group[operation["group_path"]].append(operation)
 
-    all_group_paths = expand_group_paths({operation["group_path"] for operation in operations})
+    all_group_paths = expand_group_paths(
+        {operation["group_path"] for operation in operations}
+    )
     child_groups = child_groups_for(all_group_paths)
-    root_groups = [group_path for group_path in all_group_paths if "." not in group_path]
+    root_groups = [
+        group_path for group_path in all_group_paths if "." not in group_path
+    ]
 
     blocks.append(f"class {mixin_name}:")
     for group_path in root_groups:
@@ -439,7 +460,9 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
     blocks.append("")
 
     for group_path in all_group_paths:
-        blocks.append(f"class {class_name(group_path, suffix)}(_ControlGroupBase[{executor}]):")
+        blocks.append(
+            f"class {class_name(group_path, suffix)}(_ControlGroupBase[{executor}]):"
+        )
         group_ops = by_group.get(group_path) or []
         child_paths = child_groups.get(group_path, [])
         for child_path in child_paths:
@@ -454,7 +477,9 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
             continue
         counts = Counter(operation["method_name"] for operation in group_ops)
         seen = set()
-        for operation in sorted(group_ops, key=lambda item: (item["method_name"], item["operation_id"])):
+        for operation in sorted(
+            group_ops, key=lambda item: (item["method_name"], item["operation_id"])
+        ):
             unique_operation = dict(operation)
             method_name = unique_operation["method_name"]
             if counts[method_name] > 1:
@@ -462,9 +487,13 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
                     unique_operation["remainder"]
                 )
             if unique_operation["method_name"] in seen:
-                unique_operation["method_name"] = sanitize_name(unique_operation["operation_id"])
+                unique_operation["method_name"] = sanitize_name(
+                    unique_operation["operation_id"]
+                )
             else:
-                unique_operation["method_name"] = sanitize_name(unique_operation["method_name"])
+                unique_operation["method_name"] = sanitize_name(
+                    unique_operation["method_name"]
+                )
             seen.add(unique_operation["method_name"])
             blocks.extend(render_method(unique_operation, async_mode))
 
@@ -482,9 +511,7 @@ def render_generated_module(operations: list[dict], async_mode: bool) -> str:
             if index:
                 current += "." + ".".join(parts[:index])
             attr = parts[index]
-            blocks.append(
-                f"    {current}.{attr} = {class_name(partial, suffix)}(root)"
-            )
+            blocks.append(f"    {current}.{attr} = {class_name(partial, suffix)}(root)")
     blocks.append("")
     blocks.append(f"OPERATION_COUNT = {len(operations)}")
     blocks.append("")
@@ -505,7 +532,9 @@ def build_groups_module(operations: list[dict]) -> str:
     lines.append(f"GROUP_TREE = {group_tree!r}")
     lines.append("")
     lines.append(f"EXCLUDED_PATHS = {sorted(EXCLUDED_PATHS)!r}")
-    lines.append(f"INCLUDED_OPERATION_IDS = {[op['operation_id'] for op in operations]!r}")
+    lines.append(
+        f"INCLUDED_OPERATION_IDS = {[op['operation_id'] for op in operations]!r}"
+    )
     lines.append(f"OPERATION_COUNT = {len(operations)}")
     lines.append("")
     lines.append("__all__ = [")

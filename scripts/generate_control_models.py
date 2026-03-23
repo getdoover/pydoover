@@ -15,7 +15,15 @@ GENERATED_PATH = OUTPUT_DIR / "_generated.py"
 INIT_PATH = OUTPUT_DIR / "__init__.py"
 
 PREFIX_VARIANTS = ("Basic", "Slim", "Simple", "SuperBasic", "Public")
-SUFFIX_VARIANTS = ("SuperBasic", "Basic", "Simple", "WithId", "Parent", "Children", "Detail")
+SUFFIX_VARIANTS = (
+    "SuperBasic",
+    "Basic",
+    "Simple",
+    "WithId",
+    "Parent",
+    "Children",
+    "Detail",
+)
 
 
 def load_spec() -> dict:
@@ -123,16 +131,17 @@ class ObjectTypeRegistry:
                 object_types=self,
             )
         signature = quote(
-            {
-                name: rendered_fields[name]
-                for name in sorted(rendered_fields)
-            }
+            {name: rendered_fields[name] for name in sorted(rendered_fields)}
         )
         existing = self._by_signature.get(signature)
         if existing:
             return existing
 
-        preferred = camelize(field_name.split("_")[-1]) if "_" in field_name else camelize(field_name)
+        preferred = (
+            camelize(field_name.split("_")[-1])
+            if "_" in field_name
+            else camelize(field_name)
+        )
         name = self._unique_name(preferred, parent_model)
         self._by_signature[signature] = name
         self._definitions[name] = rendered_fields
@@ -143,7 +152,13 @@ class ObjectTypeRegistry:
         return self._definitions
 
 
-def describe_property(*, parent_model: str, field_name: str, schema: dict, object_types: ObjectTypeRegistry) -> dict:
+def describe_property(
+    *,
+    parent_model: str,
+    field_name: str,
+    schema: dict,
+    object_types: ObjectTypeRegistry,
+) -> dict:
     target = ref_name(schema)
     nullable = bool(schema.get("nullable", False))
 
@@ -248,7 +263,9 @@ def build_models(spec: dict):
 
     grouped_versions: dict[str, list[tuple[str, dict]]] = defaultdict(list)
     for schema_name, schema in non_paginated.items():
-        grouped_versions[canonical_model_name(schema_name)].append((schema_name, schema))
+        grouped_versions[canonical_model_name(schema_name)].append(
+            (schema_name, schema)
+        )
 
     for model_name, versions in grouped_versions.items():
         all_property_names = set()
@@ -285,12 +302,19 @@ def build_models(spec: dict):
                 if existing is None:
                     model_fields[model_name][canonical_name] = description
                 else:
-                    if existing["type"] != "resource" and description["type"] == "resource":
+                    if (
+                        existing["type"] != "resource"
+                        and description["type"] == "resource"
+                    ):
                         model_fields[model_name][canonical_name] = description
                     elif existing["ref"] is None and description["ref"] is not None:
                         existing["ref"] = description["ref"]
-                    existing["nullable"] = existing["nullable"] or description["nullable"]
-                    existing["is_array"] = existing["is_array"] or description["is_array"]
+                    existing["nullable"] = (
+                        existing["nullable"] or description["nullable"]
+                    )
+                    existing["is_array"] = (
+                        existing["is_array"] or description["is_array"]
+                    )
 
                 config: dict[str, object] = {}
                 if property_name in required_fields:
@@ -319,7 +343,9 @@ def build_models(spec: dict):
     for schema_name, schema in schemas.items():
         if not is_paginated_schema(schema_name, schema):
             continue
-        results = ((schema.get("properties") or {}).get("results") or {}).get("items") or {}
+        results = ((schema.get("properties") or {}).get("results") or {}).get(
+            "items"
+        ) or {}
         item_schema = ref_name(results)
         if item_schema is None:
             continue
@@ -371,7 +397,7 @@ def render_python_type(defn: dict) -> str:
 
 def render_constructor_type(defn: dict) -> str:
     if defn["type"] == "resource" and defn["ref"] is not None:
-        base = f'{defn["ref"]} | dict[str, Any] | str | int'
+        base = f"{defn['ref']} | dict[str, Any] | str | int"
     elif defn["type"] == "json":
         base = "Any"
     elif defn["type"] in {"string", "id"}:
@@ -385,7 +411,7 @@ def render_constructor_type(defn: dict) -> str:
     elif defn["type"] == "boolean":
         base = "bool"
     else:
-        base = f'{defn["type"]} | dict[str, Any]'
+        base = f"{defn['type']} | dict[str, Any]"
 
     if defn["is_array"]:
         base = f"list[{base}]"
@@ -421,13 +447,17 @@ def render_object_types(object_types: dict[str, dict[str, dict]]) -> list[str]:
         blocks.extend(render_init(field_names, object_types[name]))
         blocks.append("    _structure = {")
         for field_name, definition in object_types[name].items():
-            blocks.append(f'        "{field_name}": {render_control_field(definition)},')
+            blocks.append(
+                f'        "{field_name}": {render_control_field(definition)},'
+            )
         blocks.append("    }")
         blocks.append("")
     return blocks
 
 
-def render_models(model_fields: dict[str, dict[str, dict]], model_versions: dict[str, dict[str, dict]]) -> list[str]:
+def render_models(
+    model_fields: dict[str, dict[str, dict]], model_versions: dict[str, dict[str, dict]]
+) -> list[str]:
     blocks = []
     for model_name in sorted(model_fields):
         blocks.append(f"class {model_name}(ControlModel):")
@@ -438,7 +468,9 @@ def render_models(model_fields: dict[str, dict[str, dict]], model_versions: dict
         blocks.extend(render_init(field_names, model_fields[model_name]))
         blocks.append("    _field_defs = {")
         for field_name, definition in model_fields[model_name].items():
-            blocks.append(f'        "{field_name}": {render_control_field(definition)},')
+            blocks.append(
+                f'        "{field_name}": {render_control_field(definition)},'
+            )
         blocks.append("    }")
         blocks.append("    _versions = {")
         for version_name, version in model_versions[model_name].items():

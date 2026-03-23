@@ -27,7 +27,7 @@ from ._base import (
     _raise_for_status,
     _to_snowflake,
     Unset,
-    build_sync_auth
+    build_sync_auth,
 )
 from ..auth import decode_jwt_exp
 
@@ -415,7 +415,7 @@ class DataClient(BaseClient):
         organisation_id: int | None = None,
     ) -> bytes:
         """Download a message attachment. Follows the redirect to S3."""
-        
+
         self.auth.ensure_token()
 
         resp = self._session.get(

@@ -1,4 +1,6 @@
-from pydoover.api.control._generated_async import OPERATION_COUNT as ASYNC_OPERATION_COUNT
+from pydoover.api.control._generated_async import (
+    OPERATION_COUNT as ASYNC_OPERATION_COUNT,
+)
 from pydoover.api.control._generated_async import DevicesAsyncGroup
 from pydoover.api.control._generated_groups import (
     EXCLUDED_PATHS,

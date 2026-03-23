@@ -80,7 +80,9 @@ class ControlResourceMethods(Generic[TControlModel]):
         method = self._require("put", self._put)
         return method(*args, **kwargs)
 
-    def list(self, *args: Any, **kwargs: Any) -> control_models.ControlPage[TControlModel]:
+    def list(
+        self, *args: Any, **kwargs: Any
+    ) -> control_models.ControlPage[TControlModel]:
         method = self._require("list", self._list)
         return method(*args, **kwargs)
 
@@ -111,9 +113,17 @@ def _raise_for_status(status: int, text: str, url: str):
     raise HTTPError(status, text, url)
 
 
-def _normalize_control_base_url(base_url: str | None, control_base_url: str | None) -> str:
-    if base_url and control_base_url and base_url.rstrip("/") != control_base_url.rstrip("/"):
-        raise ValueError("`base_url` and `control_base_url` must match when both are provided.")
+def _normalize_control_base_url(
+    base_url: str | None, control_base_url: str | None
+) -> str:
+    if (
+        base_url
+        and control_base_url
+        and base_url.rstrip("/") != control_base_url.rstrip("/")
+    ):
+        raise ValueError(
+            "`base_url` and `control_base_url` must match when both are provided."
+        )
     return (control_base_url or base_url or DEFAULT_CONTROL_BASE_URL).rstrip("/")
 
 
@@ -321,7 +331,9 @@ class BaseControlClient:
 
     @cached_property
     def _control_method_lookup(self) -> dict[str, dict[str, Callable[..., Any]]]:
-        lookup: dict[str, dict[str, tuple[tuple[int, int, int, int], Callable[..., Any]]]] = {}
+        lookup: dict[
+            str, dict[str, tuple[tuple[int, int, int, int], Callable[..., Any]]]
+        ] = {}
 
         for group_path, group in self._iter_control_groups():
             for method_name in dir(group):
@@ -347,8 +359,7 @@ class BaseControlClient:
 
         return {
             model_name: {
-                operation: method
-                for operation, (_, method) in methods.items()
+                operation: method for operation, (_, method) in methods.items()
             }
             for model_name, methods in lookup.items()
         }
@@ -375,25 +386,37 @@ class BaseControlClient:
     def get_control_methods(
         self,
         model: str | type[TControlModel],
-    ) -> ControlResourceMethods[TControlModel] | ControlResourceMethods[control_models.ControlModel]:
+    ) -> (
+        ControlResourceMethods[TControlModel]
+        | ControlResourceMethods[control_models.ControlModel]
+    ):
         model_name, model_cls = self._resolve_control_model(model)
         try:
             methods = self._control_method_lookup[model_name]
         except KeyError as exc:
-            raise KeyError(f"No control methods found for model {model_name!r}.") from exc
+            raise KeyError(
+                f"No control methods found for model {model_name!r}."
+            ) from exc
 
         resource = ControlResourceMethods(
             model_name=model_name,
             model=cast(type[control_models.ControlModel], model_cls),
-            _get=cast(Callable[..., control_models.ControlModel] | None, methods.get("get")),
-            _post=cast(Callable[..., control_models.ControlModel] | None, methods.get("post")),
+            _get=cast(
+                Callable[..., control_models.ControlModel] | None, methods.get("get")
+            ),
+            _post=cast(
+                Callable[..., control_models.ControlModel] | None, methods.get("post")
+            ),
             _patch=cast(
                 Callable[..., control_models.ControlModel] | None,
                 methods.get("patch"),
             ),
-            _put=cast(Callable[..., control_models.ControlModel] | None, methods.get("put")),
+            _put=cast(
+                Callable[..., control_models.ControlModel] | None, methods.get("put")
+            ),
             _list=cast(
-                Callable[..., control_models.ControlPage[control_models.ControlModel]] | None,
+                Callable[..., control_models.ControlPage[control_models.ControlModel]]
+                | None,
                 methods.get("list"),
             ),
         )
@@ -450,7 +473,9 @@ class BaseControlClient:
             return body.to_version(schema_name, method=method)
         if isinstance(body, dict):
             return body
-        raise TypeError("Control request bodies must be dicts or ControlModel instances.")
+        raise TypeError(
+            "Control request bodies must be dicts or ControlModel instances."
+        )
 
     def _deserialize_model(self, schema_name: str, data: dict[str, Any]):
         info = control_models.resolve_control_schema(schema_name)
@@ -526,7 +551,9 @@ class BaseControlClient:
             return model, model_cls
         if isinstance(model, type) and issubclass(model, control_models.ControlModel):
             return model.__name__, model
-        raise TypeError("`model` must be a control model name or ControlModel subclass.")
+        raise TypeError(
+            "`model` must be a control model name or ControlModel subclass."
+        )
 
     def _iter_control_groups(self) -> list[tuple[tuple[str, ...], Any]]:
         stack: list[tuple[tuple[str, ...], Any]] = [((), self)]

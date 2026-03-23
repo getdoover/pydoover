@@ -125,7 +125,9 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
                             if value is None:
                                 continue
                             if binary_fields and key in binary_fields:
-                                filename, data, content_type = _coerce_file_value(key, value)
+                                filename, data, content_type = _coerce_file_value(
+                                    key, value
+                                )
                                 form.add_field(
                                     key,
                                     data,

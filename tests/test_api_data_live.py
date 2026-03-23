@@ -214,7 +214,9 @@ class TestDataClientAsync:
             )
             assert isinstance(msg, Message)
 
-            messages = await client.list_messages(AGENT_ID, TEST_CHANNEL, after=0, limit=5)
+            messages = await client.list_messages(
+                AGENT_ID, TEST_CHANNEL, after=0, limit=5
+            )
             assert isinstance(messages, list)
             assert len(messages) > 0
 
@@ -251,6 +253,7 @@ class TestDataClientAsync:
 
 
 # ── Token refresh tests ───────────────────────────────────────────────────
+
 
 @skip_no_profile
 class TestTokenRefresh:

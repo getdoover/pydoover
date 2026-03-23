@@ -78,7 +78,9 @@ class DummyAsyncSession:
         self.closed = True
 
 
-def make_client(response: DummyAsyncResponse) -> tuple[AsyncControlClient, DummyAsyncSession]:
+def make_client(
+    response: DummyAsyncResponse,
+) -> tuple[AsyncControlClient, DummyAsyncSession]:
     client = AsyncControlClient(
         auth=DummyAsyncAuth(),
         base_url="https://control.example",
@@ -103,7 +105,9 @@ async def test_async_client_exposes_generated_groups():
 
 @pytest.mark.asyncio
 async def test_async_client_parses_model_and_page_responses():
-    model_client, model_session = make_client(DummyAsyncResponse(200, json_body=THEME_WITH_ID))
+    model_client, model_session = make_client(
+        DummyAsyncResponse(200, json_body=THEME_WITH_ID)
+    )
     page_client, page_session = make_client(
         DummyAsyncResponse(
             200,

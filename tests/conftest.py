@@ -19,11 +19,15 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
-def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
     if config.getoption("--run-live"):
         return
 
-    skip_live = pytest.mark.skip(reason="live tests skipped; pass --run-live to run them")
+    skip_live = pytest.mark.skip(
+        reason="live tests skipped; pass --run-live to run them"
+    )
     for item in items:
         if "live" in item.keywords:
             item.add_marker(skip_live)

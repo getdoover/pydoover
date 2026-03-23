@@ -31,7 +31,9 @@ class ConfigManager:
 
     def create(self, entry: AuthProfile):
         self.entries[entry.profile] = entry
-        if not any(kind == "managed" and value == entry.profile for kind, value in self._blocks):
+        if not any(
+            kind == "managed" and value == entry.profile for kind, value in self._blocks
+        ):
             self._blocks.append(("managed", entry.profile))
 
     def delete(self, profile_name: str):
