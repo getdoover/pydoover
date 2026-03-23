@@ -147,10 +147,6 @@ class Application:
         self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
         )
-        self.tags = self.__class__.tags_class(
-            self.app_key, self.tag_manager, self.config
-        )
-        self.ui = self.__class__.ui_class(self.config, self.tags)
 
         self._ready = asyncio.Event()
 
@@ -160,10 +156,13 @@ class Application:
         self.app_key = app_key
         self.app_display_name = ""
 
-        self._ready = asyncio.Event()
-
         self._shutdown_at = None
         self.force_log_on_shutdown = False
+
+        self.tags = self.__class__.tags_class(
+            self.app_key, self.tag_manager, self.config
+        )
+        self.ui = self.__class__.ui_class(self.config, self.tags)
 
         if name is None:
             self.name = self.__class__.__name__
