@@ -7,12 +7,10 @@ import re
 from enum import EnumType, Enum as _Enum
 from typing import Any
 
+from ..utils.utils import sanitize_display_name
+
 log = logging.getLogger(__name__)
 KEY_VALIDATOR = re.compile(r"^[ a-zA-Z0-9_-]*$")
-
-
-def transform_key(key: str) -> str:
-    return key.lower().replace(" ", "_")
 
 
 def check_key(key: str) -> None:
@@ -58,40 +56,33 @@ class Schema:
 
     """
 
-    __element_map: "dict[str, ConfigElement]" = {}
+    _element_map: "dict[str, ConfigElement]" = {}
 
     @classmethod
     def add_element(cls, element):
-        try:
-            # do this here so we don't have to override __init__
-            elem_map = cls.__element_map
-        except AttributeError:
-            # this is the first element, so create the map
-            elem_map = cls.__element_map = dict()
-
-        # element._name = transform_key(element.display_name)
         if element._position is None:
-            element._position = len(elem_map)
+            element._position = len(cls._element_map)
 
-        if element._name in elem_map:
+        if element._name in cls._element_map:
             raise ValueError(f"Duplicate element name {element._name} not allowed.")
 
-        elem_map[element._name] = element
+        cls._element_map[element._name] = element
 
     def __init_subclass__(cls, name: str = "$default", **kwargs):
         super().__init_subclass__(**kwargs)
         cls.name = name
-        cls.load_elements()
+        cls._element_map = {}
+        cls._load_elements()
 
     @classmethod
-    def load_elements(cls):
+    def _load_elements(cls):
         for k, v in cls.__dict__.items():
             if isinstance(v, ConfigElement):
                 cls.add_element(v)
 
     @classmethod
     def clear_elements(cls):
-        cls.__element_map.clear()
+        cls._element_map.clear()
 
     @classmethod
     def to_schema(cls):
@@ -102,13 +93,13 @@ class Schema:
             "type": "object",
             "properties": {
                 name: element.to_dict()
-                for name, element in cls.__element_map.items()
+                for name, element in cls._element_map.items()
                 if isinstance(element, ConfigElement)
             },
             "additionalElements": True,
             "required": [
                 name
-                for name, element in cls.__element_map.items()
+                for name, element in cls._element_map.items()
                 if isinstance(element, ConfigElement) and element.required
             ],
         }
@@ -116,15 +107,15 @@ class Schema:
     def _inject_deployment_config(self, config: dict[str, Any]):
         for name, value in config.items():
             try:
-                elem = self.__element_map[name]
+                elem = self._element_map[name]
             except KeyError:
                 log.debug(f"Skipping unknown config key {name} ({value})")
             else:
                 elem.load_data(value)
 
-        for elem_name in set(self.__element_map.keys()) - set(config.keys()):
+        for elem_name in set(self._element_map.keys()) - set(config.keys()):
             # catch missing required elements, and set any other elements to their default value
-            elem = self.__element_map[elem_name]
+            elem = self._element_map[elem_name]
             if elem.required:
                 raise ValueError(
                     f"Required config element {elem_name} not found in deployment config."
@@ -208,7 +199,7 @@ class ConfigElement:
         else:
             resolved_name = display_name
 
-        self._name = transform_key(resolved_name)
+        self._name = sanitize_display_name(resolved_name)
         self._position = position
         self.display_name = display_name
         self.default = default
@@ -728,6 +719,7 @@ class Object(ConfigElement):
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
+        cls._cls_elements = {}
         cls.load_elements()
 
     @classmethod
@@ -800,8 +792,8 @@ class Variable:
     """
 
     def __init__(self, scope: str, name: str):
-        self._scope = transform_key(scope)
-        self._name = transform_key(name)
+        self._scope = sanitize_display_name(scope)
+        self._name = sanitize_display_name(name)
 
     def __str__(self):
         return f"${self._scope}.{self._name}"

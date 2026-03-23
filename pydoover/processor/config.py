@@ -73,7 +73,9 @@ class ScheduleConfig(String):
 class IngestionEndpointConfig(Object):
     cidr_ranges = Array(
         display_name="CIDR Ranges",
-        element=String("IP Range, e.g. 1.234.56.78/24 or 110.220.120.1/32"),
+        element=String(
+            "IP Range", description="IP Range, e.g. 1.234.56.78/24 or 110.220.120.1/32"
+        ),
         description="Accepted CIDR ranges for incoming requests",
     )
     signing_key = String(
