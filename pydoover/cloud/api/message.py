@@ -27,13 +27,13 @@ class Message:
     def __init__(
         self,
         client: "Client",
-        data: dict | str,
-        channel_id: str = None,
-        agent_id: str = None,
-        channel_name: str = None,
+        data: dict[str, Any] | str | None,
+        channel_id: str | None = None,
+        agent_id: str | None = None,
+        channel_name: str | None = None,
     ):
         self.id = None
-        self._timestamp: float = None
+        self._timestamp: float | None = None
 
         self.client = client
         self.channel_id = channel_id
@@ -41,7 +41,7 @@ class Message:
         self.channel_name = channel_name
         self._payload = None
 
-        if data is not None:
+        if isinstance(data, dict):
             self._from_data(data)
 
     def __repr__(self):
@@ -54,7 +54,7 @@ class Message:
         self.id = data.get("message", None)
         self.agent_id = data.get("agent", None)
         self.channel_name = data.get("channel_name", None)
-        self._timestamp = data.get("timestamp", None)
+        self._timestamp = data.get("timestamp")
 
         if not self.channel_id:
             self.channel_id = data.get("channel")
@@ -92,18 +92,18 @@ class Message:
     @property
     def age(self) -> float:
         """Returns the age of the message in seconds since it was created."""
-        return time.time() - self._timestamp
+        return time.time() - (self._timestamp or 0)
 
     @property
     def timestamp(self) -> datetime:
         """Returns the timestamp of the message as a datetime object in UTC."""
-        return datetime.fromtimestamp(self._timestamp)
+        return datetime.fromtimestamp(self._timestamp or 0)
 
     def get_age(self) -> float:
-        return time.time() - self._timestamp
+        return time.time() - (self._timestamp or 0)
 
     def get_timestamp(self) -> datetime:
-        return datetime.fromtimestamp(self._timestamp)
+        return datetime.fromtimestamp(self._timestamp or 0)
 
     @staticmethod
     def from_csv_export(

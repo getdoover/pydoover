@@ -7,7 +7,10 @@ import time
 import sys
 from datetime import datetime, timedelta, timezone
 
-from typing import Any
+from typing import Any, cast
+
+from pydoover.tags import Tags
+from pydoover.tags.manager import TagsManagerProcessor
 
 from .types import (
     ManualInvokeEvent,
@@ -22,7 +25,7 @@ from .types import (
 )
 from .data_client import ProcessorDataClient
 from ...models import ConnectionDetermination, ConnectionStatus, SubscriptionInfo
-from ...ui import UIManager
+from ...ui import UI, UIManager
 from ...config import Schema
 
 
@@ -36,8 +39,15 @@ console_handler = logging.StreamHandler(sys.stdout)
 
 
 class Application:
-    def __init__(self, config: Schema | None):
-        self.config = config
+    config_class: type[Schema] | None = None
+    ui_class: type[UI] | None = None
+    tags_class: type[Tags] | None = None
+
+    def __init__(self):
+        config_class = self.__class__.config_class
+        self.config = config_class() if config_class is not None else None
+        self._tags: Tags | None = None
+        self._ui: UI | None = None
 
         self.received_deployment_config = None
 
@@ -48,11 +58,11 @@ class Application:
         self.api = ProcessorDataClient(self._api_endpoint)
 
         # set per-task
-        self.agent_id: int = None
-        self._initial_token: str = None
-        self.ui_manager: UIManager = None
-        self._tag_values: dict[str, Any] = None
-        self._connection_config: dict[str, Any] = None
+        self.agent_id: int | None = None
+        self._initial_token: str | None = None
+        self.ui_manager: UIManager | None = None
+        self.tag_manager: TagsManagerProcessor | None = None
+        self._connection_config: dict[str, Any] | None = None
 
         self.log_capture_string = io.StringIO()
         self.string_stream_handler = logging.StreamHandler(self.log_capture_string)
@@ -62,9 +72,50 @@ class Application:
         self._record_tag_update: bool = True
         self._update_external_tags: bool = False
 
-    async def _setup(self, initial_payload: dict[str, Any]):
-        self._publish_tags = False
+    @property
+    def tags(self) -> Tags:
+        return cast(Tags, self._tags)
 
+    @tags.setter
+    def tags(self, value: Tags | None) -> None:
+        self._tags = value
+
+    @property
+    def ui(self) -> UI:
+        return cast(UI, self._ui)
+
+    @ui.setter
+    def ui(self, value: UI | None) -> None:
+        self._ui = value
+
+    async def _resolve_tags(self) -> Tags | None:
+        tags_class = self.__class__.tags_class
+        if tags_class is None:
+            self.tags = None
+        else:
+            self.tags = tags_class()
+            await self.tags.setup(self.config)
+
+        if self._tags is not None:
+            self._tags.register_manager(self.tag_manager, app_key=self.app_key)
+        return self.tags
+
+    async def _resolve_ui(self) -> UI | None:
+        ui_class = self.__class__.ui_class
+        if ui_class is None:
+            self.ui = None
+        else:
+            self.ui = ui_class()
+            await self.ui.setup(self.config, self.tags)
+
+        if self._ui is not None:
+            self._ui.bind_tags(self._tags)
+            if self.ui_manager is None:
+                raise RuntimeError("UI manager has not been initialized.")
+            self.ui_manager.set_children(self._ui.to_elements())
+        return self.ui
+
+    async def _setup(self, initial_payload: dict[str, Any]):
         # this is ok to setup because it doesn't store any state
         await self.api.setup()
 
@@ -72,6 +123,8 @@ class Application:
         # we give it a minimal token provisioned from doover data, along with our subscription (uuid) ID
         # and we get back a full token, agent id, app key and a few common channels - ui state, ui cmds,
         # tag values and deployment config.
+        if self._initial_token is None:
+            raise RuntimeError("Initial token has not been set.")
         self.api.set_token(self._initial_token)
 
         # Always prioritise the upgrade payload, otherwise get it from the normal method
@@ -96,8 +149,13 @@ class Application:
         self.api.organisation_id = info.organisation_id or self.organisation_id
 
         self.app_key = info.app_key
-        self.api.app_key = self.app_key
-        self._tag_values = info.tag_values
+        self.tag_manager = TagsManagerProcessor(
+            self.app_key,
+            self.api,
+            self.agent_id,
+            info.tag_values,
+            record_tag_update=self._record_tag_update,
+        )
 
         connection_data = info.connection_data
         if not connection_data:
@@ -124,6 +182,9 @@ class Application:
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
             self.config._inject_deployment_config(info.deployment_config)
+
+        await self._resolve_tags()
+        await self._resolve_ui()
 
         # Store the deployment config for later use
         self.received_deployment_config = info.deployment_config
@@ -224,7 +285,7 @@ class Application:
         # Both have permission to access the info endpoint, only.
         self._initial_token = event["token"]
         # this can be set during testing. during normal operation it's signed in the JWT.
-        self.agent_id = event.get("agent_id")
+        self.agent_id = event.get("agent_id", self.agent_id)
 
         func = None
         original_func = None
@@ -300,10 +361,12 @@ class Application:
 
         if self._ui_to_set:
             # not valid for org apps
+            if self.ui_manager is None:
+                raise RuntimeError("UI manager has not been initialized.")
             await self.ui_manager._processor_set_ui_channels(*self._ui_to_set)
 
         result = None
-        if func is None:
+        if func is None or payload is None:
             log.error(f"Unknown event type: {event['op']}")
         else:
             try:
@@ -315,26 +378,9 @@ class Application:
 
         # fixme: publish UI if needed
 
-        if self._publish_tags:
-            try:
-                update = self._tag_values[self.app_key]
-            except KeyError:
-                update = None
-
-            if self._update_external_tags:
-                update = self._tag_values
-            else:
-                update = update and {self.app_key: update}
-
-            # only publish if there are tags to publish.
-            # Only publish external tags if requested explicitly (can cause recursion issues)
-            if update:
-                await self.api.update_channel_aggregate(
-                    self.agent_id, "tag_values", update
-                )
-
-                if self._record_tag_update:
-                    await self.api.create_message(self.agent_id, "tag_values", update)
+        if self.tag_manager is None:
+            raise RuntimeError("Tag manager has not been initialized.")
+        await self.tag_manager.commit_tags()
 
         try:
             await self.close()
@@ -368,30 +414,19 @@ class Application:
         :class:`pydoover.cloud.api.NotFound`
             If the channel with the specified key does not exist.
         """
+        if self.agent_id is None:
+            raise RuntimeError("Agent ID has not been initialized.")
         return await self.api.fetch_channel(self.agent_id, channel_name)
 
     async def get_tag(self, key: str, default: Any = None):
-        try:
-            return self._tag_values[self.app_key][key]
-        except KeyError:
-            return default
+        if self.tag_manager is None:
+            raise RuntimeError("Tag manager has not been initialized.")
+        return self.tag_manager.get_tag(key, default)
 
     async def set_tag(self, key: str, value: Any):
-        try:
-            current = self._tag_values[self.app_key][key]
-        except KeyError:
-            current = None
-
-        if current == value:
-            # don't publish if it hasn't changed
-            return
-
-        try:
-            self._tag_values[self.app_key][key] = value
-        except KeyError:
-            self._tag_values[self.app_key] = {key: value}
-
-        self._publish_tags = True
+        if self.tag_manager is None:
+            raise RuntimeError("Tag manager has not been initialized.")
+        await self.tag_manager.set_tag(key, value)
 
     async def ping_connection(
         self,
@@ -406,7 +441,7 @@ class Application:
         if offline_at:
             offline_after = (offline_at - online_at).total_seconds()
         else:
-            offline_after = self._connection_config.get(
+            offline_after = (self._connection_config or {}).get(
                 "offline_after", DEFAULT_OFFLINE_AFTER
             )
 
@@ -415,6 +450,8 @@ class Application:
         else:
             determination = ConnectionDetermination.online
 
+        if self.agent_id is None:
+            raise RuntimeError("Agent ID has not been initialized.")
         await self.api.ping_connection_at(
             self.agent_id,
             online_at,

@@ -3,8 +3,11 @@ import logging
 
 import grpc
 
-from ..models.generated.health import health_pb2, health_pb2_grpc
-from ..models.data.exceptions import DooverAPIError, HTTPError, NotFoundError
+try:
+    from grpc_health.v1 import health_pb2, health_pb2_grpc
+except ImportError:
+    from ..models.generated.health import health_pb2, health_pb2_grpc
+from ..models.exceptions import DooverAPIError, HTTPError, NotFoundError
 
 log = logging.getLogger(__name__)
 

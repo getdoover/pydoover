@@ -30,6 +30,7 @@ test = [
     "jsonschema>=4.23.0",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",
+    "pytest-cov>=7.0.0",
     "grpcio==1.65.1",
     "protobuf==5.28.2",
     "grpcio-health-checking==1.65.1",
@@ -69,3 +70,46 @@ markers = [
 exclude = [
     "pydoover/models/generated",
 ]
+
+[tool.ty.src]
+exclude = [
+    "pydoover/docker/device_agent/grpc_stubs/**",
+    "pydoover/docker/modbus/grpc_stubs/**",
+    "pydoover/docker/platform/grpc_stubs/**",
+]
+
+[tool.ty.rules]
+invalid-parameter-default = "ignore"
+possibly-missing-submodule = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "pydoover/cloud/api/channel.py",
+    "pydoover/cloud/api/client_v1.py",
+    "pydoover/cloud/api/client_v2.py",
+    "pydoover/cloud/processor/data_client.py",
+    "pydoover/cloud/processor/handler.py",
+    "pydoover/cloud/processor/types.py",
+    "pydoover/cloud/reports/application.py",
+    "pydoover/config/__init__.py",
+    "pydoover/docker/application.py",
+    "pydoover/docker/device_agent/device_agent.py",
+    "pydoover/docker/device_agent/models.py",
+    "pydoover/docker/grpc_interface.py",
+    "pydoover/docker/modbus/modbus_iface.py",
+    "pydoover/docker/platform/platform.py",
+    "pydoover/reports/base.py",
+    "pydoover/reports/json_flatten.py",
+    "pydoover/reports/xlsx_base.py",
+    "pydoover/state/__init__.py",
+    "pydoover/tags/manager.py",
+    "pydoover/ui/parameter.py",
+    "pydoover/ui/submodule.py",
+    "pydoover/utils/alarm.py",
+    "pydoover/utils/kalman.py",
+    "tests/test_config.py",
+    "tests/test_diffs.py",
+]
+
+[tool.ty.overrides.rules]
+all = "ignore"

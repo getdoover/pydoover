@@ -7,6 +7,7 @@ use ``pydoover.cloud.api``.
 """
 
 from __future__ import annotations
+import os
 
 import base64
 import re
@@ -66,6 +67,39 @@ class ConfigEntry(AuthProfile):
         self.valid = True
 
     def __repr__(self):
+        return f"ConfigEntry <profile={self.profile}, username={self.username}, base_url={self.base_url}>"
+
+    @classmethod
+    def from_data(cls, data: str) -> "ConfigEntry":
+        match = cls.pattern.match(data.strip())
+        if match is None:
+            raise ValueError("Invalid config entry format")
+
+        if match["token_expires"]:
+            token_expires = datetime.fromtimestamp(
+                float(match["token_expires"]), tz=timezone.utc
+            )
+        else:
+            token_expires = None
+
+        return cls(
+            match["profile"],
+            match["username"],
+            base64.b64decode(match["password"]).decode("utf-8"),
+            match["token"],
+            token_expires,
+            match["agent_id"],
+            match["base_url"],
+            True if match["is_doover2"] == "True" else False,
+            match["refresh_token"],
+            match["refresh_token_id"],
+            match["base_data_url"],
+            match["auth_server_url"],
+            match["auth_server_client_id"],
+        )
+
+    def format(self):
+        password = self.password or ""
         return (
             "ConfigEntry "
             f"<profile={self.profile}, username={self.username}, base_url={self.base_url}>"
@@ -75,52 +109,3 @@ class ConfigEntry(AuthProfile):
     def is_doover2(self) -> bool:
         return self._is_doover2
 
-    @classmethod
-    def from_data(cls, data: str) -> "ConfigEntry":
-        manager = ConfigManager()
-        parsed = manager._parse_block(data.strip())
-        if isinstance(parsed, AuthProfile):
-            return cls(
-                profile=parsed.profile,
-                token=parsed.token,
-                token_expires=parsed.token_expires,
-                agent_id=parsed.agent_id,
-                base_url=parsed.control_base_url,
-                is_doover2=True,
-                refresh_token=parsed.refresh_token,
-                refresh_token_id=parsed.refresh_token_id,
-                base_data_url=parsed.data_base_url,
-                auth_server_url=parsed.auth_server_url,
-                auth_server_client_id=parsed.auth_server_client_id,
-            )
-
-        match = cls.pattern.match(data.strip())
-        if not match:
-            raise ValueError("Invalid config entry format.")
-
-        token_expires = None
-        if match["token_expires"]:
-            token_expires = datetime.fromtimestamp(
-                float(match["token_expires"]),
-                tz=timezone.utc,
-            )
-
-        password = None
-        if match["password"]:
-            password = base64.b64decode(match["password"]).decode("utf-8")
-
-        return cls(
-            profile=match["profile"],
-            username=match["username"] or None,
-            password=password,
-            token=match["token"] or None,
-            token_expires=token_expires,
-            agent_id=match["agent_id"] or None,
-            base_url=match["base_url"] or None,
-            is_doover2=match["is_doover2"] == "True",
-            refresh_token=match["refresh_token"] or None,
-            refresh_token_id=match["refresh_token_id"] or None,
-            base_data_url=match["base_data_url"] or None,
-            auth_server_url=match["auth_server_url"] or None,
-            auth_server_client_id=match["auth_server_client_id"] or None,
-        )

@@ -1,8 +1,15 @@
+import logging
 import random
 import time
+from typing import Any, cast
 
-from pydoover.docker import DockerApplication, run_app
+from pydoover.docker import Application, run_app
+from pydoover.config import Schema
 from pydoover import ui
+from pydoover.tags import Tag, Tags
+
+
+log = logging.getLogger(__name__)
 
 # UI Will look like this
 
@@ -21,81 +28,91 @@ from pydoover import ui
 #           - Idle
 
 
-class HelloWorld(DockerApplication):
-    started: time.time
-    is_working: ui.BooleanVariable
-    send_alert: ui.Action
-    on_text_parameter_change: ui.TextParameter
+class HelloWorldTags(Tags):
+    is_working = Tag("boolean", default=False)
+    uptime = Tag("number", default=0)
+    test_output = Tag("string", default="")
+    battery_voltage = Tag("number", default=0)
 
-    def setup(self):
-        super().setup()
-        self.get_ui_manager()
 
-        self.started = time.time()
-        include_uptime = True
-
-        # Define the UI
-        self.is_working = ui.BooleanVariable("is_working", "We Working?")
-        ui_elems = (
-            self.is_working,
-            ui.DateTimeVariable("uptime", "Started") if include_uptime else None,
-            self.send_alert,
-            # ui.TextParameter("test_message", "Put in a message", callback=self.on_text_parameter_change),
-            self.on_text_parameter_change,
-            ui.TextVariable("test_output", "This is message we got"),
-            ui.Submodule(
-                "battery",
-                "Battery Module",
-                children=[
-                    ui.NumericVariable(
-                        "voltage",
-                        "Battery Voltage",
-                        precision=2,
-                        ranges=[
-                            ui.Range("Low", 0, 10, ui.Colour.red),
-                            ui.Range("Normal", 10, 20, ui.Colour.green),
-                            ui.Range("High", 20, 30, ui.Colour.blue),
-                        ],
-                    ),
-                    ui.NumericParameter("low_voltage_alert", "Low Voltage Alert"),
-                    ui.StateCommand(
-                        "charge_mode",
-                        "Charge Mode",
-                        callback=self.on_state_command,
-                        user_options=[
-                            ui.Option("charge", "Charge"),
-                            ui.Option("discharge", "Discharge"),
-                            ui.Option("idle", "Idle"),
-                        ],
-                    ),
+class HelloWorldUI(ui.UI):
+    is_working = ui.BooleanVariable(
+        "is_working",
+        "We Working?",
+        curr_val=HelloWorldTags.is_working,
+    )
+    uptime = ui.NumericVariable(
+        "uptime",
+        "Uptime",
+        curr_val=HelloWorldTags.uptime,
+    )
+    send_alert = ui.Action("send_alert", "Send message as alert", position=1)
+    test_message = ui.TextParameter("test_message", "Put in a message")
+    test_output = ui.TextVariable(
+        "test_output",
+        "This is message we got",
+        curr_val=HelloWorldTags.test_output,
+    )
+    battery = ui.Submodule(
+        "battery",
+        "Battery Module",
+        children=[
+            ui.NumericVariable(
+                "battery_voltage",
+                "Battery Voltage",
+                curr_val=HelloWorldTags.battery_voltage,
+                precision=2,
+                ranges=[
+                    ui.Range("Low", 0, 10, ui.Colour.red),
+                    ui.Range("Normal", 10, 20, ui.Colour.green),
+                    ui.Range("High", 20, 30, ui.Colour.blue),
                 ],
             ),
-        )
+            ui.NumericParameter("low_voltage_alert", "Low Voltage Alert"),
+            ui.StateCommand(
+                "charge_mode",
+                "Charge Mode",
+                user_options=[
+                    ui.Option("charge", "Charge"),
+                    ui.Option("discharge", "Discharge"),
+                    ui.Option("idle", "Idle"),
+                ],
+            ),
+        ],
+    )
 
-        self.ui_manager.add_children(*ui_elems)
+
+class HelloWorld(Application):
+    config_class = Schema
+    tags_class = HelloWorldTags
+    ui_class = HelloWorldUI
+
+    started: float
+
+    def setup(self):
+        self.started = time.time()
 
     def main_loop(self):
-        super().main_loop()
-        self.is_working.current_value = True
-        self.ui_manager.update_variable("voltage", random.randint(900, 2100) / 100)
-        self.ui_manager.update_variable("uptime", time.time() - self.started)
+        tags = cast(HelloWorldTags, self.tags)
+        tags.is_working.set(True)
+        tags.uptime.set(time.time() - self.started)
+        tags.battery_voltage.set(random.randint(900, 2100) / 100)
 
-    @ui.action("send_alert", "Send message as alert", position=1)
-    def send_alert(self, new_value):
-        output = self.ui_manager.get_element("test_output").current_value
-        self.log(f"Sending alert: {output}")
+    @ui.callback("send_alert")
+    def on_send_alert(self, command: Any, _new_value: Any):
+        output = cast(HelloWorldTags, self.tags).test_output.get()
+        log.info("Sending alert: %s", output)
         self.send_notification(output, record_activity=True)
-        self.send_alert.coerce(None)
+        command.coerce(None)
 
-    @ui.text_parameter("test_message", "Put in a message")
-    def on_text_parameter_change(self, new_value):
-        self.log("New value for test message : " + new_value)
+    @ui.callback("test_message")
+    def on_text_parameter_change(self, _command: Any, new_value: Any):
+        log.info("New value for test message: %s", new_value)
+        cast(HelloWorldTags, self.tags).test_output.set(new_value)
 
-        # Set the value as an output to the corresponding variable is this case
-        self.get_ui_manager().update_variable("test_output", new_value)
-
-    def on_state_command(self, new_value):
-        self.log("New value for state command: " + new_value)
+    @ui.callback("charge_mode")
+    def on_state_command(self, _command: Any, new_value: Any):
+        log.info("New value for state command: %s", new_value)
 
 
 if __name__ == "__main__":

@@ -1,15 +1,16 @@
 import enum
 import logging
+import re
 
 from datetime import datetime
 from typing import Optional, Any
 
-from .misc import Colour
+from .misc import NotSet
+from .declarative import normalize_ui_value
+from ..utils.utils import sanitize_display_name
 
 
-class NotSet:
-    pass
-
+VALID_NAME_RE = re.compile(r"^[0-9a-zA-Z_]+$")
 
 log = logging.getLogger(__name__)
 
@@ -52,28 +53,25 @@ class Element:
 
     def __init__(
         self,
-        name: str,
-        display_name: str | None = None,
-        is_available: bool = None,  # not sure of type
-        help_str: str = None,
-        verbose_str: str = None,
+        display_name: str,
+        is_available=NotSet,
+        help_str: str = NotSet,
+        verbose_str: str = NotSet,
         show_activity: bool = True,
-        form: str = None,
-        graphic: str = None,  # not sure of type
-        layout: str = None,  # not sure of type
-        component_url: str = None,  # not sure of type
-        position: int = None,  # 100,
-        conditions: Optional[dict] = None,
-        hidden: bool = False,
-        units: str = None,
-        icon: str = None,
-        colour: Colour = None,
+        form=NotSet,
+        graphic: str = NotSet,
+        layout: str = NotSet,
+        component_url: str = NotSet,
+        position: int = NotSet,
+        conditions: dict[str] = NotSet,
+        hidden: Any = False,
+        units: str = NotSet,
+        icon: str = NotSet,
+        colour: str = NotSet,
+        name: str = None,
         **kwargs,
     ):
-        self.name = name
-        self.display_name = display_name or kwargs.get(
-            "display_str", None
-        )  # backwards compatibility
+        self.display_name = display_name
         self.is_available = is_available
         self.help_str = help_str
         self.verbose_str = verbose_str
@@ -95,13 +93,17 @@ class Element:
         self.icon = icon
         self.colour = colour
 
+        self.name = name or sanitize_display_name(display_name)
+        if not VALID_NAME_RE.match(self.name):
+            raise ValueError(f"Invalid name: {name}. Must be [a-zA-Z0-9_]")
+
         for k, v in kwargs.items():
             log.debug(f"Setting kwarg {k} to {v}")
             setattr(self, k, v)
 
         self._retain_fields = []
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Convert the element to a dictionary representation.
 
         Returns
@@ -129,52 +131,9 @@ class Element:
             "colour": self.colour,
         }
         # filter out any null values
-        return {k: v for k, v in to_return.items() if v is not None}
-
-    def get_diff(
-        self,
-        other: dict[str, Any],
-        remove: bool = True,
-        retain_fields: list[str] | None = None,
-    ) -> dict[str, Any] | None:
-        """Get the difference between this element and another dictionary representation of an element.
-
-        Parameters
-        ----------
-        other: dict[str, Any]
-            The other element to compare against.
-        remove: bool
-            If True, fields that are not present in this element but are in the other will be set to None.
-        retain_fields: list[str], optional
-            A list of fields to retain in the difference, even if they are not different.
-
-        Returns
-        -------
-        dict[str, Any], optional
-            A dictionary containing the differences between this element and the other. If there are no differences, returns None.
-        """
-
-        this = self.to_dict()
-
-        retain_fields = retain_fields or []
-        to_retain = list(set(retain_fields) | set(self._retain_fields))
-        # if this == other:
-        #     return None
-
-        result = {k: v for k, v in this.items() if other.get(k) != v or k in to_retain}
-        if remove:
-            result.update(
-                **{k: None for k in other if k not in this and k not in to_retain}
-            )  # to_remove
-        if len(result) == 0:
-            return None
-
-        return result
-
-    ## A stub for the method that will be called when the UI state is updated.
-    # The element can choose to update its internal state based on the previous state and the new state.
-    def recv_ui_state_update(self, state: dict[str, Any]) -> None:
-        pass
+        return normalize_ui_value(
+            {k: v for k, v in to_return.items() if v is not None and v is not NotSet}
+        )
 
 
 class ConnectionType(enum.Enum):
@@ -200,16 +159,18 @@ class ConnectionInfo(Element):
 
     """
 
+    # fixme: work out what to do with periodic docker devices / ui...
+
     type = "uiConnectionInfo"
 
     def __init__(
         self,
         name: str = "connectionInfo",
         connection_type: ConnectionType = ConnectionType.constant,
-        connection_period: int = None,
-        next_connection: int = None,
-        offline_after: int = None,
-        allowed_misses: int = None,
+        connection_period: int | None = None,
+        next_connection: int | None = None,
+        offline_after: int | None = None,
+        allowed_misses: int | None = None,
         **kwargs,
     ):
         super().__init__(name, None, **kwargs)
@@ -245,37 +206,7 @@ class ConnectionInfo(Element):
         if self.allowed_misses is not None:
             result["allowedMisses"] = self.allowed_misses
 
-        return result
-
-
-class AlertStream(Element):
-    """Represents an Alert Stream UI Element
-
-    .. note::
-
-        This is a special element that is used to display the "Notifications" banner in the UI.
-        If any installed app includes this element, it will be shown.
-        Do not change the name of this element, doing so will lead to confusion as
-        it is manually set to listen to the "significantEvent" channel in the UI.
-
-    Parameters
-    ----------
-    name: str
-        The name of the alert stream.
-        This defaults to "significantEvent", but is currently unused in the UI.
-    display_name: str, optional
-        The display name of the alert stream. This is not used in the UI.
-    """
-
-    type = "uiAlertStream"
-
-    def __init__(
-        self,
-        name: str = "significantEvent",
-        display_name: str = "placeholder",
-        **kwargs,
-    ):
-        super().__init__(name, display_name, is_available=None, help_str=None, **kwargs)
+        return normalize_ui_value(result)
 
 
 class Multiplot(Element):
@@ -283,12 +214,11 @@ class Multiplot(Element):
 
     Parameters
     ----------
-    name: str
-        The name of the multiplot.
     display_name: str
         The display name of the multiplot.
-    series: list[str]
-        A list of series names to be displayed in the multiplot.
+    series: list[str] | dict[str, dict[str, Any]]
+        Series configuration for the multiplot. New code should pass a mapping of
+        series name to series configuration.
     series_colours: list[Colour], optional
         A list of colours for each series in the multiplot.
     series_active: list[bool], optional
@@ -303,10 +233,9 @@ class Multiplot(Element):
 
     def __init__(
         self,
-        name: str,
         display_name: str,
-        series: list[str],
-        series_colours: Optional[list[Colour]] = None,
+        series: list[str] | dict[str, dict[str, Any]],
+        series_colours: Optional[list[str]] = None,
         series_active: Optional[list[bool]] = None,
         earliest_data_time: Optional[datetime] = None,
         title: Optional[str] = None,
@@ -316,9 +245,9 @@ class Multiplot(Element):
         default_zoom: Optional[str] = None,
         **kwargs,
     ):
-        super().__init__(name, display_name, **kwargs)
+        super().__init__(display_name, **kwargs)
 
-        self.series = series
+        self._legacy_series_input = isinstance(series, list)
         self.series_colours = series_colours
         self.series_active = series_active
         self.earliest_data_time = earliest_data_time
@@ -327,18 +256,81 @@ class Multiplot(Element):
         self.step_labels = step_labels
         self.step_padding = step_padding
         self.default_zoom = default_zoom
+        self.series = self._normalize_series(series)
+
+        if self._legacy_series_input or any(
+            value is not None
+            for value in (
+                series_colours,
+                series_active,
+                shared_axis,
+                step_labels,
+                step_padding,
+            )
+        ):
+            raise RuntimeError(
+                "Legacy uiMultiPlot list-based schema is deprecated. "
+                "Pass series as a record keyed by series name instead."
+            )
+            # warnings.warn(
+            #     "Legacy uiMultiPlot list-based schema is deprecated. "
+            #     "Pass series as a record keyed by series name instead.",
+            #     DeprecationWarning,
+            #     stacklevel=2,
+            # )
+
+    def _normalize_series(self, series: list[str] | dict[str, dict[str, Any]]):
+        return {
+            name: self._normalize_series_entry(name, config, index)
+            for index, (name, config) in enumerate(series.items())
+        }
+
+    def _normalize_series_entry(
+        self, name: str, config: dict[str, Any] | str | None, index: int
+    ) -> dict[str, Any]:
+        if isinstance(config, str):
+            result: dict[str, Any] = {"displayString": config}
+        else:
+            result = dict(config or {})
+
+        result.setdefault("name", name)
+        result.setdefault("displayString", result["name"])
+        result.setdefault("dataType", "unknown")
+
+        if "shared_axis" in result and "sharedAxis" not in result:
+            result["sharedAxis"] = result.pop("shared_axis")
+        if "step_labels" in result and "stepLabels" not in result:
+            result["stepLabels"] = result.pop("step_labels")
+
+        if self.series_colours is not None and "colour" not in result:
+            colour = self._get_legacy_index_value(self.series_colours, index)
+            if colour is not None:
+                result["colour"] = colour
+        if self.series_active is not None and "active" not in result:
+            active = self._get_legacy_index_value(self.series_active, index)
+            if active is not None:
+                result["active"] = active
+        if self.shared_axis is not None and "sharedAxis" not in result:
+            shared_axis = self._get_legacy_index_value(self.shared_axis, index)
+            if shared_axis is not None:
+                result["sharedAxis"] = shared_axis
+        if self.step_labels is not None and "stepLabels" not in result:
+            result["stepLabels"] = self.step_labels
+
+        return normalize_ui_value(result)
+
+    @staticmethod
+    def _get_legacy_index_value(values: list[Any], index: int):
+        if index >= len(values):
+            return None
+        return values[index]
 
     def to_dict(self):
         result = super().to_dict()
         result["series"] = self.series
-        result["colours"] = self.series_colours
 
-        if self.series_active is not None:
+        if self.series_active is not None and not self._legacy_series_input:
             result["activeSeries"] = self.series_active
-        if self.shared_axis is not None:
-            result["sharedAxis"] = self.shared_axis
-        if self.step_labels is not None:
-            result["stepLabels"] = self.step_labels
         if self.step_padding is not None:
             result["stepPadding"] = self.step_padding
         if self.default_zoom is not None:
@@ -347,9 +339,10 @@ class Multiplot(Element):
             result["title"] = self.title
 
         if self.earliest_data_time is not None:
+            # fixme: make this a delta - to make it more useful for static ui's
             if isinstance(self.earliest_data_time, datetime):
                 result["earliestDataDate"] = int(self.earliest_data_time.timestamp())
             else:
                 result["earliestDataDate"] = self.earliest_data_time
 
-        return result
+        return normalize_ui_value(result)

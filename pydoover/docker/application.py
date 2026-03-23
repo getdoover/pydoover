@@ -8,8 +8,13 @@ from collections import deque
 
 from datetime import datetime, timezone
 from pathlib import Path
-from collections.abc import Callable, Coroutine
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Callable
+
+from pydoover.tags import Tags
+from pydoover.tags.manager import TagsManagerDocker
+from collections.abc import Coroutine
+
+from ..ui import UICommandsManager
 
 try:
     from aiohttp.web import Response, Server, ServerRunner, TCPSite
@@ -33,7 +38,7 @@ from ..models import (
     OneShotMessage,
 )
 from ..rpc import RPCManager
-from ..ui import UIManager
+from ..ui import UI
 from ..utils import (
     setup_logging as utils_setup_logging,
     apply_diff,
@@ -44,9 +49,6 @@ if TYPE_CHECKING:
     from ..config import Schema
 
 log = logging.getLogger(__name__)
-
-TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
-TAG_CHANNEL_NAME = "tag_values"
 
 
 class Application:
@@ -65,17 +67,29 @@ class Application:
 
         from pydoover.docker import Application, run_app
         from pydoover.config import Schema
+        from pydoover import ui
+        from pydoover.tags import Tag, Tags
+
+        class MyTags(Tags):
+            ready = Tag("boolean", default=False)
+
+        class MyUI(ui.UI):
+            ready = ui.BooleanVariable("ready", "Ready", curr_val=MyTags.ready)
 
         class MyApp(Application):
+            config_class = Schema
+            tags_class = MyTags
+            ui_class = MyUI
+
             def setup(self):
-                self.set_tag("my_app_ready", True)
+                self.tags.ready.set(True)
 
             def main_loop(self):
                 # Your main loop logic here
                 pass
 
         if __name__ == "__main__":
-            run_app(MyApp(config=Schema()))
+            run_app(MyApp())
 
 
     Attributes
@@ -94,9 +108,12 @@ class Application:
         The application key for the app, used to identify it in the Doover cloud. This is globally unique.
     """
 
+    config_class: type["Schema"] | None = None
+    ui_class: type[UI] | None = None
+    tags_class: type[Tags] | None = None
+
     def __init__(
         self,
-        config: "Schema",
         app_key: str = None,
         device_agent: DeviceAgentInterface = None,
         platform_iface: PlatformInterface = None,
@@ -106,7 +123,12 @@ class Application:
         config_fp: str = None,
         healthcheck_port: int = None,
     ):
-        self.config = config
+        self.config: "Schema" = self.__class__.config_class()
+
+        self._tags: Tags | None = None
+        self._ui: UI | None = None
+        self.app_key = app_key
+        self.app_display_name = ""
 
         if config_fp:
             path = Path(config_fp)
@@ -118,32 +140,31 @@ class Application:
 
         self.device_agent = device_agent or DeviceAgentInterface(app_key, "")
         self.platform_iface = platform_iface or PlatformInterface(app_key, "")
-        self.modbus_iface = modbus_iface or ModbusInterface(app_key, "", config)
+        self.modbus_iface = modbus_iface or ModbusInterface(
+            app_key, "", config=self.config
+        )
 
-        self.ui_manager = UIManager(
-            app_key=app_key,
+        self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
         )
 
+        self._ready = asyncio.Event()
+
         self.rpc = RPCManager(self)
+        self.ui_manager = UICommandsManager(self)
 
         self.app_key = app_key
         self.app_display_name = ""
 
-        self._ready = asyncio.Event()
-
-        self._tag_values = {}
-        self._tag_subscriptions = {}
-        self._tag_ready = asyncio.Event()
-
-        self._pending_tag_aggregate = {}
-        self._pending_tag_log = {}
-        self._tags_dirty = False
-        self._last_tag_log_time: float = 0.0
-        self.tag_log_interval: float = TAG_CLOUD_MAX_AGE
-
         self._shutdown_at = None
         self.force_log_on_shutdown = False
+
+        # fixme: app_key isn't actually set.
+        # tags_cls should also be copied to the instance on __init__
+        self.tags = self.__class__.tags_class(
+            self.app_key, self.tag_manager, self.config
+        )
+        self.ui = self.__class__.ui_class(self.config, self.tags)
 
         if name is None:
             self.name = self.__class__.__name__
@@ -187,7 +208,8 @@ class Application:
         log.info(f"Application display name set: {self.app_display_name}")
 
         log.info(f"Deployment Config Updated: {app_config}")
-        self.config._inject_deployment_config(app_config)
+        if self.config is not None:
+            self.config._inject_deployment_config(app_config)
 
     async def __aenter__(self):
         # any more setup here...
@@ -219,7 +241,10 @@ class Application:
             from pydoover.config import Schema
 
             async def test_app():
-                app = MyApp(config=Schema(), test_mode=True)
+                class MyApp(Application):
+                    config_class = Schema
+
+                app = MyApp(test_mode=True)
                 asyncio.create_task(run_app(app, start=False))
 
                 # wait for app to start
@@ -262,8 +287,9 @@ class Application:
         await self.device_agent.wait_until_healthy(self.dda_startup_timeout)
 
         if self._config_fp is not None:
-            data = json.loads(self._config_fp.read_text())
-            self.config._inject_deployment_config(data)
+            if self.config is not None:
+                data = json.loads(self._config_fp.read_text())
+                self.config._inject_deployment_config(data)
         else:
             self.device_agent.add_event_callback(
                 "deployment_config",
@@ -280,6 +306,9 @@ class Application:
             except Exception:
                 log.warning("No initial deployment config available from DDA")
 
+        # await self._resolve_tags()
+        # await self._resolve_ui()
+
         await self.modbus_iface.setup()
 
         try:
@@ -293,16 +322,16 @@ class Application:
             await asyncio.sleep(self._error_wait_period)
             return
 
-        self.ui_manager.start_comms()
-        await self.ui_manager.await_comms_sync(15)
         self._ready.set()
 
         try:
-            shutdown_at = self._tag_values["shutdown_at"]
+            shutdown_at = self.tag_manager.get_tag("shutdown_at", raise_key_error=True)
         except KeyError:
             pass
         else:
             await self._check_shutdown_at(shutdown_at)
+
+        self.tag_manager.subscribe_to_tag("shutdown_at", self._on_shutdown_at)
 
         ## allow for other async tasks to run between setup and loop
         await asyncio.sleep(0.2)
@@ -315,7 +344,7 @@ class Application:
             try:
                 await self._main_loop()
                 await self.main_loop()
-                await self._flush_tags()
+                await self.tag_manager.commit_tags()
             except Exception as e:
                 log.error(f"Error in loop function: {e}", exc_info=e)
                 log.warning(
@@ -662,41 +691,6 @@ class Application:
             max_age_secs=max_age_secs,
         )
 
-    ## UI Manager Functions
-
-    def set_ui_elements(self, elements):
-        return self.ui_manager.set_children(elements)
-
-    def get_command(self, name):
-        return self.ui_manager.get_command(name)
-
-    def coerce_command(self, name, value):
-        return self.ui_manager.coerce_command(name, value)
-
-    def record_critical_value(self, name, value):
-        return self.ui_manager.record_critical_value(name, value)
-
-    def set_ui_status_icon(self, icon):
-        return self.ui_manager.set_status_icon(icon)
-
-    def start_ui_comms(self):
-        return self.ui_manager.start_comms()
-
-    async def await_ui_comms_sync(self, timeout=10):
-        log.debug("Awaiting UI comms sync")
-        result = await self.ui_manager.await_comms_sync(timeout=timeout)
-        if result is False:
-            log.warning("UI comms sync timed out")
-        else:
-            log.debug("UI comms sync complete")
-        return result
-
-    def set_ui(self, ui):
-        self.ui_manager.set_children(ui)
-
-    async def _update_ui(self, force_log: bool = False):
-        await self.ui_manager.handle_comms_async(force_log)
-
     ## Platform Interface Functions
 
     def fetch_di(self, di):
@@ -771,25 +765,12 @@ class Application:
 
     @property
     def _shutdown_requested(self):
-        try:
-            return self._tag_values["shutdown_requested"]
-        except (KeyError, TypeError):
-            return False
+        return self.tag_manager.get_tag("shutdown_requested")
 
-    async def _on_tag_update(self, tag_values: dict[str, Any]):
-        diff = generate_diff(self._tag_values, tag_values, do_delete=False)
-        self._tag_values = tag_values or {}
-        await self.fulfill_tag_subscriptions(diff)
-
-        # signifies the first tag update (or any subsequent tag update) has run and we are ready to start.
-        self._tag_ready.set()
-
-        try:
-            shutdown_at = tag_values["shutdown_at"]
-        except (KeyError, TypeError):
-            pass
-        else:
-            await self._check_shutdown_at(shutdown_at)
+    async def _on_shutdown_at(self, _, shutdown_at):
+        if shutdown_at is None:
+            return
+        await self._check_shutdown_at(shutdown_at)
 
     async def _check_shutdown_at(self, shutdown_at):
         if not self.is_ready:
@@ -805,32 +786,6 @@ class Application:
             self._shutdown_at = dt
             await self.on_shutdown_at(dt)
 
-    async def fulfill_tag_subscriptions(self, diff):
-        if diff is None or len(diff) == 0:
-            return
-
-        async def _wrap_callback(callback, tag_key, new_value):
-            try:
-                await asyncio.wait_for(callback(tag_key, new_value), timeout=1)
-            except Exception as e:
-                log.exception(f"Error in {callback.__name__}: {e}", exc_info=e)
-
-        for k, callback in self._tag_subscriptions.items():
-            if isinstance(k, tuple):
-                app_key, tag_key = k
-                if app_key in diff and tag_key in diff[app_key]:
-                    new_value = (
-                        self._tag_values[app_key][tag_key]
-                        if app_key in self._tag_values
-                        and tag_key in self._tag_values[app_key]
-                        else None
-                    )
-                    await _wrap_callback(callback, tag_key, new_value)
-            else:
-                if k in diff:
-                    new_value = self._tag_values[k] if k in self._tag_values else None
-                    await _wrap_callback(callback, k, new_value)
-
     def subscribe_to_tag(
         self,
         tag_key: str,
@@ -839,11 +794,11 @@ class Application:
         global_tag: bool = False,
     ):
         if global_tag:
-            self._tag_subscriptions[tag_key] = callback
+            self.tag_manager.subscribe_to_tag(tag_key, callback=callback)
         else:
-            if app_key is None:
-                app_key = self.app_key
-            self._tag_subscriptions[(app_key, tag_key)] = callback
+            self.tag_manager.subscribe_to_tag(
+                tag_key, callback=callback, app_key=app_key or self.app_key
+            )
 
     def get_tag(
         self, tag_key: str, app_key: str = None, default: Any = None
@@ -877,13 +832,10 @@ class Application:
         Any
             The value of the tag, or None if the tag does not exist.
         """
-        try:
-            if app_key is None:
-                app_key = self.app_key
-            return self._tag_values[app_key][tag_key]
-        except (KeyError, TypeError):
-            log.debug(f"Tag {tag_key} not found in current tags")
-            return default
+
+        return self.tag_manager.get_tag(
+            tag_key, default=default, app_key=app_key or self.app_key
+        )
 
     def get_global_tag(self, tag_key: str, default: Any = None) -> Any | None:
         """Get a global tag value.
@@ -913,13 +865,9 @@ class Application:
         Any
             The value of the global tag, or None if the tag does not exist.
         """
-        try:
-            return self._tag_values[tag_key]
-        except (KeyError, TypeError):
-            log.debug(f"Global tag {tag_key} not found in current tags")
-            return default
+        return self.tag_manager.get_tag(tag_key, default=default, app_key=None)
 
-    def set_tag(
+    async def set_tag(
         self,
         tag_key: str,
         value: Any,
@@ -949,17 +897,24 @@ class Application:
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        self._do_set_tags(
-            {tag_key: value}, app_key=app_key, only_if_changed=only_if_changed
+        await self.tag_manager.set_tag(
+            tag_key,
+            value,
+            app_key=app_key or self.app_key,
+            only_if_changed=only_if_changed,
         )
 
-    def set_tags(
+    async def set_tags(
         self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
     ) -> None:
         """Set multiple tags at once."""
-        self._do_set_tags(tags, app_key=app_key, only_if_changed=only_if_changed)
+        await self.tag_manager.set_tags(
+            tags,
+            app_key=app_key or self.app_key,
+            only_if_changed=only_if_changed,
+        )
 
-    def set_global_tag(
+    async def set_global_tag(
         self, tag_key: str, value: Any, only_if_changed: bool = True
     ) -> None:
         """Set a global tag value.
@@ -980,10 +935,10 @@ class Application:
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
         """
-        self._do_set_tags(
-            {tag_key: value},
+        await self.tag_manager.set_tag(
+            tag_key,
+            value,
             app_key=None,
-            is_global=True,
             only_if_changed=only_if_changed,
         )
 
@@ -1013,54 +968,11 @@ class Application:
         apply_diff(self._pending_tag_aggregate, data, clone=False)
         self._tags_dirty = True
 
-    async def _flush_tags(self):
-        """Flush pending tag updates to the aggregate and optionally log a message."""
-        if self._tags_dirty:
-            data = self._pending_tag_aggregate
-            self._pending_tag_aggregate = {}
-            self._tags_dirty = False
-
-            await self.device_agent.update_channel_aggregate(TAG_CHANNEL_NAME, data)
-
-        now = time.time()
-        if self._pending_tag_log and (
-            now - self._last_tag_log_time >= self.tag_log_interval
-        ):
-            log_data = self._pending_tag_log
-            self._pending_tag_log = {}
-            self._last_tag_log_time = now
-
-            await self.device_agent.create_message(TAG_CHANNEL_NAME, log_data)
-
-    async def flush_tags(self):
-        """Force an immediate flush of all pending tag updates and log a message.
-
-        By default, tag aggregate updates are flushed once per main loop cycle,
-        and tag log messages are created at most once per :attr:`tag_log_interval` seconds.
-
-        Call this method to force both an immediate aggregate update and a log message,
-        regardless of timing.
-        """
-        if self._tags_dirty:
-            data = self._pending_tag_aggregate
-            self._pending_tag_aggregate = {}
-            self._tags_dirty = False
-
-            await self.device_agent.update_channel_aggregate(TAG_CHANNEL_NAME, data)
-
-        if self._pending_tag_log:
-            log_data = self._pending_tag_log
-            self._pending_tag_log = {}
-            self._last_tag_log_time = time.time()
-
-            await self.device_agent.create_message(TAG_CHANNEL_NAME, log_data)
-
     ## Power Manager Functions
-
-    def request_shutdown(self) -> None:
+    async def request_shutdown(self) -> None:
         """Request a system shutdown."""
         log.info("Requesting shutdown")
-        self.set_tag("shutdown_requested", True)
+        await self.set_global_tag("shutdown_requested", True)
 
     async def on_shutdown_at(self, dt: datetime) -> None:
         """Callback for when a shutdown is scheduled.
@@ -1089,8 +1001,10 @@ class Application:
         dt : datetime
             The datetime when the shutdown is scheduled.
         """
-        if self.force_log_on_shutdown:
-            await self._update_ui(force_log=True)
+        pass
+        # if self.force_log_on_shutdown:
+        #     await self._update_ui(force_log=True)
+        # fixme: this should probs update tags?
 
     async def check_can_shutdown(self) -> bool:
         """Check if the application can shutdown.
@@ -1128,29 +1042,40 @@ class Application:
 
     async def _setup(self):
         log.info(f"Setting up internal app: {self.name}")
-        self.ui_manager.register_callbacks(self)
         self.rpc.register_handlers(self)
-        self.ui_manager.set_display_name(self.app_display_name)
-        self.device_agent.add_event_callback(
-            TAG_CHANNEL_NAME,
-            self._wrap_aggregate_callback(self._on_tag_update),
-            EventSubscription.aggregate_update,
-        )
+        self.ui_manager.register_handlers(self)
+
+        await self.tags.setup()
+        await self.ui.setup()
+        self.ui_manager._set_interactions(self.ui.get_interactions())
+
+        # bit of a cheeky double publish to ensure the old schema is cleared before we set it.
+        # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
+        if not self.ui.is_static:
+            log.info("Updating ui_state with runtime-generated schema.")
+            schema = self.ui.to_schema()
+            await self.update_channel_aggregate(
+                "ui_state",
+                {"state": {"children": {self.app_key: None}}},
+                max_age_secs=-1,
+            )
+            await self.update_channel_aggregate(
+                "ui_state",
+                {"state": {"children": {self.app_key: schema}}},
+                max_age_secs=-1,
+            )
 
         if self.test_mode:
             ## Quit out of setup if we are in test mode.
+            await self.tag_manager.setup(skip_sync=True)
             return
 
         # Fetch initial tag values from the aggregate cache (seeded by _run_channel_stream)
-        await self.device_agent.wait_for_channels_sync([TAG_CHANNEL_NAME], timeout=10)
         try:
-            tag_agg = await self.device_agent.fetch_channel_aggregate(TAG_CHANNEL_NAME)
-            self._tag_values = tag_agg.data
-            self._tag_ready.set()
-        except Exception:
-            log.warning("No initial tag values available from DDA")
-
-        await self.ui_manager.clear_ui_async()
+            # wait for tag values to sync from DDA - but only for 10sec.
+            await asyncio.wait_for(self.tag_manager.setup(), timeout=10.0)
+        except TimeoutError:
+            log.warning("Timed out waiting for tag values to be set")
 
     async def _main_loop(self):
         log.debug(f"Running internal main_loop: {self.name}")
@@ -1164,9 +1089,7 @@ class Application:
                 )
                 resp = False
 
-            self.set_tag("shutdown_check_ok", resp)
-
-        await self._update_ui()
+            await self.set_tag("shutdown_check_ok", resp)
 
     async def setup(self):
         """The main setup function for the application.
@@ -1287,7 +1210,7 @@ def run_app(
         from .app_config import SampleConfig
 
         def main():
-            run_app(SampleApplication(config=SampleConfig()))
+            run_app(SampleApplication())
 
 
     Parameters
@@ -1324,6 +1247,8 @@ def run_app(
         app.modbus_iface,
         app.device_agent,
         app.ui_manager,
+        app.tag_manager,
+        app.tags,
     ):
         inst.app_key = app_key
 
@@ -1348,7 +1273,6 @@ def run_app(
 
 def run_app2(
     app_cls: type[Application],
-    config: "Schema",
     dda_iface_cls: type[DeviceAgentInterface] = DeviceAgentInterface,
     plt_iface_cls: type[PlatformInterface] = PlatformInterface,
     mb_iface_cls: type[ModbusInterface] = ModbusInterface,
@@ -1365,16 +1289,17 @@ def run_app2(
     ) = parse_args()
 
     utils_setup_logging(debug)
+    config = app_cls.config_class() if app_cls.config_class is not None else None
 
     app = app_cls(
-        config,
         app_key,
         platform_iface=plt_iface_cls(app_key, plt_uri),
-        modbus_iface=mb_iface_cls(app_key, modbus_uri, config),
+        modbus_iface=mb_iface_cls(app_key, modbus_uri, config=config),
         device_agent=dda_iface_cls(app_key, dda_uri),
         config_fp=config_fp,
         healthcheck_port=healthcheck_port,
     )
+    app.config = config
 
     async def runner():
         async with app:

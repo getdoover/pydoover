@@ -40,8 +40,8 @@ class Application(ApplicationBase):
     async def on_schedule(self, event: ScheduleEvent):
         log.info("Schedule Report Generation")
 
-        execution_timezone: str = self.config.dv_proc_timezone.value
-        schedule: str = self.config.dv_proc_schedules.value
+        execution_timezone: str = self.config.dv_proc_timezone
+        schedule: str = self.config.dv_proc_schedules
 
         if not isinstance(schedule, str):
             log.error(f"Schedule must be a string: {schedule}, not '{type(schedule)}'")
