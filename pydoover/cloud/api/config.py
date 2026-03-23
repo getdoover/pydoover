@@ -7,13 +7,12 @@ use ``pydoover.cloud.api``.
 """
 
 from __future__ import annotations
-import os
 
 import base64
 import re
 from datetime import datetime, timezone
 
-from ...api.auth import AuthProfile, ConfigManager
+from ...api.auth import AuthProfile
 
 
 class ConfigEntry(AuthProfile):
@@ -99,7 +98,6 @@ class ConfigEntry(AuthProfile):
         )
 
     def format(self):
-        password = self.password or ""
         return (
             "ConfigEntry "
             f"<profile={self.profile}, username={self.username}, base_url={self.base_url}>"
@@ -108,4 +106,3 @@ class ConfigEntry(AuthProfile):
     @property
     def is_doover2(self) -> bool:
         return self._is_doover2
-
