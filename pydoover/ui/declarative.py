@@ -175,6 +175,7 @@ class UI:
             "hidden": self.hidden,
             "position": self.position,
             "type": "uiApplication",
+            "name": "$config.app().APP_KEY",
             "children": {e.name: e.to_dict() for e in self._elements.values()},
         }
         if resolve_config and self.config is not None:
