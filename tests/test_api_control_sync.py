@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -179,5 +180,60 @@ def test_sync_client_can_lookup_control_methods_by_model_name_or_class():
     assert themes.available_operations() == ("get", "patch", "put", "list")
     with pytest.raises(ControlMethodUnavailableError):
         themes.post()
+
+    client.close()
+
+
+def test_sync_client_sends_non_binary_multipart_fields_via_files():
+    client, session = make_client(DummyResponse(200, json_body=THEME_WITH_ID))
+    client._parse_response = lambda *args, **kwargs: None
+
+    client.applications.processor_source(
+        "7",
+        body={
+            "name": "processor.py",
+            "published": True,
+            "config": {"version": 1},
+            "steps": ["build", "deploy"],
+            "source_url": None,
+        },
+    )
+
+    method, url, kwargs = session.calls[0]
+
+    assert method == "PUT"
+    assert url == "https://control.example/applications/7/processor_source/"
+    assert "data" not in kwargs
+    assert kwargs["files"] == {
+        "name": (None, "processor.py"),
+        "published": (None, "true"),
+        "config": (None, json.dumps({"version": 1})),
+        "steps": (None, json.dumps(["build", "deploy"])),
+    }
+
+    client.close()
+
+
+def test_sync_client_combines_text_and_binary_multipart_fields(tmp_path: Path):
+    upload = tmp_path / "processor.py"
+    upload.write_text("print('ok')", encoding="utf-8")
+    client, session = make_client(DummyResponse(200, json_body=THEME_WITH_ID))
+
+    client._execute(
+        "PUT",
+        "/upload/",
+        body={"label": "processor", "file": upload},
+        body_mode="multipart",
+        binary_fields={"file"},
+    )
+
+    _, _, kwargs = session.calls[0]
+
+    assert kwargs["files"]["label"] == (None, "processor")
+    assert kwargs["files"]["file"] == (
+        "processor.py",
+        b"print('ok')",
+        "application/octet-stream",
+    )
 
     client.close()

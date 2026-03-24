@@ -91,22 +91,23 @@ class ControlClient(ControlClientGroups, BaseControlClient):
 
                 if payload is not None:
                     if body_mode == "multipart":
-                        data: dict[str, str] = {}
                         files: dict[str, tuple[str, bytes, str]] = {}
+                        multipart_fields: dict[str, tuple[None, str]] = {}
                         for key, value in payload.items():
                             if value is None:
                                 continue
                             if binary_fields and key in binary_fields:
                                 files[key] = _coerce_file_value(key, value)
                             elif isinstance(value, (dict, list)):
-                                data[key] = json.dumps(value)
+                                multipart_fields[key] = (None, json.dumps(value))
                             elif isinstance(value, bool):
-                                data[key] = str(value).lower()
+                                multipart_fields[key] = (None, str(value).lower())
                             else:
-                                data[key] = str(value)
-                        request_kwargs["data"] = data
-                        if files:
-                            request_kwargs["files"] = files
+                                multipart_fields[key] = (None, str(value))
+                        request_kwargs["files"] = {
+                            **multipart_fields,
+                            **files,
+                        }
                     else:
                         request_kwargs["json"] = payload
 
