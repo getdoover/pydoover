@@ -152,9 +152,10 @@ class UI:
         cls.hidden = hidden
         cls.position = position
 
-    def __init__(self, config: Schema, tags: Tags):
+    def __init__(self, config: Schema, tags: Tags, app_key: str):
         self.config = config
         self.tags = tags
+        self.app_key = app_key
 
         self._elements: dict[str, Any] = dict(
             (name, copy.deepcopy(declaration.template))
