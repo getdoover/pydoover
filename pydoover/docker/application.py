@@ -1258,7 +1258,8 @@ def run_app(
         app.tag_manager,
         app.tags,
     ):
-        inst.app_key = app_key
+        if inst is not None:
+            inst.app_key = app_key
 
     app.platform_iface.uri = plt_uri
     app.modbus_iface.uri = modbus_uri
