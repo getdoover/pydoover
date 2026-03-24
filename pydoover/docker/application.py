@@ -162,12 +162,14 @@ class Application:
         # fixme: app_key isn't actually set.
         # tags_cls should also be copied to the instance on __init__
         if self.__class__.tags_cls is not None:
-            self.tags = self.__class__.tags_cls(self.app_key, self.tag_manager, self.config)
+            self.tags = self.__class__.tags_cls(
+                self.app_key, self.tag_manager, self.config
+            )
         else:
             self.tags = None
 
         if self.__class__.ui_cls is not None:
-            self.ui = self.__class__.ui_cls(self.config, self.tags)
+            self.ui = self.__class__.ui_cls(self.config, self.tags, self.app_key)
         else:
             self.ui = None
 
@@ -1257,6 +1259,7 @@ def run_app(
         app.ui_manager,
         app.tag_manager,
         app.tags,
+        app.ui,
     ):
         if inst is not None:
             inst.app_key = app_key

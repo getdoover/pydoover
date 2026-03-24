@@ -107,6 +107,15 @@ class Schema:
 
     @classmethod
     def _load_elements(cls):
+        # inherit parent elements
+        for base in cls.__mro__[1:]:
+            if base is Schema or not issubclass(base, Schema):
+                continue
+            for name, elem in getattr(base, "_element_map", {}).items():
+                if name not in cls._element_map:
+                    cls._element_map[name] = elem
+
+        # collect own elements
         for k, v in cls.__dict__.items():
             if isinstance(v, ConfigElement):
                 if k in RESERVED_NAMES:
@@ -780,6 +789,18 @@ class Object(ConfigElement):
 
     @classmethod
     def load_elements(cls):
+        # inherit parent elements
+        for base in cls.__mro__[1:]:
+            if base is Object or not issubclass(base, Object):
+                continue
+            for name, elem in getattr(base, "_cls_elements", {}).items():
+                if name not in cls._cls_elements:
+                    cls._cls_elements[name] = elem
+            for attr, name in getattr(base, "_attr_to_name", {}).items():
+                if attr not in cls._attr_to_name:
+                    cls._attr_to_name[attr] = name
+
+        # collect own elements
         for k, v in cls.__dict__.items():
             if isinstance(v, ConfigElement):
                 if k in RESERVED_NAMES:
