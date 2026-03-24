@@ -161,8 +161,15 @@ class Application:
 
         # fixme: app_key isn't actually set.
         # tags_cls should also be copied to the instance on __init__
-        self.tags = self.__class__.tags_cls(self.app_key, self.tag_manager, self.config)
-        self.ui = self.__class__.ui_cls(self.config, self.tags)
+        if self.__class__.tags_cls is not None:
+            self.tags = self.__class__.tags_cls(self.app_key, self.tag_manager, self.config)
+        else:
+            self.tags = None
+
+        if self.__class__.ui_cls is not None:
+            self.ui = self.__class__.ui_cls(self.config, self.tags)
+        else:
+            self.ui = None
 
         if name is None:
             self.name = self.__class__.__name__
@@ -1043,25 +1050,28 @@ class Application:
         self.rpc.register_handlers(self)
         self.ui_manager.register_handlers(self)
 
-        await self.tags.setup()
-        await self.ui.setup()
-        self.ui_manager._set_interactions(self.ui.get_interactions())
+        if self.tags is not None:
+            await self.tags.setup()
 
-        # bit of a cheeky double publish to ensure the old schema is cleared before we set it.
-        # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
-        if not self.ui.is_static:
-            log.info("Updating ui_state with runtime-generated schema.")
-            schema = self.ui.to_schema()
-            await self.update_channel_aggregate(
-                "ui_state",
-                {"state": {"children": {self.app_key: None}}},
-                max_age_secs=-1,
-            )
-            await self.update_channel_aggregate(
-                "ui_state",
-                {"state": {"children": {self.app_key: schema}}},
-                max_age_secs=-1,
-            )
+        if self.ui is not None:
+            await self.ui.setup()
+            self.ui_manager._set_interactions(self.ui.get_interactions())
+
+            # bit of a cheeky double publish to ensure the old schema is cleared before we set it.
+            # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
+            if not self.ui.is_static:
+                log.info("Updating ui_state with runtime-generated schema.")
+                schema = self.ui.to_schema()
+                await self.update_channel_aggregate(
+                    "ui_state",
+                    {"state": {"children": {self.app_key: None}}},
+                    max_age_secs=-1,
+                )
+                await self.update_channel_aggregate(
+                    "ui_state",
+                    {"state": {"children": {self.app_key: schema}}},
+                    max_age_secs=-1,
+                )
 
         if self.test_mode:
             ## Quit out of setup if we are in test mode.
