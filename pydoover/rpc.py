@@ -270,6 +270,17 @@ class RPCManager:
             return
 
         try:
+            app_key = event.message.data["app_key"]
+        except KeyError:
+            pass
+        else:
+            if app_key != self.api.app_key:
+                log.debug(
+                    f"Skipping RPC request for app_key={app_key!r} (ours={getattr(self.api, 'app_key', None)!r})"
+                )
+                return
+
+        try:
             payload = event.message.data["request"]
         except KeyError:
             log.info(f"Received malformed RPC request: {event.message.data}")
