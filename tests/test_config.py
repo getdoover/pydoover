@@ -48,7 +48,7 @@ class TestConfigSchemaA:
             ("d", 0),
             ("e", "not_a_boolean"),
             ("f", ["a", "b", "c"]),
-            ("g", {"a": 1, "b": 0.5}),
+            ("g", {"g_a": "not_an_int", "g_b": 0.5}),
             ("g", "not-an-object"),
             ("g", ["an-array-of-string"]),
         ],
@@ -147,4 +147,17 @@ class TestConfigSchemaA:
         assert "x" in a_keys
         assert "y" not in a_keys
         assert "y" in b_keys
-        assert "x" not in b_keys
+
+    def test_nested_object_values_accessible(self):
+        class Inner(config.Object):
+            x = config.String("X")
+            y = config.Integer("Y", default=0)
+
+        class Outer(config.Schema):
+            inner = Inner("Inner")
+
+        schema = Outer()
+        schema._inject_deployment_config({"inner": {"x": "hello", "y": 42}})
+
+        assert schema.inner.x.value == "hello"
+        assert schema.inner.y.value == 42

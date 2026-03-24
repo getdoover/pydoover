@@ -315,21 +315,11 @@ class Application:
             log.info("Post-setup filter rejected event.")
             return None
 
-        result = None
-        if func is None or payload is None:
-            log.error(f"Unknown event type: {event['op']}")
-        else:
-            try:
-                s = time.perf_counter()
-                result = await func(payload)
-                log.info(f"Processing event took {time.perf_counter() - s} seconds.")
-            except Exception as e:
-                log.error(f"Error attempting to process event: {e} ", exc_info=e)
-
         # fixme: publish UI if needed
         if not self.ui.is_static:
             log.info("Updating ui_state with runtime-generated schema.")
             schema = self.ui.to_schema()
+            print(schema)
             await self.api.update_channel_aggregate(
                 self.agent_id,
                 "ui_state",
@@ -340,6 +330,17 @@ class Application:
                 "ui_state",
                 {"state": {"children": {self.app_key: schema}}},
             )
+
+        result = None
+        if func is None or payload is None:
+            log.error(f"Unknown event type: {event['op']}")
+        else:
+            try:
+                s = time.perf_counter()
+                result = await func(payload)
+                log.info(f"Processing event took {time.perf_counter() - s} seconds.")
+            except Exception as e:
+                log.error(f"Error attempting to process event: {e} ", exc_info=e)
 
         if self.tag_manager is None:
             raise RuntimeError("Tag manager has not been initialized.")

@@ -111,8 +111,8 @@ class UI:
     def __init_subclass__(
         cls,
         display_name: str = "$config.app().APP_DISPLAY_NAME",
-        hidden: bool | str = "$config.app().hidden",
-        position: int | str = "$config.app().position",
+        hidden: bool | str = "$config.app().hidden:boolean:false",
+        position: int | str = "$config.app().position:number:50",
         **kwargs,
     ):
         super().__init_subclass__(**kwargs)
@@ -438,9 +438,9 @@ def _resolve_single_config_ref(value: str, config: Schema) -> Any:
     key, type_hint, default = match.groups()
 
     try:
-        element = config.element(key)
+        element = getattr(config, key)
         raw = element.value
-    except (KeyError, ValueError):
+    except (ValueError, AttributeError):
         raw = None
 
     if raw is None:

@@ -25,6 +25,37 @@ class NotSet:
     """Sentinel used when a config value has not been assigned."""
 
 
+# Attribute names reserved for ConfigElement internal use.
+# Config elements declared as class attributes must not use these names.
+RESERVED_NAMES = frozenset(
+    {
+        "default",
+        "description",
+        "hidden",
+        "deprecated",
+        "format",
+        "required",
+        "value",
+        "choices",
+        "element",
+        "elements",
+        "minimum",
+        "exclusive_minimum",
+        "maximum",
+        "exclusive_maximum",
+        "multiple_of",
+        "length",
+        "pattern",
+        "min_items",
+        "max_items",
+        "unique_items",
+        "additional_elements",
+        "collapsible",
+        "default_collapsed",
+    }
+)
+
+
 class Schema:
     """Represents the configuration schema for a Doover application.
 
@@ -78,6 +109,11 @@ class Schema:
     def _load_elements(cls):
         for k, v in cls.__dict__.items():
             if isinstance(v, ConfigElement):
+                if k in RESERVED_NAMES:
+                    raise ValueError(
+                        f"Config element name '{k}' is reserved. "
+                        f"Choose a different attribute name."
+                    )
                 cls.add_element(v)
 
     @classmethod
@@ -109,7 +145,10 @@ class Schema:
             try:
                 elem = self._element_map[name]
             except KeyError:
-                log.debug(f"Skipping unknown config key {name} ({value})")
+                print(f"Loading new element: {name}, {value}")
+                v = ConfigElement(name)
+                v.load_data(value)
+                setattr(self, name, v)
             else:
                 elem.load_data(value)
 
@@ -195,13 +234,12 @@ class ConfigElement:
     ):
         if name is not None:
             check_key(name)
-            resolved_name = name
+            self._name = name
         else:
-            resolved_name = display_name
+            self._name = sanitize_display_name(display_name)
 
-        self._name = sanitize_display_name(resolved_name)
         self._position = position
-        self.display_name = display_name
+        self._display_name = display_name
         self.default = default
         self.description = description
         self.hidden = hidden
@@ -254,7 +292,7 @@ class ConfigElement:
 
     def to_dict(self):
         payload = {
-            "title": self.display_name,
+            "title": self._display_name,
             "x-name": self._name,
             "x-hidden": self.hidden,
         }
@@ -720,13 +758,16 @@ class Object(ConfigElement):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls._cls_elements = {}
+        cls._attr_to_name = {}
         cls.load_elements()
 
     def __getattribute__(self, key):
-        # Check instance _elements first for declared config elements
+        # Map Python attr name -> element _name, then look up in _elements
         if not key.startswith("_"):
             try:
-                return super().__getattribute__("_elements")[key]
+                attr_map = super().__getattribute__("_attr_to_name")
+                elements = super().__getattribute__("_elements")
+                return elements[attr_map[key]]
             except (KeyError, AttributeError):
                 pass
 
@@ -736,6 +777,12 @@ class Object(ConfigElement):
     def load_elements(cls):
         for k, v in cls.__dict__.items():
             if isinstance(v, ConfigElement):
+                if k in RESERVED_NAMES:
+                    raise ValueError(
+                        f"Config element name '{k}' is reserved. "
+                        f"Choose a different attribute name."
+                    )
+                cls._attr_to_name[k] = v._name
                 cls._add_cls_element(v)
 
     @classmethod
@@ -778,8 +825,6 @@ class Object(ConfigElement):
                     self._elements[name] = ConfigElement(name, default=value)
                 else:
                     raise ValueError(f"Unknown element {name} in config.")
-
-            print(f"loading, {name}, {value}, {self._elements}")
 
 
 class Variable:
