@@ -303,7 +303,8 @@ class RPCManager:
             else:
                 payload = parser(payload)
 
-        can_respond = isinstance(event, MessageCreateEvent)
+        # we can't isinstance MessageCreateEvent because OneShotMessage is a subclass
+        can_respond = not isinstance(event, OneShotMessage)
 
         try:
             result = await method_handler(ctx, payload)
