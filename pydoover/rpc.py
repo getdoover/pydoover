@@ -17,6 +17,7 @@ from .models import (
     MessageCreateEvent,
     MessageUpdateEvent,
     Message,
+    OneShotMessage,
 )
 
 if TYPE_CHECKING:
@@ -167,7 +168,9 @@ class RPCManager:
         self.api.add_event_callback(
             channel_name,
             self._on_event,
-            EventSubscription.message_create | EventSubscription.message_update,
+            EventSubscription.message_create
+            | EventSubscription.message_update
+            | EventSubscription.oneshot_message,
         )
         log.info(f"RPC subscribed to channel: {channel_name}")
 
@@ -231,7 +234,7 @@ class RPCManager:
 
     async def _on_event(self, event) -> None:
         """Route incoming events to handler dispatch or future resolution."""
-        if isinstance(event, MessageCreateEvent):
+        if isinstance(event, (MessageCreateEvent, OneShotMessage)):
             await self._handle_request(event)
         elif isinstance(event, MessageUpdateEvent):
             self._handle_response(event)
@@ -253,7 +256,7 @@ class RPCManager:
             _update_fn=self.api.update_message,
         )
 
-    async def _handle_request(self, event: MessageCreateEvent) -> None:
+    async def _handle_request(self, event: MessageCreateEvent | OneShotMessage) -> None:
         """Dispatch an incoming RPC request to the appropriate handler."""
         try:
             event_type = event.message.data["type"]
@@ -276,7 +279,7 @@ class RPCManager:
         else:
             if app_key != self.api.app_key:
                 log.debug(
-                    f"Skipping RPC request for app_key={app_key!r} (ours={getattr(self.api, 'app_key', None)!r})"
+                    f"Skipping RPC request for app_key={app_key!r} (ours={self.api.app_key!r})"
                 )
                 return
 
@@ -300,25 +303,34 @@ class RPCManager:
             else:
                 payload = parser(payload)
 
+        can_respond = isinstance(event, MessageCreateEvent)
+
         try:
             result = await method_handler(ctx, payload)
         except RPCError as e:
-            await self._send_error(channel_name, event.message.id, e.code, e.message)
+            if can_respond:
+                await self._send_error(
+                    channel_name, event.message.id, e.code, e.message
+                )
         except Exception as e:
             log.error(
                 f"Unhandled exception in RPC handler '{method_handler}': {e}",
                 exc_info=e,
             )
-            await self._send_error(
-                channel_name, event.message.id, "INTERNAL_ERROR", str(e)
-            )
+            if can_respond:
+                await self._send_error(
+                    channel_name, event.message.id, "INTERNAL_ERROR", str(e)
+                )
         else:
             if result is None:
                 result = {}
 
-            await self._send_result(
-                channel_name, event.message.id, {"status": "success", "result": result}
-            )
+            if can_respond:
+                await self._send_result(
+                    channel_name,
+                    event.message.id,
+                    {"status": "success", "result": result},
+                )
 
     def _handle_response(self, event: MessageUpdateEvent) -> None:
         """Resolve a pending future if this update is an RPC response."""
