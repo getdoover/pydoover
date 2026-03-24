@@ -8,6 +8,23 @@ class NotSet:
     """Sentinel used when a tag has not been assigned a value."""
 
 
+def _coerce_tag_value(value: Any, tag_type: str) -> Any:
+    """Coerce a tag value to match its declared type.
+
+    JSON does not distinguish between integers and floats, so values
+    from channels often arrive as float even when the tag is declared
+    as ``"integer"``.  This function normalises the value based on the
+    declared ``tag_type``.
+    """
+    if value is None or value is NotSet:
+        return value
+    if tag_type == "integer" and isinstance(value, float) and value.is_integer():
+        return int(value)
+    if tag_type == "boolean" and not isinstance(value, bool):
+        return bool(value)
+    return value
+
+
 class Tag:
     """Represents a single declared tag definition."""
 
@@ -329,11 +346,12 @@ class Tags:
         if self._manager is None:
             return declaration.template.default
 
-        return self._manager.get_tag(
+        value = self._manager.get_tag(
             declaration.name,
             default=declaration.template.default,
             app_key=self.app_key,
         )
+        return _coerce_tag_value(value, declaration.template.tag_type)
 
     async def _set_tag_value(self, name: str, value: Any) -> None:
         declaration = self._get_declaration(name)
