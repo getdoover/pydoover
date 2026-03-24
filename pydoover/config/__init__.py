@@ -386,6 +386,11 @@ class Integer(ConfigElement):
         self.exclusive_maximum = exclusive_maximum
         self.multiple_of = multiple_of
 
+    def load_data(self, data):
+        if isinstance(data, float) and data.is_integer():
+            data = int(data)
+        self.value = data
+
     def to_dict(self):
         res = super().to_dict()
         if self.minimum is not None:

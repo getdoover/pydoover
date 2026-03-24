@@ -456,6 +456,9 @@ class PlatformInterface(GRPCInterface):
         if isinstance(pins, int):
             return [pins]
 
+        if isinstance(pins, float) and pins.is_integer():
+            return [int(pins)]
+
         if not isinstance(pins, Iterable):
             raise ValueError("Pins must be iterable or integer.")
 
