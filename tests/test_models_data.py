@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from pydoover.utils.snowflake import generate_snowflake_id_at
-from pydoover.models import (
+from pydoover.models.data import (
     Aggregate,
     AggregateUpdateEvent,
     Attachment,
@@ -592,7 +592,7 @@ class TestReExports:
         assert TurnCredential is not None
 
     def test_processor_types_reexport(self):
-        from pydoover.cloud.processor.types import (
+        from pydoover.models import (
             AggregateUpdateEvent,
             DeploymentEvent,
         )

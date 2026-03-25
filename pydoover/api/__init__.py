@@ -1,5 +1,11 @@
+from .control import (
+    AsyncControlClient,
+    ControlClient,
+    ControlMethodUnavailableError,
+    ControlResourceMethods,
+)
 from .data import AsyncDataClient, DataClient, UNSET
-from ..models.exceptions import (
+from ..models.data.exceptions import (
     BadRequestError,
     DooverAPIError,
     ForbiddenError,
@@ -10,7 +16,11 @@ from ..models.exceptions import (
 )
 
 __all__ = [
+    "AsyncControlClient",
     "AsyncDataClient",
+    "ControlClient",
+    "ControlMethodUnavailableError",
+    "ControlResourceMethods",
     "DataClient",
     "UNSET",
     "BadRequestError",

@@ -249,8 +249,8 @@ class SubSection:
                 return preferred
 
         return None
-    
-    
+
+
 class _CommandFunction(Protocol):
     __name__: str
     _is_command: bool

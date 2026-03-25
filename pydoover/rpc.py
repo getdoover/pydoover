@@ -12,7 +12,7 @@ from collections.abc import Callable
 from datetime import timezone, timedelta, datetime
 from typing import Any, TYPE_CHECKING, Union
 
-from .models import (
+from .models.data import (
     EventSubscription,
     MessageCreateEvent,
     MessageUpdateEvent,

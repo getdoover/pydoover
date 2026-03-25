@@ -1,7 +1,7 @@
 from typing import Any
 
 try:
-    from .generated.device_agent.device_agent_pb2 import (
+    from ..generated.device_agent.device_agent_pb2 import (
         Attachment as ProtoAttachment,
         File as ProtoFile,
     )

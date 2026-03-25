@@ -49,6 +49,7 @@ dev = [
     "grpcio-tools>=1.65.1",
     "pre-commit>=4.2.0",
     "pytest>=8.3.5",
+    "pyyaml>=6.0.2",
 ]
 
 
@@ -61,6 +62,9 @@ pydoover = "pydoover.cli:entrypoint"
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "session"
+markers = [
+    "live: tests that call live external Doover services",
+]
 
 [tool.ruff]
 exclude = [
