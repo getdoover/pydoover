@@ -274,7 +274,13 @@ class ControlModel:
 
             value = getattr(self, field_name, None)
             if value is None:
+                output_key = config.get("output_id", field_name)
+                field = type(self)._field_defs[field_name]
+
                 if config.get("required"):
+                    if field.nullable:
+                        result[output_key] = None
+                        continue
                     raise TypeError(
                         f"Missing required field {field_name!r} for version {version_name!r}"
                     )

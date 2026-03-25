@@ -3,6 +3,7 @@ import inspect
 
 import pydoover.models.control as control
 from pydoover.models.control import (
+    Application,
     CONTROL_SCHEMA_REGISTRY,
     ControlPage,
     Device,
@@ -95,6 +96,42 @@ def test_device_resource_fields_accept_bare_ids():
         "type_id": 201,
         "group_id": 301,
     }
+
+
+def test_application_request_serializes_required_nullable_resource_fields_as_null():
+    application = Application(
+        name="processor-app",
+        display_name="Processor App",
+        description="Processor app",
+        type="processor",
+        visibility="private",
+        depends_on=[],
+        organisation=None,
+        container_registry_profile=None,
+    )
+
+    assert application.to_version("ApplicationSerializerDetailRequest", method="POST") == {
+        "name": "processor-app",
+        "display_name": "Processor App",
+        "description": "Processor app",
+        "type": "processor",
+        "visibility": "private",
+        "depends_on": [],
+        "organisation_id": None,
+        "container_registry_profile_id": None,
+    }
+
+
+def test_required_non_nullable_fields_still_raise_when_missing_from_version_payload():
+    device = Device(display_name="Device Only")
+
+    try:
+        device.to_version("DeviceSerializerDetailRequest", method="POST")
+    except TypeError as exc:
+        assert "Missing required field" in str(exc)
+        assert "DeviceSerializerDetailRequest" in str(exc)
+    else:
+        raise AssertionError("Expected TypeError for missing required non-nullable field")
 
 
 def test_control_models_expose_field_annotations_for_type_checkers():
