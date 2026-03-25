@@ -1,7 +1,7 @@
 [project]
 name = "pydoover"
 authors = [{ name = "Doover Team", email = "developers@doover.com" }]
-version = "0.4.18"
+version = "1.0.0a1"
 description = "Python package for interacting with Doover"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -73,9 +73,7 @@ exclude = [
 
 [tool.ty.src]
 exclude = [
-    "pydoover/docker/device_agent/grpc_stubs/**",
-    "pydoover/docker/modbus/grpc_stubs/**",
-    "pydoover/docker/platform/grpc_stubs/**",
+    "pydoover/models/generated",
 ]
 
 [tool.ty.rules]
