@@ -66,7 +66,7 @@ class InteractionContext(RPCContext, Generic[InteractionT]):
 class UICommandsManager(RPCManager):
     def __init__(self, app):
         super().__init__(app)
-        self.app_key = self._app.app_key
+        self.app_key = self.api.app_key
 
         self.values = {}
         self._interactions = {}
@@ -80,7 +80,7 @@ class UICommandsManager(RPCManager):
     def subscribe(self, channel_name: str) -> None:
         super().subscribe(channel_name)
 
-        self._app.device_agent.add_event_callback(
+        self.api.add_event_callback(
             channel_name,
             self._on_aggregate_update,
             EventSubscription.aggregate_update,
@@ -93,11 +93,11 @@ class UICommandsManager(RPCManager):
             self.values = {}
 
     async def set_value(self, key, value, log_update: bool = True):
-        await self._app.update_channel_aggregate(
+        await self.api.update_channel_aggregate(
             UI_CMDS_CHANNEL, {self.app_key: {key: value}}
         )
         if log_update:
-            await self._app.create_message(
+            await self.api.create_message(
                 UI_CMDS_CHANNEL,
                 {"type": "log", "app_key": self.app_key, "key": key, "value": value},
             )
@@ -114,7 +114,7 @@ class UICommandsManager(RPCManager):
 
     def _build_context(self, method, event: MessageCreateEvent | MessageUpdateEvent):
         return InteractionContext(
-            method, event.message, self._interactions[method], self._app.update_message
+            method, event.message, self._interactions[method], self.api.update_message
         )
 
     def check_handler(self, func: Callable):

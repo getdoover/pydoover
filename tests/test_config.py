@@ -37,7 +37,7 @@ SAMPLE_CONFIG_A = {
 
 class TestConfigSchemaA:
     def test_ok_schema(self):
-        validate(deepcopy(SAMPLE_CONFIG_A), ConfigSchemaA().to_dict())
+        validate(deepcopy(SAMPLE_CONFIG_A), ConfigSchemaA().to_schema())
 
     @pytest.mark.parametrize(
         "key, value",
@@ -48,7 +48,7 @@ class TestConfigSchemaA:
             ("d", 0),
             ("e", "not_a_boolean"),
             ("f", ["a", "b", "c"]),
-            ("g", {"a": 1, "b": 0.5}),
+            ("g", {"g_a": "not_an_int", "g_b": 0.5}),
             ("g", "not-an-object"),
             ("g", ["an-array-of-string"]),
         ],
@@ -57,107 +57,107 @@ class TestConfigSchemaA:
         sample_config = deepcopy(SAMPLE_CONFIG_A)
         sample_config[key] = value
         with pytest.raises(ValidationError):
-            validate(sample_config, ConfigSchemaA().to_dict())
+            validate(sample_config, ConfigSchemaA().to_schema())
 
     def test_enum(self):
         sample_config = deepcopy(SAMPLE_CONFIG_A)
         sample_config["d"] = "not-a-choice"
         with pytest.raises(ValidationError):
-            validate(sample_config, ConfigSchemaA().to_dict())
+            validate(sample_config, ConfigSchemaA().to_schema())
 
         sample_config["d"] = "c"
-        validate(sample_config, ConfigSchemaA().to_dict())
+        validate(sample_config, ConfigSchemaA().to_schema())
 
     def test_minimum(self):
         sample_config = deepcopy(SAMPLE_CONFIG_A)
         sample_config["a"] = -1
         with pytest.raises(ValidationError):
-            validate(sample_config, ConfigSchemaA().to_dict())
+            validate(sample_config, ConfigSchemaA().to_schema())
 
         sample_config["a"] = 0
-        validate(sample_config, ConfigSchemaA().to_dict())
+        validate(sample_config, ConfigSchemaA().to_schema())
 
     def test_exclusive_min(self):
         sample_config = deepcopy(SAMPLE_CONFIG_A)
         sample_config["b"] = 0
         with pytest.raises(ValidationError):
-            validate(sample_config, ConfigSchemaA().to_dict())
+            validate(sample_config, ConfigSchemaA().to_schema())
 
     def test_array(self):
         sample_config = deepcopy(SAMPLE_CONFIG_A)
         sample_config["f"] = [1, 2, "not an int"]
         with pytest.raises(ValidationError):
-            validate(sample_config, ConfigSchemaA().to_dict())
+            validate(sample_config, ConfigSchemaA().to_schema())
 
         sample_config["f"] = []
-        validate(sample_config, ConfigSchemaA().to_dict())
+        validate(sample_config, ConfigSchemaA().to_schema())
 
         sample_config["f"] = ["not an int"]
         with pytest.raises(ValidationError):
-            validate(sample_config, ConfigSchemaA().to_dict())
+            validate(sample_config, ConfigSchemaA().to_schema())
 
     def test_object(self):
         sample_config = deepcopy(SAMPLE_CONFIG_A)
         sample_config["g"]["g_a"] = "not an int"
         with pytest.raises(ValidationError):
-            validate(sample_config, ConfigSchemaA().to_dict())
+            validate(sample_config, ConfigSchemaA().to_schema())
 
         sample_config["g"]["g_b"] = 0
         with pytest.raises(ValidationError):
-            validate(sample_config, ConfigSchemaA().to_dict())
+            validate(sample_config, ConfigSchemaA().to_schema())
 
-    def test_multiple_instances_do_not_share_elements(self):
-        first = ConfigSchemaA()
-        second = ConfigSchemaA()
-
-        first._inject_deployment_config(SAMPLE_CONFIG_A)
-
-        assert first.element("a") is not second.element("a")
-
-    def test_runtime_access_is_direct(self):
+    def test_runtime_access_via_value(self):
         schema = ConfigSchemaA()
         schema._inject_deployment_config(SAMPLE_CONFIG_A)
 
-        assert schema.a == 1
-        assert schema.b == 0.5
-        assert schema.c == "valid_string"
-        assert schema.d == "a"
-        assert schema.e is False
-        assert list(schema.f) == [1, 2, 3]
-        assert schema.f[1] == 2
-        assert schema.g.a == 1
-        assert schema.g.b == 0.5
+        assert schema.a.value == 1
+        assert schema.b.value == 0.5
+        assert schema.c.value == "valid_string"
+        assert schema.d.value == "a"
+        assert schema.e.value is False
+        assert [elem.value for elem in schema.f.elements] == [1, 2, 3]
 
-    def test_metadata_bridge_exposes_bound_elements(self):
+    def test_element_metadata_accessible(self):
         schema = ConfigSchemaA()
         schema._inject_deployment_config(SAMPLE_CONFIG_A)
 
-        assert schema.element("a").value == 1
-        assert schema.element("a").minimum == 0
-        assert schema.g.element("a").value == 1
-        assert [element.value for element in schema.f.elements] == [1, 2, 3]
+        assert schema.a.value == 1
+        assert schema.a.minimum == 0
 
     def test_missing_required_scalar_still_raises(self):
-        schema = ConfigSchemaA()
+        class FreshSchema(config.Schema):
+            c = config.String("C")
 
         with pytest.raises(ValueError, match="c"):
-            _ = schema.c
+            _ = FreshSchema().c.value
 
-    def test_schema_init_assignment_raises_helpful_error(self):
-        with pytest.raises(TypeError, match="class attributes"):
+    def test_object_subclasses_do_not_share_elements(self):
+        class ObjA(config.Object):
+            x = config.String("X")
 
-            class BadSchema(config.Schema):
-                def __init__(self):
-                    self.foo = config.Integer("Foo", default=1)
+        class ObjB(config.Object):
+            y = config.Integer("Y", default=1)
 
-            BadSchema()
+        a = ObjA("a")
+        b = ObjB("b")
 
-    def test_object_init_assignment_raises_helpful_error(self):
-        with pytest.raises(TypeError, match="class attributes"):
+        a_keys = set(a._elements.keys())
+        b_keys = set(b._elements.keys())
 
-            class BadObject(config.Object):
-                def __init__(self):
-                    super().__init__("Bad Object")
-                    self.foo = config.Integer("Foo", default=1)
+        assert "x" in a_keys
+        assert "y" not in a_keys
+        assert "y" in b_keys
 
-            BadObject()
+    def test_nested_object_values_accessible(self):
+        class Inner(config.Object):
+            x = config.String("X")
+            y = config.Integer("Y", default=0)
+
+        class Outer(config.Schema):
+            inner = Inner("Inner")
+
+        schema = Outer()
+        schema._inject_deployment_config({"inner": {"x": "hello", "y": 42}})
+
+        assert schema.inner.x.value == "hello"
+        assert schema.inner.y.value == 42

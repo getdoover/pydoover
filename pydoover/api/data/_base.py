@@ -23,6 +23,7 @@ from ... import __version__
 from ...models.data import File
 from ...utils.snowflake import generate_snowflake_id_at
 from ...models.data.exceptions import (
+    BadRequestError,
     ForbiddenError,
     HTTPError,
     NotFoundError,
@@ -65,6 +66,8 @@ def _to_snowflake(value: int | datetime | None) -> int | None:
 def _raise_for_status(status: int, text: str, url: str):
     if 200 <= status < 300:
         return
+    if status == 400:
+        raise BadRequestError(text, url)
     if status == 401:
         raise UnauthorizedError(text, url)
     if status == 403:

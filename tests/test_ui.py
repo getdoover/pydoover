@@ -61,11 +61,11 @@ class TagBoundUI(ui.UI):
     )
 
 
-def make_docker_app(config=None, tags_class=None, ui_class=None, app_key="test_app"):
+def make_docker_app(config=None, tags_cls=None, ui_cls=None, app_key="test_app"):
     app_cls = type(
         "ConfiguredDockerApplication",
         (DockerApplication,),
-        {"tags_class": tags_class, "ui_class": ui_class},
+        {"tags_cls": tags_cls, "ui_cls": ui_cls},
     )
     app = object.__new__(app_cls)
     app.config = config or FakeSchema()
@@ -77,11 +77,11 @@ def make_docker_app(config=None, tags_class=None, ui_class=None, app_key="test_a
     return app
 
 
-def make_processor_app(config=None, tags_class=None, ui_class=None, app_key="test_app"):
+def make_processor_app(config=None, tags_cls=None, ui_cls=None, app_key="test_app"):
     app_cls = type(
         "ConfiguredProcessorApplication",
         (ProcessorApplication,),
-        {"tags_class": tags_class, "ui_class": ui_class},
+        {"tags_cls": tags_cls, "ui_cls": ui_cls},
     )
     app = object.__new__(app_cls)
     app.config = config or FakeSchema()
@@ -404,7 +404,7 @@ class TestLegacyUiAliases:
 
 class TestApplicationUIResolution:
     def test_docker_resolves_ui_subclass_and_installs_it(self):
-        app = make_docker_app(tags_class=UITags, ui_class=TagBoundUI)
+        app = make_docker_app(tags_cls=UITags, ui_cls=TagBoundUI)
         resolved = resolve_app(app)
 
         assert isinstance(resolved, TagBoundUI)
@@ -428,9 +428,7 @@ class TestApplicationUIResolution:
                     ),
                 )
 
-        app = make_docker_app(
-            config=config, tags_class=MyAppTags, ui_class=ConfiguredUI
-        )
+        app = make_docker_app(config=config, tags_cls=MyAppTags, ui_cls=ConfiguredUI)
         resolved = resolve_app(app)
 
         assert isinstance(resolved, ui.UI)
@@ -466,9 +464,7 @@ class TestApplicationUIResolution:
                     ),
                 )
 
-        app = make_docker_app(
-            config=FakeSchema(), tags_class=MyAppTags, ui_class=DynamicUI
-        )
+        app = make_docker_app(config=FakeSchema(), tags_cls=MyAppTags, ui_cls=DynamicUI)
         resolved = resolve_app(app)
 
         assert (
@@ -480,8 +476,8 @@ class TestApplicationUIResolution:
             == "$tag.test_app.speed:number:0"
         )
 
-    def test_docker_ui_class_none_is_allowed(self):
-        app = make_docker_app(tags_class=MyAppTags, ui_class=None)
+    def test_docker_ui_cls_none_is_allowed(self):
+        app = make_docker_app(tags_cls=MyAppTags, ui_cls=None)
         resolved = resolve_app(app)
 
         assert resolved is None
@@ -490,7 +486,7 @@ class TestApplicationUIResolution:
     def test_processor_resolves_ui_after_tags(self):
         config = FakeSchema()
         config._inject_deployment_config({"some_flag": True})
-        app = make_processor_app(config=config, tags_class=UITags, ui_class=TagBoundUI)
+        app = make_processor_app(config=config, tags_cls=UITags, ui_cls=TagBoundUI)
         resolved = resolve_app(app)
 
         assert isinstance(resolved, TagBoundUI)
@@ -504,9 +500,7 @@ class TestApplicationUIResolution:
             async def setup(self, config: Any = None, tags: Any = None) -> None:
                 calls.append((config, tags))
 
-        app = make_processor_app(
-            config=config, tags_class=UITags, ui_class=ConfiguredUI
-        )
+        app = make_processor_app(config=config, tags_cls=UITags, ui_cls=ConfiguredUI)
         resolved = resolve_app(app)
 
         assert isinstance(resolved, TagBoundUI)
@@ -522,8 +516,8 @@ class TestApplicationUIResolution:
 
         app = make_processor_app(
             config=config,
-            tags_class=MissingEnabledTags,
-            ui_class=TagBoundUI,
+            tags_cls=MissingEnabledTags,
+            ui_cls=TagBoundUI,
         )
 
         with pytest.raises(ValueError, match="enabled"):
@@ -562,9 +556,9 @@ class TestApplicationUIResolution:
                 )
 
         class AsyncUIApp(DockerApplication):
-            config_class = FakeSchema
-            tags_class = MyAppTags
-            ui_class = DynamicStartupUI
+            config_cls = FakeSchema
+            tags_cls = MyAppTags
+            ui_cls = DynamicStartupUI
 
             async def setup(self):
                 return None

@@ -2,13 +2,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from ...api import AsyncDataClient
-from ...models.data import (
+
+from ..api import AsyncDataClient
+from ..models.data import (
     Aggregate,
     File,
     Message,
-)
-from ...models.data.connection import (
     ConnectionConfig,
     ConnectionDetermination,
     ConnectionStatus,
@@ -68,7 +67,7 @@ class ProcessorDataClient(AsyncDataClient):
         agent_id: int,
         channel_name: str,
         data: dict[str, Any],
-        ts: int | None = None,
+        timestamp: int | None = None,
         files: list[File] | None = None,
         organisation_id: int | None = None,
         allow_invoking_channel: bool = False,
@@ -80,7 +79,7 @@ class ProcessorDataClient(AsyncDataClient):
             agent_id,
             channel_name,
             data=data,
-            ts=ts,
+            timestamp=timestamp,
             files=files,
             organisation_id=organisation_id or self.organisation_id,
         )

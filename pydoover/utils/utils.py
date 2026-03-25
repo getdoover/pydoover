@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 def sanitize_display_name(name: str) -> str:
     name = name.replace(" ", "_")
-    return re.sub(r"[^0-9a-zA-Z_]", "", name)
+    return re.sub(r"[^0-9a-zA-Z_]", "", name).lower()
 
 
 def map_reading(in_val, output_values, raw_readings=[4, 20], ignore_below=3):

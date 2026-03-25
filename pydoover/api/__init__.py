@@ -6,6 +6,7 @@ from .control import (
 )
 from .data import AsyncDataClient, DataClient, UNSET
 from ..models.data.exceptions import (
+    BadRequestError,
     DooverAPIError,
     ForbiddenError,
     HTTPError,
@@ -22,6 +23,7 @@ __all__ = [
     "ControlResourceMethods",
     "DataClient",
     "UNSET",
+    "BadRequestError",
     "DooverAPIError",
     "ForbiddenError",
     "HTTPError",

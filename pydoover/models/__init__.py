@@ -19,8 +19,8 @@ from .data import (
     ConnectionType,
     DataPoint,
     DeploymentEvent,
-    DooverAPIError,
     DooverConnectionStatus,
+    DooverAPIError,
     EventSubscription,
     ForbiddenError,
     HTTPError,
@@ -45,6 +45,7 @@ from .data import (
     TurnCredential,
     UnauthorizedError,
     AggregateUpdateEvent,
+    BadRequestError
 )
 
 __all__ = [
@@ -68,6 +69,7 @@ __all__ = [
     "ConnectionSubscription",
     "ConnectionSubscriptionLog",
     "ConnectionType",
+    "BadRequestError",
     "DooverAPIError",
     "DeploymentEvent",
     "DooverConnectionStatus",

@@ -111,8 +111,8 @@ class UI:
     def __init_subclass__(
         cls,
         display_name: str = "$config.app().APP_DISPLAY_NAME",
-        hidden: bool | str = "$config.app().hidden",
-        position: int | str = "$config.app().position",
+        hidden: bool | str = "$config.app().hidden:boolean:false",
+        position: int | str = "$config.app().position:number:50",
         **kwargs,
     ):
         super().__init_subclass__(**kwargs)
@@ -152,9 +152,10 @@ class UI:
         cls.hidden = hidden
         cls.position = position
 
-    def __init__(self, config: Schema, tags: Tags):
+    def __init__(self, config: Schema, tags: Tags, app_key: str):
         self.config = config
         self.tags = tags
+        self.app_key = app_key
 
         self._elements: dict[str, Any] = dict(
             (name, copy.deepcopy(declaration.template))
@@ -175,6 +176,7 @@ class UI:
             "hidden": self.hidden,
             "position": self.position,
             "type": "uiApplication",
+            "name": "$config.app().APP_KEY",
             "children": {e.name: e.to_dict() for e in self._elements.values()},
         }
         if resolve_config and self.config is not None:
@@ -438,9 +440,9 @@ def _resolve_single_config_ref(value: str, config: Schema) -> Any:
     key, type_hint, default = match.groups()
 
     try:
-        element = config.element(key)
+        element = getattr(config, key)
         raw = element.value
-    except (KeyError, ValueError):
+    except (ValueError, AttributeError):
         raw = None
 
     if raw is None:
