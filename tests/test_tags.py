@@ -1,11 +1,9 @@
 import asyncio
 import types
-from typing import Any
 
 import pytest
 
 from pydoover.docker.application import Application as DockerApplication
-from pydoover.processor.application import Application as ProcessorApplication
 from pydoover.tags import BoundTag, NotSet, Tag, Tags
 from pydoover.tags.manager import FASTMODE_CHANNEL_NAME, TAG_CHANNEL_NAME, KeyPath, TagsManagerDocker
 
