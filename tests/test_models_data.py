@@ -592,7 +592,7 @@ class TestReExports:
         assert TurnCredential is not None
 
     def test_processor_types_reexport(self):
-        from pydoover.cloud.processor.types import (
+        from pydoover.models import (
             AggregateUpdateEvent,
             DeploymentEvent,
         )

@@ -125,10 +125,8 @@ class DatetimeInput(Parameter):
 
     type = "uiDatetimeInput"
 
-    def __init__(
-        self, name: str, display_name: str, include_time: bool = False, **kwargs
-    ):
-        super().__init__(name, display_name, **kwargs)
+    def __init__(self, display_name: str, include_time: bool = False, **kwargs):
+        super().__init__(display_name, **kwargs)
         self.include_time = include_time
 
     # @property
