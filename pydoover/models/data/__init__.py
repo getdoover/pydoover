@@ -17,6 +17,7 @@ from .exceptions import (
     NotFoundError,
     TokenRefreshError,
     UnauthorizedError,
+    BadRequestError,
 )
 from .events import (
     AggregateUpdateEvent,
@@ -95,4 +96,5 @@ __all__ = [
     "TokenRefreshError",
     "TurnCredential",
     "UnauthorizedError",
+    "BadRequestError",
 ]
