@@ -1,5 +1,6 @@
 from .data import AsyncDataClient, DataClient, UNSET
 from ..models.exceptions import (
+    BadRequestError,
     DooverAPIError,
     ForbiddenError,
     HTTPError,
@@ -12,6 +13,7 @@ __all__ = [
     "AsyncDataClient",
     "DataClient",
     "UNSET",
+    "BadRequestError",
     "DooverAPIError",
     "ForbiddenError",
     "HTTPError",

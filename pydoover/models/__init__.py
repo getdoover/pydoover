@@ -11,6 +11,7 @@ from .connection import (
     DooverConnectionStatus,
 )
 from .exceptions import (
+    BadRequestError,
     DooverAPIError,
     ForbiddenError,
     HTTPError,
@@ -69,6 +70,7 @@ __all__ = [
     "ConnectionSubscription",
     "ConnectionSubscriptionLog",
     "ConnectionType",
+    "BadRequestError",
     "DooverAPIError",
     "DeploymentEvent",
     "DooverConnectionStatus",

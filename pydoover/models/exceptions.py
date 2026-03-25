@@ -25,6 +25,13 @@ class ForbiddenError(HTTPError):
         super().__init__(403, message, url)
 
 
+class BadRequestError(HTTPError):
+    """Bad request (400)."""
+
+    def __init__(self, message: str = "Bad request", url: str = ""):
+        super().__init__(400, message, url)
+
+
 class UnauthorizedError(HTTPError):
     """Authentication failed (401)."""
 
