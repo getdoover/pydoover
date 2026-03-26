@@ -22,7 +22,6 @@ from .models.data import (
 
 if TYPE_CHECKING:
     from .docker.application import DeviceAgentInterface
-    from .api import AsyncDataClient
 
 log = logging.getLogger(__name__)
 
