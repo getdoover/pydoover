@@ -1,6 +1,5 @@
 import asyncio
 import re
-from datetime import datetime
 
 import pytest
 
@@ -28,14 +27,21 @@ def _make_request_event(
         id=message_id,
         author_id=42,
         channel=channel,
-        data={"type": "rpc", "method": method, "request": payload or {}},
+        data={
+            "type": "rpc",
+            "method": method,
+            "request": payload or {},
+            "status": {"code": "sent"},
+            "response": {},
+        },
         attachments=[],
     )
     return MessageCreateEvent(channel=channel, message=message)
 
 
 def _make_response_event(
-    response: dict,
+    status: dict,
+    response: dict | None = None,
     message_id: int = 100,
     channel_name: str = "test_channel",
 ) -> MessageUpdateEvent:
@@ -44,7 +50,7 @@ def _make_response_event(
         id=message_id,
         author_id=99,
         channel=channel,
-        data={"response": response},
+        data={"status": status, "response": response or {}},
         attachments=[],
     )
     return MessageUpdateEvent(
@@ -135,11 +141,24 @@ class TestRPCContext:
         await ctx.acknowledge()
 
         assert updates == [
-            ("control", 55, {"response": {"status": "acknowledged"}}),
+            (
+                "control",
+                55,
+                {
+                    "type": "rpc",
+                    "method": "slow_op",
+                    "request": {},
+                    "status": {
+                        "code": "acknowledged",
+                        "message": {"timestamp": pytest.approx(updates[0][2]["status"]["message"]["timestamp"])},
+                    },
+                    "response": {},
+                },
+            ),
         ]
 
     @pytest.mark.asyncio
-    async def test_defer_sets_datetime_until(self):
+    async def test_defer_sets_until_and_at_timestamps(self):
         updates = []
 
         async def update_fn(channel_name, message_id, data):
@@ -159,9 +178,11 @@ class TestRPCContext:
 
         await ctx.defer(5)
 
-        response = updates[0][2]["response"]
-        assert response["status"] == "deferred"
-        assert isinstance(response["until"], datetime)
+        status = updates[0][2]["status"]
+        assert status["code"] == "deferred"
+        assert isinstance(status["message"]["until"], int)
+        assert isinstance(status["message"]["at"], int)
+        assert status["message"]["until"] >= status["message"]["at"]
 
 
 class TestRegisterHandlers:
@@ -200,7 +221,11 @@ class TestRPCManagerIntegration:
 
         assert calls == [("test_channel", {"x": 1})]
         assert app.messages[100]["data"] == {
-            "response": {"status": "success", "result": {"pong": True}}
+            "type": "rpc",
+            "method": "ping",
+            "request": {"x": 1},
+            "status": {"code": "success"},
+            "response": {"pong": True},
         }
 
     @pytest.mark.asyncio
@@ -218,11 +243,17 @@ class TestRPCManagerIntegration:
         await app.fire_event("test_channel", _make_request_event("check"))
 
         assert app.messages[100]["data"] == {
-            "response": {
-                "status": "error",
-                "code": "OFFLINE",
-                "message": "Device is offline",
-            }
+            "type": "rpc",
+            "method": "check",
+            "request": {},
+            "status": {
+                "code": "error",
+                "message": {
+                    "code": "OFFLINE",
+                    "message": "Device is offline",
+                },
+            },
+            "response": {},
         }
 
     @pytest.mark.asyncio
@@ -239,10 +270,10 @@ class TestRPCManagerIntegration:
         manager.register_handlers(HandlerSet())
         await app.fire_event("test_channel", _make_request_event("boom"))
 
-        response = app.messages[100]["data"]["response"]
-        assert response["status"] == "error"
-        assert response["code"] == "INTERNAL_ERROR"
-        assert "something broke" in response["message"]
+        status = app.messages[100]["data"]["status"]
+        assert status["code"] == "error"
+        assert status["message"]["code"] == "INTERNAL_ERROR"
+        assert "something broke" in status["message"]["message"]
 
     @pytest.mark.asyncio
     async def test_call_resolves_on_response(self):
@@ -259,14 +290,19 @@ class TestRPCManagerIntegration:
 
         assert 1000 in manager._pending_calls
         assert app.messages[1000]["data"] == {
+            "type": "rpc",
             "method": "ping",
             "request": {"x": 1},
+            "status": {"code": "sent"},
+            "response": {},
+            "app_key": "test_app",
         }
 
         await app.fire_event(
             "test_channel",
             _make_response_event(
-                {"status": "success", "result": {"pong": True}},
+                {"code": "success"},
+                {"pong": True},
                 message_id=1000,
             ),
         )
@@ -294,10 +330,7 @@ class TestRPCManagerIntegration:
         await app.fire_event(
             "test_channel",
             _make_response_event(
-                {
-                    "status": "error",
-                    "error": {"code": "BAD", "message": "nope"},
-                },
+                {"code": "error", "message": {"code": "BAD", "message": "nope"}},
                 message_id=1000,
             ),
         )
@@ -336,7 +369,10 @@ class TestRPCManagerIntegration:
 
         await app.fire_event(
             "test_channel",
-            _make_response_event({"status": "acknowledged"}, message_id=1000),
+            _make_response_event(
+                {"code": "acknowledged", "message": {"timestamp": 123}},
+                message_id=1000,
+            ),
         )
 
         assert not manager._pending_calls[1000].done()
@@ -344,7 +380,8 @@ class TestRPCManagerIntegration:
         await app.fire_event(
             "test_channel",
             _make_response_event(
-                {"status": "success", "result": {"done": True}},
+                {"code": "success"},
+                {"done": True},
                 message_id=1000,
             ),
         )
