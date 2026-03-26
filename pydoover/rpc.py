@@ -22,6 +22,7 @@ from .models.data import (
 
 if TYPE_CHECKING:
     from .docker.application import DeviceAgentInterface
+    from .api.data import AsyncDataClient
 
 log = logging.getLogger(__name__)
 
@@ -94,42 +95,31 @@ class RPCContext:
     def channel(self):
         return self.message.channel
 
-    def _message_data_with_status(self, status: dict[str, Any]) -> dict[str, Any]:
-        data = dict(self.message.data)
-        data["status"] = status
-        data.setdefault("response", {})
-        return data
-
     async def acknowledge(self):
-        await self._update_fn(
-            self.channel.name,
-            self.message.id,
-            self._message_data_with_status(
-                {
-                    "code": "acknowledged",
-                    "message": {
-                        "timestamp": int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-                    },
-                }
-            ),
-        )
+        # fixme: maybe these should be objects...
+        payload = {
+            "status": {
+                "code": "acknowledged",
+                "message": {
+                    "timestamp": int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                },
+            }
+        }
+        await self._update_fn(self.channel.name, self.message.id, payload)
 
     async def defer(self, seconds: float):
         now = datetime.now(tz=timezone.utc)
         until = now + timedelta(seconds=seconds)
-        await self._update_fn(
-            self.channel.name,
-            self.message.id,
-            self._message_data_with_status(
-                {
-                    "code": "deferred",
-                    "message": {
-                        "until": int(until.timestamp() * 1000),
-                        "at": int(now.timestamp() * 1000),
-                    },
-                }
-            ),
-        )
+        payload = {
+            "status": {
+                "code": "deferred",
+                "message": {
+                    "until": int(until.timestamp() * 1000),
+                    "at": int(now.timestamp() * 1000),
+                },
+            }
+        }
+        await self._update_fn(self.channel.name, self.message.id, payload)
 
 
 # ---------------------------------------------------------------------------
@@ -144,10 +134,17 @@ class RPCManager:
     ----------
     api : DeviceAgentInterface | AsyncDataClient
         The application instance this manager is attached to.
+    app_key : str | None
+        The application key for this app, used to reject messages not intended for this app.
     """
 
-    def __init__(self, api: Union["DeviceAgentInterface"]):
+    def __init__(
+        self,
+        api: Union["DeviceAgentInterface", "AsyncDataClient"],
+        app_key: str | None = None,
+    ):
         self.api = api
+        self.app_key = app_key
         # (channel_name, method_name) -> (parser, handler)
         self._handlers: dict[tuple[str, str], tuple[Callable, Callable]] = {}
         self._re_handlers: list[tuple[str, re.Pattern, Callable, Callable]] = []
@@ -208,6 +205,7 @@ class RPCManager:
         method: str,
         params: dict[str, Any] | None = None,
         channel: str = DEFAULT_CHANNEL,
+        app_key: str | None = None,
         timeout: float = 30.0,
     ) -> dict:
         """Make an RPC call and wait for the response.
@@ -244,8 +242,8 @@ class RPCManager:
             "status": {"code": "sent"},
             "response": {},
         }
-        if getattr(self.api, "app_key", None):
-            data["app_key"] = self.api.app_key
+        if app_key:
+            data["app_key"] = app_key
         message_id = await self.api.create_message(channel, data)
 
         loop = asyncio.get_running_loop()
@@ -308,9 +306,9 @@ class RPCManager:
         except KeyError:
             pass
         else:
-            if app_key != self.api.app_key:
+            if app_key != self.app_key:
                 log.debug(
-                    f"Skipping RPC request for app_key={app_key!r} (ours={self.api.app_key!r})"
+                    f"Skipping RPC request for app_key={app_key!r} (ours={self.app_key!r})"
                 )
                 return
 
@@ -361,6 +359,7 @@ class RPCManager:
         try:
             status = event.message.data["status"]
         except KeyError:
+            log.debug("Failed to get status from RPC message. Ignoring.")
             return
 
         future = self._pending_calls.get(event.message.id)
@@ -368,7 +367,7 @@ class RPCManager:
             return
 
         status_code = status.get("code")
-        if status_code in {"sent", "acknowledged", "deferred", "pending"}:
+        if status_code in ("sent", "acknowledged", "deferred", "pending"):
             return
 
         if status_code == "error":
@@ -379,18 +378,19 @@ class RPCManager:
             else:
                 code = "UNKNOWN"
                 message = err
-            future.set_exception(
-                RPCError(code, message)
-            )
+            future.set_exception(RPCError(code, message))
         elif status_code == "success":
             future.set_result(event.message.data.get("response", {}))
 
     # -- response helpers ---------------------------------------------------
 
     async def _send_result(self, message: Message, response: dict) -> None:
-        data = dict(message.data)
-        data["status"] = {"code": "success"}
-        data["response"] = response
+        data = {
+            "status": {
+                "code": "success",
+            },
+            "response": response,
+        }
         await self.api.update_message(message.channel.name, message.id, data)
 
     async def _send_error(
@@ -399,12 +399,13 @@ class RPCManager:
         code: str,
         error_message: str | dict[str, Any],
     ) -> None:
-        data = dict(request_message.data)
-        data["status"] = {
-            "code": "error",
-            "message": {"code": code, "message": error_message},
+        data = {
+            "status": {
+                "code": "error",
+                "message": {"code": code, "message": error_message},
+            },
+            "response": {},
         }
-        data["response"] = {}
         await self.api.update_message(
             request_message.channel.name,
             request_message.id,
