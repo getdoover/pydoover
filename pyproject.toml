@@ -60,6 +60,7 @@ Homepage = "https://doover.com"
 pydoover = "pydoover.cli:entrypoint"
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "session"
 markers = [

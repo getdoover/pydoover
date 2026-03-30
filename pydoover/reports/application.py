@@ -123,8 +123,9 @@ class Application(ApplicationBase):
 
         try:
             data = await self.api.fetch_message(
-                "reports",
-                self.report_id,
+                agent_id=self.agent_id,
+                channel_name="reports",
+                message_id=self.report_id,
                 organisation_id=self.agent_id,
             )
         except Exception as e:
@@ -235,8 +236,8 @@ class Application(ApplicationBase):
         data = await asyncio.gather(
             *[
                 self.api.iter_messages(
-                    channel_name,
                     agent_id=agent_id,
+                    channel_name=channel_name,
                     before=period_end,
                     after=period_start,
                 ).collect()
