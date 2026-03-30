@@ -427,17 +427,17 @@ class TagsManagerProcessor(TagsManager):
             return
 
         await self.client.update_channel_aggregate(
-            self.agent_id,
             TAG_CHANNEL_NAME,
             self._tag_values,
+            agent_id=self.agent_id,
         )
 
         if self._record_tag_update or record_log:
             await self.client.create_message(
-                self.agent_id,
                 TAG_CHANNEL_NAME,
                 self._tag_values,
                 timestamp=timestamp,
+                agent_id=self.agent_id,
             )
 
         self._update_tags = False
