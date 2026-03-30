@@ -318,7 +318,7 @@ class Application:
         # fixme: publish UI if needed
         if not self.ui.is_static:
             log.info("Updating ui_state with runtime-generated schema.")
-            await self.publish_ui_schema()
+            await self.publish_ui_schema(clear=False)
 
         result = None
         if func is None or payload is None:
