@@ -90,6 +90,7 @@ class BaseClient:
         *,
         auth: SyncAuthClient | AsyncAuthClient,
         owns_auth: bool = False,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
         max_retries: int = 3,
         retry_delay: float = 1.0,
@@ -97,6 +98,7 @@ class BaseClient:
     ):
         self.base_url = base_url.rstrip("/")
         self.auth = auth
+        self.agent_id: int | None = int(agent_id) if agent_id else None
         self.organisation_id: int | None = (
             int(organisation_id) if organisation_id else None
         )
@@ -104,6 +106,16 @@ class BaseClient:
         self.retry_delay = retry_delay
         self.timeout = timeout
         self._owns_auth = owns_auth
+
+    def _resolve_agent_id(self, agent_id: int | None) -> int:
+        """Return the given *agent_id*, falling back to ``self.agent_id``."""
+        resolved = agent_id or self.agent_id
+        if resolved is None:
+            raise ValueError(
+                "agent_id must be provided either as a method argument "
+                "or set on the client instance."
+            )
+        return resolved
 
     @property
     def token(self) -> str | None:

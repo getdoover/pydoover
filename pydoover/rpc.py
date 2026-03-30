@@ -22,7 +22,7 @@ from .models.data import (
 
 if TYPE_CHECKING:
     from .docker.application import DeviceAgentInterface
-    from .api import AsyncDataClient
+    from .api.data import AsyncDataClient
 
 log = logging.getLogger(__name__)
 
@@ -96,17 +96,30 @@ class RPCContext:
         return self.message.channel
 
     async def acknowledge(self):
-        await self._update_fn(
-            self.channel.name, self.message.id, {"response": {"status": "acknowledged"}}
-        )
+        # fixme: maybe these should be objects...
+        payload = {
+            "status": {
+                "code": "acknowledged",
+                "message": {
+                    "timestamp": int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                },
+            }
+        }
+        await self._update_fn(self.channel.name, self.message.id, payload)
 
     async def defer(self, seconds: float):
-        until = datetime.now(tz=timezone.utc) + timedelta(seconds=seconds)
-        await self._update_fn(
-            self.channel.name,
-            self.message.id,
-            {"response": {"status": "deferred", "until": until}},
-        )
+        now = datetime.now(tz=timezone.utc)
+        until = now + timedelta(seconds=seconds)
+        payload = {
+            "status": {
+                "code": "deferred",
+                "message": {
+                    "until": int(until.timestamp() * 1000),
+                    "at": int(now.timestamp() * 1000),
+                },
+            }
+        }
+        await self._update_fn(self.channel.name, self.message.id, payload)
 
 
 # ---------------------------------------------------------------------------
@@ -121,10 +134,17 @@ class RPCManager:
     ----------
     api : DeviceAgentInterface | AsyncDataClient
         The application instance this manager is attached to.
+    app_key : str | None
+        The application key for this app, used to reject messages not intended for this app.
     """
 
-    def __init__(self, api: Union["DeviceAgentInterface", "AsyncDataClient"]):
+    def __init__(
+        self,
+        api: Union["DeviceAgentInterface", "AsyncDataClient"],
+        app_key: str | None = None,
+    ):
         self.api = api
+        self.app_key = app_key
         # (channel_name, method_name) -> (parser, handler)
         self._handlers: dict[tuple[str, str], tuple[Callable, Callable]] = {}
         self._re_handlers: list[tuple[str, re.Pattern, Callable, Callable]] = []
@@ -185,6 +205,7 @@ class RPCManager:
         method: str,
         params: dict[str, Any] | None = None,
         channel: str = DEFAULT_CHANNEL,
+        app_key: str | None = None,
         timeout: float = 30.0,
     ) -> dict:
         """Make an RPC call and wait for the response.
@@ -214,7 +235,15 @@ class RPCManager:
         """
         self._ensure_subscribed(channel)
 
-        data = {"method": method, "request": params or {}}
+        data = {
+            "type": "rpc",
+            "method": method,
+            "request": params or {},
+            "status": {"code": "sent"},
+            "response": {},
+        }
+        if app_key:
+            data["app_key"] = app_key
         message_id = await self.api.create_message(channel, data)
 
         loop = asyncio.get_running_loop()
@@ -277,9 +306,9 @@ class RPCManager:
         except KeyError:
             pass
         else:
-            if app_key != self.api.app_key:
+            if app_key != self.app_key:
                 log.debug(
-                    f"Skipping RPC request for app_key={app_key!r} (ours={self.api.app_key!r})"
+                    f"Skipping RPC request for app_key={app_key!r} (ours={self.app_key!r})"
                 )
                 return
 
@@ -310,70 +339,77 @@ class RPCManager:
             result = await method_handler(ctx, payload)
         except RPCError as e:
             if can_respond:
-                await self._send_error(
-                    channel_name, event.message.id, e.code, e.message
-                )
+                await self._send_error(event.message, e.code, e.message)
         except Exception as e:
             log.error(
                 f"Unhandled exception in RPC handler '{method_handler}': {e}",
                 exc_info=e,
             )
             if can_respond:
-                await self._send_error(
-                    channel_name, event.message.id, "INTERNAL_ERROR", str(e)
-                )
+                await self._send_error(event.message, "INTERNAL_ERROR", str(e))
         else:
             if result is None:
                 result = {}
 
             if can_respond:
-                await self._send_result(
-                    channel_name,
-                    event.message.id,
-                    {"status": "success", "result": result},
-                )
+                await self._send_result(event.message, result)
 
     def _handle_response(self, event: MessageUpdateEvent) -> None:
         """Resolve a pending future if this update is an RPC response."""
         try:
-            response = event.message.data["response"]
+            status = event.message.data["status"]
         except KeyError:
+            log.debug("Failed to get status from RPC message. Ignoring.")
             return
 
         future = self._pending_calls.get(event.message.id)
         if future is None or future.done():
             return
 
-        # Non-terminal status updates (e.g. "acknowledged") don't resolve
-        if (
-            "status" in response
-            and "result" not in response
-            and "error" not in response
-        ):
+        status_code = status.get("code")
+        if status_code in ("sent", "acknowledged", "deferred", "pending"):
             return
 
-        if "error" in response:
-            err = response["error"]
-            future.set_exception(
-                RPCError(err.get("code", "UNKNOWN"), err.get("message", ""))
-            )
-        elif "result" in response:
-            future.set_result(response["result"])
+        if status_code == "error":
+            err = status.get("message", "")
+            if isinstance(err, dict):
+                code = err.get("code", "UNKNOWN")
+                message = err.get("message", "")
+            else:
+                code = "UNKNOWN"
+                message = err
+            future.set_exception(RPCError(code, message))
+        elif status_code == "success":
+            future.set_result(event.message.data.get("response", {}))
 
     # -- response helpers ---------------------------------------------------
 
-    async def _send_result(
-        self, channel_name: str, message_id: int, result: dict
-    ) -> None:
-        await self.api.update_message(channel_name, message_id, {"response": result})
+    async def _send_result(self, message: Message, response: dict) -> None:
+        data = {
+            "status": {
+                "code": "success",
+            },
+            "response": response,
+        }
+        await self.api.update_message(message.channel.name, message.id, data)
 
     async def _send_error(
-        self, channel_name: str, message_id: int, code: str, message: str
+        self,
+        request_message: Message,
+        code: str,
+        error_message: str | dict[str, Any],
     ) -> None:
+        data = {
+            "status": {
+                "code": "error",
+                "message": {"code": code, "message": error_message},
+            },
+            "response": {},
+        }
         await self.api.update_message(
-            channel_name,
-            message_id,
-            {"response": {"status": "error", "code": code, "message": message}},
+            request_message.channel.name,
+            request_message.id,
+            data,
         )
 
     # -- static helpers for processor usage ---------------------------------
@@ -409,5 +445,11 @@ class RPCManager:
         int
             The created message ID.
         """
-        data = {"request": params or {}, "method": method}
-        return await client.create_message(agent_id, channel, data)
+        data = {
+            "type": "rpc",
+            "request": params or {},
+            "method": method,
+            "status": {"code": "sent"},
+            "response": {},
+        }
+        return await client.create_message(channel, data, agent_id=agent_id)

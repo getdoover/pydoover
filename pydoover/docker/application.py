@@ -150,7 +150,7 @@ class Application:
 
         self._ready = asyncio.Event()
 
-        self.rpc = RPCManager(self.device_agent)
+        self.rpc = RPCManager(self.device_agent, app_key)
         self.ui_manager = UICommandsManager(self.device_agent)
 
         self.app_key = app_key
@@ -1260,6 +1260,7 @@ def run_app(
         app.tag_manager,
         app.tags,
         app.ui,
+        app.rpc,
     ):
         if inst is not None:
             inst.app_key = app_key

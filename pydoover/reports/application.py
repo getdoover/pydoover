@@ -16,7 +16,7 @@ from ..models import (
     DeploymentEvent,
     ScheduleEvent,
 )
-from ..cloud.processor.application import Application as ApplicationBase
+from ..processor.application import Application as ApplicationBase
 
 log = logging.getLogger(__name__)
 
@@ -87,7 +87,6 @@ class Application(ApplicationBase):
 
         try:
             data = await self.api.create_message(
-                self.agent_id,
                 "reports",
                 self._report_metadata,
                 organisation_id=self.agent_id,
@@ -190,7 +189,6 @@ class Application(ApplicationBase):
 
         try:
             await self.api.update_message(
-                self.agent_id,
                 "reports",
                 self._report_id,
                 self._report_metadata,
@@ -202,7 +200,6 @@ class Application(ApplicationBase):
             try:
                 self._report_metadata["status"] = "Failed"
                 await self.api.update_message(
-                    self.agent_id,
                     "reports",
                     self._report_id,
                     self._report_metadata,

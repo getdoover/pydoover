@@ -141,3 +141,5 @@ debian/*.substvars
 
 # Generated debian package directory
 debian/doover-pydoover/
+
+local/
