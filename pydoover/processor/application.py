@@ -318,18 +318,7 @@ class Application:
         # fixme: publish UI if needed
         if not self.ui.is_static:
             log.info("Updating ui_state with runtime-generated schema.")
-            schema = self.ui.to_schema()
-            print(schema)
-            await self.api.update_channel_aggregate(
-                self.agent_id,
-                "ui_state",
-                {"state": {"children": {self.app_key: None}}},
-            )
-            await self.api.update_channel_aggregate(
-                self.agent_id,
-                "ui_state",
-                {"state": {"children": {self.app_key: schema}}},
-            )
+            await self.publish_ui_schema()
 
         result = None
         if func is None or payload is None:
@@ -391,6 +380,19 @@ class Application:
         if self.tag_manager is None:
             raise RuntimeError("Tag manager has not been initialized.")
         await self.tag_manager.set_tag(key, value)
+
+    async def publish_ui_schema(self, clear: bool = True):
+        schema = self.ui.to_schema()
+        print(schema)
+        if clear:
+            await self.api.update_channel_aggregate(
+                "ui_state",
+                {"state": {"children": {self.app_key: None}}},
+            )
+        await self.api.update_channel_aggregate(
+            "ui_state",
+            {"state": {"children": {self.app_key: schema}}},
+        )
 
     async def ping_connection(
         self,
