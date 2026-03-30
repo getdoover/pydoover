@@ -419,9 +419,9 @@ class Application:
         if self.agent_id is None:
             raise RuntimeError("Agent ID has not been initialized.")
         await self.api.ping_connection_at(
-            self.agent_id,
             online_at,
             connection_status=connection_status,
             determination=determination,
             user_agent=f"pydoover-processor,app_key={self.app_key}",
+            agent_id=self.agent_id,
         )
