@@ -41,13 +41,12 @@ console_handler = logging.StreamHandler(sys.stdout)
 
 
 class Application:
-    config_cls: type[Schema] | None = None
-    ui_cls: type[UI] | None = None
-    tags_cls: type[Tags] | None = None
+    config_cls: type[Schema] = Schema
+    ui_cls: type[UI] = UI
+    tags_cls: type[Tags] = Tags
 
     def __init__(self):
-        config_cls = self.__class__.config_cls
-        self.config = config_cls() if config_cls is not None else None
+        self.config = self.config_cls()
 
         self.received_deployment_config = None
 
@@ -113,8 +112,8 @@ class Application:
             info.tag_values,
             record_tag_update=self._record_tag_update,
         )
-        self.tags = self.__class__.tags_cls(self.app_key, self.tag_manager, self.config)
-        self.ui = self.__class__.ui_cls(self.config, self.tags)
+        self.tags = self.tags_cls(self.app_key, self.tag_manager, self.config)
+        self.ui = self.ui_cls(self.config, self.tags, self.app_key)
 
         connection_data = info.connection_data
         if not connection_data:
