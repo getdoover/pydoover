@@ -30,7 +30,7 @@ from ._base import (
     build_sync_auth,
 )
 
-from ._iterators import MessageIterator
+from ._iterators import MessageIterator, MultiAgentMessageIterator
 from ...models.data import (
     Aggregate,
     AgentNotificationResponse,
@@ -555,6 +555,34 @@ class DataClient(BaseClient):
             organisation_id=organisation_id,
         )
         return BatchMessageResponse.from_dict(data)
+
+    def iter_multi_agent_messages(
+        self,
+        channel_name: str,
+        agent_ids: list[int],
+        before: int | datetime | None = None,
+        after: int | datetime | None = None,
+        agent_message_limit: int | None = None,
+        field_names: list[str] | None = None,
+        organisation_id: int | None = None,
+        page_size: int = 50,
+    ) -> MultiAgentMessageIterator:
+        """Return a paginating iterator over multi-agent channel messages.
+
+        Use as ``for msg in client.iter_multi_agent_messages(...)`` or call
+        ``.collect()`` to load all matching messages into a list.
+        """
+        return MultiAgentMessageIterator(
+            self,
+            channel_name,
+            agent_ids,
+            before=before,
+            after=after,
+            agent_message_limit=agent_message_limit,
+            field_names=field_names,
+            organisation_id=organisation_id,
+            page_size=page_size,
+        )
 
     def fetch_multi_agent_aggregates(
         self,

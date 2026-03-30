@@ -29,7 +29,7 @@ from ._base import (
     build_async_auth,
 )
 
-from ._iterators import AsyncMessageIterator
+from ._iterators import AsyncMessageIterator, AsyncMultiAgentMessageIterator
 from ...models.data import (
     Aggregate,
     AgentNotificationResponse,
@@ -595,6 +595,34 @@ class AsyncDataClient(BaseClient):
             organisation_id=organisation_id,
         )
         return BatchMessageResponse.from_dict(data)
+
+    def iter_multi_agent_messages(
+        self,
+        channel_name: str,
+        agent_ids: list[int],
+        before: int | datetime | None = None,
+        after: int | datetime | None = None,
+        agent_message_limit: int | None = None,
+        field_names: list[str] | None = None,
+        organisation_id: int | None = None,
+        page_size: int = 50,
+    ) -> AsyncMultiAgentMessageIterator:
+        """Return an async paginating iterator over multi-agent channel messages.
+
+        Use as ``async for msg in client.iter_multi_agent_messages(...)`` or call
+        ``await .collect()`` to load all matching messages into a list.
+        """
+        return AsyncMultiAgentMessageIterator(
+            self,
+            channel_name,
+            agent_ids,
+            before=before,
+            after=after,
+            agent_message_limit=agent_message_limit,
+            field_names=field_names,
+            organisation_id=organisation_id,
+            page_size=page_size,
+        )
 
     async def fetch_multi_agent_aggregates(
         self,
