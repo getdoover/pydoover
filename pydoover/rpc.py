@@ -452,4 +452,4 @@ class RPCManager:
             "status": {"code": "sent"},
             "response": {},
         }
-        return await client.create_message(channel, data, agent_id=agent_id)
+        return await client.create_message(channel_name=channel, data=data)

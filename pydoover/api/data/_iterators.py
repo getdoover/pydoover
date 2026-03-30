@@ -23,19 +23,19 @@ class AsyncMessageIterator:
 
     Usage::
 
-        async for message in client.iter_messages("my_channel", agent_id=123):
+        async for message in client.iter_messages(123, "my_channel"):
             ...
 
         # Or load all into memory:
-        messages = await client.iter_messages("my_channel", agent_id=123).collect()
+        messages = await client.iter_messages(123, "my_channel").collect()
     """
 
     def __init__(
         self,
         client: AsyncDataClient,
+        agent_id: int,
         channel_name: str,
         *,
-        agent_id: int | None = None,
         before: int | datetime | None = None,
         after: int | datetime | None = None,
         field_names: list[str] | None = None,
@@ -67,12 +67,12 @@ class AsyncMessageIterator:
 
     async def _fetch_page(self):
         page = await self._client.list_messages(
+            self._agent_id,
             self._channel_name,
             before=self._before,
             after=self._after,
             limit=self._page_size,
             field_names=self._field_names,
-            agent_id=self._agent_id,
             organisation_id=self._organisation_id,
         )
         if not page or len(page) < self._page_size:
@@ -204,19 +204,19 @@ class MessageIterator:
 
     Usage::
 
-        for message in client.iter_messages("my_channel", agent_id=123):
+        for message in client.iter_messages(123, "my_channel"):
             ...
 
         # Or load all into memory:
-        messages = client.iter_messages("my_channel", agent_id=123).collect()
+        messages = client.iter_messages(123, "my_channel").collect()
     """
 
     def __init__(
         self,
         client: DataClient,
+        agent_id: int,
         channel_name: str,
         *,
-        agent_id: int | None = None,
         before: int | datetime | None = None,
         after: int | datetime | None = None,
         field_names: list[str] | None = None,
@@ -248,12 +248,12 @@ class MessageIterator:
 
     def _fetch_page(self):
         page = self._client.list_messages(
+            self._agent_id,
             self._channel_name,
             before=self._before,
             after=self._after,
             limit=self._page_size,
             field_names=self._field_names,
-            agent_id=self._agent_id,
             organisation_id=self._organisation_id,
         )
         if not page or len(page) < self._page_size:
