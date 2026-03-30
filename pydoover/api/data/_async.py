@@ -5,7 +5,7 @@ Usage::
     from pydoover.api import AsyncDataClient
 
     async with AsyncDataClient("https://data.doover.com/api", token="...") as client:
-        channel = await client.fetch_channel(agent_id, "my_channel")
+        channel = await client.fetch_channel("my_channel", agent_id=123)
 """
 
 import asyncio
@@ -210,11 +210,12 @@ class AsyncDataClient(BaseClient):
 
     async def list_channels(
         self,
-        agent_id: int,
         include_aggregate: bool = True,
         include_daily_summaries: bool = True,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[Channel]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels",
@@ -228,11 +229,12 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_channel(
         self,
-        agent_id: int,
         channel_name: str,
         include_aggregate: bool = True,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Channel:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels/{channel_name}",
@@ -243,14 +245,15 @@ class AsyncDataClient(BaseClient):
 
     async def create_channel(
         self,
-        agent_id: int,
         channel_name: str,
         is_private: bool = False,
         message_schema: dict | None = None,
         aggregate_schema: dict | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> int:
         """Create a channel. Returns the new channel's snowflake ID."""
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {"is_private": is_private}
         if message_schema is not None:
             payload["message_schema"] = message_schema
@@ -266,13 +269,14 @@ class AsyncDataClient(BaseClient):
 
     async def put_channel(
         self,
-        agent_id: int,
         channel_name: str,
         is_private: bool,
         message_schema: dict | None = None,
         aggregate_schema: dict | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Channel:
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {"is_private": is_private}
         if message_schema is not None:
             payload["message_schema"] = message_schema
@@ -288,13 +292,14 @@ class AsyncDataClient(BaseClient):
 
     async def list_data_series(
         self,
-        agent_id: int,
         field_name: str,
         before: int | datetime | None = None,
         after: int | datetime | None = None,
         limit: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> dict[str, Any]:
+        agent_id = self._resolve_agent_id(agent_id)
         return await self._request(
             "GET",
             f"/agents/{agent_id}/data_series",
@@ -311,14 +316,15 @@ class AsyncDataClient(BaseClient):
 
     async def list_messages(
         self,
-        agent_id: int,
         channel_name: str,
         before: int | datetime | None = None,
         after: int | datetime | None = None,
         limit: int | None = None,
         field_names: list[str] | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[Message]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels/{channel_name}/messages",
@@ -334,11 +340,11 @@ class AsyncDataClient(BaseClient):
 
     def iter_messages(
         self,
-        agent_id: int,
         channel_name: str,
         before: int | datetime | None = None,
         after: int | datetime | None = None,
         field_names: list[str] | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
         page_size: int = 50,
     ) -> AsyncMessageIterator:
@@ -347,10 +353,11 @@ class AsyncDataClient(BaseClient):
         Use as ``async for msg in client.iter_messages(...)`` or call
         ``await .collect()`` to load all matching messages into a list.
         """
+        agent_id = self._resolve_agent_id(agent_id)
         return AsyncMessageIterator(
             self,
-            agent_id,
             channel_name,
+            agent_id=agent_id,
             before=before,
             after=after,
             field_names=field_names,
@@ -360,11 +367,12 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_message(
         self,
-        agent_id: int,
         channel_name: str,
         message_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Message:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
@@ -374,14 +382,15 @@ class AsyncDataClient(BaseClient):
 
     async def create_message(
         self,
-        agent_id: int,
         channel_name: str,
         data: dict[str, Any],
         timestamp: int | None = None,
         files: list[File] | None = None,
         message_id: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Message:
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {"data": data}
         if timestamp is not None:
             if isinstance(timestamp, datetime):
@@ -404,17 +413,18 @@ class AsyncDataClient(BaseClient):
 
     async def update_message(
         self,
-        agent_id: int,
         channel_name: str,
         message_id: int,
         data: dict[str, Any],
-        replace: bool = True,
+        replace_data: bool = False,
         files: list[File] | None = None,
         suppress_response: bool = False,
         clear_attachments: bool = False,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Message | None:
-        method = "PUT" if replace else "PATCH"
+        agent_id = self._resolve_agent_id(agent_id)
+        method = "PUT" if replace_data else "PATCH"
         result = await self._request(
             method,
             f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
@@ -432,11 +442,12 @@ class AsyncDataClient(BaseClient):
 
     async def delete_message(
         self,
-        agent_id: int,
         channel_name: str,
         message_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
+        agent_id = self._resolve_agent_id(agent_id)
         await self._request(
             "DELETE",
             f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}",
@@ -464,14 +475,15 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_timeseries(
         self,
-        agent_id: int,
         channel_name: str,
         field_names: list[str],
         before: int | datetime | None = None,
         after: int | datetime | None = None,
         limit: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> TimeseriesResponse:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels/{channel_name}/messages/timeseries",
@@ -489,10 +501,11 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_channel_aggregate(
         self,
-        agent_id: int,
         channel_name: str,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Aggregate:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels/{channel_name}/aggregate",
@@ -502,17 +515,18 @@ class AsyncDataClient(BaseClient):
 
     async def update_channel_aggregate(
         self,
-        agent_id: int,
         channel_name: str,
         data: dict[str, Any],
-        replace: bool = False,
+        replace_data: bool = False,
         files: list[File] | None = None,
         suppress_response: bool = False,
         clear_attachments: bool = False,
         log_update: bool = False,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Aggregate | None:
-        method = "PUT" if replace else "PATCH"
+        agent_id = self._resolve_agent_id(agent_id)
+        method = "PUT" if replace_data else "PATCH"
         result = await self._request(
             method,
             f"/agents/{agent_id}/channels/{channel_name}/aggregate",
@@ -531,12 +545,13 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_channel_aggregate_attachment(
         self,
-        agent_id: int,
         channel_name: str,
         attachment_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> bytes:
         """Download an aggregate attachment. Follows the redirect to S3."""
+        agent_id = self._resolve_agent_id(agent_id)
         self._ensure_session()
         assert self._session is not None
         await self.auth.ensure_token()
@@ -599,10 +614,11 @@ class AsyncDataClient(BaseClient):
 
     async def list_alarms(
         self,
-        agent_id: int,
         channel_name: str,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[Alarm]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels/{channel_name}/alarms",
@@ -612,11 +628,12 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_alarm(
         self,
-        agent_id: int,
         channel_name: str,
         alarm_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Alarm:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels/{channel_name}/alarms/{alarm_id}",
@@ -626,7 +643,6 @@ class AsyncDataClient(BaseClient):
 
     async def create_alarm(
         self,
-        agent_id: int,
         channel_name: str,
         name: str,
         key: str,
@@ -635,8 +651,10 @@ class AsyncDataClient(BaseClient):
         description: str = "",
         enabled: bool = True,
         expiry_mins: float | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Alarm:
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {
             "name": name,
             "key": key,
@@ -657,7 +675,6 @@ class AsyncDataClient(BaseClient):
 
     async def put_alarm(
         self,
-        agent_id: int,
         channel_name: str,
         alarm_id: int,
         name: str,
@@ -667,8 +684,10 @@ class AsyncDataClient(BaseClient):
         description: str = "",
         enabled: bool = True,
         expiry_mins: float | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Alarm:
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {
             "name": name,
             "key": key,
@@ -689,7 +708,6 @@ class AsyncDataClient(BaseClient):
 
     async def update_alarm(
         self,
-        agent_id: int,
         channel_name: str,
         alarm_id: int,
         name: str | None = None,
@@ -699,8 +717,10 @@ class AsyncDataClient(BaseClient):
         description: str | None = None,
         enabled: bool | None = None,
         expiry_mins: float | None | Unset = UNSET,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Alarm:
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {}
         if name is not None:
             payload["name"] = name
@@ -726,11 +746,12 @@ class AsyncDataClient(BaseClient):
 
     async def delete_alarm(
         self,
-        agent_id: int,
         channel_name: str,
         alarm_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
+        agent_id = self._resolve_agent_id(agent_id)
         await self._request(
             "DELETE",
             f"/agents/{agent_id}/channels/{channel_name}/alarms/{alarm_id}",
@@ -741,9 +762,10 @@ class AsyncDataClient(BaseClient):
 
     async def list_connections(
         self,
-        agent_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[ConnectionDetail]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/wss_connections",
@@ -765,13 +787,14 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_connection_history(
         self,
-        agent_id: int,
         default_connection: bool,
         before: int | datetime | None = None,
         after: int | datetime | None = None,
         limit: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[ConnectionDetail]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/wss_connections/history",
@@ -787,14 +810,15 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_subscription_history(
         self,
-        agent_id: int,
         channel_agent_id: int,
         channel_name: str,
         before: int | datetime | None = None,
         after: int | datetime | None = None,
         limit: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[ConnectionSubscriptionLog]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/wss_connections/subscriptions/history",
@@ -812,10 +836,11 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_channel_subscriptions(
         self,
-        agent_id: int,
         channel_name: str,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[ConnectionSubscription]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/channels/{channel_name}/subscriptions",
@@ -827,9 +852,10 @@ class AsyncDataClient(BaseClient):
 
     async def fetch_notifications(
         self,
-        agent_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> AgentNotificationResponse:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/notifications",
@@ -839,10 +865,11 @@ class AsyncDataClient(BaseClient):
 
     async def list_notification_endpoints(
         self,
-        agent_id: int,
         name: str | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[NotificationEndpoint]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/notifications/endpoints",
@@ -853,15 +880,16 @@ class AsyncDataClient(BaseClient):
 
     async def create_notification_endpoint(
         self,
-        agent_id: int,
         name: str,
         type: NotificationType | int,
         extra_data: dict[str, Any],
         default: bool,
         priority: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> int:
         """Create a notification endpoint. Returns the new endpoint's snowflake ID."""
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {
             "name": name,
             "type": NotificationType(type).value,
@@ -880,13 +908,14 @@ class AsyncDataClient(BaseClient):
 
     async def update_notification_endpoint(
         self,
-        agent_id: int,
         endpoint_id: int,
         name: str | None = None,
         extra_data: dict[str, Any] | None = None,
         priority: int | None | Unset = UNSET,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {}
         if name is not None:
             payload["name"] = name
@@ -903,10 +932,11 @@ class AsyncDataClient(BaseClient):
 
     async def delete_notification_endpoint(
         self,
-        agent_id: int,
         endpoint_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
+        agent_id = self._resolve_agent_id(agent_id)
         await self._request(
             "DELETE",
             f"/agents/{agent_id}/notifications/endpoints/{endpoint_id}",
@@ -915,10 +945,11 @@ class AsyncDataClient(BaseClient):
 
     async def test_notification_endpoint(
         self,
-        agent_id: int,
         endpoint_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> bool:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "POST",
             f"/agents/{agent_id}/notifications/endpoints/{endpoint_id}/test",
@@ -928,10 +959,11 @@ class AsyncDataClient(BaseClient):
 
     async def list_notification_subscriptions(
         self,
-        agent_id: int,
         subscribed_to: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[NotificationSubscription]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/notifications/subscriptions",
@@ -942,14 +974,15 @@ class AsyncDataClient(BaseClient):
 
     async def create_notification_subscription(
         self,
-        agent_id: int,
         subscribe_to: int,
         severity: NotificationSeverity | int,
         topic_filter: list[str],
         endpoint_id: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[dict[str, int]]:
         """Returns a list of created subscriptions, each with ``id`` and ``endpoint_id``."""
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {
             "subscribe_to": str(subscribe_to),
             "severity": NotificationSeverity(severity).value,
@@ -970,12 +1003,13 @@ class AsyncDataClient(BaseClient):
 
     async def update_notification_subscription(
         self,
-        agent_id: int,
         subscription_id: int,
         severity: NotificationSeverity | int | None = None,
         topic_filter: list[str] | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {}
         if severity is not None:
             payload["severity"] = NotificationSeverity(severity).value
@@ -990,10 +1024,11 @@ class AsyncDataClient(BaseClient):
 
     async def delete_notification_subscription(
         self,
-        agent_id: int,
         subscription_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
+        agent_id = self._resolve_agent_id(agent_id)
         await self._request(
             "DELETE",
             f"/agents/{agent_id}/notifications/subscriptions/{subscription_id}",
@@ -1002,10 +1037,11 @@ class AsyncDataClient(BaseClient):
 
     async def list_default_notification_subscriptions(
         self,
-        agent_id: int,
         subscribed_to: int | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[NotificationSubscription]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/notifications/subscriptions/default",
@@ -1016,10 +1052,11 @@ class AsyncDataClient(BaseClient):
 
     async def delete_default_notification_subscription(
         self,
-        agent_id: int,
         subscribed_to: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
+        agent_id = self._resolve_agent_id(agent_id)
         await self._request(
             "DELETE",
             f"/agents/{agent_id}/notifications/subscriptions/default/{subscribed_to}",
@@ -1028,9 +1065,10 @@ class AsyncDataClient(BaseClient):
 
     async def list_notification_subscribers(
         self,
-        agent_id: int,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> list[NotificationSubscription]:
+        agent_id = self._resolve_agent_id(agent_id)
         data = await self._request(
             "GET",
             f"/agents/{agent_id}/notifications/subscribers",
@@ -1088,13 +1126,14 @@ class AsyncDataClient(BaseClient):
 
     async def put_schedule(
         self,
-        agent_id: int,
         schedule_id: int,
         app_key: str,
         permissions: list[dict[str, str]],
         is_org: bool | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> ProcessorTokenResponse:
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {
             "app_key": app_key,
             "permissions": permissions,
@@ -1111,14 +1150,15 @@ class AsyncDataClient(BaseClient):
 
     async def put_subscription(
         self,
-        agent_id: int,
         subscription_id: int,
         subscription_arn: str,
         app_key: str,
         permissions: list[dict[str, str]],
         is_org: bool | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {
             "subscription_arn": subscription_arn,
             "app_key": app_key,
@@ -1135,7 +1175,6 @@ class AsyncDataClient(BaseClient):
 
     async def create_ingestion_endpoint(
         self,
-        agent_id: int,
         ingestion_id: int,
         lambda_arn: str,
         cidr_ranges: list[str],
@@ -1147,8 +1186,10 @@ class AsyncDataClient(BaseClient):
         never_replace_token: bool = False,
         mini_token: bool = False,
         is_org: bool | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> ProcessorTokenResponse:
+        agent_id = self._resolve_agent_id(agent_id)
         payload: dict[str, Any] = {
             "lambda_arn": lambda_arn,
             "cidr_ranges": cidr_ranges,

@@ -25,7 +25,6 @@ class ProcessorDataClient(AsyncDataClient):
 
     def __init__(self, base_url: str):
         super().__init__(base_url)
-        self.agent_id: int | None = None
 
         self.has_persistent_connection = lambda: False
         self.is_processor_v2 = True
@@ -64,93 +63,93 @@ class ProcessorDataClient(AsyncDataClient):
 
     async def create_message(
         self,
-        agent_id: int,
         channel_name: str,
         data: dict[str, Any],
         timestamp: int | None = None,
         files: list[File] | None = None,
-        organisation_id: int | None = None,
         allow_invoking_channel: bool = False,
+        agent_id: int | None = None,
+        organisation_id: int | None = None,
     ) -> Message:
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
         return await super().create_message(
-            agent_id,
             channel_name,
             data=data,
             timestamp=timestamp,
             files=files,
-            organisation_id=organisation_id or self.organisation_id,
+            agent_id=agent_id,
+            organisation_id=organisation_id,
         )
 
     async def update_channel_aggregate(
         self,
-        agent_id: int,
         channel_name: str,
         data: dict[str, Any],
-        replace: bool = False,
+        replace_data: bool = False,
         files: list[File] | None = None,
         suppress_response: bool = False,
         clear_attachments: bool = False,
         log_update: bool = False,
-        organisation_id: int | None = None,
         allow_invoking_channel: bool = False,
+        agent_id: int | None = None,
+        organisation_id: int | None = None,
     ) -> Aggregate | None:
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
         return await super().update_channel_aggregate(
-            agent_id,
             channel_name,
             data,
-            replace=replace,
+            replace_data=replace_data,
             files=files,
             suppress_response=suppress_response,
             clear_attachments=clear_attachments,
             log_update=log_update,
-            organisation_id=organisation_id or self.organisation_id,
+            agent_id=agent_id,
+            organisation_id=organisation_id,
         )
 
     async def update_message(
         self,
-        agent_id: int,
         channel_name: str,
         message_id: int,
         data: dict[str, Any],
-        replace: bool = True,
+        replace_data: bool = False,
         files: list[File] | None = None,
         suppress_response: bool = False,
         clear_attachments: bool = False,
-        organisation_id: int | None = None,
         allow_invoking_channel: bool = False,
+        agent_id: int | None = None,
+        organisation_id: int | None = None,
     ) -> Message | None:
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
         return await super().update_message(
-            agent_id,
             channel_name,
             message_id,
             data=data,
-            replace=replace,
+            replace_data=replace_data,
             files=files,
             suppress_response=suppress_response,
             clear_attachments=clear_attachments,
-            organisation_id=organisation_id or self.organisation_id,
+            agent_id=agent_id,
+            organisation_id=organisation_id,
         )
 
     # -- Connection helpers --------------------------------------------------
 
     async def ping_connection_at(
         self,
-        agent_id: int,
         online_at: datetime,
         connection_status: ConnectionStatus,
         determination: ConnectionDetermination,
         ping_at: datetime | None = None,
         user_agent: str | None = None,
         ip_address: str | None = None,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
         user_agent = user_agent or "pydoover-processor, aiohttp"
@@ -174,37 +173,35 @@ class ProcessorDataClient(AsyncDataClient):
             "determination": determination.value,
         }
 
-        org = organisation_id or self.organisation_id
         await self.create_message(
-            agent_id,
             "doover_connection",
             payload,
-            organisation_id=org,
+            agent_id=agent_id,
+            organisation_id=organisation_id,
         )
         await self.update_channel_aggregate(
-            agent_id,
             "doover_connection",
             payload,
-            organisation_id=org,
+            agent_id=agent_id,
+            organisation_id=organisation_id,
         )
 
     async def update_connection_config(
         self,
-        agent_id: int,
         config: ConnectionConfig,
+        agent_id: int | None = None,
         organisation_id: int | None = None,
     ):
         payload = {"config": config.to_dict()}
-        org = organisation_id or self.organisation_id
         await self.create_message(
-            agent_id,
             "doover_connection",
             payload,
-            organisation_id=org,
+            agent_id=agent_id,
+            organisation_id=organisation_id,
         )
         await self.update_channel_aggregate(
-            agent_id,
             "doover_connection",
             payload,
-            organisation_id=org,
+            agent_id=agent_id,
+            organisation_id=organisation_id,
         )
