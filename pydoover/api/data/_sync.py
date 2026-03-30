@@ -1093,7 +1093,7 @@ class DataClient(BaseClient):
             organisation_id=organisation_id,
         )
 
-    def create_ingestion_endpoint(
+    def put_ingestion_endpoint(
         self,
         agent_id: int,
         ingestion_id: int,
@@ -1126,11 +1126,23 @@ class DataClient(BaseClient):
             payload["is_org"] = is_org
         data = self._request(
             "PUT",
-            f"/agents/{agent_id}/processors/ingestion/{ingestion_id}",
+            f"/agents/{agent_id}/processors/ingestions/{ingestion_id}",
             data=payload,
             organisation_id=organisation_id,
         )
         return ProcessorTokenResponse.from_dict(data)
+
+    def delete_ingestion_endpoint(
+        self,
+        agent_id: int,
+        ingestion_id: int,
+        organisation_id: int | None = None,
+    ) -> None:
+        self._request(
+            "DELETE",
+            f"/agents/{agent_id}/processors/ingestions/{ingestion_id}",
+            organisation_id=organisation_id,
+        )
 
     # ── TURN ───────────────────────────────────────────────────────────────
 

@@ -1133,7 +1133,7 @@ class AsyncDataClient(BaseClient):
             organisation_id=organisation_id,
         )
 
-    async def create_ingestion_endpoint(
+    async def put_ingestion_endpoint(
         self,
         agent_id: int,
         ingestion_id: int,
@@ -1166,11 +1166,23 @@ class AsyncDataClient(BaseClient):
             payload["is_org"] = is_org
         data = await self._request(
             "PUT",
-            f"/agents/{agent_id}/processors/ingestion/{ingestion_id}",
+            f"/agents/{agent_id}/processors/ingestions/{ingestion_id}",
             data=payload,
             organisation_id=organisation_id,
         )
         return ProcessorTokenResponse.from_dict(data)
+
+    async def delete_ingestion_endpoint(
+        self,
+        agent_id: int,
+        ingestion_id: int,
+        organisation_id: int | None = None,
+    ) -> None:
+        await self._request(
+            "DELETE",
+            f"/agents/{agent_id}/processors/ingestions/{ingestion_id}",
+            organisation_id=organisation_id,
+        )
 
     # ── TURN ───────────────────────────────────────────────────────────────
 
