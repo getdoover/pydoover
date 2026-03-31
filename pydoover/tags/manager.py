@@ -381,6 +381,7 @@ class TagsManagerProcessor(TagsManager):
         self._tag_values = tag_values or {}
         self._update_tags = False
         self._record_tag_update = record_tag_update
+        self._update_external_tags: bool = False
 
     def get_tag(
         self,
@@ -418,6 +419,8 @@ class TagsManagerProcessor(TagsManager):
             self._tag_values[app_key] = {key: value}
 
         self._update_tags = True
+        if app_key != self.app_key:
+            self._update_external_tags = True
 
     async def commit_tags(
         self, *, record_log: bool = False, timestamp: datetime | None = None
@@ -426,18 +429,24 @@ class TagsManagerProcessor(TagsManager):
         if not self._update_tags:
             return
 
-        await self.client.update_channel_aggregate(
-            TAG_CHANNEL_NAME,
-            self._tag_values,
-            agent_id=self.agent_id,
-        )
+        try:
+            update = self._tag_values[self.app_key]
+        except KeyError:
+            update = None
 
-        if self._record_tag_update or record_log:
-            await self.client.create_message(
-                TAG_CHANNEL_NAME,
-                self._tag_values,
-                timestamp=timestamp,
-                agent_id=self.agent_id,
-            )
+        if self._update_external_tags:
+            update = self._tag_values
+        else:
+            update = update and {self.app_key: update}
+
+        # only publish if there are tags to publish.
+        # Only publish external tags if requested explicitly (can cause recursion issues)
+        if update:
+            await self.client.update_channel_aggregate(TAG_CHANNEL_NAME, update)
+
+            if self._record_tag_update or record_log:
+                await self.client.create_message(
+                    TAG_CHANNEL_NAME, update, timestamp=timestamp
+                )
 
         self._update_tags = False
