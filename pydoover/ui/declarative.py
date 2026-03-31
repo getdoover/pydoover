@@ -113,6 +113,9 @@ class UI:
         display_name: str = "$config.app().APP_DISPLAY_NAME",
         hidden: bool | str = "$config.app().hidden:boolean:false",
         position: int | str = "$config.app().position:number:50",
+        default_open: int | str = False,
+        icon: str | None = None,
+        colour: str | None = None,
         **kwargs,
     ):
         super().__init_subclass__(**kwargs)
@@ -148,9 +151,12 @@ class UI:
                 )
             position = f"{position}:number:50"
 
-        cls.display_name = display_name
-        cls.hidden = hidden
-        cls.position = position
+        cls._display_name = display_name
+        cls._hidden = hidden
+        cls._position = position
+        cls._default_open = default_open
+        cls._icon = icon
+        cls._colour = colour
 
     def __init__(self, config: Schema, tags: Tags, app_key: str):
         self.config = config
@@ -172,9 +178,12 @@ class UI:
 
     def to_schema(self, resolve_config: bool = True):
         schema = {
-            "displayString": self.display_name,
-            "hidden": self.hidden,
-            "position": self.position,
+            "displayString": self._display_name,
+            "hidden": self._hidden,
+            "position": self._position,
+            "icon": self._icon,
+            "colour": self._colour,
+            "defaultOpen": self._default_open,
             "type": "uiApplication",
             "name": "$config.app().APP_KEY",
             "children": {e.name: e.to_dict() for e in self._elements.values()},
