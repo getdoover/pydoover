@@ -104,7 +104,7 @@ class Application:
         # probably be the source of truth
         self.api.organisation_id = info.organisation_id or self.organisation_id
 
-        self.app_key = info.app_key
+        self.app_key = self.api.app_key = info.app_key
         self.tag_manager = TagsManagerProcessor(
             self.app_key,
             self.api,
