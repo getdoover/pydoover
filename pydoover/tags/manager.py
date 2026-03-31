@@ -419,8 +419,6 @@ class TagsManagerProcessor(TagsManager):
             self._tag_values[app_key] = {key: value}
 
         self._update_tags = True
-        if app_key != self.app_key:
-            self._update_external_tags = True
 
     async def commit_tags(
         self, *, record_log: bool = False, timestamp: datetime | None = None
