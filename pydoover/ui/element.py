@@ -82,7 +82,7 @@ class Element:
         self.component_url = component_url
 
         Element.__global_position_counter += 1
-        if position is None:
+        if position is NotSet:
             self.position = Element.__global_position_counter
         else:
             self.position = position
