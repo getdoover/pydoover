@@ -388,6 +388,7 @@ class RPCManager:
         data = {
             "status": {
                 "code": "success",
+                "message": None,
             },
             "response": response,
         }

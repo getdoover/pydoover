@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Any
 
+from ..rpc import RPCManager
 from ..tags import Tags
 from ..tags.manager import TagsManagerProcessor
 
@@ -130,6 +131,7 @@ class Application:
             )
 
         self.ui_manager = UICommandsManager(self.api)
+        self.rpc = RPCManager(self.api, self.app_key)
 
         if info.ui_cmds is not None:
             self.ui_manager.values = info.ui_state
@@ -318,6 +320,16 @@ class Application:
         if not self.ui.is_static:
             log.info("Updating ui_state with runtime-generated schema.")
             await self.publish_ui_schema(clear=False)
+
+        try:
+            await self.ui_manager._handle_request(payload)
+        except Exception as e:
+            log.error(f"Error handling UI event: {e} ", exc_info=e)
+
+        try:
+            await self.rpc._handle_request(payload)
+        except Exception as e:
+            log.error(f"Error handling RPC event: {e} ", exc_info=e)
 
         result = None
         if func is None or payload is None:

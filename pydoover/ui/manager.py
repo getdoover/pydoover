@@ -93,13 +93,19 @@ class UICommandsManager(RPCManager):
             self.values = {}
 
     async def set_value(self, key, value, log_update: bool = True):
+        if getattr(self.api, "is_processor_v2", False):
+            kwargs = {"allow_invoking_channel": True}
+        else:
+            kwargs = {}
+
         await self.api.update_channel_aggregate(
-            UI_CMDS_CHANNEL, {self.app_key: {key: value}}
+            UI_CMDS_CHANNEL, {self.app_key: {key: value}}, **kwargs
         )
         if log_update:
             await self.api.create_message(
                 UI_CMDS_CHANNEL,
                 {"type": "log", "app_key": self.app_key, "key": key, "value": value},
+                **kwargs,
             )
 
     def get_value(self, key):

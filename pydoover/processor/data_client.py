@@ -263,8 +263,8 @@ class ProcessorDataClient(AsyncDataClient):
         agent_id: int | None = None,
         organisation_id: int | None = None,
     ) -> Message | None:
-        if channel_name == self._invoking_channel_name:
-            self._check_invoking_channel(channel_name, data, allow_invoking_channel)
+        # if channel_name == self._invoking_channel_name:
+        #     self._check_invoking_channel(channel_name, data, allow_invoking_channel)
 
         return await super().update_message(
             agent_id=self._resolve_agent_id(agent_id),
