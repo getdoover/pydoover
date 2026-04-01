@@ -209,7 +209,10 @@ class TestRPCManagerIntegration:
         await app.fire_event("test_channel", _make_request_event("ping", {"x": 1}))
 
         assert calls == [("test_channel", {"x": 1})]
-        assert app.messages[100]["data"]["status"] == {"code": "success"}
+        assert app.messages[100]["data"]["status"] == {
+            "code": "success",
+            "message": None,
+        }
         assert app.messages[100]["data"]["response"] == {"pong": True}
 
     @pytest.mark.asyncio
