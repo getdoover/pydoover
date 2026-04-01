@@ -80,6 +80,9 @@ class UICommandsManager(RPCManager):
     def subscribe(self, channel_name: str) -> None:
         super().subscribe(channel_name)
 
+        if self.is_processor:
+            return
+
         self.api.add_event_callback(
             channel_name,
             self._on_aggregate_update,
@@ -93,7 +96,7 @@ class UICommandsManager(RPCManager):
             self.values = {}
 
     async def set_value(self, key, value, log_update: bool = True):
-        if getattr(self.api, "is_processor_v2", False):
+        if self.is_processor:
             kwargs = {"allow_invoking_channel": True}
         else:
             kwargs = {}

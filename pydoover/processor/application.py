@@ -133,6 +133,9 @@ class Application:
         self.ui_manager = UICommandsManager(self.api)
         self.rpc = RPCManager(self.api, self.app_key)
 
+        self.ui_manager.register_handlers(self)
+        self.rpc.register_handlers(self)
+
         if info.ui_cmds is not None:
             self.ui_manager.values = info.ui_state
 

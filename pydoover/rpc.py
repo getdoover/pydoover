@@ -152,6 +152,10 @@ class RPCManager:
         self._pending_calls: dict[int, asyncio.Future] = {}
         self._subscribed_channels: set[str] = set()
 
+    @property
+    def is_processor(self):
+        return getattr(self.api, "is_processor_v2", False)
+
     # -- handler registration -----------------------------------------------
 
     def check_handler(self, func: Callable):
@@ -184,6 +188,9 @@ class RPCManager:
         """Subscribe to RPC events on *channel_name*."""
         if channel_name in self._subscribed_channels:
             return
+        if self.is_processor:
+            return  # we can't subscribe on a processor...
+
         self._subscribed_channels.add(channel_name)
         self.api.add_event_callback(
             channel_name,
@@ -275,6 +282,12 @@ class RPCManager:
             for channel, pattern, parser, req_handler in self._re_handlers:
                 if channel == channel_name and pattern.match(method):
                     return parser, req_handler
+
+        # get global handlers
+        try:
+            return self._handlers[(None, method)]
+        except KeyError:
+            pass
 
         raise KeyError("could not find appropriate parser...")
 
