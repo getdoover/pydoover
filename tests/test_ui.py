@@ -175,6 +175,7 @@ class TestCanonicalUiTypes:
             series=[
                 ui.Series(
                     "Temperature",
+                    value=5,
                     data_type="number",
                     colour="red",
                     units="C",
