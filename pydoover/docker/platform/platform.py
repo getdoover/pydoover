@@ -1133,11 +1133,11 @@ class PlatformInterface(GRPCInterface):
         resp: platform_iface_pb2.getDIEventsResponse = await self.make_request(
             "getDIEvents",
             platform_iface_pb2.getDIEventsRequest(
-                pin=di_pin,
+                pin=int(di_pin),
                 rising=rising,
                 falling=falling,
                 include_system_events=include_system_events,
-                events_from=events_from,
+                events_from=int(events_from),
             ),
         )
         if resp:
