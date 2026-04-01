@@ -168,18 +168,18 @@ class TestCanonicalUiTypes:
         assert float_input.to_dict()["min"] == 0
         assert time_input.to_dict()["type"] == "uiTimeInput"
 
-    def test_multiplot_serializes_record_based_series_schema(self):
+    def test_multiplot_serializes_series(self):
         multiplot = ui.Multiplot(
             "History",
             name="history",
-            series={
-                "temperature": {
-                    "dataType": "number",
-                    "displayString": "Temperature",
-                    "colour": "red",
-                    "units": "C",
-                }
-            },
+            series=[
+                ui.Series(
+                    "Temperature",
+                    data_type="number",
+                    colour="red",
+                    units="C",
+                )
+            ],
             title="History",
         )
 
@@ -188,6 +188,8 @@ class TestCanonicalUiTypes:
         assert data["type"] == "uiMultiPlot"
         assert data["series"]["temperature"]["dataType"] == "number"
         assert data["series"]["temperature"]["displayString"] == "Temperature"
+        assert data["series"]["temperature"]["colour"] == "red"
+        assert data["series"]["temperature"]["units"] == "C"
 
 
 class TestApplicationUIResolution:
@@ -241,7 +243,9 @@ class TestApplicationUIResolution:
             )
             await app._setup()
 
-            assert app.ui.voltage.to_dict()["currentValue"] == "$tag.app().speed:number:0"
+            assert (
+                app.ui.voltage.to_dict()["currentValue"] == "$tag.app().speed:number:0"
+            )
             assert (
                 app.ui.telemetry.to_dict()["children"]["inner_voltage"]["currentValue"]
                 == "$tag.app().speed:number:0"

@@ -59,6 +59,86 @@ class Colour:
         return value  # fixme: this hackiness
 
 
+class Series:
+    """Represents a series in a Multiplot UI element.
+
+    Parameters
+    ----------
+    display_name: str
+        The display string for the series.
+    name: str, optional
+        The key used in the serialized output. Defaults to a sanitized form of *display_name*.
+    data_type: str
+        The data type of the series (``"number"``, ``"string"``, ``"boolean"``, ``"unknown"``).
+    active: bool, optional
+        Whether the series is active by default.
+    colour: str, optional
+        The colour of the series (e.g. ``Colour.red`` or a hex string).
+    icon: str, optional
+        An icon identifier for the series.
+    shared_axis: bool | str, optional
+        Whether to share the axis, or the name of the axis to share.
+    units: str, optional
+        The units label for the series values.
+    step_labels: list[str], optional
+        Labels for step-type series.
+    range: tuple[int | float | str, int | float | str], optional
+        A ``(min, max)`` tuple for the series range. Values may be numeric or ``"auto"``.
+    value: optional
+        A bound tag reference (e.g. ``tag_ref("my_tag")``) that the series data is looked up from.
+    """
+
+    def __init__(
+        self,
+        display_name: str,
+        value: Any,
+        name: str | None = None,
+        data_type: str = "unknown",
+        active: bool | None = None,
+        colour: str | None = None,
+        icon: str | None = None,
+        shared_axis: bool | str | None = None,
+        units: str | None = None,
+        step_labels: list[str] | None = None,
+        range: tuple | None = None,
+    ):
+        self.display_name = display_name
+        self.value = value
+        self.name = name or sanitize_display_name(display_name)
+        self.data_type = data_type
+        self.active = active
+        self.colour = colour
+        self.icon = icon
+        self.shared_axis = shared_axis
+        self.units = units
+        self.step_labels = step_labels
+        self.range = range
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "name": self.name,
+            "displayString": self.display_name,
+            "dataType": self.data_type,
+        }
+        if self.value is not None:
+            result["lookup"] = self.value
+        if self.active is not None:
+            result["active"] = self.active
+        if self.colour is not None:
+            result["colour"] = self.colour
+        if self.icon is not None:
+            result["icon"] = self.icon
+        if self.shared_axis is not None:
+            result["sharedAxis"] = self.shared_axis
+        if self.units is not None:
+            result["units"] = self.units
+        if self.step_labels is not None:
+            result["stepLabels"] = self.step_labels
+        if self.range is not None:
+            result["range"] = {"min": self.range[0], "max": self.range[1]}
+        return normalize_ui_value(result)
+
+
 class Range:
     """Represents a range of values with associated properties for UI display.
 

@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from typing import Optional, Any
 
-from .misc import NotSet
+from .misc import NotSet, Series
 from .declarative import normalize_ui_value
 from ..utils.utils import sanitize_display_name
 
@@ -216,17 +216,14 @@ class Multiplot(Element):
     ----------
     display_name: str
         The display name of the multiplot.
-    series: list[str] | dict[str, dict[str, Any]]
-        Series configuration for the multiplot. New code should pass a mapping of
-        series name to series configuration.
-    series_colours: list[Colour], optional
-        A list of colours for each series in the multiplot.
-    series_active: list[bool], optional
-        A list indicating whether each series is active or not.
+    series: list[Series]
+        A list of :class:`~pydoover.ui.Series` objects defining the plot series.
     earliest_data_time: datetime, optional
         The earliest time for which data is available in the multiplot.
     title: str, optional
         The title of the multiplot.
+    default_zoom: str, optional
+        The default zoom level for the multiplot.
     """
 
     type = "uiMultiPlot"
@@ -234,105 +231,23 @@ class Multiplot(Element):
     def __init__(
         self,
         display_name: str,
-        series: list[str] | dict[str, dict[str, Any]],
-        series_colours: Optional[list[str]] = None,
-        series_active: Optional[list[bool]] = None,
+        series: list[Series],
         earliest_data_time: Optional[datetime] = None,
         title: Optional[str] = None,
-        shared_axis: Optional[list[bool]] = None,
-        step_labels: Optional[list[str]] = None,
-        step_padding: Optional[list[int]] = None,
         default_zoom: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(display_name, **kwargs)
 
-        self._legacy_series_input = isinstance(series, list)
-        self.series_colours = series_colours
-        self.series_active = series_active
+        self.series = series
         self.earliest_data_time = earliest_data_time
         self.title = title
-        self.shared_axis = shared_axis
-        self.step_labels = step_labels
-        self.step_padding = step_padding
         self.default_zoom = default_zoom
-        self.series = self._normalize_series(series)
-
-        if self._legacy_series_input or any(
-            value is not None
-            for value in (
-                series_colours,
-                series_active,
-                shared_axis,
-                step_labels,
-                step_padding,
-            )
-        ):
-            raise RuntimeError(
-                "Legacy uiMultiPlot list-based schema is deprecated. "
-                "Pass series as a record keyed by series name instead."
-            )
-            # warnings.warn(
-            #     "Legacy uiMultiPlot list-based schema is deprecated. "
-            #     "Pass series as a record keyed by series name instead.",
-            #     DeprecationWarning,
-            #     stacklevel=2,
-            # )
-
-    def _normalize_series(self, series: list[str] | dict[str, dict[str, Any]]):
-        return {
-            name: self._normalize_series_entry(name, config, index)
-            for index, (name, config) in enumerate(series.items())
-        }
-
-    def _normalize_series_entry(
-        self, name: str, config: dict[str, Any] | str | None, index: int
-    ) -> dict[str, Any]:
-        if isinstance(config, str):
-            result: dict[str, Any] = {"displayString": config}
-        else:
-            result = dict(config or {})
-
-        result.setdefault("name", name)
-        result.setdefault("displayString", result["name"])
-        result.setdefault("dataType", "unknown")
-
-        if "shared_axis" in result and "sharedAxis" not in result:
-            result["sharedAxis"] = result.pop("shared_axis")
-        if "step_labels" in result and "stepLabels" not in result:
-            result["stepLabels"] = result.pop("step_labels")
-
-        if self.series_colours is not None and "colour" not in result:
-            colour = self._get_legacy_index_value(self.series_colours, index)
-            if colour is not None:
-                result["colour"] = colour
-        if self.series_active is not None and "active" not in result:
-            active = self._get_legacy_index_value(self.series_active, index)
-            if active is not None:
-                result["active"] = active
-        if self.shared_axis is not None and "sharedAxis" not in result:
-            shared_axis = self._get_legacy_index_value(self.shared_axis, index)
-            if shared_axis is not None:
-                result["sharedAxis"] = shared_axis
-        if self.step_labels is not None and "stepLabels" not in result:
-            result["stepLabels"] = self.step_labels
-
-        return normalize_ui_value(result)
-
-    @staticmethod
-    def _get_legacy_index_value(values: list[Any], index: int):
-        if index >= len(values):
-            return None
-        return values[index]
 
     def to_dict(self):
         result = super().to_dict()
-        result["series"] = self.series
+        result["series"] = {s.name: s.to_dict() for s in self.series}
 
-        if self.series_active is not None and not self._legacy_series_input:
-            result["activeSeries"] = self.series_active
-        if self.step_padding is not None:
-            result["stepPadding"] = self.step_padding
         if self.default_zoom is not None:
             result["defaultZoom"] = self.default_zoom
         if self.title is not None:
