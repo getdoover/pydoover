@@ -136,6 +136,7 @@ class TestRPCContext:
                 attachments=[],
             ),
             _update_fn=update_fn,
+            _handler=lambda ctx: None,
         )
 
         await ctx.acknowledge()
@@ -163,6 +164,7 @@ class TestRPCContext:
                 attachments=[],
             ),
             _update_fn=update_fn,
+            _handler=lambda ctx: None,
         )
 
         await ctx.defer(5)

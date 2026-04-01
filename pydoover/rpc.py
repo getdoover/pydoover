@@ -86,10 +86,13 @@ def handler(
 
 
 class RPCContext:
-    def __init__(self, method: str, message: Message, _update_fn: Callable):
+    def __init__(
+        self, method: str, message: Message, _update_fn: Callable, _handler: Callable
+    ):
         self.method = method
         self.message = message
         self._update_fn = _update_fn
+        self._handler = _handler
 
     @property
     def channel(self):
@@ -291,10 +294,13 @@ class RPCManager:
 
         raise KeyError("could not find appropriate parser...")
 
-    def _build_context(self, method, event: MessageCreateEvent | MessageUpdateEvent):
+    def _build_context(
+        self, method, event: MessageCreateEvent | MessageUpdateEvent, _handler: Callable
+    ):
         return RPCContext(
             method=method,
             message=event.message,
+            _handler=handler,
             _update_fn=self.api.update_message,
         )
 
@@ -338,7 +344,7 @@ class RPCManager:
         except KeyError:
             return
 
-        ctx = self._build_context(method, event)
+        ctx = self._build_context(method, event, method_handler)
         if parser:
             if asyncio.iscoroutinefunction(parser):
                 payload = await parser(payload)
@@ -360,12 +366,29 @@ class RPCManager:
             )
             if can_respond:
                 await self._send_error(event.message, "INTERNAL_ERROR", str(e))
+
+            try:
+                await self.on_failure(ctx, payload)
+            except Exception as e:
+                log.error(f"Failed to call on_failure: {e}")
+
         else:
             if result is None:
                 result = {}
 
             if can_respond:
                 await self._send_result(event.message, result)
+
+            try:
+                await self.on_success(ctx, payload)
+            except Exception as e:
+                log.error(f"Failed to call on_success: {e}")
+
+    async def on_success(self, ctx, payload):
+        pass
+
+    async def on_failure(self, ctx, payload):
+        pass
 
     def _handle_response(self, event: MessageUpdateEvent) -> None:
         """Resolve a pending future if this update is an RPC response."""

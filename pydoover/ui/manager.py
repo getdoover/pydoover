@@ -54,10 +54,13 @@ class InteractionContext(RPCContext, Generic[InteractionT]):
     element: InteractionT
     interaction: InteractionT
 
-    def __init__(self, method, message, interaction: InteractionT, _update_fn):
-        super().__init__(method, message, _update_fn)
+    def __init__(
+        self, method, message, interaction: InteractionT, _update_fn, _handler
+    ):
+        super().__init__(method, message, _update_fn, _handler)
         # dunno what to name this
         self.element = self.interaction = interaction
+        self.auto_update = self._handler._ui_auto_update
 
     async def set_value(self, value, max_age: float = None, log_update: bool = True):
         return await self.element.set(value, max_age, log_update)
@@ -121,10 +124,21 @@ class UICommandsManager(RPCManager):
             elem = self._interactions[method]
             return None, elem.handler
 
-    def _build_context(self, method, event: MessageCreateEvent | MessageUpdateEvent):
+    def _build_context(
+        self, method, event: MessageCreateEvent | MessageUpdateEvent, _handler: Callable
+    ):
         return InteractionContext(
-            method, event.message, self._interactions[method], self.api.update_message
+            method,
+            event.message,
+            self._interactions[method],
+            self.api.update_message,
+            _handler,
         )
 
     def check_handler(self, func: Callable):
         return inspect.ismethod(func) and getattr(func, "_is_ui_rpc_handler", False)
+
+    async def on_success(self, ctx: InteractionContext, payload):
+        if ctx.auto_update:
+            log.debug(f"Auto-updating {ctx.element} with {payload}")
+            await ctx.set_value(payload)
