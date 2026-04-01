@@ -60,7 +60,7 @@ class InteractionContext(RPCContext, Generic[InteractionT]):
         super().__init__(method, message, _update_fn, _handler)
         # dunno what to name this
         self.element = self.interaction = interaction
-        self.auto_update = self._handler._ui_auto_update
+        self.auto_update = getattr(self._handler, "_ui_auto_update", False)
 
     async def set_value(self, value, max_age: float = None, log_update: bool = True):
         return await self.element.set(value, max_age, log_update)
