@@ -162,7 +162,7 @@ class TimezoneConfig(Enum):
     ):
         super().__init__(
             display_name,
-            choices=list(zoneinfo.available_timezones()),
+            choices=list(sorted(zoneinfo.available_timezones())),
             description=description,
             default=default,
             name="dv_proc_timezone",
