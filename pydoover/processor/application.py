@@ -325,12 +325,12 @@ class Application:
             await self.publish_ui_schema(clear=False)
 
         try:
-            await self.ui_manager._handle_request(payload)
+            await self.ui_manager._on_event(payload)
         except Exception as e:
             log.error(f"Error handling UI event: {e} ", exc_info=e)
 
         try:
-            await self.rpc._handle_request(payload)
+            await self.rpc._on_event(payload)
         except Exception as e:
             log.error(f"Error handling RPC event: {e} ", exc_info=e)
 
