@@ -230,14 +230,13 @@ class Multiplot(Element):
 
     def __init__(
         self,
-        display_name: str,
+        title: str,
         series: list[Series],
         earliest_data_time: Optional[datetime] = None,
-        title: Optional[str] = None,
         default_zoom: Optional[str] = None,
         **kwargs,
     ):
-        super().__init__(display_name, **kwargs)
+        super().__init__(title, **kwargs)
 
         self.series = series
         self.earliest_data_time = earliest_data_time

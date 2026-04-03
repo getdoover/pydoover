@@ -385,7 +385,7 @@ class Application:
             raise RuntimeError("Agent ID has not been initialized.")
         return await self.api.fetch_channel(channel_name)
 
-    async def get_tag(self, key: str, default: Any = None):
+    def get_tag(self, key: str, default: Any = None):
         if self.tag_manager is None:
             raise RuntimeError("Tag manager has not been initialized.")
         return self.tag_manager.get_tag(key, default)

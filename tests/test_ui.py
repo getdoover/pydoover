@@ -181,7 +181,6 @@ class TestCanonicalUiTypes:
                     units="C",
                 )
             ],
-            title="History",
         )
 
         data = multiplot.to_dict()
