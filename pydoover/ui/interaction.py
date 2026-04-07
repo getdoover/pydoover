@@ -49,7 +49,7 @@ class Interaction(Element):
     def __init__(
         self,
         display_name: str,
-        value: str = None,
+        value: str = NotSet,
         default: Any = NotSet,
         show_activity: bool = NotSet,
         requires_confirm: bool = NotSet,
@@ -58,7 +58,9 @@ class Interaction(Element):
         super().__init__(display_name, **kwargs)
         self.default = default
 
-        self._value_location = value or f"$cmds.app().{self.name}"
+        if value is NotSet:
+            value = f"$cmds.app().{self.name}"
+        self._value_location = value
 
         # these must both be set at runtime.
         self._manager: "UICommandsManager" = None
