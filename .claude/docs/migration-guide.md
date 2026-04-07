@@ -361,6 +361,98 @@ grep -rn "\.add_subscription\|\.publish_to_channel" .
 grep -rn "\.set_tags_async\|\.get_bus_status" .
 ```
 
+## Conventions & Best Practices
+
+### App Display Name
+
+Don't add a config field for "app name" or "meter name". Use the built-in `self.app_display_name` property on the Application class. For dynamic titles (e.g. showing current state), use an `app_display_name` tag:
+
+```python
+# Tags
+app_display_name = Tag("string", default="My App")
+
+# Application main_loop
+await self.tags.app_display_name.set(f"{self.app_display_name} ({status})")
+```
+
+### ApplicationPosition
+
+Use `ApplicationPosition()` from `pydoover.config` instead of a custom `config.Integer("Position", ...)`:
+
+```python
+from pydoover.config import ApplicationPosition
+
+class MyConfig(config.Schema):
+    # ... other fields ...
+    position = ApplicationPosition()
+```
+
+### Don't Duplicate UI Commands and Tags
+
+If a value is set via a UI interaction (FloatInput, Select, Button, etc.), read it directly from the UI element. Don't create a corresponding tag to mirror the same data:
+
+```python
+# Good — read directly from UI element
+threshold = self.ui.alert_counter.value
+await self.ui.alert_counter.set(None)  # reset after use
+
+# Bad — unnecessary tag duplication
+await self.tags.alert_threshold.set(value)  # in handler
+threshold = self.tags.alert_threshold.value  # in main_loop
+```
+
+Only use tags for state that isn't already held by a UI element.
+
+### UI Element Mapping (Old → New)
+
+| Old Element | New Element |
+|-------------|-------------|
+| `ui.Action("id", "Label")` | `ui.Button("Label")` |
+| `ui.NumericParameter("id", "Label")` | `ui.FloatInput("Label")` |
+| `ui.TextParameter("id", "Label")` | `ui.TextInput("Label")` |
+| `ui.DateTimeParameter("id", "Label")` | `ui.DatetimeInput("Label")` |
+| `ui.DateTimeVariable("id", "Label")` | `ui.Timestamp("Label", value=Tags.x)` |
+| `ui.StateCommand("id", "Label", ...)` | `ui.Select("Label", options=[...])` |
+| `ui.HiddenValue("id")` | Use a `Tag` instead |
+| `ui.AlertStream("id", "Label")` | Use `self.create_message(channel, {...})` |
+| `ui.Option("key", "Display")` | `ui.Option("Display")` |
+
+Note: New elements use `display_name` as the first positional arg (not a separate `id`). The element name is auto-generated from the display name (snake_cased).
+
+### UI Interaction Handlers
+
+Use `@ui.handler` on the Application class to handle user interactions. The handler name matches the element's auto-generated name:
+
+```python
+# UI element "Alert Counter" → auto-name "alert_counter"
+@ui.handler("alert_counter", parser=float)
+async def on_alert(self, ctx, value: float):
+    log.info(f"Alert set to {value}")
+```
+
+For elements where you only need to read the current value in `main_loop` (e.g. a Select for desired state), you don't need a handler — just read `self.ui.element.value`.
+
+### Static UI Export
+
+If the UI is fully static (no `setup()` override), add an export function and pyproject script:
+
+```python
+# app_ui.py
+def export():
+    from pathlib import Path
+    MyUI(None, None, None).export(
+        Path(__file__).parents[2] / "doover_config.json", "app_name"
+    )
+```
+
+```toml
+# pyproject.toml
+[project.scripts]
+export-ui = "my_app.app_ui:export"
+```
+
+If the UI has a `setup()` override (uses config values to set ranges, precision, hidden, etc.), it cannot be exported statically — omit the export function and script.
+
 ## Files Summary
 
 | File | Action | Description |
