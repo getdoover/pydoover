@@ -93,6 +93,9 @@ class Interaction(Element):
             res["requiresConfirm"] = self.requires_confirm
         if self.show_activity is not NotSet:
             res["showActivity"] = self.show_activity
+        if self.default is not NotSet:
+            res["default"] = self.default
+
         return normalize_ui_value(res)
 
     # @property
