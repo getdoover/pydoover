@@ -1,6 +1,6 @@
 Migrate a pydoover device application to the doover-2 API. The app to migrate is at: $ARGUMENTS
 
-Follow the migration guide at `../docs/migration-guide.md` (relative to the pydoover repo root) exactly. Read that file first, then:
+Follow the migration guide at `.claude/docs/migration-guide.md` (relative to the pydoover repo root) exactly. Read that file first, then:
 
 1. Read ALL source files in the app's `src/` directory
 2. Read tests, pyproject.toml, Dockerfile, and .github/workflows/
