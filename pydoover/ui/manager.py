@@ -10,7 +10,7 @@ from pydoover.models import (
     MessageUpdateEvent,
 )
 from pydoover.rpc import RPCManager, RPCContext
-from pydoover.ui import Interaction
+from pydoover.ui import Interaction, NotSet
 
 UI_CMDS_CHANNEL = "ui_cmds"
 
@@ -115,7 +115,17 @@ class UICommandsManager(RPCManager):
             )
 
     def get_value(self, key):
-        return self.values[key]
+        try:
+            return self.values[key]
+        except KeyError as e:
+            try:
+                elem = self._interactions[key]
+            except KeyError:
+                raise e
+            else:
+                if elem.default is not NotSet:
+                    return elem.default
+                raise e
 
     def _get_handler(self, channel_name, method):
         try:
