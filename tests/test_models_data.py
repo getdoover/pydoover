@@ -583,7 +583,7 @@ class TestConnectionType:
 
 class TestReExports:
     def test_device_agent_models_reexport(self):
-        from pydoover.docker.device_agent.models import (
+        from pydoover.models import (
             Aggregate,
             TurnCredential,
         )
