@@ -8,7 +8,7 @@ from collections import deque
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, Callable
+from typing import Any, Callable
 
 from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
@@ -44,9 +44,7 @@ from ..utils import (
     apply_diff,
     generate_diff,
 )
-
-if TYPE_CHECKING:
-    from ..config import Schema
+from ..config import Schema
 
 log = logging.getLogger(__name__)
 
