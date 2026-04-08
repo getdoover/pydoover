@@ -1,7 +1,9 @@
+import enum
+
 from ...config import Array, Enum, Integer, Number, Object, String
 
 
-class ModbusType:
+class ModbusType(enum.Enum):
     SERIAL = "serial"
     TCP = "tcp"
 
