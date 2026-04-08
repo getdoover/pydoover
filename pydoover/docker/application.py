@@ -8,7 +8,7 @@ from collections import deque
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, Callable
+from typing import Any, Callable
 
 from pydoover.tags import Tags
 from pydoover.tags.manager import TagsManagerDocker
@@ -44,9 +44,7 @@ from ..utils import (
     apply_diff,
     generate_diff,
 )
-
-if TYPE_CHECKING:
-    from ..config import Schema
+from ..config import Schema
 
 log = logging.getLogger(__name__)
 
@@ -108,9 +106,9 @@ class Application:
         The application key for the app, used to identify it in the Doover cloud. This is globally unique.
     """
 
-    config_cls: type["Schema"] | None = None
-    ui_cls: type[UI] | None = None
-    tags_cls: type[Tags] | None = None
+    config_cls: type[Schema] = Schema
+    ui_cls: type[UI] = UI
+    tags_cls: type[Tags] = Tags
 
     def __init__(
         self,
@@ -123,7 +121,7 @@ class Application:
         config_fp: str = None,
         healthcheck_port: int = None,
     ):
-        self.config: "Schema" = self.__class__.config_cls()
+        self.config = self.__class__.config_cls()
 
         self._tags: Tags | None = None
         self._ui: UI | None = None
@@ -159,19 +157,8 @@ class Application:
         self._shutdown_at = None
         self.force_log_on_shutdown = False
 
-        # fixme: app_key isn't actually set.
-        # tags_cls should also be copied to the instance on __init__
-        if self.__class__.tags_cls is not None:
-            self.tags = self.__class__.tags_cls(
-                self.app_key, self.tag_manager, self.config
-            )
-        else:
-            self.tags = None
-
-        if self.__class__.ui_cls is not None:
-            self.ui = self.__class__.ui_cls(self.config, self.tags, self.app_key)
-        else:
-            self.ui = None
+        self.tags = self.tags_cls(self.app_key, self.tag_manager, self.config)
+        self.ui = self.ui_cls(self.config, self.tags, self.app_key)
 
         if name is None:
             self.name = self.__class__.__name__
