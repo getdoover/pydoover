@@ -451,6 +451,21 @@ class DeviceAgentInterface(GRPCInterface):
         return TurnCredential.from_proto(resp.turn_credential)
 
     @cli_command()
+    async def fetch_message(
+        self,
+        channel_name: str,
+        message_id: int,
+    ) -> Message:
+        resp = await self.make_request(
+            "GetMessage",
+            device_agent_pb2.GetMessageRequest(
+                channel_name=channel_name,
+                message_id=message_id,
+            ),
+        )
+        return Message.from_proto(resp.message)
+
+    @cli_command()
     async def list_messages(
         self,
         channel_name: str,
