@@ -30,6 +30,7 @@ from .platform import PlatformInterface
 from ..models import (
     Aggregate,
     AggregateUpdateEvent,
+    ChannelSyncEvent,
     EventSubscription,
     File,
     Message,
@@ -503,6 +504,20 @@ class Application:
         """
         pass
 
+    async def on_channel_sync(self, event: "ChannelSyncEvent"):
+        """Called once per channel when the initial aggregate is fetched on subscription.
+
+        Override this method in your application to handle the initial channel state.
+
+        You do **not** need to call ``super().on_channel_sync()`` — this method does nothing by default.
+
+        Parameters
+        ----------
+        event : ChannelSyncEvent
+            The channel sync event containing the initial aggregate.
+        """
+        pass
+
     async def subscribe(
         self,
         channel_name: str,
@@ -564,6 +579,8 @@ class Application:
             await self.on_message_create(event)
         elif isinstance(event, MessageUpdateEvent):
             await self.on_message_update(event)
+        elif isinstance(event, ChannelSyncEvent):
+            await self.on_channel_sync(event)
         elif isinstance(event, AggregateUpdateEvent):
             await self.on_aggregate_update(event)
 

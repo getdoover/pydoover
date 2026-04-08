@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 
-from pydoover.models import EventSubscription, AggregateUpdateEvent
+from pydoover.models import EventSubscription, AggregateUpdateEvent, ChannelSyncEvent
 
 import asyncio
 import logging
@@ -167,9 +167,12 @@ class TagsManagerDocker(TagsManager):
             EventSubscription.aggregate_update,
         )
         self.client.add_event_callback(
+            TAG_CHANNEL_NAME, self._on_tag_sync, EventSubscription.channel_sync
+        )
+        self.client.add_event_callback(
             FASTMODE_CHANNEL_NAME,
             self.on_fastmode_update,
-            EventSubscription.aggregate_update,
+            EventSubscription.aggregate_update | EventSubscription.channel_sync,
         )
 
         if skip_sync:
@@ -178,12 +181,6 @@ class TagsManagerDocker(TagsManager):
         await self.client.wait_for_channels_sync(
             [TAG_CHANNEL_NAME, FASTMODE_CHANNEL_NAME], timeout=10
         )
-        self._tag_values = (
-            await self.client.fetch_channel_aggregate(TAG_CHANNEL_NAME)
-        ).data
-        self.fastmode_aggregate = (
-            await self.client.fetch_channel_aggregate(FASTMODE_CHANNEL_NAME)
-        ).data
 
     async def on_fastmode_update(self, event: AggregateUpdateEvent):
         self.fastmode_aggregate = event.aggregate.data
@@ -202,6 +199,9 @@ class TagsManagerDocker(TagsManager):
     @property
     def max_age_secs(self):
         return self.observed_max_age if self.is_being_observed else self.default_max_age
+
+    async def _on_tag_sync(self, event: ChannelSyncEvent):
+        self._tag_values = event.aggregate.data
 
     async def _on_tag_update(self, event: AggregateUpdateEvent):
         diff = generate_diff(self._tag_values, event.aggregate.data, do_delete=False)

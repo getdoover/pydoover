@@ -6,6 +6,7 @@ from typing import Callable, Generic, TypeVar
 from pydoover.models import (
     EventSubscription,
     AggregateUpdateEvent,
+    ChannelSyncEvent,
     MessageCreateEvent,
     MessageUpdateEvent,
 )
@@ -89,10 +90,12 @@ class UICommandsManager(RPCManager):
         self.api.add_event_callback(
             channel_name,
             self._on_aggregate_update,
-            EventSubscription.aggregate_update,
+            EventSubscription.aggregate_update | EventSubscription.channel_sync,
         )
 
-    async def _on_aggregate_update(self, event: AggregateUpdateEvent):
+    async def _on_aggregate_update(
+        self, event: AggregateUpdateEvent | ChannelSyncEvent
+    ):
         try:
             self.values = event.aggregate.data[self.app_key]
         except KeyError:

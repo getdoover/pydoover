@@ -21,6 +21,7 @@ from .exceptions import (
 )
 from .events import (
     AggregateUpdateEvent,
+    ChannelSyncEvent,
     DeploymentEvent,
     EventSubscription,
     IngestionEndpointEvent,
@@ -62,6 +63,7 @@ __all__ = [
     "BatchMessageResponse",
     "Channel",
     "ChannelID",
+    "ChannelSyncEvent",
     "ConnectionConfig",
     "ConnectionDetail",
     "ConnectionDetermination",

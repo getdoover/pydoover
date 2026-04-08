@@ -12,7 +12,14 @@ class EventSubscription(Flag):
     message_update = auto()
     aggregate_update = auto()
     oneshot_message = auto()
-    all = message_create | message_update | aggregate_update | oneshot_message
+    channel_sync = auto()
+    all = (
+        message_create
+        | message_update
+        | aggregate_update
+        | oneshot_message
+        | channel_sync
+    )
 
 
 class MessageCreateEvent:
@@ -144,6 +151,17 @@ class AggregateUpdateEvent:
             Aggregate.from_dict(data["request_data"]),
             data["organisation_id"],
         )
+
+
+class ChannelSyncEvent:
+    """Fired once per channel when the initial aggregate is fetched on subscription.
+
+    This allows subscribers to process the initial channel state on boot,
+    before any live aggregate_update events arrive.
+    """
+
+    def __init__(self, aggregate: Aggregate):
+        self.aggregate = aggregate
 
 
 class DeploymentEvent:

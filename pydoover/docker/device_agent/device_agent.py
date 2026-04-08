@@ -21,6 +21,7 @@ from ...models.generated.device_agent import device_agent_pb2, device_agent_pb2_
 from ...models.data import (
     Aggregate,
     AggregateUpdateEvent,
+    ChannelSyncEvent,
     EventSubscription,
     File,
     Message,
@@ -221,13 +222,16 @@ class DeviceAgentInterface(GRPCInterface):
             return EventSubscription.message_update
         elif isinstance(event, AggregateUpdateEvent):
             return EventSubscription.aggregate_update
+        elif isinstance(event, ChannelSyncEvent):
+            return EventSubscription.channel_sync
         return None
 
     async def _run_channel_stream(self, channel_name: str):
         """Single event stream per channel. Seeds aggregate cache, then distributes events."""
         await self.wait_until_healthy()
 
-        # Seed the aggregate cache (no callbacks fired — initial state is not an "event")
+        # Seed the aggregate cache, then fire ChannelSyncEvent so subscribers get the initial state.
+        agg = None
         try:
             agg = await self.fetch_channel_aggregate(channel_name)
             self._aggregates[channel_name] = agg
@@ -243,10 +247,21 @@ class DeviceAgentInterface(GRPCInterface):
                 self._aggregates[channel_name] = agg
         except Exception as e:
             log.error(f"Failed to seed aggregate cache for '{channel_name}': {e}")
-        else:
-            self._aggregates[channel_name] = agg
 
         self._synced_channels[channel_name] = True
+
+        if agg is not None:
+            sync_event = ChannelSyncEvent(aggregate=agg)
+            for callback, events in self._event_callbacks.get(channel_name, []):
+                if EventSubscription.channel_sync not in events:
+                    continue
+                try:
+                    asyncio.create_task(callback(sync_event))
+                except Exception as e:
+                    log.error(
+                        f"Error dispatching channel sync callback for {channel_name}: {e}",
+                        exc_info=e,
+                    )
 
         async for event in self.stream_channel_events(channel_name):
             # Update internal aggregate state on AggregateUpdate

@@ -5,7 +5,12 @@ import pytest
 
 from pydoover.docker.application import Application as DockerApplication
 from pydoover.tags import BoundTag, NotSet, Tag, Tags
-from pydoover.tags.manager import FASTMODE_CHANNEL_NAME, TAG_CHANNEL_NAME, KeyPath, TagsManagerDocker
+from pydoover.tags.manager import (
+    FASTMODE_CHANNEL_NAME,
+    TAG_CHANNEL_NAME,
+    KeyPath,
+    TagsManagerDocker,
+)
 
 
 class FakeTagsManager:
@@ -36,13 +41,29 @@ class FakeTagClient:
         self.event_callbacks.append((channel_name, callback, events))
 
     async def wait_for_channels_sync(self, channel_names=None, timeout=None):
-        del channel_names, timeout
-        return True
+        del timeout
+        # In the real client, _run_channel_stream fetches aggregates and fires
+        # ChannelSyncEvent callbacks before marking channels as synced.
+        # Reproduce that here so subscribers see the initial state.
+        from pydoover.models import EventSubscription
+        from pydoover.models.data.events import ChannelSyncEvent
+
+        for channel_name in channel_names or []:
+            agg = await self.fetch_channel_aggregate(channel_name)
+            sync_event = ChannelSyncEvent(aggregate=agg)
+            for cb_channel, callback, events in self.event_callbacks:
+                if (
+                    cb_channel == channel_name
+                    and EventSubscription.channel_sync in events
+                ):
+                    await callback(sync_event)
 
     async def fetch_channel_aggregate(self, channel_name):
         return types.SimpleNamespace(data=self.aggregates.get(channel_name, {}))
 
-    async def update_channel_aggregate(self, channel_name, data, max_age_secs=None, **kwargs):
+    async def update_channel_aggregate(
+        self, channel_name, data, max_age_secs=None, **kwargs
+    ):
         self.aggregate_updates.append((channel_name, data, max_age_secs, kwargs))
         self.aggregates[channel_name] = data
 
