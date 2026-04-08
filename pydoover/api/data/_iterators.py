@@ -67,8 +67,8 @@ class AsyncMessageIterator:
 
     async def _fetch_page(self):
         page = await self._client.list_messages(
-            self._agent_id,
-            self._channel_name,
+            agent_id=self._agent_id,
+            channel_name=self._channel_name,
             before=self._before,
             after=self._after,
             limit=self._page_size,
@@ -248,8 +248,8 @@ class MessageIterator:
 
     def _fetch_page(self):
         page = self._client.list_messages(
-            self._agent_id,
-            self._channel_name,
+            agent_id=self._agent_id,
+            channel_name=self._channel_name,
             before=self._before,
             after=self._after,
             limit=self._page_size,
