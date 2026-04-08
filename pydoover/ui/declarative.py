@@ -136,8 +136,6 @@ class UI:
 
         cls.__ui_declarations__ = declarations
 
-        if display_name.startswith("$"):
-            display_name = f"{display_name}:string"
         if isinstance(hidden, str):
             if not hidden.startswith("$"):
                 raise ValueError(
@@ -188,6 +186,7 @@ class UI:
             "name": "$config.app().APP_KEY",
             "children": {e.name: e.to_dict() for e in self._elements.values()},
         }
+        schema = normalize_ui_value(schema)
         if resolve_config and self.config is not None:
             schema = _resolve_config_refs(schema, self.config)
         return schema
