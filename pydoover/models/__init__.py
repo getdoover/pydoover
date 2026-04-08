@@ -10,6 +10,7 @@ from .data import (
     BatchMessageResponse,
     Channel,
     ChannelID,
+    ChannelSyncEvent,
     ConnectionConfig,
     ConnectionDetail,
     ConnectionDetermination,
@@ -45,7 +46,7 @@ from .data import (
     TurnCredential,
     UnauthorizedError,
     AggregateUpdateEvent,
-    BadRequestError
+    BadRequestError,
 )
 
 __all__ = [
@@ -61,6 +62,7 @@ __all__ = [
     "BatchMessageResponse",
     "Channel",
     "ChannelID",
+    "ChannelSyncEvent",
     "DataPoint",
     "ConnectionConfig",
     "ConnectionDetail",
