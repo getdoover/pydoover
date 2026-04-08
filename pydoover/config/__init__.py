@@ -602,8 +602,7 @@ class Enum(ConfigElement):
         super().__init__(display_name, default=default, **kwargs)
 
         if isinstance(choices, EnumType):
-            choices = [choice.value for choice in choices]
-            self._enum_lookup = {str(choice): choice for choice in choices}
+            self._enum_lookup = {str(member.value): member for member in choices}
             choices = list(self._enum_lookup.keys())
         else:
             self._enum_lookup = None
