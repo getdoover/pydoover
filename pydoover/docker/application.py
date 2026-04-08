@@ -1039,6 +1039,9 @@ class Application:
         self.rpc.register_handlers(self)
         self.ui_manager.register_handlers(self)
 
+        # default commands can come through...
+        self.ui_manager.subscribe("ui_cmds")
+
         if self.tags is not None:
             await self.tags.setup()
 
