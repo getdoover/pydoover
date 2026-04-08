@@ -349,8 +349,8 @@ class AsyncDataClient(BaseClient):
         """
         return AsyncMessageIterator(
             self,
+            agent_id,
             channel_name,
-            agent_id=agent_id,
             before=before,
             after=after,
             field_names=field_names,
