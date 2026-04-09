@@ -231,14 +231,5 @@ class RemoteComponent(Container):
         return normalize_ui_value(res)
 
 
-class TabContainer(Element):
+class TabContainer(Container):
     type = "uiTabs"
-
-    def __init__(self, children: list[Element], **kwargs):
-        self.children = children
-        super().__init__(**kwargs)
-
-    def to_dict(self):
-        res = super().to_dict()
-        res["children"] = {c.name: c.to_dict() for c in self.children}
-        return normalize_ui_value(res)
