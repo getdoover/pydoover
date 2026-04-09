@@ -81,13 +81,13 @@ class Container(Element):
             if not isinstance(c, Element):
                 continue
 
-            name = c.name.strip()
-            if not NAME_VALIDATOR.match(name):
+            if not NAME_VALIDATOR.match(c.name):
                 raise RuntimeError(
-                    f"Invalid name '{name}' for element '{c}'. Valid characters include letters, numbers, and underscores."
+                    f"Invalid name '{c.name}' for element '{c}'. Valid characters include letters, numbers, and underscores."
                 )
 
-            self._children[name] = c
+            self._children[c.name] = c
+            setattr(self, c.name, c)
             c.parent = self
 
             if not c.position:
