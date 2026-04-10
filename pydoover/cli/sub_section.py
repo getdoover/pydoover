@@ -202,7 +202,11 @@ class SubSection:
             kwargs["type"] = bool_or_list
         elif annotation == typing.Union[float, list[float]]:
             kwargs["type"] = float_or_list
-        elif annotation == typing.Union[dict, str]:
+        elif (
+            annotation == typing.Union[dict, str]
+            or annotation is dict
+            or typing.get_origin(annotation) is dict
+        ):
             kwargs["type"] = json_or_str
         elif annotation is not inspect.Parameter.empty:
             # Handle union types (e.g. int | None, list[str] | None)

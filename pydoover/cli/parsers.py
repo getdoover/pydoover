@@ -47,9 +47,9 @@ def float_or_list(data: str):
 
 def json_or_str(data: str):
     try:
-        return json.dumps(data)
+        return json.loads(data)
     except json.JSONDecodeError:
-        return str
+        return data
 
 
 def extract_parameters(docstring: str):
