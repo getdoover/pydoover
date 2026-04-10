@@ -1017,7 +1017,7 @@ class ApplicationPosition(Integer):
             description=description,
             minimum=0,
             default=default,
-            name="dv-app-position",
+            name="dv_app_position",
             hidden=True,
             **kwargs,
         )
