@@ -112,7 +112,7 @@ class UI:
         cls,
         display_name: str = "$config.app().APP_DISPLAY_NAME",
         hidden: bool | str = "$config.app().hidden:boolean:false",
-        position: int | str = "$config.app().position:number:50",
+        position: int | str = "$config.app().dv_app_position:number:50",
         default_open: int | str = False,
         icon: str | None = None,
         colour: str | None = None,
