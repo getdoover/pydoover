@@ -53,6 +53,7 @@ class Interaction(Element):
         default: Any = NotSet,
         show_activity: bool = NotSet,
         requires_confirm: bool = NotSet,
+        global_interaction: bool = False,
         **kwargs,
     ):
         super().__init__(display_name, **kwargs)
@@ -67,6 +68,11 @@ class Interaction(Element):
 
         self.show_activity = show_activity
         self.requires_confirm = requires_confirm
+
+        if global_interaction:
+            self.app_key = None
+        else:
+            self.app_key = "$config.app().APP_KEY"
 
     @property
     def value(self):
@@ -89,6 +95,7 @@ class Interaction(Element):
     def to_dict(self):
         res = super().to_dict()
         res["currentValue"] = self._value_location
+        res["appKey"] = self.app_key
         if self.requires_confirm is not NotSet:
             res["requiresConfirm"] = self.requires_confirm
         if self.show_activity is not NotSet:
