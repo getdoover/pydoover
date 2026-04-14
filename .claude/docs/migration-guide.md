@@ -403,6 +403,74 @@ threshold = self.tags.alert_threshold.value  # in main_loop
 
 Only use tags for state that isn't already held by a UI element.
 
+### Config vs UI — where parameters belong
+
+Persistent deployment parameters (sensor calibration, geometry, alarm thresholds, lookup tables, tank type, etc.) belong in **config**, not as UI `FloatInput`/`Select` elements in a details submodule. UI interaction elements are for values a field operator changes day-to-day (e.g. a reset button, a "desired state" selector); everything else should be set once at provisioning time via config.
+
+Rule of thumb:
+- Belongs in **config** (`app_config.py`): tank type, max level, calibration offsets/scales, alarm thresholds, storage/lookup curves, anything used to interpret sensor data.
+- Belongs in **UI** (`app_ui.py`): read-outs bound to tags (`NumericVariable`), operator controls (`Button`, state `Select`), runtime-adjustable setpoints that a non-admin should be able to tweak.
+
+Read config values with `self.config.<field>.value`. Use `config.Array` with a `config.Object` subclass for lookup tables — e.g. a storage curve mapping level → volume:
+
+```python
+class StorageCurvePoint(config.Object):
+    level_m = config.Number("Level (m)")
+    volume_ml = config.Number("Volume (ML)")
+
+class MyConfig(config.Schema):
+    storage_curve = config.Array("Storage Curve", element=StorageCurvePoint("Point"))
+```
+
+### Choices: Enums for Config, String-Attr Classes for UI
+
+Represent fixed choice sets as named constants, not bare string literals scattered through the code.
+
+- **Config choices** → `enum.Enum` subclass, used with `config.Enum(..., choices=MyEnum, default=MyEnum.X)`.
+- **UI choices** (`ui.Select` options) → a plain class with string class attributes (enum-shaped but **not** an `enum.Enum` subclass — the UI layer expects raw string values).
+
+```python
+# app_config.py — config choices use enum.Enum
+import enum
+class SensorType(enum.Enum):
+    PLS3_L = "pls3-l"
+    DUS2_L = "dus2-l"
+
+sensor_type = config.Enum("Sensor Type", choices=SensorType, default=SensorType.PLS3_L)
+
+# app_ui.py — UI Select choices use a plain class with str attrs
+class TankType:
+    FLAT_BOTTOM = "Flat Bottom"
+    HORIZONTAL_CYLINDER = "Horizontal Cylinder"
+
+ui.Select(
+    "Tank Type",
+    options=[ui.Option(TankType.FLAT_BOTTOM), ui.Option(TankType.HORIZONTAL_CYLINDER)],
+    default=TankType.FLAT_BOTTOM,
+    name="tank_type",
+)
+
+# application.py — compare against the constant, never the raw string
+if self.ui_manager.get_value("tank_type") == TankType.HORIZONTAL_CYLINDER:
+    ...
+```
+
+### Reading UI Values and Defaults
+
+Read the current value of any UI element by name via `self.ui_manager.get_value("<name>")` — this works for `FloatInput`, `TextInput`, `Select`, etc. Prefer this over walking the UI tree (`self.ui.submodule.element.value`) or writing custom helpers that swallow exceptions.
+
+Set the initial/fallback value directly on the element using the `default=` kwarg — don't hard-code defaults in the application code:
+
+```python
+# app_ui.py
+ui.FloatInput("Max Level", units="cm", default=250, name="input_max")
+ui.Select("Tank Type", options=[...], default="Flat Bottom", name="tank_type")
+
+# application.py
+sensor_max = self.ui_manager.get_value("input_max")      # 250 until user changes it
+tank_type = self.ui_manager.get_value("tank_type")        # "Flat Bottom" until changed
+```
+
 ### UI Element Mapping (Old → New)
 
 | Old Element | New Element |
@@ -418,6 +486,22 @@ Only use tags for state that isn't already held by a UI element.
 | `ui.Option("key", "Display")` | `ui.Option("Display")` |
 
 Note: New elements use `display_name` as the first positional arg (not a separate `id`). The element name is auto-generated from the display name (snake_cased).
+
+### Units Field (don't embed units in display names)
+
+Old apps commonly embedded units inside the display name in brackets, e.g. `"Level (%)"`, `"Battery (V)"`, `"Zero Calibration (cm)"`. The new UI elements have a dedicated `units=` parameter — move the unit out of the display name and into `units`:
+
+```python
+# Before
+ui.NumericVariable("Battery (V)", value=Tags.batt_v)
+ui.FloatInput("Zero Calibration (cm)", min_val=-999, max_val=999)
+
+# After
+ui.NumericVariable("Battery", units="V", value=Tags.batt_v)
+ui.FloatInput("Zero Calibration", units="cm", min_val=-999, max_val=999)
+```
+
+Applies to `NumericVariable`, `FloatInput`, and any other element that accepts `units=`. Keep the display name to the human label only.
 
 ### UI Interaction Handlers
 

@@ -112,7 +112,7 @@ class UI:
         cls,
         display_name: str = "$config.app().APP_DISPLAY_NAME",
         hidden: bool | str = "$config.app().hidden:boolean:false",
-        position: int | str = "$config.app().dv_app_position:number:50",
+        position: int | str = "$config.app().dv_app_position:number:100",
         default_open: int | str = False,
         icon: str | None = None,
         colour: str | None = None,
@@ -147,7 +147,7 @@ class UI:
                 raise ValueError(
                     "If `position` is a `str` it must start with `$` to represent a variable."
                 )
-            position = f"{position}:number:50"
+            position = f"{position}:number:100"
 
         cls._display_name = display_name
         cls._hidden = hidden
