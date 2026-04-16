@@ -61,6 +61,9 @@ class Interaction(Element):
 
         if value is NotSet:
             value = f"$cmds.app().{self.name}"
+            if self.default is not NotSet:
+                value += f"::{self.default}"
+
         self._value_location = value
 
         # these must both be set at runtime.

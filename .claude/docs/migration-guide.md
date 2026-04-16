@@ -375,6 +375,41 @@ app_display_name = Tag("string", default="My App")
 await self.tags.app_display_name.set(f"{self.app_display_name} ({status})")
 ```
 
+### Dynamic Tag Writes via `tag_manager.set_tag`
+
+The declared `Tags` class only needs to list tags that are referenced statically — usually the ones bound into UI elements via `value=Tags.x` and any alert/state bookkeeping. For tags whose names are computed at runtime (e.g. `f"sensor_{s_id}_temp"` keyed off device-reported IDs), don't bother with `Tags.add_tag` get-or-create dances. Write them directly through the manager:
+
+```python
+# Good — no pre-declaration needed; tag is created on first write
+await self.tag_manager.set_tag(f"sensor_{s_id}_temp", value)
+
+# Unnecessary
+if self.tags.get(name) is None:
+    self.tags.add_tag(name, Tag("number", default=None))
+await self.tags.get(name).set(value)
+```
+
+UI elements that bind to these dynamic tags should reference them by name with `ui.tag_ref("name")` rather than a Tag class attribute or a `BoundTag` lookup.
+
+### UI Elements Only Register During `setup()`
+
+`self.ui.add_element(...)` called outside the framework's setup pass won't surface in the rendered UI until the next `setup()` runs (typically next app start). If your app discovers new things at runtime (sensor IDs, channels, etc.), persist them to a tag and read that tag from `setup()` to materialise the elements on the next pass — don't try to add elements imperatively from `main_loop` or message handlers and expect them to appear immediately.
+
+```python
+# main_loop / message handler
+known = set(self.tags.known_ids.value or [])
+if new_id not in known:
+    await self.tags.known_ids.set(sorted(known | {new_id}))
+# Reading values still flow into the manager and will surface once the
+# matching element is created on the next setup() pass.
+await self.tag_manager.set_tag(f"sensor_{new_id}_temp", value)
+
+# UI.setup
+async def setup(self):
+    for s_id in (self.tags.known_ids.value or []):
+        self.add_element(build_sensor_submodule(s_id, ...))
+```
+
 ### ApplicationPosition
 
 Use `ApplicationPosition()` from `pydoover.config` instead of a custom `config.Integer("Position", ...)`:
@@ -459,16 +494,50 @@ if self.ui_manager.get_value("tank_type") == TankType.HORIZONTAL_CYLINDER:
 
 Read the current value of any UI element by name via `self.ui_manager.get_value("<name>")` — this works for `FloatInput`, `TextInput`, `Select`, etc. Prefer this over walking the UI tree (`self.ui.submodule.element.value`) or writing custom helpers that swallow exceptions.
 
-Set the initial/fallback value directly on the element using the `default=` kwarg — don't hard-code defaults in the application code:
+Set the initial/fallback value directly on the element using the `default=` kwarg — don't hard-code defaults in the application code, and **don't add `or <fallback>` after a `get_value` call**. The element's `default=` already covers the "user hasn't changed it" case; an extra `or` fallback in app code duplicates the default and rots when the UI default changes.
 
 ```python
 # app_ui.py
 ui.FloatInput("Max Level", units="cm", default=250, name="input_max")
 ui.Select("Tank Type", options=[...], default="Flat Bottom", name="tank_type")
 
-# application.py
+# application.py — good
 sensor_max = self.ui_manager.get_value("input_max")      # 250 until user changes it
 tank_type = self.ui_manager.get_value("tank_type")        # "Flat Bottom" until changed
+
+# application.py — bad: the `or` fallback hides the real source of truth
+sensor_max = self.ui_manager.get_value("input_max") or 250
+```
+
+### Naming Convention: snake_case Everywhere
+
+All UI element `name=` values and Tag attribute names must be `snake_case`. Old apps frequently used `camelCase` (e.g. `humidityAlarms`, `batteryVoltage`, `selectedCrop`); rename these on migration.
+
+Display strings (the first positional `display_name` arg) stay human-readable — the snake_case rule is only for the programmatic `name=` identifier and tag attribute names.
+
+```python
+# Good
+ui.Slider("Humidity Alarm", units="%", default=(30, 95), name="humidity_alarm")
+
+# Bad
+ui.Slider("Humidity Alarm", units="%", default=(30, 95), name="humidityAlarms")
+```
+
+### Don't Set `name=` Unless You Look Up the Element
+
+Pydoover auto-generates a snake_case `name` from the display string for every UI element. Only set `name=` explicitly when the application code (or a `@ui.handler`) needs a stable identifier for that element. Examples that need an explicit name: a slider whose value is read via `self.ui_manager.get_value("sleep_time")`, a button with `@ui.handler("reset_button")`. Examples that don't: a `NumericVariable` bound to a tag (the value flows via `value=Tags.x`), a static `TextVariable`, a Submodule that's never referenced, a Multiplot.
+
+Drop the redundant `name=` to reduce noise and let the auto-generated name evolve with the display string.
+
+```python
+# Good — looked up by handler/get_value, name pinned
+ui.Slider("Sleep Time", units="hrs", default=6, name="sleep_time")
+
+# Good — bound to a tag, no explicit name needed
+ui.NumericVariable("Battery", units="V", value=Tags.battery_voltage)
+
+# Unnecessary — display string already auto-generates "battery"
+ui.NumericVariable("Battery", units="V", value=Tags.battery_voltage, name="battery")
 ```
 
 ### UI Element Mapping (Old → New)
