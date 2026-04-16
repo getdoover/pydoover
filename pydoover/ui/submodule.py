@@ -155,13 +155,15 @@ class Submodule(Container):
         display_name: str,
         children: list[Element] = None,
         status: str = NotSet,
-        is_collapsed: bool = False,
+        is_collapsed: bool = NotSet,  # can only be a bool
+        default_open: bool = NotSet,  # can be a tag
         **kwargs,
     ):
         super().__init__(display_name, children, **kwargs)
 
         self.status = status
         self.is_collapsed = is_collapsed
+        self.default_open = default_open
 
     def to_dict(self):
         result = super().to_dict()
@@ -169,7 +171,11 @@ class Submodule(Container):
         if self.status is not NotSet:
             result["statusString"] = self.status
 
-        result["defaultOpen"] = not self.is_collapsed
+        if self.default_open is not NotSet:
+            result["defaultOpen"] = self.default_open
+        elif self.is_collapsed is not NotSet:
+            # must be a bool
+            result["defaultOpen"] = not self.is_collapsed
 
         return normalize_ui_value(result)
 
