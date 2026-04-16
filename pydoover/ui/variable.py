@@ -47,6 +47,7 @@ class Variable(Element):
         default_range_since: timedelta = NotSet,
         default_zoom: str = NotSet,
         log_threshold: float = NotSet,
+        graphable: bool = NotSet,
         **kwargs,
     ):
         # kwargs: verbose_str=verbose_str, show_activity=show_activity, form=form, graphic=graphic, layout=layout
@@ -59,6 +60,7 @@ class Variable(Element):
         self.default_range_since = default_range_since
         self.default_zoom = default_zoom
         self.log_threshold = log_threshold
+        self.graphable = graphable
 
         self.ranges = ranges
 
@@ -90,6 +92,14 @@ class Variable(Element):
 
         if self.ranges is not NotSet:
             result["ranges"] = [r.to_dict() for r in self.ranges]
+
+        if self.graphable is not NotSet:
+            if isinstance(self.graphable, bool):
+                result["notGraphable"] = not self.graphable
+            else:
+                # allow a tag I suppose??
+                result["notGraphable"] = self.graphable
+
         return normalize_ui_value(result)
 
 
