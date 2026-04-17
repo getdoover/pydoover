@@ -10,6 +10,7 @@ from ..config import (
     Integer,
     Object,
     String,
+    NotSet,
 )
 
 
@@ -142,13 +143,24 @@ class ExtendedPermissionsConfig(Object):
         description="Permission will be given for all devices in this organisation. This is a very far-reaching permission to grant!",
         default=False,
     )
+    """
+    If `default_device_group` is True, the permissions will default to the group that the device is in. Useful to mimic doover 1.0 behaviour
+    """
 
-    def __init__(self):
+    def __init__(self, default_device_group: bool = NotSet):
         super().__init__(
             "Devices",
             description="Give Permission to access devices.",
             name="dv_proc_extended_permissions",
         )
+
+        self.default_device_group = default_device_group
+
+    def to_dict(self):
+        res = super().to_dict()
+        if self.default_device_group is not NotSet:
+            res["x-defaultDeviceGroup"] = self.default_device_group
+        return res
 
 
 class TimezoneConfig(Enum):
