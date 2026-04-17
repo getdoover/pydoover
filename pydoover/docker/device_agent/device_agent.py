@@ -263,29 +263,44 @@ class DeviceAgentInterface(GRPCInterface):
                         exc_info=e,
                     )
 
-        async for event in self.stream_channel_events(channel_name):
-            # Update internal aggregate state on AggregateUpdate
-            if isinstance(event, AggregateUpdateEvent):
-                self._aggregates[channel_name] = event.aggregate
-                self._synced_channels[channel_name] = True
-                self.last_channel_message_ts[channel_name] = datetime.now(
-                    tz=timezone.utc
+        # Wrap the event loop in a retry loop so any uncaught exception from
+        # stream_channel_events or the dispatch body does not silently kill the
+        # subscription task. Without this, an unexpected error leaves the task
+        # dead and _ensure_stream has no mechanism to restart it, causing
+        # subscriptions to stop firing until the process restarts.
+        while True:
+            try:
+                async for event in self.stream_channel_events(channel_name):
+                    # Update internal aggregate state on AggregateUpdate
+                    if isinstance(event, AggregateUpdateEvent):
+                        self._aggregates[channel_name] = event.aggregate
+                        self._synced_channels[channel_name] = True
+                        self.last_channel_message_ts[channel_name] = datetime.now(
+                            tz=timezone.utc
+                        )
+
+                    # Determine which flag this event corresponds to
+                    event_flag = self._event_type_to_flag(event)
+
+                    # Distribute to matching registered callbacks
+                    for callback, events in self._event_callbacks.get(channel_name, []):
+                        if event_flag is None or event_flag not in events:
+                            continue
+                        try:
+                            asyncio.create_task(callback(event))
+                        except Exception as e:
+                            log.error(
+                                f"Error dispatching event callback for {channel_name}: {e}",
+                                exc_info=e,
+                            )
+            except asyncio.CancelledError:
+                raise
+            except BaseException as e:
+                log.exception(
+                    f"Stream task for {channel_name} crashed, restarting: {e}"
                 )
-
-            # Determine which flag this event corresponds to
-            event_flag = self._event_type_to_flag(event)
-
-            # Distribute to matching registered callbacks
-            for callback, events in self._event_callbacks.get(channel_name, []):
-                if event_flag is None or event_flag not in events:
-                    continue
-                try:
-                    asyncio.create_task(callback(event))
-                except Exception as e:
-                    log.error(
-                        f"Error dispatching event callback for {channel_name}: {e}",
-                        exc_info=e,
-                    )
+                await asyncio.sleep(1)
+                continue
 
     async def stream_channel_events(self, channel_name: str):
         backoff = 1

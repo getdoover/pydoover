@@ -6,6 +6,7 @@ These tests mock the gRPC layer (make_request / process_response) to verify that
 - The aggregate cache stores and returns Aggregate objects
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -319,7 +320,8 @@ class TestRunChannelStreamSeeding:
         self.dda.wait_until_healthy = mock_healthy
         self.dda.fetch_channel_aggregate = mock_fetch
 
-        await self.dda._run_channel_stream("ch")
+        with pytest.raises(asyncio.CancelledError):
+            await self.dda._run_channel_stream("ch")
 
         assert call_order[0] == "healthy"
         assert call_order[1] == "fetch"
@@ -329,7 +331,8 @@ class TestRunChannelStreamSeeding:
         agg = Aggregate(data={"seeded": True}, attachments=[], last_updated=None)
         self.dda.fetch_channel_aggregate = AsyncMock(return_value=agg)
 
-        await self.dda._run_channel_stream("ch")
+        with pytest.raises(asyncio.CancelledError):
+            await self.dda._run_channel_stream("ch")
 
         assert isinstance(self.dda._aggregates["ch"], Aggregate)
         assert self.dda._aggregates["ch"].data == {"seeded": True}
@@ -344,7 +347,8 @@ class TestRunChannelStreamSeeding:
         )
         self.dda.update_channel_aggregate = AsyncMock(return_value=created_agg)
 
-        await self.dda._run_channel_stream("new_ch")
+        with pytest.raises(asyncio.CancelledError):
+            await self.dda._run_channel_stream("new_ch")
 
         self.dda.update_channel_aggregate.assert_awaited_once_with("new_ch", {})
         assert isinstance(self.dda._aggregates["new_ch"], Aggregate)
@@ -360,7 +364,8 @@ class TestRunChannelStreamSeeding:
             side_effect=HTTPError(500, "Server error")
         )
 
-        await self.dda._run_channel_stream("broken_ch")
+        with pytest.raises(asyncio.CancelledError):
+            await self.dda._run_channel_stream("broken_ch")
 
         assert self.dda._synced_channels["broken_ch"] is True
         assert "broken_ch" not in self.dda._aggregates
@@ -372,12 +377,16 @@ class TestRunChannelStreamSeeding:
             side_effect=DooverAPIError("Connection failed")
         )
 
-        await self.dda._run_channel_stream("err_ch")
+        with pytest.raises(asyncio.CancelledError):
+            await self.dda._run_channel_stream("err_ch")
 
         assert self.dda._synced_channels["err_ch"] is True
         assert "err_ch" not in self.dda._aggregates
 
 
 async def _empty_async_gen():
-    return
-    yield  # make it an async generator
+    # Raise CancelledError to break out of the retry loop in _run_channel_stream;
+    # in production stream_channel_events only exits via cancellation.
+    if False:
+        yield
+    raise asyncio.CancelledError

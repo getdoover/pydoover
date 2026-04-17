@@ -7,5 +7,6 @@ from .config import (
     ExtendedPermissionsConfig as ExtendedPermissionsConfig,
     TimezoneConfig as TimezoneConfig,
     SerialNumberConfig as SerialNumberConfig,
+    EgressChannelConfig as EgressChannelConfig,
 )
 from .handler import run_app as run_app

@@ -196,3 +196,28 @@ class SerialNumberConfig(String):
             name="dv_serial_number",
             **kwargs,
         )
+
+
+class EgressChannelConfig(String):
+    """Egress channel for integrations.
+
+    The integration will subscribe to this channel on all devices associated.
+
+    Generally, you should set a default in the app so users don't have to worry about this.
+    """
+
+    def __init__(
+        self,
+        display_name: str = "Egress Channel",
+        *,
+        description: str = "Channel to subscribe on every device configured.",
+        hidden: bool = True,
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            name="dv_egress_channel",
+            hidden=hidden,
+            **kwargs,
+        )
