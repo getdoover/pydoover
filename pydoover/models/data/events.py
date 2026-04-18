@@ -165,16 +165,27 @@ class ChannelSyncEvent:
 
 
 class DeploymentEvent:
-    def __init__(self, agent_id: int, app_id: int, app_install_id: int):
+    def __init__(
+        self,
+        agent_id: int,
+        app_id: int,
+        app_install_id: int,
+        app_key: str,
+        app_display_name: str,
+    ):
         self.agent_id = agent_id
         self.app_id = app_id
         self.app_install_id = app_install_id
+        self.app_key = app_key
+        self.app_display_name = app_display_name
 
     def to_dict(self):
         return {
             "agent_id": self.agent_id,
             "app_id": self.app_id,
             "app_install_id": self.app_install_id,
+            "app_key": self.app_key,
+            "app_display_name": self.display_name,
         }
 
     @classmethod
@@ -183,6 +194,8 @@ class DeploymentEvent:
             data["agent_id"],
             data["app_id"],
             data["app_install_id"],
+            data["app_key"],
+            data["app_display_name"],
         )
 
 
