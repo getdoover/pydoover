@@ -180,7 +180,16 @@ class Application:
         pass
 
     async def on_deployment(self, event: DeploymentEvent):
-        pass
+        """Invoked when the app is (re)deployed to an agent.
+
+        The framework internally publishes the UI schema to ``ui_state`` on deployment
+        (for non-static UIs), so normal ``on_message_create`` / ``on_aggregate_update``
+        events do not re-post it. Override this to run any additional one-off setup
+        you need to do on deployment (e.g. seeding channels, priming tags).
+
+        You do **not** need to call ``super().on_deployment()``.
+        """
+        return NotImplemented
 
     async def on_schedule(self, event: ScheduleEvent):
         pass
@@ -282,7 +291,8 @@ class Application:
                 self.api._invoking_channel_name = payload.channel.name
                 original_func = Application.on_aggregate_update
 
-        if func == original_func:
+        is_deployment = event["op"] == "on_deployment"
+        if func == original_func and not is_deployment:
             log.info(f"Skipping {func.__name__} event as no overridden handler found.")
             return None
 
@@ -319,10 +329,9 @@ class Application:
             log.info("Post-setup filter rejected event.")
             return None
 
-        # fixme: publish UI if needed
-        if not self.ui.is_static:
-            log.info("Updating ui_state with runtime-generated schema.")
-            await self.publish_ui_schema(clear=False)
+        if is_deployment and not self.ui.is_static:
+            log.info("Publishing ui_state schema on deployment.")
+            await self.publish_ui_schema(clear=True)
 
         try:
             await self.ui_manager._on_event(payload)
@@ -337,6 +346,8 @@ class Application:
         result = None
         if func is None or payload is None:
             log.error(f"Unknown event type: {event['op']}")
+        elif func == original_func:
+            log.info(f"No overridden {func.__name__} handler; skipping user handler.")
         else:
             try:
                 s = time.perf_counter()
@@ -397,7 +408,6 @@ class Application:
 
     async def publish_ui_schema(self, clear: bool = True):
         schema = self.ui.to_schema()
-        print(schema)
         if clear:
             await self.api.update_channel_aggregate(
                 "ui_state",
