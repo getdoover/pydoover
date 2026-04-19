@@ -1106,6 +1106,7 @@ class DataClient(BaseClient):
         permissions: list[dict[str, str]],
         is_org: bool | None = None,
         organisation_id: int | None = None,
+        subscribed_to_agent: int | None = None,
     ):
         payload: dict[str, Any] = {
             "subscription_arn": subscription_arn,
@@ -1114,6 +1115,8 @@ class DataClient(BaseClient):
         }
         if is_org is not None:
             payload["is_org"] = is_org
+        if subscribed_to_agent is not None:
+            payload["subscribed_to_agent"] = subscribed_to_agent
         self._request(
             "PUT",
             f"/agents/{agent_id}/processors/subscriptions/{subscription_id}",
