@@ -474,6 +474,7 @@ class DataClient(BaseClient):
         suppress_response: bool = False,
         clear_attachments: bool = False,
         log_update: bool = False,
+        replace_keys: list[str] | None = None,
         organisation_id: int | None = None,
     ) -> Aggregate | None:
         method = "PUT" if replace_data else "PATCH"
@@ -486,6 +487,7 @@ class DataClient(BaseClient):
                 "suppress_response": suppress_response if suppress_response else None,
                 "clear_attachments": clear_attachments if clear_attachments else None,
                 "log_update": log_update if log_update else None,
+                "replace": replace_keys or None,
             },
             organisation_id=organisation_id,
         )
