@@ -231,6 +231,7 @@ class ProcessorDataClient(AsyncDataClient):
         suppress_response: bool = False,
         clear_attachments: bool = False,
         log_update: bool = False,
+        replace_keys: list[str] | None = None,
         allow_invoking_channel: bool = False,
         agent_id: int | None = None,
         organisation_id: int | None = None,
@@ -247,6 +248,7 @@ class ProcessorDataClient(AsyncDataClient):
             suppress_response=suppress_response,
             clear_attachments=clear_attachments,
             log_update=log_update,
+            replace_keys=replace_keys,
             organisation_id=organisation_id,
         )
 
