@@ -71,6 +71,7 @@ class Application:
 
         self._record_tag_update: bool = True
         self._update_external_tags: bool = False
+        self._clear_ui_schema = True
 
     async def _setup(self, initial_payload: dict[str, Any]):
         # this is ok to setup because it doesn't store any state
@@ -322,7 +323,7 @@ class Application:
         # fixme: publish UI if needed
         if not self.ui.is_static:
             log.info("Updating ui_state with runtime-generated schema.")
-            await self.publish_ui_schema(clear=False)
+            await self.publish_ui_schema(self._clear_ui_schema)
 
         try:
             await self.ui_manager._on_event(payload)
@@ -397,16 +398,17 @@ class Application:
 
     async def publish_ui_schema(self, clear: bool = True):
         schema = self.ui.to_schema()
-        print(schema)
         if clear:
             await self.api.update_channel_aggregate(
                 "ui_state",
-                {"state": {"children": {self.app_key: None}}},
+                {"state": {"children": {self.app_key: schema}}},
+                replace_keys=[f"state.children.{self.app_key}"],
             )
-        await self.api.update_channel_aggregate(
-            "ui_state",
-            {"state": {"children": {self.app_key: schema}}},
-        )
+        else:
+            await self.api.update_channel_aggregate(
+                "ui_state",
+                {"state": {"children": {self.app_key: schema}}},
+            )
 
     async def ping_connection(
         self,
