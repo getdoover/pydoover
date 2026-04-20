@@ -15,8 +15,8 @@ from pydoover.utils.utils import call_maybe_async
 if TYPE_CHECKING:
     from ..docker.device_agent.device_agent import DeviceAgentInterface
 
-TAG_CLOUD_MAX_AGE = 60 * 60  # 1 hour
-TAG_OBSERVED_MAX_AGE = 5  # 10 seconds
+TAG_CLOUD_MAX_AGE = 60 * 15  # 15min
+TAG_OBSERVED_MAX_AGE = 3  # 3 seconds
 TAG_CHANNEL_NAME = "tag_values"
 FASTMODE_CHANNEL_NAME = "doover_ui_fastmode"
 
