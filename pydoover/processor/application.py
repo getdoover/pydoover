@@ -138,7 +138,10 @@ class Application:
         self.rpc.register_handlers(self)
 
         if info.ui_cmds is not None:
-            self.ui_manager.values = info.ui_state
+            try:
+                self.ui_manager.values = info.ui_cmds[self.app_key]
+            except KeyError:
+                log.debug("ui_cmds not set. Skipping.")
 
         if self.config is not None:
             # if there's no config defined this can legitimately be None in which case don't bother.
