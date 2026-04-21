@@ -22466,7 +22466,7 @@ components:
           readOnly: true
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerDetail'
+          - $ref: '#/components/schemas/SlimGroupSerializerDetail'
           readOnly: true
         fa_icon:
           type: string
@@ -22573,7 +22573,7 @@ components:
           readOnly: true
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerList'
+          - $ref: '#/components/schemas/SlimGroupSerializerList'
           readOnly: true
         fa_icon:
           type: string
@@ -23295,6 +23295,58 @@ components:
       - name
       - organisation
       - parent
+    SlimGroupSerializerDetail:
+      type: object
+      description: |-
+        Group serializer for nested use (e.g. device list).
+
+        Drops the MPTT parent/children/ancestors lookups and per-request permission
+        checks done by the full GroupSerializer.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationDetail'
+          readOnly: true
+      required:
+      - archived
+      - id
+      - name
+      - organisation
+    SlimGroupSerializerList:
+      type: object
+      description: |-
+        Group serializer for nested use (e.g. device list).
+
+        Drops the MPTT parent/children/ancestors lookups and per-request permission
+        checks done by the full GroupSerializer.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationList'
+          readOnly: true
+      required:
+      - archived
+      - id
+      - name
+      - organisation
     GroupSimpleSerializerDetail:
       type: object
       properties:
@@ -26894,7 +26946,7 @@ components:
           $ref: '#/components/schemas/BasicOrganisationDetail'
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerDetail'
+          - $ref: '#/components/schemas/SlimGroupSerializerDetail'
           readOnly: true
         shared_profile:
           allOf:
@@ -26941,7 +26993,7 @@ components:
           $ref: '#/components/schemas/BasicOrganisationList'
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerList'
+          - $ref: '#/components/schemas/SlimGroupSerializerList'
           readOnly: true
         shared_profile:
           allOf:
@@ -26961,7 +27013,7 @@ components:
           $ref: '#/components/schemas/BasicOrganisationDetail'
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerDetail'
+          - $ref: '#/components/schemas/SlimGroupSerializerDetail'
           readOnly: true
         shared_profile:
           allOf:
@@ -27008,7 +27060,7 @@ components:
           $ref: '#/components/schemas/BasicOrganisationList'
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerList'
+          - $ref: '#/components/schemas/SlimGroupSerializerList'
           readOnly: true
         shared_profile:
           allOf:
