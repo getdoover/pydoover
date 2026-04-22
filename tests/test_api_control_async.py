@@ -147,6 +147,15 @@ async def test_async_client_handles_bytes_and_none_responses():
 
 
 @pytest.mark.asyncio
+async def test_async_client_handles_text_responses():
+    client, _ = make_client(DummyAsyncResponse(200, content=b"#!/bin/sh\necho install\n"))
+
+    assert await client.devices.installer("9") == "#!/bin/sh\necho install\n"
+
+    await client.close()
+
+
+@pytest.mark.asyncio
 async def test_async_client_can_lookup_control_methods_by_model_name_or_class():
     client, _ = make_client(DummyAsyncResponse(204))
 

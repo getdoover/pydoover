@@ -181,6 +181,8 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
         text = await response.text()
         if not text:
             return None
+        if response_kind == "text":
+            return text
         if response_kind == "raw":
             return json.loads(text)
         data = json.loads(text)

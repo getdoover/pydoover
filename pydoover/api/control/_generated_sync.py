@@ -1258,7 +1258,7 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def installer(self, id: str, organisation_id: int | None = None) -> Any:
+    def installer(self, id: str, organisation_id: int | None = None) -> str:
         path = f"/devices/{id}/installer/"
         params = None
         return self._root._execute(
@@ -1270,12 +1270,12 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             body_mode="json",
             binary_fields=None,
             organisation_id=organisation_id,
-            response_kind="raw",
+            response_kind="text",
             response_schema=None,
             item_schema=None,
         )
 
-    def installer_download(self, id: str, organisation_id: int | None = None) -> Any:
+    def installer_download(self, id: str, organisation_id: int | None = None) -> bytes:
         path = f"/devices/{id}/installer/download/"
         params = None
         return self._root._execute(
@@ -1287,7 +1287,7 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             body_mode="json",
             binary_fields=None,
             organisation_id=organisation_id,
-            response_kind="raw",
+            response_kind="bytes",
             response_schema=None,
             item_schema=None,
         )
@@ -6237,4 +6237,3 @@ __all__ = [
     "TunnelsSyncGroup",
     "UsersSyncGroup",
 ]
-

@@ -147,6 +147,8 @@ class ControlClient(ControlClientGroups, BaseControlClient):
             return response.content
         if not response.content:
             return None
+        if response_kind == "text":
+            return response.text
         if response_kind == "raw":
             return response.json()
         data = response.json()
