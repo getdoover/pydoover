@@ -14,6 +14,7 @@ class ControlClientGroups:
     app_installs: AppInstallsSyncGroup
     applications: ApplicationsSyncGroup
     assistant: AssistantSyncGroup
+    billing: BillingSyncGroup
     container: ContainerSyncGroup
     devices: DevicesSyncGroup
     groups: GroupsSyncGroup
@@ -34,9 +35,11 @@ class ControlClientGroups:
         raise NotImplementedError
 
 class AgentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def retrieve(self, organisation_id: int | None = None) -> control_models.Agents:
+    def retrieve(self, include_archived: bool | None = None, organisation_id: int | None = None) -> control_models.Agents:
         path = "/agents/"
-        params = None
+        params = {
+            "include-archived": include_archived,
+        }
         return self._root._execute(
             "GET",
             path,
@@ -501,8 +504,25 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def delete(self, id: str, parent_lookup_application: str, organisation_id: int | None = None) -> None:
+    def config_profiles_delete(self, id: str, parent_lookup_application: str, organisation_id: int | None = None) -> None:
         path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
+        params = None
+        return self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    def organisation_access_delete(self, id: str, parent_lookup_application: str, organisation_id: int | None = None) -> None:
+        path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
         params = None
         return self._root._execute(
             "DELETE",
@@ -624,6 +644,100 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
+    def organisation_access_create(self, parent_lookup_application: str, body: Any, organisation_id: int | None = None) -> Any:
+        path = f"/applications/{parent_lookup_application}/organisation_access/"
+        params = None
+        return self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def organisation_access_retrieve(self, id: str, parent_lookup_application: str, organisation_id: int | None = None) -> Any:
+        path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def organisation_access_update(self, id: str, parent_lookup_application: str, body: Any, organisation_id: int | None = None) -> Any:
+        path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def organisation_access_list(self, parent_lookup_application: str, access: str | None = None, application: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[Any]:
+        path = f"/applications/{parent_lookup_application}/organisation_access/"
+        params = {
+            "access": access,
+            "application": application,
+            "id": id,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedApplicationOrganisationAccessSerializerListList',
+            item_schema=None,
+        )
+
+    def organisation_access_partial(self, id: str, parent_lookup_application: str, body: Any | None = None, organisation_id: int | None = None) -> Any:
+        path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedApplicationOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
     def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Application:
         path = f"/applications/{id}/"
         params = None
@@ -726,6 +840,23 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
+    def widget(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Application:
+        path = f"/applications/{id}/widget/"
+        params = None
+        return self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='ApplicationSerializerDetailRequest',
+            body_mode="multipart",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='ApplicationSerializerDetail',
+            item_schema=None,
+        )
+
 class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def message(self, body: Any, organisation_id: int | None = None) -> control_models.AIAssistantResponse:
         path = "/assistant/message/"
@@ -819,6 +950,41 @@ class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             organisation_id=organisation_id,
             response_kind="page",
             response_schema='PaginatedAIChatSessionSerializerListList',
+            item_schema=None,
+        )
+
+class BillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
+    def billing_block_status_create(self, organisation_id: int | None = None) -> None:
+        path = "/billing/billing-block-status/"
+        params = None
+        return self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    def billing_block_status_retrieve(self, organisation_id: int | None = None) -> None:
+        path = "/billing/billing-block-status/"
+        params = None
+        return self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
             item_schema=None,
         )
 
@@ -1058,8 +1224,25 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def delete(self, id: str, parent_lookup_device: str, organisation_id: int | None = None) -> None:
+    def tunnels_delete(self, id: str, parent_lookup_device: str, organisation_id: int | None = None) -> None:
         path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
+        params = None
+        return self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    def types_organisation_access_delete(self, id: str, parent_lookup_device_type: str, organisation_id: int | None = None) -> None:
+        path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
         params = None
         return self._root._execute(
             "DELETE",
@@ -1077,6 +1260,23 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
 
     def installer(self, id: str, organisation_id: int | None = None) -> Any:
         path = f"/devices/{id}/installer/"
+        params = None
+        return self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="raw",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    def installer_download(self, id: str, organisation_id: int | None = None) -> Any:
+        path = f"/devices/{id}/installer/download/"
         params = None
         return self._root._execute(
             "GET",
@@ -1500,6 +1700,100 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             organisation_id=organisation_id,
             response_kind="page",
             response_schema='PaginatedDeviceTypeSerializerListList',
+            item_schema=None,
+        )
+
+    def types_organisation_access_create(self, parent_lookup_device_type: str, body: Any, organisation_id: int | None = None) -> Any:
+        path = f"/devices/types/{parent_lookup_device_type}/organisation_access/"
+        params = None
+        return self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceTypeOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def types_organisation_access_retrieve(self, id: str, parent_lookup_device_type: str, organisation_id: int | None = None) -> Any:
+        path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def types_organisation_access_update(self, id: str, parent_lookup_device_type: str, body: Any, organisation_id: int | None = None) -> Any:
+        path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='DeviceTypeOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def types_organisation_access_list(self, parent_lookup_device_type: str, access: str | None = None, device_type: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[Any]:
+        path = f"/devices/types/{parent_lookup_device_type}/organisation_access/"
+        params = {
+            "access": access,
+            "device_type": device_type,
+            "id": id,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+        }
+        return self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedDeviceTypeOrganisationAccessSerializerListList',
+            item_schema=None,
+        )
+
+    def types_organisation_access_partial(self, id: str, parent_lookup_device_type: str, body: Any | None = None, organisation_id: int | None = None) -> Any:
+        path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedDeviceTypeOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='DeviceTypeOrganisationAccessSerializerDetail',
             item_schema=None,
         )
 
@@ -2527,7 +2821,24 @@ class OrganisationsBillingAccountSyncGroup(_ControlGroupBase[_SyncControlExecuto
         )
 
 class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def group_seller_customer_overview(self, group_id: int, organisation_id: int | None = None) -> None:
+    def group_seller_customer_overview_create(self, group_id: int, organisation_id: int | None = None) -> None:
+        path = f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
+        params = None
+        return self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    def group_seller_customer_overview_retrieve(self, group_id: int, organisation_id: int | None = None) -> None:
         path = f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
         params = None
         return self._root._execute(
@@ -4497,6 +4808,23 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
         )
 
     def delete(self, id: str, organisation_id: int | None = None) -> None:
+        path = f"/reports/{id}/"
+        params = None
+        return self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    def schedules_delete(self, id: str, organisation_id: int | None = None) -> None:
         path = f"/reports/schedules/{id}/"
         params = None
         return self._root._execute(
@@ -5195,8 +5523,25 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def delete(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None) -> None:
+    def application_templates_delete(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None) -> None:
         path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
+        params = None
+        return self._root._execute(
+            "DELETE",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="none",
+            response_schema=None,
+            item_schema=None,
+        )
+
+    def organisation_access_delete(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None) -> None:
+        path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
         params = None
         return self._root._execute(
             "DELETE",
@@ -5306,6 +5651,100 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             organisation_id=organisation_id,
             response_kind="page",
             response_schema='PaginatedSolutionSerializerListList',
+            item_schema=None,
+        )
+
+    def organisation_access_create(self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None) -> Any:
+        path = f"/solutions/{parent_lookup_solution}/organisation_access/"
+        params = None
+        return self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def organisation_access_retrieve(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None) -> Any:
+        path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def organisation_access_update(self, id: str, parent_lookup_solution: str, body: Any, organisation_id: int | None = None) -> Any:
+        path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema='SolutionOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionOrganisationAccessSerializerDetail',
+            item_schema=None,
+        )
+
+    def organisation_access_list(self, parent_lookup_solution: str, access: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[Any]:
+        path = f"/solutions/{parent_lookup_solution}/organisation_access/"
+        params = {
+            "access": access,
+            "id": id,
+            "ordering": ordering,
+            "organisation": organisation,
+            "page": page,
+            "per_page": per_page,
+            "search": search,
+            "solution": solution,
+        }
+        return self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="page",
+            response_schema='PaginatedSolutionOrganisationAccessSerializerListList',
+            item_schema=None,
+        )
+
+    def organisation_access_partial(self, id: str, parent_lookup_solution: str, body: Any | None = None, organisation_id: int | None = None) -> Any:
+        path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
+        params = None
+        return self._root._execute(
+            "PATCH",
+            path,
+            params=params,
+            body=body,
+            body_schema='PatchedSolutionOrganisationAccessSerializerDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='SolutionOrganisationAccessSerializerDetail',
             item_schema=None,
         )
 
@@ -5667,6 +6106,23 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
+    def sync(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.User:
+        path = f"/users/{id}/sync/"
+        params = None
+        return self._root._execute(
+            "POST",
+            path,
+            params=params,
+            body=body,
+            body_schema='UserSerialiserDetailRequest',
+            body_mode="json",
+            binary_fields=[],
+            organisation_id=organisation_id,
+            response_kind="model",
+            response_schema='UserSerialiserDetail',
+            item_schema=None,
+        )
+
     def update(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.User:
         path = f"/users/{id}/"
         params = None
@@ -5691,6 +6147,7 @@ def _attach_sync_groups(root: ControlClientGroups):
     root.app_installs = AppInstallsSyncGroup(root)
     root.applications = ApplicationsSyncGroup(root)
     root.assistant = AssistantSyncGroup(root)
+    root.billing = BillingSyncGroup(root)
     root.container = ContainerSyncGroup(root)
     root.container.registry = ContainerRegistrySyncGroup(root)
     root.devices = DevicesSyncGroup(root)
@@ -5729,7 +6186,7 @@ def _attach_sync_groups(root: ControlClientGroups):
     root.tunnels = TunnelsSyncGroup(root)
     root.users = UsersSyncGroup(root)
 
-OPERATION_COUNT = 299
+OPERATION_COUNT = 324
 
 __all__ = [
     "ControlClientGroups",
@@ -5741,6 +6198,7 @@ __all__ = [
     "AppInstallsSyncGroup",
     "ApplicationsSyncGroup",
     "AssistantSyncGroup",
+    "BillingSyncGroup",
     "ContainerSyncGroup",
     "ContainerRegistrySyncGroup",
     "DevicesSyncGroup",

@@ -1018,6 +1018,7 @@ class Application(ControlModel):
     config_profiles: list[ApplicationConfigProfile]
     icon_url: str | None
     banner_url: str | None
+    repository_url: str | None
     def __init__(
         self,
         *,
@@ -1045,6 +1046,7 @@ class Application(ControlModel):
         config_profiles: list[ApplicationConfigProfile | dict[str, Any] | str | int] | None = None,
         icon_url: str | None = None,
         banner_url: str | None = None,
+        repository_url: str | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -1071,6 +1073,7 @@ class Application(ControlModel):
             config_profiles=config_profiles,
             icon_url=icon_url,
             banner_url=banner_url,
+            repository_url=repository_url,
         )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
@@ -1097,6 +1100,7 @@ class Application(ControlModel):
         "config_profiles": ControlField(type="resource", nullable=False, is_array=True, ref="ApplicationConfigProfile"),
         "icon_url": ControlField(type="string", nullable=True),
         "banner_url": ControlField(type="string", nullable=True),
+        "repository_url": ControlField(type="string", nullable=True),
     }
     _versions = {
         "ApplicationSerializerDetail": {
@@ -1125,6 +1129,7 @@ class Application(ControlModel):
                 "config_profiles": {'required': True, 'version': 'SlimApplicationConfigProfileSerializerDetail'},
                 "icon_url": {},
                 "banner_url": {},
+                "repository_url": {},
             },
         },
         "ApplicationSerializerDetailRequest": {
@@ -1150,6 +1155,7 @@ class Application(ControlModel):
                 "lambda_config": {},
                 "icon_url": {},
                 "banner_url": {},
+                "repository_url": {},
             },
         },
         "ApplicationSerializerList": {
@@ -1178,6 +1184,7 @@ class Application(ControlModel):
                 "config_profiles": {'required': True, 'version': 'SlimApplicationConfigProfileSerializerList'},
                 "icon_url": {},
                 "banner_url": {},
+                "repository_url": {},
             },
         },
         "PatchedApplicationSerializerDetailRequest": {
@@ -1203,6 +1210,7 @@ class Application(ControlModel):
                 "lambda_config": {},
                 "icon_url": {},
                 "banner_url": {},
+                "repository_url": {},
             },
         },
         "PublicApplicationSerializerList": {
@@ -1441,6 +1449,7 @@ class ApplicationInstallation(ControlModel):
     config_profiles: list[ApplicationConfigProfile]
     solution: ApplicationInstallationSolution | None
     template: ApplicationTemplate | None
+    synced: str
     def __init__(
         self,
         *,
@@ -1459,6 +1468,7 @@ class ApplicationInstallation(ControlModel):
         config_profiles: list[ApplicationConfigProfile | dict[str, Any] | str | int] | None = None,
         solution: ApplicationInstallationSolution | dict[str, Any] | str | int | None = None,
         template: ApplicationTemplate | dict[str, Any] | str | int | None = None,
+        synced: str | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -1476,6 +1486,7 @@ class ApplicationInstallation(ControlModel):
             config_profiles=config_profiles,
             solution=solution,
             template=template,
+            synced=synced,
         )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
@@ -1493,6 +1504,7 @@ class ApplicationInstallation(ControlModel):
         "config_profiles": ControlField(type="resource", nullable=False, is_array=True, ref="ApplicationConfigProfile"),
         "solution": ControlField(type="resource", nullable=True, ref="ApplicationInstallationSolution"),
         "template": ControlField(type="resource", nullable=True, ref="ApplicationTemplate"),
+        "synced": ControlField(type="string", nullable=False),
     }
     _versions = {
         "ApplicationInstallationSerializerDetail": {
@@ -1511,7 +1523,8 @@ class ApplicationInstallation(ControlModel):
                 "pre_archive_latest_deployment": {'required': True},
                 "config_profiles": {'required': True, 'version': 'SlimApplicationConfigProfileSerializerDetail'},
                 "solution": {'output_id': 'solution_id'},
-                "template": {'required': True, 'version': 'ApplicationTemplateSerializerDetail'},
+                "template": {'required': True, 'version': 'SlimApplicationTemplateSerializerDetail'},
+                "synced": {'required': True},
             },
         },
         "ApplicationInstallationSerializerDetailRequest": {
@@ -1543,7 +1556,8 @@ class ApplicationInstallation(ControlModel):
                 "pre_archive_latest_deployment": {'required': True},
                 "config_profiles": {'required': True, 'version': 'SlimApplicationConfigProfileSerializerList'},
                 "solution": {'output_id': 'solution_id'},
-                "template": {'required': True, 'version': 'ApplicationTemplateSerializerList'},
+                "template": {'required': True, 'version': 'SlimApplicationTemplateSerializerList'},
+                "synced": {'required': True},
             },
         },
         "PatchedApplicationInstallationSerializerDetailRequest": {
@@ -1594,6 +1608,65 @@ class ApplicationInstallationSolution(ControlModel):
         },
     }
 
+class ApplicationOrganisationAccess(ControlModel):
+    _model_name = "ApplicationOrganisationAccess"
+    id: int
+    organisation: Organisation | None
+    access: str
+    application_id: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        access: str | None = None,
+        application_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            organisation=organisation,
+            access=access,
+            application_id=application_id,
+        )
+    _field_defs = {
+        "id": ControlField(type="SnowflakeId", nullable=False),
+        "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
+        "access": ControlField(type="string", nullable=False),
+        "application_id": ControlField(type="id", nullable=False),
+    }
+    _versions = {
+        "ApplicationOrganisationAccessSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
+                "access": {'required': True},
+            },
+        },
+        "ApplicationOrganisationAccessSerializerDetailRequest": {
+            "methods": ['POST', 'PUT'],
+            "fields": {
+                "application_id": {'required': True},
+                "organisation": {'required': True, 'output_id': 'organisation_id'},
+                "access": {'required': True},
+            },
+        },
+        "ApplicationOrganisationAccessSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationList'},
+                "access": {'required': True},
+            },
+        },
+        "PatchedApplicationOrganisationAccessSerializerDetailRequest": {
+            "methods": ['PATCH'],
+            "fields": {
+                "application_id": {},
+                "organisation": {'output_id': 'organisation_id'},
+                "access": {},
+            },
+        },
+    }
+
 class ApplicationTemplate(ControlModel):
     _model_name = "ApplicationTemplate"
     id: int
@@ -1604,6 +1677,7 @@ class ApplicationTemplate(ControlModel):
     deployment_config: Any
     synced: bool
     config_profiles: list[ApplicationConfigProfile]
+    base_config: Any
     solution_id: str | None
     def __init__(
         self,
@@ -1616,6 +1690,7 @@ class ApplicationTemplate(ControlModel):
         deployment_config: Any | None = None,
         synced: bool | None = None,
         config_profiles: list[ApplicationConfigProfile | dict[str, Any] | str | int] | None = None,
+        base_config: Any | None = None,
         solution_id: str | None = None,
     ) -> None:
         super().__init__(
@@ -1627,6 +1702,7 @@ class ApplicationTemplate(ControlModel):
             deployment_config=deployment_config,
             synced=synced,
             config_profiles=config_profiles,
+            base_config=base_config,
             solution_id=solution_id,
         )
     _field_defs = {
@@ -1638,6 +1714,7 @@ class ApplicationTemplate(ControlModel):
         "deployment_config": ControlField(type="json", nullable=False),
         "synced": ControlField(type="boolean", nullable=False),
         "config_profiles": ControlField(type="resource", nullable=False, is_array=True, ref="ApplicationConfigProfile"),
+        "base_config": ControlField(type="json", nullable=False),
         "solution_id": ControlField(type="id", nullable=True),
     }
     _versions = {
@@ -1651,6 +1728,7 @@ class ApplicationTemplate(ControlModel):
                 "deployment_config": {},
                 "synced": {},
                 "config_profiles": {'required': True, 'version': 'ApplicationConfigProfileSerializerDetail'},
+                "base_config": {'required': True},
             },
         },
         "ApplicationTemplateSerializerDetailRequest": {
@@ -1676,6 +1754,7 @@ class ApplicationTemplate(ControlModel):
                 "deployment_config": {},
                 "synced": {},
                 "config_profiles": {'required': True, 'version': 'ApplicationConfigProfileSerializerList'},
+                "base_config": {'required': True},
             },
         },
         "PatchedApplicationTemplateSerializerDetailRequest": {
@@ -1689,6 +1768,30 @@ class ApplicationTemplate(ControlModel):
                 "synced": {},
                 "config_profiles": {'output_id': 'config_profile_ids'},
                 "solution_id": {},
+            },
+        },
+        "SlimApplicationTemplateSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+                "display_name": {'required': True},
+                "description": {'required': True},
+                "application": {'required': True, 'version': 'SlimApplicationDetail'},
+                "deployment_config": {'required': True},
+                "synced": {'required': True},
+                "base_config": {'required': True},
+            },
+        },
+        "SlimApplicationTemplateSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+                "display_name": {'required': True},
+                "description": {'required': True},
+                "application": {'required': True, 'version': 'SlimApplicationList'},
+                "deployment_config": {'required': True},
+                "synced": {'required': True},
+                "base_config": {'required': True},
             },
         },
     }
@@ -2488,7 +2591,7 @@ class Device(ControlModel):
     archived: bool
     name: str
     display_name: str
-    type: DeviceType
+    type: NestedDeviceType
     organisation: Organisation
     group: Group
     fa_icon: str | None
@@ -2497,6 +2600,7 @@ class Device(ControlModel):
     fusion_entity_id: str | None
     fusion_entity_secret: str | None
     fixed_location: Location | None
+    history_since: str | None
     solution_config: Any
     def __init__(
         self,
@@ -2505,7 +2609,7 @@ class Device(ControlModel):
         archived: bool | None = None,
         name: str | None = None,
         display_name: str | None = None,
-        type: DeviceType | dict[str, Any] | str | int | None = None,
+        type: NestedDeviceType | dict[str, Any] | str | int | None = None,
         organisation: Organisation | dict[str, Any] | str | int | None = None,
         group: Group | dict[str, Any] | str | int | None = None,
         fa_icon: str | None = None,
@@ -2514,6 +2618,7 @@ class Device(ControlModel):
         fusion_entity_id: str | None = None,
         fusion_entity_secret: str | None = None,
         fixed_location: Location | dict[str, Any] | None = None,
+        history_since: str | None = None,
         solution_config: Any | None = None,
     ) -> None:
         super().__init__(
@@ -2530,6 +2635,7 @@ class Device(ControlModel):
             fusion_entity_id=fusion_entity_id,
             fusion_entity_secret=fusion_entity_secret,
             fixed_location=fixed_location,
+            history_since=history_since,
             solution_config=solution_config,
         )
     _field_defs = {
@@ -2537,7 +2643,7 @@ class Device(ControlModel):
         "archived": ControlField(type="boolean", nullable=False),
         "name": ControlField(type="string", nullable=False),
         "display_name": ControlField(type="string", nullable=False),
-        "type": ControlField(type="resource", nullable=False, ref="DeviceType"),
+        "type": ControlField(type="resource", nullable=False, ref="NestedDeviceType"),
         "organisation": ControlField(type="resource", nullable=False, ref="Organisation"),
         "group": ControlField(type="resource", nullable=False, ref="Group"),
         "fa_icon": ControlField(type="string", nullable=True),
@@ -2546,6 +2652,7 @@ class Device(ControlModel):
         "fusion_entity_id": ControlField(type="id", nullable=True),
         "fusion_entity_secret": ControlField(type="string", nullable=True),
         "fixed_location": ControlField(type="Location", nullable=True),
+        "history_since": ControlField(type="string", nullable=True),
         "solution_config": ControlField(type="json", nullable=False),
     }
     _versions = {
@@ -2555,7 +2662,7 @@ class Device(ControlModel):
                 "archived": {'required': True},
                 "name": {},
                 "display_name": {'required': True},
-                "type": {'required': True, 'version': 'DeviceTypeSerializerDetail'},
+                "type": {'required': True, 'version': 'NestedDeviceTypeSerializerDetail'},
                 "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
                 "group": {'required': True, 'version': 'SlimGroupSerializerDetail'},
                 "fa_icon": {},
@@ -2564,6 +2671,7 @@ class Device(ControlModel):
                 "fusion_entity_id": {'required': True},
                 "fusion_entity_secret": {'required': True},
                 "fixed_location": {},
+                "history_since": {},
             },
         },
         "DeviceSerializerDetailRequest": {
@@ -2578,6 +2686,7 @@ class Device(ControlModel):
                 "extra_config": {},
                 "fixed_location": {},
                 "solution_config": {},
+                "history_since": {},
             },
         },
         "DeviceSerializerList": {
@@ -2586,7 +2695,7 @@ class Device(ControlModel):
                 "archived": {'required': True},
                 "name": {},
                 "display_name": {'required': True},
-                "type": {'required': True, 'version': 'DeviceTypeSerializerList'},
+                "type": {'required': True, 'version': 'NestedDeviceTypeSerializerList'},
                 "organisation": {'required': True, 'version': 'BasicOrganisationList'},
                 "group": {'required': True, 'version': 'SlimGroupSerializerList'},
                 "fa_icon": {},
@@ -2595,6 +2704,7 @@ class Device(ControlModel):
                 "fusion_entity_id": {'required': True},
                 "fusion_entity_secret": {'required': True},
                 "fixed_location": {},
+                "history_since": {},
             },
         },
         "DeviceSuperBasicSerialiserDetail": {
@@ -2623,6 +2733,25 @@ class Device(ControlModel):
                 "extra_config": {},
                 "fixed_location": {},
                 "solution_config": {},
+                "history_since": {},
+            },
+        },
+        "SlimDeviceSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+                "display_name": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
+                "type": {'required': True, 'version': 'BasicDeviceTypeSerializerDetail'},
+            },
+        },
+        "SlimDeviceSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+                "display_name": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationList'},
+                "type": {'required': True, 'version': 'BasicDeviceTypeSerializerList'},
             },
         },
     }
@@ -2701,6 +2830,8 @@ class DeviceInstallerInfoResponse(ControlModel):
     title: str
     description: str
     copy: str | None
+    install_package_url: str | None
+    install_type: str
     panel_type: str
     def __init__(
         self,
@@ -2708,18 +2839,24 @@ class DeviceInstallerInfoResponse(ControlModel):
         title: str | None = None,
         description: str | None = None,
         copy: str | None = None,
+        install_package_url: str | None = None,
+        install_type: str | None = None,
         panel_type: str | None = None,
     ) -> None:
         super().__init__(
             title=title,
             description=description,
             copy=copy,
+            install_package_url=install_package_url,
+            install_type=install_type,
             panel_type=panel_type,
         )
     _field_defs = {
         "title": ControlField(type="string", nullable=False),
         "description": ControlField(type="string", nullable=False),
         "copy": ControlField(type="string", nullable=True),
+        "install_package_url": ControlField(type="string", nullable=True),
+        "install_type": ControlField(type="string", nullable=False),
         "panel_type": ControlField(type="string", nullable=False),
     }
     _versions = {
@@ -2728,6 +2865,8 @@ class DeviceInstallerInfoResponse(ControlModel):
                 "title": {'required': True},
                 "description": {'required': True},
                 "copy": {'required': True},
+                "install_package_url": {'required': True},
+                "install_type": {'required': True},
                 "panel_type": {'required': True},
             },
         },
@@ -2744,6 +2883,7 @@ class DeviceType(ControlModel):
     device_extra_config_schema: Any
     installer: str | None
     installer_info: str
+    install_type: str
     copy_command: str
     description: str
     logo_url: str | None
@@ -2752,6 +2892,7 @@ class DeviceType(ControlModel):
     default_icon: str | None
     solution: Solution | None
     active_count: int
+    hooks: str
     def __init__(
         self,
         *,
@@ -2764,6 +2905,7 @@ class DeviceType(ControlModel):
         device_extra_config_schema: Any | None = None,
         installer: str | None = None,
         installer_info: str | None = None,
+        install_type: str | None = None,
         copy_command: str | None = None,
         description: str | None = None,
         logo_url: str | None = None,
@@ -2772,6 +2914,7 @@ class DeviceType(ControlModel):
         default_icon: str | None = None,
         solution: Solution | dict[str, Any] | str | int | None = None,
         active_count: int | None = None,
+        hooks: str | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -2783,6 +2926,7 @@ class DeviceType(ControlModel):
             device_extra_config_schema=device_extra_config_schema,
             installer=installer,
             installer_info=installer_info,
+            install_type=install_type,
             copy_command=copy_command,
             description=description,
             logo_url=logo_url,
@@ -2791,6 +2935,7 @@ class DeviceType(ControlModel):
             default_icon=default_icon,
             solution=solution,
             active_count=active_count,
+            hooks=hooks,
         )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
@@ -2802,6 +2947,7 @@ class DeviceType(ControlModel):
         "device_extra_config_schema": ControlField(type="json", nullable=False),
         "installer": ControlField(type="string", nullable=True),
         "installer_info": ControlField(type="string", nullable=False),
+        "install_type": ControlField(type="string", nullable=False),
         "copy_command": ControlField(type="string", nullable=False),
         "description": ControlField(type="string", nullable=False),
         "logo_url": ControlField(type="string", nullable=True),
@@ -2810,8 +2956,30 @@ class DeviceType(ControlModel):
         "default_icon": ControlField(type="string", nullable=True),
         "solution": ControlField(type="resource", nullable=True, ref="Solution"),
         "active_count": ControlField(type="integer", nullable=False),
+        "hooks": ControlField(type="string", nullable=False),
     }
     _versions = {
+        "BasicDeviceTypeSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
+                "archived": {'required': True},
+                "name": {'required': True},
+            },
+        },
+        "BasicDeviceTypeSerializerDetailRequest": {
+            "fields": {
+                "name": {'required': True},
+            },
+        },
+        "BasicDeviceTypeSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationList'},
+                "archived": {'required': True},
+                "name": {'required': True},
+            },
+        },
         "DeviceTypeSerializerDetail": {
             "fields": {
                 "id": {'required': True},
@@ -2823,6 +2991,7 @@ class DeviceType(ControlModel):
                 "device_extra_config_schema": {},
                 "installer": {},
                 "installer_info": {},
+                "install_type": {},
                 "copy_command": {},
                 "description": {},
                 "logo_url": {},
@@ -2831,6 +3000,7 @@ class DeviceType(ControlModel):
                 "default_icon": {},
                 "solution": {'required': True, 'version': 'SolutionSerializerDetail'},
                 "active_count": {'required': True},
+                "hooks": {},
             },
         },
         "DeviceTypeSerializerDetailRequest": {
@@ -2842,6 +3012,7 @@ class DeviceType(ControlModel):
                 "device_extra_config_schema": {},
                 "installer": {},
                 "installer_info": {},
+                "install_type": {},
                 "copy_command": {},
                 "description": {},
                 "logo_url": {},
@@ -2849,6 +3020,7 @@ class DeviceType(ControlModel):
                 "stars": {},
                 "default_icon": {},
                 "solution": {'output_id': 'solution_id'},
+                "hooks": {},
             },
         },
         "DeviceTypeSerializerList": {
@@ -2862,6 +3034,7 @@ class DeviceType(ControlModel):
                 "device_extra_config_schema": {},
                 "installer": {},
                 "installer_info": {},
+                "install_type": {},
                 "copy_command": {},
                 "description": {},
                 "logo_url": {},
@@ -2870,6 +3043,7 @@ class DeviceType(ControlModel):
                 "default_icon": {},
                 "solution": {'required': True, 'version': 'SolutionSerializerList'},
                 "active_count": {'required': True},
+                "hooks": {},
             },
         },
         "PatchedDeviceTypeSerializerDetailRequest": {
@@ -2881,6 +3055,7 @@ class DeviceType(ControlModel):
                 "device_extra_config_schema": {},
                 "installer": {},
                 "installer_info": {},
+                "install_type": {},
                 "copy_command": {},
                 "description": {},
                 "logo_url": {},
@@ -2888,6 +3063,7 @@ class DeviceType(ControlModel):
                 "stars": {},
                 "default_icon": {},
                 "solution": {'output_id': 'solution_id'},
+                "hooks": {},
             },
         },
     }
@@ -2973,6 +3149,65 @@ class DeviceTypeBillingConfig(ControlModel):
         },
     }
 
+class DeviceTypeOrganisationAccess(ControlModel):
+    _model_name = "DeviceTypeOrganisationAccess"
+    id: int
+    organisation: Organisation | None
+    access: str
+    device_type_id: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        access: str | None = None,
+        device_type_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            organisation=organisation,
+            access=access,
+            device_type_id=device_type_id,
+        )
+    _field_defs = {
+        "id": ControlField(type="SnowflakeId", nullable=False),
+        "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
+        "access": ControlField(type="string", nullable=False),
+        "device_type_id": ControlField(type="id", nullable=False),
+    }
+    _versions = {
+        "DeviceTypeOrganisationAccessSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
+                "access": {'required': True},
+            },
+        },
+        "DeviceTypeOrganisationAccessSerializerDetailRequest": {
+            "methods": ['POST', 'PUT'],
+            "fields": {
+                "device_type_id": {'required': True},
+                "organisation": {'required': True, 'output_id': 'organisation_id'},
+                "access": {'required': True},
+            },
+        },
+        "DeviceTypeOrganisationAccessSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationList'},
+                "access": {'required': True},
+            },
+        },
+        "PatchedDeviceTypeOrganisationAccessSerializerDetailRequest": {
+            "methods": ['PATCH'],
+            "fields": {
+                "device_type_id": {},
+                "organisation": {'output_id': 'organisation_id'},
+                "access": {},
+            },
+        },
+    }
+
 class Group(ControlModel):
     _model_name = "Group"
     id: int
@@ -2981,6 +3216,7 @@ class Group(ControlModel):
     archived: bool
     parent: Group | None
     children: list[Group]
+    my_permissions: Any | None
     shared: bool
     def __init__(
         self,
@@ -2991,6 +3227,7 @@ class Group(ControlModel):
         archived: bool | None = None,
         parent: Group | dict[str, Any] | str | int | None = None,
         children: list[Group | dict[str, Any] | str | int] | None = None,
+        my_permissions: Any | None = None,
         shared: bool | None = None,
     ) -> None:
         super().__init__(
@@ -3000,6 +3237,7 @@ class Group(ControlModel):
             archived=archived,
             parent=parent,
             children=children,
+            my_permissions=my_permissions,
             shared=shared,
         )
     _field_defs = {
@@ -3009,6 +3247,7 @@ class Group(ControlModel):
         "archived": ControlField(type="boolean", nullable=False),
         "parent": ControlField(type="resource", nullable=True, ref="Group"),
         "children": ControlField(type="resource", nullable=False, is_array=True, ref="Group"),
+        "my_permissions": ControlField(type="json", nullable=True),
         "shared": ControlField(type="boolean", nullable=False),
     }
     _versions = {
@@ -3049,12 +3288,15 @@ class Group(ControlModel):
                 "organisation": {'required': True, 'version': 'OrganisationSimpleSerialiserDetail'},
                 "archived": {'required': True},
                 "parent": {'required': True, 'version': 'GroupParentSerialiserDetail'},
+                "children": {'required': True, 'version': 'GroupChildrenSerialiserDetail'},
+                "my_permissions": {'required': True},
             },
         },
         "GroupSerializerDetailRequest": {
             "methods": ['POST', 'PUT'],
             "fields": {
                 "name": {'required': True},
+                "parent": {'required': True, 'output_id': 'parent_id'},
             },
         },
         "GroupSerializerList": {
@@ -3064,22 +3306,6 @@ class Group(ControlModel):
                 "organisation": {'required': True, 'version': 'OrganisationSimpleSerialiserList'},
                 "archived": {'required': True},
                 "parent": {'required': True, 'version': 'GroupParentSerialiserList'},
-            },
-        },
-        "SlimGroupSerializerDetail": {
-            "fields": {
-                "id": {'required': True},
-                "name": {'required': True},
-                "archived": {'required': True},
-                "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
-            },
-        },
-        "SlimGroupSerializerList": {
-            "fields": {
-                "id": {'required': True},
-                "name": {'required': True},
-                "archived": {'required': True},
-                "organisation": {'required': True, 'version': 'BasicOrganisationList'},
             },
         },
         "GroupSimpleSerializerDetail": {
@@ -3097,6 +3323,22 @@ class Group(ControlModel):
             "fields": {
                 "name": {},
                 "parent": {'output_id': 'parent_id'},
+            },
+        },
+        "SlimGroupSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+                "archived": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
+            },
+        },
+        "SlimGroupSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+                "archived": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationList'},
             },
         },
     }
@@ -3631,6 +3873,160 @@ class NavigationContext(ControlModel):
         },
     }
 
+class NestedDeviceType(ControlModel):
+    _model_name = "NestedDeviceType"
+    id: int
+    organisation: Organisation
+    archived: bool
+    name: str
+    config: Any
+    config_schema: Any
+    device_extra_config_schema: Any
+    installer: str | None
+    installer_info: str
+    install_type: str
+    copy_command: str
+    description: str
+    logo_url: str | None
+    extra_info: str | None
+    stars: int
+    default_icon: str | None
+    solution: str | None
+    active_count: int
+    hooks: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        archived: bool | None = None,
+        name: str | None = None,
+        config: Any | None = None,
+        config_schema: Any | None = None,
+        device_extra_config_schema: Any | None = None,
+        installer: str | None = None,
+        installer_info: str | None = None,
+        install_type: str | None = None,
+        copy_command: str | None = None,
+        description: str | None = None,
+        logo_url: str | None = None,
+        extra_info: str | None = None,
+        stars: int | None = None,
+        default_icon: str | None = None,
+        solution: str | None = None,
+        active_count: int | None = None,
+        hooks: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            organisation=organisation,
+            archived=archived,
+            name=name,
+            config=config,
+            config_schema=config_schema,
+            device_extra_config_schema=device_extra_config_schema,
+            installer=installer,
+            installer_info=installer_info,
+            install_type=install_type,
+            copy_command=copy_command,
+            description=description,
+            logo_url=logo_url,
+            extra_info=extra_info,
+            stars=stars,
+            default_icon=default_icon,
+            solution=solution,
+            active_count=active_count,
+            hooks=hooks,
+        )
+    _field_defs = {
+        "id": ControlField(type="SnowflakeId", nullable=False),
+        "organisation": ControlField(type="resource", nullable=False, ref="Organisation"),
+        "archived": ControlField(type="boolean", nullable=False),
+        "name": ControlField(type="string", nullable=False),
+        "config": ControlField(type="json", nullable=False),
+        "config_schema": ControlField(type="json", nullable=False),
+        "device_extra_config_schema": ControlField(type="json", nullable=False),
+        "installer": ControlField(type="string", nullable=True),
+        "installer_info": ControlField(type="string", nullable=False),
+        "install_type": ControlField(type="string", nullable=False),
+        "copy_command": ControlField(type="string", nullable=False),
+        "description": ControlField(type="string", nullable=False),
+        "logo_url": ControlField(type="string", nullable=True),
+        "extra_info": ControlField(type="string", nullable=True),
+        "stars": ControlField(type="integer", nullable=False),
+        "default_icon": ControlField(type="string", nullable=True),
+        "solution": ControlField(type="string", nullable=True),
+        "active_count": ControlField(type="integer", nullable=False),
+        "hooks": ControlField(type="string", nullable=False),
+    }
+    _versions = {
+        "NestedDeviceTypeSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
+                "archived": {'required': True},
+                "name": {'required': True},
+                "config": {},
+                "config_schema": {},
+                "device_extra_config_schema": {},
+                "installer": {},
+                "installer_info": {},
+                "install_type": {},
+                "copy_command": {},
+                "description": {},
+                "logo_url": {},
+                "extra_info": {},
+                "stars": {},
+                "default_icon": {},
+                "solution": {'required': True},
+                "active_count": {'required': True},
+                "hooks": {},
+            },
+        },
+        "NestedDeviceTypeSerializerDetailRequest": {
+            "fields": {
+                "name": {'required': True},
+                "config": {},
+                "config_schema": {},
+                "device_extra_config_schema": {},
+                "installer": {},
+                "installer_info": {},
+                "install_type": {},
+                "copy_command": {},
+                "description": {},
+                "logo_url": {},
+                "extra_info": {},
+                "stars": {},
+                "default_icon": {},
+                "solution": {'output_id': 'solution_id'},
+                "hooks": {},
+            },
+        },
+        "NestedDeviceTypeSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationList'},
+                "archived": {'required': True},
+                "name": {'required': True},
+                "config": {},
+                "config_schema": {},
+                "device_extra_config_schema": {},
+                "installer": {},
+                "installer_info": {},
+                "install_type": {},
+                "copy_command": {},
+                "description": {},
+                "logo_url": {},
+                "extra_info": {},
+                "stars": {},
+                "default_icon": {},
+                "solution": {'required': True},
+                "active_count": {'required': True},
+                "hooks": {},
+            },
+        },
+    }
+
 class OpenAPIErrorResponse(ControlModel):
     _model_name = "OpenAPIErrorResponse"
     detail: str
@@ -3670,6 +4066,7 @@ class Organisation(ControlModel):
     retention_period: int
     legacy_doover_api_key: str | None
     llm_api_key: str | None
+    extra_config: Any
     theme: Theme
     def __init__(
         self,
@@ -3684,6 +4081,7 @@ class Organisation(ControlModel):
         retention_period: int | None = None,
         legacy_doover_api_key: str | None = None,
         llm_api_key: str | None = None,
+        extra_config: Any | None = None,
         theme: Theme | dict[str, Any] | str | int | None = None,
     ) -> None:
         super().__init__(
@@ -3697,6 +4095,7 @@ class Organisation(ControlModel):
             retention_period=retention_period,
             legacy_doover_api_key=legacy_doover_api_key,
             llm_api_key=llm_api_key,
+            extra_config=extra_config,
             theme=theme,
         )
     _field_defs = {
@@ -3710,6 +4109,7 @@ class Organisation(ControlModel):
         "retention_period": ControlField(type="integer", nullable=False),
         "legacy_doover_api_key": ControlField(type="string", nullable=True),
         "llm_api_key": ControlField(type="string", nullable=True),
+        "extra_config": ControlField(type="json", nullable=False),
         "theme": ControlField(type="resource", nullable=False, ref="Theme"),
     }
     _versions = {
@@ -3751,6 +4151,7 @@ class Organisation(ControlModel):
                 "retention_period": {},
                 "legacy_doover_api_key": {},
                 "llm_api_key": {},
+                "extra_config": {},
                 "theme": {'version': 'ThemeSerializerDetail'},
             },
         },
@@ -3762,6 +4163,7 @@ class Organisation(ControlModel):
                 "retention_period": {},
                 "legacy_doover_api_key": {},
                 "llm_api_key": {},
+                "extra_config": {},
                 "theme": {'version': 'ThemeSerializerDetailRequest'},
             },
         },
@@ -3777,6 +4179,7 @@ class Organisation(ControlModel):
                 "retention_period": {},
                 "legacy_doover_api_key": {},
                 "llm_api_key": {},
+                "extra_config": {},
                 "theme": {'version': 'ThemeSerializerList'},
             },
         },
@@ -3812,6 +4215,7 @@ class Organisation(ControlModel):
                 "retention_period": {},
                 "legacy_doover_api_key": {},
                 "llm_api_key": {},
+                "extra_config": {},
                 "theme": {'version': 'ThemeSerializerDetailRequest'},
             },
         },
@@ -4421,6 +4825,7 @@ class PermissionUser(ControlModel):
     email: str
     first_name: str
     last_name: str
+    last_activity: str | None
     def __init__(
         self,
         *,
@@ -4429,6 +4834,7 @@ class PermissionUser(ControlModel):
         email: str | None = None,
         first_name: str | None = None,
         last_name: str | None = None,
+        last_activity: str | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -4436,6 +4842,7 @@ class PermissionUser(ControlModel):
             email=email,
             first_name=first_name,
             last_name=last_name,
+            last_activity=last_activity,
         )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
@@ -4443,6 +4850,7 @@ class PermissionUser(ControlModel):
         "email": ControlField(type="string", nullable=False),
         "first_name": ControlField(type="string", nullable=False),
         "last_name": ControlField(type="string", nullable=False),
+        "last_activity": ControlField(type="string", nullable=True),
     }
     _versions = {
         "PermissionUserSerializerDetail": {
@@ -4452,6 +4860,7 @@ class PermissionUser(ControlModel):
                 "email": {},
                 "first_name": {},
                 "last_name": {},
+                "last_activity": {},
             },
         },
         "PermissionUserSerializerDetailRequest": {
@@ -4461,6 +4870,7 @@ class PermissionUser(ControlModel):
                 "email": {},
                 "first_name": {},
                 "last_name": {},
+                "last_activity": {},
             },
         },
         "PermissionUserSerializerList": {
@@ -4470,6 +4880,7 @@ class PermissionUser(ControlModel):
                 "email": {},
                 "first_name": {},
                 "last_name": {},
+                "last_activity": {},
             },
         },
     }
@@ -4936,10 +5347,12 @@ class SellerCustomer(ControlModel):
     group: SellerCustomerGroup
     billing_email: str | None
     stripe_customer_id: str | None
+    billing_block: str
     notes: str
     id: int
     seller_organisation: SellerCustomerOrg
     has_subscription: bool
+    subscription_status: str | None
     created_at: str
     updated_at: str
     def __init__(
@@ -4948,10 +5361,12 @@ class SellerCustomer(ControlModel):
         group: SellerCustomerGroup | dict[str, Any] | str | int | None = None,
         billing_email: str | None = None,
         stripe_customer_id: str | None = None,
+        billing_block: str | None = None,
         notes: str | None = None,
         id: int | None = None,
         seller_organisation: SellerCustomerOrg | dict[str, Any] | str | int | None = None,
         has_subscription: bool | None = None,
+        subscription_status: str | None = None,
         created_at: str | None = None,
         updated_at: str | None = None,
     ) -> None:
@@ -4959,10 +5374,12 @@ class SellerCustomer(ControlModel):
             group=group,
             billing_email=billing_email,
             stripe_customer_id=stripe_customer_id,
+            billing_block=billing_block,
             notes=notes,
             id=id,
             seller_organisation=seller_organisation,
             has_subscription=has_subscription,
+            subscription_status=subscription_status,
             created_at=created_at,
             updated_at=updated_at,
         )
@@ -4970,10 +5387,12 @@ class SellerCustomer(ControlModel):
         "group": ControlField(type="resource", nullable=False, ref="SellerCustomerGroup"),
         "billing_email": ControlField(type="string", nullable=True),
         "stripe_customer_id": ControlField(type="id", nullable=True),
+        "billing_block": ControlField(type="string", nullable=False),
         "notes": ControlField(type="string", nullable=False),
         "id": ControlField(type="SnowflakeId", nullable=False),
         "seller_organisation": ControlField(type="resource", nullable=False, ref="SellerCustomerOrg"),
         "has_subscription": ControlField(type="boolean", nullable=False),
+        "subscription_status": ControlField(type="string", nullable=True),
         "created_at": ControlField(type="string", nullable=False),
         "updated_at": ControlField(type="string", nullable=False),
     }
@@ -4984,6 +5403,7 @@ class SellerCustomer(ControlModel):
                 "group": {'output_id': 'group_id'},
                 "billing_email": {},
                 "stripe_customer_id": {},
+                "billing_block": {},
                 "notes": {},
             },
         },
@@ -4995,6 +5415,8 @@ class SellerCustomer(ControlModel):
                 "billing_email": {},
                 "stripe_customer_id": {},
                 "has_subscription": {'required': True},
+                "subscription_status": {'required': True},
+                "billing_block": {},
                 "notes": {},
                 "created_at": {'required': True},
                 "updated_at": {'required': True},
@@ -5006,6 +5428,7 @@ class SellerCustomer(ControlModel):
                 "group": {'required': True, 'output_id': 'group_id'},
                 "billing_email": {},
                 "stripe_customer_id": {},
+                "billing_block": {},
                 "notes": {},
             },
         },
@@ -5017,6 +5440,7 @@ class SellerCustomer(ControlModel):
                 "billing_email": {},
                 "stripe_customer_id": {},
                 "has_subscription": {'required': True},
+                "billing_block": {},
                 "created_at": {'required': True},
             },
         },
@@ -5338,6 +5762,7 @@ class SolutionInstallation(ControlModel):
     deployed_at: str
     status: str
     application_installs: list[ApplicationInstallation]
+    synced: str
     def __init__(
         self,
         *,
@@ -5350,6 +5775,7 @@ class SolutionInstallation(ControlModel):
         deployed_at: str | None = None,
         status: str | None = None,
         application_installs: list[ApplicationInstallation | dict[str, Any] | str | int] | None = None,
+        synced: str | None = None,
     ) -> None:
         super().__init__(
             display_name=display_name,
@@ -5361,6 +5787,7 @@ class SolutionInstallation(ControlModel):
             deployed_at=deployed_at,
             status=status,
             application_installs=application_installs,
+            synced=synced,
         )
     _field_defs = {
         "display_name": ControlField(type="string", nullable=False),
@@ -5372,6 +5799,7 @@ class SolutionInstallation(ControlModel):
         "deployed_at": ControlField(type="string", nullable=False),
         "status": ControlField(type="string", nullable=False),
         "application_installs": ControlField(type="resource", nullable=False, is_array=True, ref="ApplicationInstallation"),
+        "synced": ControlField(type="string", nullable=False),
     }
     _versions = {
         "PatchedSolutionInstallationSerializerDetailRequest": {
@@ -5387,13 +5815,14 @@ class SolutionInstallation(ControlModel):
             "fields": {
                 "id": {'required': True},
                 "display_name": {'required': True},
-                "device": {'required': True, 'version': 'DeviceSerializerDetail'},
+                "device": {'required': True, 'version': 'SlimDeviceSerializerDetail'},
                 "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
                 "deployed_at": {'required': True},
                 "status": {'required': True},
                 "application_installs": {'required': True, 'version': 'ApplicationInstallationSerializerDetail'},
                 "solution": {'required': True, 'version': 'SolutionSerializerDetail'},
                 "deployment_config": {},
+                "synced": {'required': True},
             },
         },
         "SolutionInstallationSerializerDetailRequest": {
@@ -5409,13 +5838,73 @@ class SolutionInstallation(ControlModel):
             "fields": {
                 "id": {'required': True},
                 "display_name": {'required': True},
-                "device": {'required': True, 'version': 'DeviceSerializerList'},
+                "device": {'required': True, 'version': 'SlimDeviceSerializerList'},
                 "organisation": {'required': True, 'version': 'BasicOrganisationList'},
                 "deployed_at": {'required': True},
                 "status": {'required': True},
                 "application_installs": {'required': True, 'version': 'ApplicationInstallationSerializerList'},
                 "solution": {'required': True, 'version': 'SolutionSerializerList'},
                 "deployment_config": {},
+                "synced": {'required': True},
+            },
+        },
+    }
+
+class SolutionOrganisationAccess(ControlModel):
+    _model_name = "SolutionOrganisationAccess"
+    solution_id: str
+    organisation: Organisation | None
+    access: str
+    id: int
+    def __init__(
+        self,
+        *,
+        solution_id: str | None = None,
+        organisation: Organisation | dict[str, Any] | str | int | None = None,
+        access: str | None = None,
+        id: int | None = None,
+    ) -> None:
+        super().__init__(
+            solution_id=solution_id,
+            organisation=organisation,
+            access=access,
+            id=id,
+        )
+    _field_defs = {
+        "solution_id": ControlField(type="id", nullable=False),
+        "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
+        "access": ControlField(type="string", nullable=False),
+        "id": ControlField(type="SnowflakeId", nullable=False),
+    }
+    _versions = {
+        "PatchedSolutionOrganisationAccessSerializerDetailRequest": {
+            "methods": ['PATCH'],
+            "fields": {
+                "solution_id": {},
+                "organisation": {'output_id': 'organisation_id'},
+                "access": {},
+            },
+        },
+        "SolutionOrganisationAccessSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
+                "access": {'required': True},
+            },
+        },
+        "SolutionOrganisationAccessSerializerDetailRequest": {
+            "methods": ['POST', 'PUT'],
+            "fields": {
+                "solution_id": {'required': True},
+                "organisation": {'required': True, 'output_id': 'organisation_id'},
+                "access": {'required': True},
+            },
+        },
+        "SolutionOrganisationAccessSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "organisation": {'required': True, 'version': 'BasicOrganisationList'},
+                "access": {'required': True},
             },
         },
     }
@@ -5820,6 +6309,8 @@ class UsageRecord(ControlModel):
     record_type: str
     device: UsageRecordDevice
     app_install: UsageRecordAppInstall | None
+    application: UsageRecordApplication | None
+    solution: UsageRecordSolution | None
     agent_billing_item: str | None
     seller_customer: UsageRecordSellerCustomer | None
     billing_product: UsageRecordBillingProduct
@@ -5840,6 +6331,8 @@ class UsageRecord(ControlModel):
         record_type: str | None = None,
         device: UsageRecordDevice | dict[str, Any] | str | int | None = None,
         app_install: UsageRecordAppInstall | dict[str, Any] | str | int | None = None,
+        application: UsageRecordApplication | dict[str, Any] | str | int | None = None,
+        solution: UsageRecordSolution | dict[str, Any] | str | int | None = None,
         agent_billing_item: str | None = None,
         seller_customer: UsageRecordSellerCustomer | dict[str, Any] | str | int | None = None,
         billing_product: UsageRecordBillingProduct | dict[str, Any] | str | int | None = None,
@@ -5859,6 +6352,8 @@ class UsageRecord(ControlModel):
             record_type=record_type,
             device=device,
             app_install=app_install,
+            application=application,
+            solution=solution,
             agent_billing_item=agent_billing_item,
             seller_customer=seller_customer,
             billing_product=billing_product,
@@ -5878,6 +6373,8 @@ class UsageRecord(ControlModel):
         "record_type": ControlField(type="string", nullable=False),
         "device": ControlField(type="resource", nullable=False, ref="UsageRecordDevice"),
         "app_install": ControlField(type="resource", nullable=True, ref="UsageRecordAppInstall"),
+        "application": ControlField(type="resource", nullable=True, ref="UsageRecordApplication"),
+        "solution": ControlField(type="resource", nullable=True, ref="UsageRecordSolution"),
         "agent_billing_item": ControlField(type="string", nullable=True),
         "seller_customer": ControlField(type="resource", nullable=True, ref="UsageRecordSellerCustomer"),
         "billing_product": ControlField(type="resource", nullable=False, ref="UsageRecordBillingProduct"),
@@ -5899,6 +6396,8 @@ class UsageRecord(ControlModel):
                 "record_type": {'required': True},
                 "device": {'required': True, 'version': 'UsageRecordDeviceSerializerDetail'},
                 "app_install": {'required': True, 'version': 'UsageRecordAppInstallSerializerDetail'},
+                "application": {'required': True, 'version': 'UsageRecordApplicationSerializerDetail'},
+                "solution": {'required': True, 'version': 'UsageRecordSolutionSerializerDetail'},
                 "agent_billing_item": {'required': True},
                 "seller_customer": {'required': True, 'version': 'UsageRecordSellerCustomerSerializerDetail'},
                 "billing_product": {'required': True, 'version': 'UsageRecordBillingProductSerializerDetail'},
@@ -5920,6 +6419,8 @@ class UsageRecord(ControlModel):
                 "record_type": {'required': True},
                 "device": {'required': True, 'version': 'UsageRecordDeviceSerializerList'},
                 "app_install": {'required': True, 'version': 'UsageRecordAppInstallSerializerList'},
+                "application": {'required': True, 'version': 'UsageRecordApplicationSerializerList'},
+                "solution": {'required': True, 'version': 'UsageRecordSolutionSerializerList'},
                 "agent_billing_item": {'required': True},
                 "seller_customer": {'required': True, 'version': 'UsageRecordSellerCustomerSerializerList'},
                 "billing_product": {'required': True, 'version': 'UsageRecordBillingProductSerializerList'},
@@ -5960,6 +6461,39 @@ class UsageRecordAppInstall(ControlModel):
             },
         },
         "UsageRecordAppInstallSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+            },
+        },
+    }
+
+class UsageRecordApplication(ControlModel):
+    _model_name = "UsageRecordApplication"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
+    _field_defs = {
+        "id": ControlField(type="SnowflakeId", nullable=False),
+        "name": ControlField(type="string", nullable=False),
+    }
+    _versions = {
+        "UsageRecordApplicationSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+            },
+        },
+        "UsageRecordApplicationSerializerList": {
             "fields": {
                 "id": {'required': True},
                 "name": {'required': True},
@@ -6099,6 +6633,39 @@ class UsageRecordSellerCustomer(ControlModel):
         },
     }
 
+class UsageRecordSolution(ControlModel):
+    _model_name = "UsageRecordSolution"
+    id: int
+    name: str
+    def __init__(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            name=name,
+        )
+    _field_defs = {
+        "id": ControlField(type="SnowflakeId", nullable=False),
+        "name": ControlField(type="string", nullable=False),
+    }
+    _versions = {
+        "UsageRecordSolutionSerializerDetail": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+            },
+        },
+        "UsageRecordSolutionSerializerList": {
+            "fields": {
+                "id": {'required': True},
+                "name": {'required': True},
+            },
+        },
+    }
+
 class User(ControlModel):
     _model_name = "User"
     custom_data: Any | None
@@ -6110,6 +6677,8 @@ class User(ControlModel):
     username: str
     is_superuser: bool
     organisation_info: UserOrganisationInfo | None
+    last_synced: int | None
+    last_login: int | None
     def __init__(
         self,
         *,
@@ -6122,6 +6691,8 @@ class User(ControlModel):
         username: str | None = None,
         is_superuser: bool | None = None,
         organisation_info: UserOrganisationInfo | dict[str, Any] | str | int | None = None,
+        last_synced: int | None = None,
+        last_login: int | None = None,
     ) -> None:
         super().__init__(
             custom_data=custom_data,
@@ -6133,6 +6704,8 @@ class User(ControlModel):
             username=username,
             is_superuser=is_superuser,
             organisation_info=organisation_info,
+            last_synced=last_synced,
+            last_login=last_login,
         )
     _field_defs = {
         "custom_data": ControlField(type="json", nullable=True),
@@ -6144,6 +6717,8 @@ class User(ControlModel):
         "username": ControlField(type="string", nullable=False),
         "is_superuser": ControlField(type="boolean", nullable=False),
         "organisation_info": ControlField(type="resource", nullable=True, ref="UserOrganisationInfo"),
+        "last_synced": ControlField(type="integer", nullable=True),
+        "last_login": ControlField(type="integer", nullable=True),
     }
     _versions = {
         "PatchedUserSerialiserDetailRequest": {
@@ -6179,10 +6754,12 @@ class User(ControlModel):
                 "is_superuser": {'required': True},
                 "organisation_info": {'required': True, 'version': 'UserOrganisationInfoSerializerDetail'},
                 "custom_data": {},
+                "last_synced": {'required': True},
+                "last_login": {'required': True},
             },
         },
         "UserSerialiserDetailRequest": {
-            "methods": ['PUT'],
+            "methods": ['POST', 'PUT'],
             "fields": {
                 "custom_data": {},
             },
@@ -6198,6 +6775,8 @@ class User(ControlModel):
                 "is_superuser": {'required': True},
                 "organisation_info": {'required': True, 'version': 'UserOrganisationInfoSerializerList'},
                 "custom_data": {},
+                "last_synced": {'required': True},
+                "last_login": {'required': True},
             },
         },
     }
@@ -6229,7 +6808,7 @@ class UserOrganisationInfo(ControlModel):
         },
     }
 
-CONTROL_SCHEMA_REGISTRY = {'AIAssistantRequestSerializerDetailRequest': {'kind': 'model', 'model': 'AIAssistantRequest', 'version': 'AIAssistantRequestSerializerDetailRequest'}, 'AIAssistantResponseSerializerDetail': {'kind': 'model', 'model': 'AIAssistantResponse', 'version': 'AIAssistantResponseSerializerDetail'}, 'AIChatMessageSerializerDetail': {'kind': 'model', 'model': 'AIChatMessage', 'version': 'AIChatMessageSerializerDetail'}, 'AIChatMessageSerializerList': {'kind': 'model', 'model': 'AIChatMessage', 'version': 'AIChatMessageSerializerList'}, 'AIChatSessionDetailSerializerDetail': {'kind': 'model', 'model': 'AIChatSession', 'version': 'AIChatSessionDetailSerializerDetail'}, 'AIChatSessionSerializerList': {'kind': 'model', 'model': 'AIChatSession', 'version': 'AIChatSessionSerializerList'}, 'AgentBillingItemSerializerDetail': {'kind': 'model', 'model': 'AgentBillingItem', 'version': 'AgentBillingItemSerializerDetail'}, 'AgentBillingItemSerializerDetailRequest': {'kind': 'model', 'model': 'AgentBillingItem', 'version': 'AgentBillingItemSerializerDetailRequest'}, 'AgentBillingItemSerializerList': {'kind': 'model', 'model': 'AgentBillingItem', 'version': 'AgentBillingItemSerializerList'}, 'PatchedAgentBillingItemSerializerDetailRequest': {'kind': 'model', 'model': 'AgentBillingItem', 'version': 'PatchedAgentBillingItemSerializerDetailRequest'}, 'AgentItemDeviceSerializerDetail': {'kind': 'model', 'model': 'AgentItemDevice', 'version': 'AgentItemDeviceSerializerDetail'}, 'AgentItemDeviceSerializerList': {'kind': 'model', 'model': 'AgentItemDevice', 'version': 'AgentItemDeviceSerializerList'}, 'AgentItemOrgSerializerDetail': {'kind': 'model', 'model': 'AgentItemOrg', 'version': 'AgentItemOrgSerializerDetail'}, 'AgentItemOrgSerializerList': {'kind': 'model', 'model': 'AgentItemOrg', 'version': 'AgentItemOrgSerializerList'}, 'AgentItemProductSerializerDetail': {'kind': 'model', 'model': 'AgentItemProduct', 'version': 'AgentItemProductSerializerDetail'}, 'AgentItemProductSerializerList': {'kind': 'model', 'model': 'AgentItemProduct', 'version': 'AgentItemProductSerializerList'}, 'AgentSerializerDetail': {'kind': 'model', 'model': 'Agent', 'version': 'AgentSerializerDetail'}, 'AgentsSerializerDetail': {'kind': 'model', 'model': 'Agents', 'version': 'AgentsSerializerDetail'}, 'AnalyticsBucketSerializerDetail': {'kind': 'model', 'model': 'AnalyticsBucket', 'version': 'AnalyticsBucketSerializerDetail'}, 'AnalyticsErrorRateSerializerDetail': {'kind': 'model', 'model': 'AnalyticsErrorRate', 'version': 'AnalyticsErrorRateSerializerDetail'}, 'AnalyticsPathSerializerDetail': {'kind': 'model', 'model': 'AnalyticsPath', 'version': 'AnalyticsPathSerializerDetail'}, 'AnalyticsSummaryCountsSerializerDetail': {'kind': 'model', 'model': 'AnalyticsSummaryCounts', 'version': 'AnalyticsSummaryCountsSerializerDetail'}, 'AnalyticsSummarySerializerDetail': {'kind': 'model', 'model': 'AnalyticsSummary', 'version': 'AnalyticsSummarySerializerDetail'}, 'AnalyticsUserSerializerDetail': {'kind': 'model', 'model': 'AnalyticsUser', 'version': 'AnalyticsUserSerializerDetail'}, 'AppBillingConfigAppSerializerDetail': {'kind': 'model', 'model': 'AppBillingConfigApp', 'version': 'AppBillingConfigAppSerializerDetail'}, 'AppBillingConfigAppSerializerList': {'kind': 'model', 'model': 'AppBillingConfigApp', 'version': 'AppBillingConfigAppSerializerList'}, 'AppBillingConfigOwnerOrgSerializerDetail': {'kind': 'model', 'model': 'AppBillingConfigOwnerOrg', 'version': 'AppBillingConfigOwnerOrgSerializerDetail'}, 'AppBillingConfigOwnerOrgSerializerList': {'kind': 'model', 'model': 'AppBillingConfigOwnerOrg', 'version': 'AppBillingConfigOwnerOrgSerializerList'}, 'AppBillingConfigProductSerializerDetail': {'kind': 'model', 'model': 'AppBillingConfigProduct', 'version': 'AppBillingConfigProductSerializerDetail'}, 'AppBillingConfigProductSerializerList': {'kind': 'model', 'model': 'AppBillingConfigProduct', 'version': 'AppBillingConfigProductSerializerList'}, 'AppBillingConfigSerializerDetail': {'kind': 'model', 'model': 'AppBillingConfig', 'version': 'AppBillingConfigSerializerDetail'}, 'AppBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'AppBillingConfig', 'version': 'AppBillingConfigSerializerDetailRequest'}, 'AppBillingConfigSerializerList': {'kind': 'model', 'model': 'AppBillingConfig', 'version': 'AppBillingConfigSerializerList'}, 'PatchedAppBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'AppBillingConfig', 'version': 'PatchedAppBillingConfigSerializerDetailRequest'}, 'ApplicationConfigProfileSerializerDetail': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'ApplicationConfigProfileSerializerDetail'}, 'ApplicationConfigProfileSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'ApplicationConfigProfileSerializerDetailRequest'}, 'ApplicationConfigProfileSerializerList': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'ApplicationConfigProfileSerializerList'}, 'PatchedApplicationConfigProfileSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'PatchedApplicationConfigProfileSerializerDetailRequest'}, 'SlimApplicationConfigProfileSerializerDetail': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'SlimApplicationConfigProfileSerializerDetail'}, 'SlimApplicationConfigProfileSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'SlimApplicationConfigProfileSerializerDetailRequest'}, 'SlimApplicationConfigProfileSerializerList': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'SlimApplicationConfigProfileSerializerList'}, 'ApplicationDeploymentSerializerDetail': {'kind': 'model', 'model': 'ApplicationDeployment', 'version': 'ApplicationDeploymentSerializerDetail'}, 'ApplicationDeploymentSerializerList': {'kind': 'model', 'model': 'ApplicationDeployment', 'version': 'ApplicationDeploymentSerializerList'}, 'ApplicationInstallationSerializerDetail': {'kind': 'model', 'model': 'ApplicationInstallation', 'version': 'ApplicationInstallationSerializerDetail'}, 'ApplicationInstallationSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationInstallation', 'version': 'ApplicationInstallationSerializerDetailRequest'}, 'ApplicationInstallationSerializerList': {'kind': 'model', 'model': 'ApplicationInstallation', 'version': 'ApplicationInstallationSerializerList'}, 'PatchedApplicationInstallationSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationInstallation', 'version': 'PatchedApplicationInstallationSerializerDetailRequest'}, 'ApplicationInstallationSolutionSerializerDetail': {'kind': 'model', 'model': 'ApplicationInstallationSolution', 'version': 'ApplicationInstallationSolutionSerializerDetail'}, 'ApplicationInstallationSolutionSerializerList': {'kind': 'model', 'model': 'ApplicationInstallationSolution', 'version': 'ApplicationInstallationSolutionSerializerList'}, 'ApplicationSerializerDetail': {'kind': 'model', 'model': 'Application', 'version': 'ApplicationSerializerDetail'}, 'ApplicationSerializerDetailRequest': {'kind': 'model', 'model': 'Application', 'version': 'ApplicationSerializerDetailRequest'}, 'ApplicationSerializerList': {'kind': 'model', 'model': 'Application', 'version': 'ApplicationSerializerList'}, 'PatchedApplicationSerializerDetailRequest': {'kind': 'model', 'model': 'Application', 'version': 'PatchedApplicationSerializerDetailRequest'}, 'PublicApplicationSerializerList': {'kind': 'model', 'model': 'Application', 'version': 'PublicApplicationSerializerList'}, 'SlimApplicationDetail': {'kind': 'model', 'model': 'Application', 'version': 'SlimApplicationDetail'}, 'SlimApplicationList': {'kind': 'model', 'model': 'Application', 'version': 'SlimApplicationList'}, 'ApplicationTemplateSerializerDetail': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'ApplicationTemplateSerializerDetail'}, 'ApplicationTemplateSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'ApplicationTemplateSerializerDetailRequest'}, 'ApplicationTemplateSerializerList': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'ApplicationTemplateSerializerList'}, 'PatchedApplicationTemplateSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'PatchedApplicationTemplateSerializerDetailRequest'}, 'AttachmentSerializerDetail': {'kind': 'model', 'model': 'Attachment', 'version': 'AttachmentSerializerDetail'}, 'AttachmentSerializerList': {'kind': 'model', 'model': 'Attachment', 'version': 'AttachmentSerializerList'}, 'BasicGroupRoleDetail': {'kind': 'model', 'model': 'GroupRole', 'version': 'BasicGroupRoleDetail'}, 'BasicGroupRoleList': {'kind': 'model', 'model': 'GroupRole', 'version': 'BasicGroupRoleList'}, 'GroupRoleSerializerDetail': {'kind': 'model', 'model': 'GroupRole', 'version': 'GroupRoleSerializerDetail'}, 'GroupRoleSerializerDetailRequest': {'kind': 'model', 'model': 'GroupRole', 'version': 'GroupRoleSerializerDetailRequest'}, 'GroupRoleSerializerList': {'kind': 'model', 'model': 'GroupRole', 'version': 'GroupRoleSerializerList'}, 'PatchedGroupRoleSerializerDetailRequest': {'kind': 'model', 'model': 'GroupRole', 'version': 'PatchedGroupRoleSerializerDetailRequest'}, 'BasicOrganisationDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'BasicOrganisationDetail'}, 'BasicOrganisationList': {'kind': 'model', 'model': 'Organisation', 'version': 'BasicOrganisationList'}, 'OrganisationBasicSerializerDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationBasicSerializerDetail'}, 'OrganisationBasicSerializerList': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationBasicSerializerList'}, 'OrganisationSerializerDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSerializerDetail'}, 'OrganisationSerializerDetailRequest': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSerializerDetailRequest'}, 'OrganisationSerializerList': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSerializerList'}, 'OrganisationSimpleSerialiserDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSimpleSerialiserDetail'}, 'OrganisationSimpleSerialiserList': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSimpleSerialiserList'}, 'OrganisationSuperBasicSerialiserDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSuperBasicSerialiserDetail'}, 'OrganisationSuperBasicSerialiserList': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSuperBasicSerialiserList'}, 'PatchedOrganisationSerializerDetailRequest': {'kind': 'model', 'model': 'Organisation', 'version': 'PatchedOrganisationSerializerDetailRequest'}, 'BillingAccountSerializerDetail': {'kind': 'model', 'model': 'BillingAccount', 'version': 'BillingAccountSerializerDetail'}, 'BillingAccountSerializerDetailRequest': {'kind': 'model', 'model': 'BillingAccount', 'version': 'BillingAccountSerializerDetailRequest'}, 'BillingAccountSerializerList': {'kind': 'model', 'model': 'BillingAccount', 'version': 'BillingAccountSerializerList'}, 'PatchedBillingAccountSerializerDetailRequest': {'kind': 'model', 'model': 'BillingAccount', 'version': 'PatchedBillingAccountSerializerDetailRequest'}, 'BillingProductOrgSerializerDetail': {'kind': 'model', 'model': 'BillingProductOrg', 'version': 'BillingProductOrgSerializerDetail'}, 'BillingProductOrgSerializerList': {'kind': 'model', 'model': 'BillingProductOrg', 'version': 'BillingProductOrgSerializerList'}, 'BillingProductSerializerDetail': {'kind': 'model', 'model': 'BillingProduct', 'version': 'BillingProductSerializerDetail'}, 'BillingProductSerializerDetailRequest': {'kind': 'model', 'model': 'BillingProduct', 'version': 'BillingProductSerializerDetailRequest'}, 'BillingProductSerializerList': {'kind': 'model', 'model': 'BillingProduct', 'version': 'BillingProductSerializerList'}, 'PatchedBillingProductSerializerDetailRequest': {'kind': 'model', 'model': 'BillingProduct', 'version': 'PatchedBillingProductSerializerDetailRequest'}, 'BillingSubscriptionItemSerializerDetail': {'kind': 'model', 'model': 'BillingSubscriptionItem', 'version': 'BillingSubscriptionItemSerializerDetail'}, 'BillingSubscriptionSerializerDetail': {'kind': 'model', 'model': 'BillingSubscription', 'version': 'BillingSubscriptionSerializerDetail'}, 'BillingSubscriptionSerializerList': {'kind': 'model', 'model': 'BillingSubscription', 'version': 'BillingSubscriptionSerializerList'}, 'ChatActionPayloadSerializerDetail': {'kind': 'model', 'model': 'ChatActionPayload', 'version': 'ChatActionPayloadSerializerDetail'}, 'ChatActionSerializerDetail': {'kind': 'model', 'model': 'ChatAction', 'version': 'ChatActionSerializerDetail'}, 'ChatMessageSerializerDetail': {'kind': 'model', 'model': 'ChatMessage', 'version': 'ChatMessageSerializerDetail'}, 'ContainerRegistryProfileSeraliserDetail': {'kind': 'model', 'model': 'ContainerRegistryProfile', 'version': 'ContainerRegistryProfileSeraliserDetail'}, 'ContainerRegistryProfileSeraliserDetailRequest': {'kind': 'model', 'model': 'ContainerRegistryProfile', 'version': 'ContainerRegistryProfileSeraliserDetailRequest'}, 'ContainerRegistryProfileSeraliserList': {'kind': 'model', 'model': 'ContainerRegistryProfile', 'version': 'ContainerRegistryProfileSeraliserList'}, 'PatchedContainerRegistryProfileSeraliserDetailRequest': {'kind': 'model', 'model': 'ContainerRegistryProfile', 'version': 'PatchedContainerRegistryProfileSeraliserDetailRequest'}, 'CreateReportResponseSerializerOverrideDetail': {'kind': 'model', 'model': 'CreateReportResponseOverride', 'version': 'CreateReportResponseSerializerOverrideDetail'}, 'CustomerSiteSerializerDetail': {'kind': 'model', 'model': 'CustomerSite', 'version': 'CustomerSiteSerializerDetail'}, 'DTBillingConfigDeviceTypeSerializerDetail': {'kind': 'model', 'model': 'DTBillingConfigDeviceType', 'version': 'DTBillingConfigDeviceTypeSerializerDetail'}, 'DTBillingConfigDeviceTypeSerializerList': {'kind': 'model', 'model': 'DTBillingConfigDeviceType', 'version': 'DTBillingConfigDeviceTypeSerializerList'}, 'DTBillingConfigOwnerOrgSerializerDetail': {'kind': 'model', 'model': 'DTBillingConfigOwnerOrg', 'version': 'DTBillingConfigOwnerOrgSerializerDetail'}, 'DTBillingConfigOwnerOrgSerializerList': {'kind': 'model', 'model': 'DTBillingConfigOwnerOrg', 'version': 'DTBillingConfigOwnerOrgSerializerList'}, 'DTBillingConfigProductSerializerDetail': {'kind': 'model', 'model': 'DTBillingConfigProduct', 'version': 'DTBillingConfigProductSerializerDetail'}, 'DTBillingConfigProductSerializerList': {'kind': 'model', 'model': 'DTBillingConfigProduct', 'version': 'DTBillingConfigProductSerializerList'}, 'DeviceBillingConfigSerializerDetail': {'kind': 'model', 'model': 'DeviceBillingConfig', 'version': 'DeviceBillingConfigSerializerDetail'}, 'DeviceBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceBillingConfig', 'version': 'DeviceBillingConfigSerializerDetailRequest'}, 'DeviceBillingConfigSerializerList': {'kind': 'model', 'model': 'DeviceBillingConfig', 'version': 'DeviceBillingConfigSerializerList'}, 'PatchedDeviceBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceBillingConfig', 'version': 'PatchedDeviceBillingConfigSerializerDetailRequest'}, 'DeviceInstallerInfoResponseDetail': {'kind': 'model', 'model': 'DeviceInstallerInfoResponse', 'version': 'DeviceInstallerInfoResponseDetail'}, 'DeviceSerializerDetail': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSerializerDetail'}, 'DeviceSerializerDetailRequest': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSerializerDetailRequest'}, 'DeviceSerializerList': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSerializerList'}, 'DeviceSuperBasicSerialiserDetail': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSuperBasicSerialiserDetail'}, 'DeviceSuperBasicSerialiserList': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSuperBasicSerialiserList'}, 'PatchedDeviceSerializerDetailRequest': {'kind': 'model', 'model': 'Device', 'version': 'PatchedDeviceSerializerDetailRequest'}, 'DeviceTypeBillingConfigSerializerDetail': {'kind': 'model', 'model': 'DeviceTypeBillingConfig', 'version': 'DeviceTypeBillingConfigSerializerDetail'}, 'DeviceTypeBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceTypeBillingConfig', 'version': 'DeviceTypeBillingConfigSerializerDetailRequest'}, 'DeviceTypeBillingConfigSerializerList': {'kind': 'model', 'model': 'DeviceTypeBillingConfig', 'version': 'DeviceTypeBillingConfigSerializerList'}, 'PatchedDeviceTypeBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceTypeBillingConfig', 'version': 'PatchedDeviceTypeBillingConfigSerializerDetailRequest'}, 'DeviceTypeSerializerDetail': {'kind': 'model', 'model': 'DeviceType', 'version': 'DeviceTypeSerializerDetail'}, 'DeviceTypeSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceType', 'version': 'DeviceTypeSerializerDetailRequest'}, 'DeviceTypeSerializerList': {'kind': 'model', 'model': 'DeviceType', 'version': 'DeviceTypeSerializerList'}, 'PatchedDeviceTypeSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceType', 'version': 'PatchedDeviceTypeSerializerDetailRequest'}, 'GroupBasicSerialiserDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupBasicSerialiserDetail'}, 'GroupBasicSerialiserList': {'kind': 'model', 'model': 'Group', 'version': 'GroupBasicSerialiserList'}, 'GroupChildrenSerialiserDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupChildrenSerialiserDetail'}, 'GroupParentSerialiserDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupParentSerialiserDetail'}, 'GroupParentSerialiserList': {'kind': 'model', 'model': 'Group', 'version': 'GroupParentSerialiserList'}, 'GroupSerializerDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupSerializerDetail'}, 'GroupSerializerDetailRequest': {'kind': 'model', 'model': 'Group', 'version': 'GroupSerializerDetailRequest'}, 'GroupSerializerList': {'kind': 'model', 'model': 'Group', 'version': 'GroupSerializerList'}, 'SlimGroupSerializerDetail': {'kind': 'model', 'model': 'Group', 'version': 'SlimGroupSerializerDetail'}, 'SlimGroupSerializerList': {'kind': 'model', 'model': 'Group', 'version': 'SlimGroupSerializerList'}, 'GroupSimpleSerializerDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupSimpleSerializerDetail'}, 'PatchedGroupSerializerDetailRequest': {'kind': 'model', 'model': 'Group', 'version': 'PatchedGroupSerializerDetailRequest'}, 'GroupPermissionSerializerDetail': {'kind': 'model', 'model': 'GroupPermission', 'version': 'GroupPermissionSerializerDetail'}, 'GroupPermissionSerializerDetailRequest': {'kind': 'model', 'model': 'GroupPermission', 'version': 'GroupPermissionSerializerDetailRequest'}, 'GroupPermissionSerializerList': {'kind': 'model', 'model': 'GroupPermission', 'version': 'GroupPermissionSerializerList'}, 'PatchedGroupPermissionSerializerDetailRequest': {'kind': 'model', 'model': 'GroupPermission', 'version': 'PatchedGroupPermissionSerializerDetailRequest'}, 'GroupRoleAssignmentSerializerDetailRequest': {'kind': 'model', 'model': 'GroupRoleAssignment', 'version': 'GroupRoleAssignmentSerializerDetailRequest'}, 'IngestionEndpointSerializerDetail': {'kind': 'model', 'model': 'IngestionEndpoint', 'version': 'IngestionEndpointSerializerDetail'}, 'IngestionEndpointSerializerDetailRequest': {'kind': 'model', 'model': 'IngestionEndpoint', 'version': 'IngestionEndpointSerializerDetailRequest'}, 'IngestionEndpointSerializerList': {'kind': 'model', 'model': 'IngestionEndpoint', 'version': 'IngestionEndpointSerializerList'}, 'IntegrationSerializerDetail': {'kind': 'model', 'model': 'Integration', 'version': 'IntegrationSerializerDetail'}, 'IntegrationSerializerDetailRequest': {'kind': 'model', 'model': 'Integration', 'version': 'IntegrationSerializerDetailRequest'}, 'IntegrationSerializerList': {'kind': 'model', 'model': 'Integration', 'version': 'IntegrationSerializerList'}, 'PatchedIntegrationSerializerDetailRequest': {'kind': 'model', 'model': 'Integration', 'version': 'PatchedIntegrationSerializerDetailRequest'}, 'MeteringRunOrgSerializerDetail': {'kind': 'model', 'model': 'MeteringRunOrg', 'version': 'MeteringRunOrgSerializerDetail'}, 'MeteringRunOrgSerializerList': {'kind': 'model', 'model': 'MeteringRunOrg', 'version': 'MeteringRunOrgSerializerList'}, 'NavigationContextSerializerDetailRequest': {'kind': 'model', 'model': 'NavigationContext', 'version': 'NavigationContextSerializerDetailRequest'}, 'OrganisationDomainSerializerDetail': {'kind': 'model', 'model': 'OrganisationDomain', 'version': 'OrganisationDomainSerializerDetail'}, 'OrganisationDomainSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationDomain', 'version': 'OrganisationDomainSerializerDetailRequest'}, 'OrganisationDomainSerializerList': {'kind': 'model', 'model': 'OrganisationDomain', 'version': 'OrganisationDomainSerializerList'}, 'PatchedOrganisationDomainSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationDomain', 'version': 'PatchedOrganisationDomainSerializerDetailRequest'}, 'OrganisationRoleSerializerDetail': {'kind': 'model', 'model': 'OrganisationRole', 'version': 'OrganisationRoleSerializerDetail'}, 'OrganisationRoleSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationRole', 'version': 'OrganisationRoleSerializerDetailRequest'}, 'OrganisationRoleSerializerList': {'kind': 'model', 'model': 'OrganisationRole', 'version': 'OrganisationRoleSerializerList'}, 'PatchedOrganisationRoleSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationRole', 'version': 'PatchedOrganisationRoleSerializerDetailRequest'}, 'OrganisationSharedReceiveProfileSerializerDetail': {'kind': 'model', 'model': 'OrganisationSharedReceiveProfile', 'version': 'OrganisationSharedReceiveProfileSerializerDetail'}, 'OrganisationSharedReceiveProfileSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationSharedReceiveProfile', 'version': 'OrganisationSharedReceiveProfileSerializerDetailRequest'}, 'OrganisationSharedReceiveProfileSerializerList': {'kind': 'model', 'model': 'OrganisationSharedReceiveProfile', 'version': 'OrganisationSharedReceiveProfileSerializerList'}, 'PatchedOrganisationSharedReceiveProfileSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationSharedReceiveProfile', 'version': 'PatchedOrganisationSharedReceiveProfileSerializerDetailRequest'}, 'OrganisationSharingProfileSerializerDetail': {'kind': 'model', 'model': 'OrganisationSharingProfile', 'version': 'OrganisationSharingProfileSerializerDetail'}, 'OrganisationSharingProfileSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationSharingProfile', 'version': 'OrganisationSharingProfileSerializerDetailRequest'}, 'OrganisationSharingProfileSerializerList': {'kind': 'model', 'model': 'OrganisationSharingProfile', 'version': 'OrganisationSharingProfileSerializerList'}, 'PatchedOrganisationSharingProfileSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationSharingProfile', 'version': 'PatchedOrganisationSharingProfileSerializerDetailRequest'}, 'OrganisationUserSerializerDetail': {'kind': 'model', 'model': 'OrganisationUser', 'version': 'OrganisationUserSerializerDetail'}, 'OrganisationUserSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationUser', 'version': 'OrganisationUserSerializerDetailRequest'}, 'OrganisationUserSerializerList': {'kind': 'model', 'model': 'OrganisationUser', 'version': 'OrganisationUserSerializerList'}, 'PatchedOrganisationUserSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationUser', 'version': 'PatchedOrganisationUserSerializerDetailRequest'}, 'PatchedPendingUserSerializerDetailRequest': {'kind': 'model', 'model': 'PendingUser', 'version': 'PatchedPendingUserSerializerDetailRequest'}, 'PendingUserSerializerDetail': {'kind': 'model', 'model': 'PendingUser', 'version': 'PendingUserSerializerDetail'}, 'PendingUserSerializerDetailRequest': {'kind': 'model', 'model': 'PendingUser', 'version': 'PendingUserSerializerDetailRequest'}, 'PendingUserSerializerList': {'kind': 'model', 'model': 'PendingUser', 'version': 'PendingUserSerializerList'}, 'PatchedReportScheduleSerialiserDetailRequest': {'kind': 'model', 'model': 'ReportSchedule', 'version': 'PatchedReportScheduleSerialiserDetailRequest'}, 'ReportScheduleSerialiserDetail': {'kind': 'model', 'model': 'ReportSchedule', 'version': 'ReportScheduleSerialiserDetail'}, 'ReportScheduleSerialiserDetailRequest': {'kind': 'model', 'model': 'ReportSchedule', 'version': 'ReportScheduleSerialiserDetailRequest'}, 'ReportScheduleSerialiserList': {'kind': 'model', 'model': 'ReportSchedule', 'version': 'ReportScheduleSerialiserList'}, 'PatchedSellerCustomerSerializerDetailRequest': {'kind': 'model', 'model': 'SellerCustomer', 'version': 'PatchedSellerCustomerSerializerDetailRequest'}, 'SellerCustomerSerializerDetail': {'kind': 'model', 'model': 'SellerCustomer', 'version': 'SellerCustomerSerializerDetail'}, 'SellerCustomerSerializerDetailRequest': {'kind': 'model', 'model': 'SellerCustomer', 'version': 'SellerCustomerSerializerDetailRequest'}, 'SellerCustomerSerializerList': {'kind': 'model', 'model': 'SellerCustomer', 'version': 'SellerCustomerSerializerList'}, 'PatchedSharedDeviceSerializerDetailRequest': {'kind': 'model', 'model': 'SharedDevice', 'version': 'PatchedSharedDeviceSerializerDetailRequest'}, 'SharedDeviceSerializerDetail': {'kind': 'model', 'model': 'SharedDevice', 'version': 'SharedDeviceSerializerDetail'}, 'SharedDeviceSerializerDetailRequest': {'kind': 'model', 'model': 'SharedDevice', 'version': 'SharedDeviceSerializerDetailRequest'}, 'SharedDeviceSerializerList': {'kind': 'model', 'model': 'SharedDevice', 'version': 'SharedDeviceSerializerList'}, 'PatchedSharedGroupSerializerDetailRequest': {'kind': 'model', 'model': 'SharedGroup', 'version': 'PatchedSharedGroupSerializerDetailRequest'}, 'SharedGroupSerializerDetail': {'kind': 'model', 'model': 'SharedGroup', 'version': 'SharedGroupSerializerDetail'}, 'SharedGroupSerializerDetailRequest': {'kind': 'model', 'model': 'SharedGroup', 'version': 'SharedGroupSerializerDetailRequest'}, 'SharedGroupSerializerList': {'kind': 'model', 'model': 'SharedGroup', 'version': 'SharedGroupSerializerList'}, 'PatchedSolutionInstallationSerializerDetailRequest': {'kind': 'model', 'model': 'SolutionInstallation', 'version': 'PatchedSolutionInstallationSerializerDetailRequest'}, 'SolutionInstallationSerializerDetail': {'kind': 'model', 'model': 'SolutionInstallation', 'version': 'SolutionInstallationSerializerDetail'}, 'SolutionInstallationSerializerDetailRequest': {'kind': 'model', 'model': 'SolutionInstallation', 'version': 'SolutionInstallationSerializerDetailRequest'}, 'SolutionInstallationSerializerList': {'kind': 'model', 'model': 'SolutionInstallation', 'version': 'SolutionInstallationSerializerList'}, 'PatchedSolutionSerializerDetailRequest': {'kind': 'model', 'model': 'Solution', 'version': 'PatchedSolutionSerializerDetailRequest'}, 'SolutionSerializerDetail': {'kind': 'model', 'model': 'Solution', 'version': 'SolutionSerializerDetail'}, 'SolutionSerializerDetailRequest': {'kind': 'model', 'model': 'Solution', 'version': 'SolutionSerializerDetailRequest'}, 'SolutionSerializerList': {'kind': 'model', 'model': 'Solution', 'version': 'SolutionSerializerList'}, 'PatchedThemeSerializerWithIdDetailRequest': {'kind': 'model', 'model': 'Theme', 'version': 'PatchedThemeSerializerWithIdDetailRequest'}, 'ThemeSerializerDetail': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerDetail'}, 'ThemeSerializerDetailRequest': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerDetailRequest'}, 'ThemeSerializerList': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerList'}, 'ThemeSerializerWithIdDetail': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerWithIdDetail'}, 'ThemeSerializerWithIdDetailRequest': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerWithIdDetailRequest'}, 'ThemeSerializerWithIdList': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerWithIdList'}, 'PatchedTunnelSerializerDetailRequest': {'kind': 'model', 'model': 'Tunnel', 'version': 'PatchedTunnelSerializerDetailRequest'}, 'TunnelSerializerDetail': {'kind': 'model', 'model': 'Tunnel', 'version': 'TunnelSerializerDetail'}, 'TunnelSerializerDetailRequest': {'kind': 'model', 'model': 'Tunnel', 'version': 'TunnelSerializerDetailRequest'}, 'TunnelSerializerList': {'kind': 'model', 'model': 'Tunnel', 'version': 'TunnelSerializerList'}, 'PatchedUserSerialiserDetailRequest': {'kind': 'model', 'model': 'User', 'version': 'PatchedUserSerialiserDetailRequest'}, 'UserBasicSerializerDetail': {'kind': 'model', 'model': 'User', 'version': 'UserBasicSerializerDetail'}, 'UserBasicSerializerList': {'kind': 'model', 'model': 'User', 'version': 'UserBasicSerializerList'}, 'UserSerialiserDetail': {'kind': 'model', 'model': 'User', 'version': 'UserSerialiserDetail'}, 'UserSerialiserDetailRequest': {'kind': 'model', 'model': 'User', 'version': 'UserSerialiserDetailRequest'}, 'UserSerialiserList': {'kind': 'model', 'model': 'User', 'version': 'UserSerialiserList'}, 'PermissionUserSerializerDetail': {'kind': 'model', 'model': 'PermissionUser', 'version': 'PermissionUserSerializerDetail'}, 'PermissionUserSerializerDetailRequest': {'kind': 'model', 'model': 'PermissionUser', 'version': 'PermissionUserSerializerDetailRequest'}, 'PermissionUserSerializerList': {'kind': 'model', 'model': 'PermissionUser', 'version': 'PermissionUserSerializerList'}, 'ProcessorSourceUploadRequestDetailRequest': {'kind': 'model', 'model': 'ProcessorSourceUploadRequest', 'version': 'ProcessorSourceUploadRequestDetailRequest'}, 'RemoteSharedDeviceGroupSerializerDetail': {'kind': 'model', 'model': 'RemoteSharedDeviceGroup', 'version': 'RemoteSharedDeviceGroupSerializerDetail'}, 'RemoteSharedDeviceGroupSerializerList': {'kind': 'model', 'model': 'RemoteSharedDeviceGroup', 'version': 'RemoteSharedDeviceGroupSerializerList'}, 'RemoteSharedDeviceSerializerDetail': {'kind': 'model', 'model': 'RemoteSharedDevice', 'version': 'RemoteSharedDeviceSerializerDetail'}, 'RemoteSharedDeviceSerializerList': {'kind': 'model', 'model': 'RemoteSharedDevice', 'version': 'RemoteSharedDeviceSerializerList'}, 'RemoteSharedDeviceTypeSerializerDetail': {'kind': 'model', 'model': 'RemoteSharedDeviceType', 'version': 'RemoteSharedDeviceTypeSerializerDetail'}, 'RemoteSharedDeviceTypeSerializerList': {'kind': 'model', 'model': 'RemoteSharedDeviceType', 'version': 'RemoteSharedDeviceTypeSerializerList'}, 'RemoteSharedGroupSerializerDetail': {'kind': 'model', 'model': 'RemoteSharedGroup', 'version': 'RemoteSharedGroupSerializerDetail'}, 'RemoteSharedGroupSerializerList': {'kind': 'model', 'model': 'RemoteSharedGroup', 'version': 'RemoteSharedGroupSerializerList'}, 'ReportCreateSerialiserDetailRequest': {'kind': 'model', 'model': 'ReportCreate', 'version': 'ReportCreateSerialiserDetailRequest'}, 'ReportListResponseSerializerOverrideList': {'kind': 'model', 'model': 'ReportListResponseOverride', 'version': 'ReportListResponseSerializerOverrideList'}, 'ReportSerialiserDetail': {'kind': 'model', 'model': 'Report', 'version': 'ReportSerialiserDetail'}, 'ReportSerialiserList': {'kind': 'model', 'model': 'Report', 'version': 'ReportSerialiserList'}, 'SellerCustomerGroupSerializerDetail': {'kind': 'model', 'model': 'SellerCustomerGroup', 'version': 'SellerCustomerGroupSerializerDetail'}, 'SellerCustomerGroupSerializerList': {'kind': 'model', 'model': 'SellerCustomerGroup', 'version': 'SellerCustomerGroupSerializerList'}, 'SellerCustomerOrgSerializerDetail': {'kind': 'model', 'model': 'SellerCustomerOrg', 'version': 'SellerCustomerOrgSerializerDetail'}, 'SellerCustomerOrgSerializerList': {'kind': 'model', 'model': 'SellerCustomerOrg', 'version': 'SellerCustomerOrgSerializerList'}, 'SlimContainerRegistryDetail': {'kind': 'model', 'model': 'ContainerRegistry', 'version': 'SlimContainerRegistryDetail'}, 'SlimContainerRegistryList': {'kind': 'model', 'model': 'ContainerRegistry', 'version': 'SlimContainerRegistryList'}, 'UsageMeteringRunSerializerDetail': {'kind': 'model', 'model': 'UsageMeteringRun', 'version': 'UsageMeteringRunSerializerDetail'}, 'UsageMeteringRunSerializerList': {'kind': 'model', 'model': 'UsageMeteringRun', 'version': 'UsageMeteringRunSerializerList'}, 'UsageRecordAppInstallSerializerDetail': {'kind': 'model', 'model': 'UsageRecordAppInstall', 'version': 'UsageRecordAppInstallSerializerDetail'}, 'UsageRecordAppInstallSerializerList': {'kind': 'model', 'model': 'UsageRecordAppInstall', 'version': 'UsageRecordAppInstallSerializerList'}, 'UsageRecordBillingProductSerializerDetail': {'kind': 'model', 'model': 'UsageRecordBillingProduct', 'version': 'UsageRecordBillingProductSerializerDetail'}, 'UsageRecordBillingProductSerializerList': {'kind': 'model', 'model': 'UsageRecordBillingProduct', 'version': 'UsageRecordBillingProductSerializerList'}, 'UsageRecordDeviceSerializerDetail': {'kind': 'model', 'model': 'UsageRecordDevice', 'version': 'UsageRecordDeviceSerializerDetail'}, 'UsageRecordDeviceSerializerList': {'kind': 'model', 'model': 'UsageRecordDevice', 'version': 'UsageRecordDeviceSerializerList'}, 'UsageRecordOrgSerializerDetail': {'kind': 'model', 'model': 'UsageRecordOrg', 'version': 'UsageRecordOrgSerializerDetail'}, 'UsageRecordOrgSerializerList': {'kind': 'model', 'model': 'UsageRecordOrg', 'version': 'UsageRecordOrgSerializerList'}, 'UsageRecordSellerCustomerSerializerDetail': {'kind': 'model', 'model': 'UsageRecordSellerCustomer', 'version': 'UsageRecordSellerCustomerSerializerDetail'}, 'UsageRecordSellerCustomerSerializerList': {'kind': 'model', 'model': 'UsageRecordSellerCustomer', 'version': 'UsageRecordSellerCustomerSerializerList'}, 'UsageRecordSerializerDetail': {'kind': 'model', 'model': 'UsageRecord', 'version': 'UsageRecordSerializerDetail'}, 'UsageRecordSerializerList': {'kind': 'model', 'model': 'UsageRecord', 'version': 'UsageRecordSerializerList'}, 'UserOrganisationInfoSerializerDetail': {'kind': 'model', 'model': 'UserOrganisationInfo', 'version': 'UserOrganisationInfoSerializerDetail'}, 'UserOrganisationInfoSerializerList': {'kind': 'model', 'model': 'UserOrganisationInfo', 'version': 'UserOrganisationInfoSerializerList'}, 'OpenAPIErrorResponse': {'kind': 'model', 'model': 'OpenAPIErrorResponse', 'version': 'OpenAPIErrorResponse'}, 'PaginatedAIChatMessageSerializerListList': {'kind': 'page', 'model': 'AIChatMessage', 'version': 'AIChatMessageSerializerList'}, 'PaginatedAIChatSessionSerializerListList': {'kind': 'page', 'model': 'AIChatSession', 'version': 'AIChatSessionSerializerList'}, 'PaginatedAgentBillingItemSerializerListList': {'kind': 'page', 'model': 'AgentBillingItem', 'version': 'AgentBillingItemSerializerList'}, 'PaginatedAppBillingConfigSerializerListList': {'kind': 'page', 'model': 'AppBillingConfig', 'version': 'AppBillingConfigSerializerList'}, 'PaginatedApplicationConfigProfileSerializerListList': {'kind': 'page', 'model': 'ApplicationConfigProfile', 'version': 'ApplicationConfigProfileSerializerList'}, 'PaginatedApplicationDeploymentSerializerListList': {'kind': 'page', 'model': 'ApplicationDeployment', 'version': 'ApplicationDeploymentSerializerList'}, 'PaginatedApplicationInstallationSerializerListList': {'kind': 'page', 'model': 'ApplicationInstallation', 'version': 'ApplicationInstallationSerializerList'}, 'PaginatedApplicationSerializerListList': {'kind': 'page', 'model': 'Application', 'version': 'ApplicationSerializerList'}, 'PaginatedApplicationTemplateSerializerListList': {'kind': 'page', 'model': 'ApplicationTemplate', 'version': 'ApplicationTemplateSerializerList'}, 'PaginatedBillingAccountSerializerListList': {'kind': 'page', 'model': 'BillingAccount', 'version': 'BillingAccountSerializerList'}, 'PaginatedBillingProductSerializerListList': {'kind': 'page', 'model': 'BillingProduct', 'version': 'BillingProductSerializerList'}, 'PaginatedBillingSubscriptionSerializerListList': {'kind': 'page', 'model': 'BillingSubscription', 'version': 'BillingSubscriptionSerializerList'}, 'PaginatedContainerRegistryProfileSeraliserListList': {'kind': 'page', 'model': 'ContainerRegistryProfile', 'version': 'ContainerRegistryProfileSeraliserList'}, 'PaginatedDeviceBillingConfigSerializerListList': {'kind': 'page', 'model': 'DeviceBillingConfig', 'version': 'DeviceBillingConfigSerializerList'}, 'PaginatedDeviceSerializerListList': {'kind': 'page', 'model': 'Device', 'version': 'DeviceSerializerList'}, 'PaginatedDeviceTypeBillingConfigSerializerListList': {'kind': 'page', 'model': 'DeviceTypeBillingConfig', 'version': 'DeviceTypeBillingConfigSerializerList'}, 'PaginatedDeviceTypeSerializerListList': {'kind': 'page', 'model': 'DeviceType', 'version': 'DeviceTypeSerializerList'}, 'PaginatedGroupPermissionSerializerListList': {'kind': 'page', 'model': 'GroupPermission', 'version': 'GroupPermissionSerializerList'}, 'PaginatedGroupRoleSerializerListList': {'kind': 'page', 'model': 'GroupRole', 'version': 'GroupRoleSerializerList'}, 'PaginatedGroupSerializerListList': {'kind': 'page', 'model': 'Group', 'version': 'GroupSerializerList'}, 'PaginatedIntegrationSerializerListList': {'kind': 'page', 'model': 'Integration', 'version': 'IntegrationSerializerList'}, 'PaginatedOrganisationDomainSerializerListList': {'kind': 'page', 'model': 'OrganisationDomain', 'version': 'OrganisationDomainSerializerList'}, 'PaginatedOrganisationRoleSerializerListList': {'kind': 'page', 'model': 'OrganisationRole', 'version': 'OrganisationRoleSerializerList'}, 'PaginatedOrganisationSerializerListList': {'kind': 'page', 'model': 'Organisation', 'version': 'OrganisationSerializerList'}, 'PaginatedOrganisationSharedReceiveProfileSerializerListList': {'kind': 'page', 'model': 'OrganisationSharedReceiveProfile', 'version': 'OrganisationSharedReceiveProfileSerializerList'}, 'PaginatedOrganisationSharingProfileSerializerListList': {'kind': 'page', 'model': 'OrganisationSharingProfile', 'version': 'OrganisationSharingProfileSerializerList'}, 'PaginatedOrganisationUserSerializerListList': {'kind': 'page', 'model': 'OrganisationUser', 'version': 'OrganisationUserSerializerList'}, 'PaginatedPendingUserSerializerListList': {'kind': 'page', 'model': 'PendingUser', 'version': 'PendingUserSerializerList'}, 'PaginatedPublicApplicationSerializerListList': {'kind': 'page', 'model': 'Application', 'version': 'PublicApplicationSerializerList'}, 'PaginatedReportScheduleSerialiserListList': {'kind': 'page', 'model': 'ReportSchedule', 'version': 'ReportScheduleSerialiserList'}, 'PaginatedSellerCustomerSerializerListList': {'kind': 'page', 'model': 'SellerCustomer', 'version': 'SellerCustomerSerializerList'}, 'PaginatedSharedDeviceSerializerListList': {'kind': 'page', 'model': 'SharedDevice', 'version': 'SharedDeviceSerializerList'}, 'PaginatedSharedGroupSerializerListList': {'kind': 'page', 'model': 'SharedGroup', 'version': 'SharedGroupSerializerList'}, 'PaginatedSolutionInstallationSerializerListList': {'kind': 'page', 'model': 'SolutionInstallation', 'version': 'SolutionInstallationSerializerList'}, 'PaginatedSolutionSerializerListList': {'kind': 'page', 'model': 'Solution', 'version': 'SolutionSerializerList'}, 'PaginatedThemeSerializerWithIdListList': {'kind': 'page', 'model': 'Theme', 'version': 'ThemeSerializerWithIdList'}, 'PaginatedTunnelSerializerListList': {'kind': 'page', 'model': 'Tunnel', 'version': 'TunnelSerializerList'}, 'PaginatedUsageMeteringRunSerializerListList': {'kind': 'page', 'model': 'UsageMeteringRun', 'version': 'UsageMeteringRunSerializerList'}, 'PaginatedUsageRecordSerializerListList': {'kind': 'page', 'model': 'UsageRecord', 'version': 'UsageRecordSerializerList'}, 'PaginatedUserSerialiserListList': {'kind': 'page', 'model': 'User', 'version': 'UserSerialiserList'}}
+CONTROL_SCHEMA_REGISTRY = {'AIAssistantRequestSerializerDetailRequest': {'kind': 'model', 'model': 'AIAssistantRequest', 'version': 'AIAssistantRequestSerializerDetailRequest'}, 'AIAssistantResponseSerializerDetail': {'kind': 'model', 'model': 'AIAssistantResponse', 'version': 'AIAssistantResponseSerializerDetail'}, 'AIChatMessageSerializerDetail': {'kind': 'model', 'model': 'AIChatMessage', 'version': 'AIChatMessageSerializerDetail'}, 'AIChatMessageSerializerList': {'kind': 'model', 'model': 'AIChatMessage', 'version': 'AIChatMessageSerializerList'}, 'AIChatSessionDetailSerializerDetail': {'kind': 'model', 'model': 'AIChatSession', 'version': 'AIChatSessionDetailSerializerDetail'}, 'AIChatSessionSerializerList': {'kind': 'model', 'model': 'AIChatSession', 'version': 'AIChatSessionSerializerList'}, 'AgentBillingItemSerializerDetail': {'kind': 'model', 'model': 'AgentBillingItem', 'version': 'AgentBillingItemSerializerDetail'}, 'AgentBillingItemSerializerDetailRequest': {'kind': 'model', 'model': 'AgentBillingItem', 'version': 'AgentBillingItemSerializerDetailRequest'}, 'AgentBillingItemSerializerList': {'kind': 'model', 'model': 'AgentBillingItem', 'version': 'AgentBillingItemSerializerList'}, 'PatchedAgentBillingItemSerializerDetailRequest': {'kind': 'model', 'model': 'AgentBillingItem', 'version': 'PatchedAgentBillingItemSerializerDetailRequest'}, 'AgentItemDeviceSerializerDetail': {'kind': 'model', 'model': 'AgentItemDevice', 'version': 'AgentItemDeviceSerializerDetail'}, 'AgentItemDeviceSerializerList': {'kind': 'model', 'model': 'AgentItemDevice', 'version': 'AgentItemDeviceSerializerList'}, 'AgentItemOrgSerializerDetail': {'kind': 'model', 'model': 'AgentItemOrg', 'version': 'AgentItemOrgSerializerDetail'}, 'AgentItemOrgSerializerList': {'kind': 'model', 'model': 'AgentItemOrg', 'version': 'AgentItemOrgSerializerList'}, 'AgentItemProductSerializerDetail': {'kind': 'model', 'model': 'AgentItemProduct', 'version': 'AgentItemProductSerializerDetail'}, 'AgentItemProductSerializerList': {'kind': 'model', 'model': 'AgentItemProduct', 'version': 'AgentItemProductSerializerList'}, 'AgentSerializerDetail': {'kind': 'model', 'model': 'Agent', 'version': 'AgentSerializerDetail'}, 'AgentsSerializerDetail': {'kind': 'model', 'model': 'Agents', 'version': 'AgentsSerializerDetail'}, 'AnalyticsBucketSerializerDetail': {'kind': 'model', 'model': 'AnalyticsBucket', 'version': 'AnalyticsBucketSerializerDetail'}, 'AnalyticsErrorRateSerializerDetail': {'kind': 'model', 'model': 'AnalyticsErrorRate', 'version': 'AnalyticsErrorRateSerializerDetail'}, 'AnalyticsPathSerializerDetail': {'kind': 'model', 'model': 'AnalyticsPath', 'version': 'AnalyticsPathSerializerDetail'}, 'AnalyticsSummaryCountsSerializerDetail': {'kind': 'model', 'model': 'AnalyticsSummaryCounts', 'version': 'AnalyticsSummaryCountsSerializerDetail'}, 'AnalyticsSummarySerializerDetail': {'kind': 'model', 'model': 'AnalyticsSummary', 'version': 'AnalyticsSummarySerializerDetail'}, 'AnalyticsUserSerializerDetail': {'kind': 'model', 'model': 'AnalyticsUser', 'version': 'AnalyticsUserSerializerDetail'}, 'AppBillingConfigAppSerializerDetail': {'kind': 'model', 'model': 'AppBillingConfigApp', 'version': 'AppBillingConfigAppSerializerDetail'}, 'AppBillingConfigAppSerializerList': {'kind': 'model', 'model': 'AppBillingConfigApp', 'version': 'AppBillingConfigAppSerializerList'}, 'AppBillingConfigOwnerOrgSerializerDetail': {'kind': 'model', 'model': 'AppBillingConfigOwnerOrg', 'version': 'AppBillingConfigOwnerOrgSerializerDetail'}, 'AppBillingConfigOwnerOrgSerializerList': {'kind': 'model', 'model': 'AppBillingConfigOwnerOrg', 'version': 'AppBillingConfigOwnerOrgSerializerList'}, 'AppBillingConfigProductSerializerDetail': {'kind': 'model', 'model': 'AppBillingConfigProduct', 'version': 'AppBillingConfigProductSerializerDetail'}, 'AppBillingConfigProductSerializerList': {'kind': 'model', 'model': 'AppBillingConfigProduct', 'version': 'AppBillingConfigProductSerializerList'}, 'AppBillingConfigSerializerDetail': {'kind': 'model', 'model': 'AppBillingConfig', 'version': 'AppBillingConfigSerializerDetail'}, 'AppBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'AppBillingConfig', 'version': 'AppBillingConfigSerializerDetailRequest'}, 'AppBillingConfigSerializerList': {'kind': 'model', 'model': 'AppBillingConfig', 'version': 'AppBillingConfigSerializerList'}, 'PatchedAppBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'AppBillingConfig', 'version': 'PatchedAppBillingConfigSerializerDetailRequest'}, 'ApplicationConfigProfileSerializerDetail': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'ApplicationConfigProfileSerializerDetail'}, 'ApplicationConfigProfileSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'ApplicationConfigProfileSerializerDetailRequest'}, 'ApplicationConfigProfileSerializerList': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'ApplicationConfigProfileSerializerList'}, 'PatchedApplicationConfigProfileSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'PatchedApplicationConfigProfileSerializerDetailRequest'}, 'SlimApplicationConfigProfileSerializerDetail': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'SlimApplicationConfigProfileSerializerDetail'}, 'SlimApplicationConfigProfileSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'SlimApplicationConfigProfileSerializerDetailRequest'}, 'SlimApplicationConfigProfileSerializerList': {'kind': 'model', 'model': 'ApplicationConfigProfile', 'version': 'SlimApplicationConfigProfileSerializerList'}, 'ApplicationDeploymentSerializerDetail': {'kind': 'model', 'model': 'ApplicationDeployment', 'version': 'ApplicationDeploymentSerializerDetail'}, 'ApplicationDeploymentSerializerList': {'kind': 'model', 'model': 'ApplicationDeployment', 'version': 'ApplicationDeploymentSerializerList'}, 'ApplicationInstallationSerializerDetail': {'kind': 'model', 'model': 'ApplicationInstallation', 'version': 'ApplicationInstallationSerializerDetail'}, 'ApplicationInstallationSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationInstallation', 'version': 'ApplicationInstallationSerializerDetailRequest'}, 'ApplicationInstallationSerializerList': {'kind': 'model', 'model': 'ApplicationInstallation', 'version': 'ApplicationInstallationSerializerList'}, 'PatchedApplicationInstallationSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationInstallation', 'version': 'PatchedApplicationInstallationSerializerDetailRequest'}, 'ApplicationInstallationSolutionSerializerDetail': {'kind': 'model', 'model': 'ApplicationInstallationSolution', 'version': 'ApplicationInstallationSolutionSerializerDetail'}, 'ApplicationInstallationSolutionSerializerList': {'kind': 'model', 'model': 'ApplicationInstallationSolution', 'version': 'ApplicationInstallationSolutionSerializerList'}, 'ApplicationOrganisationAccessSerializerDetail': {'kind': 'model', 'model': 'ApplicationOrganisationAccess', 'version': 'ApplicationOrganisationAccessSerializerDetail'}, 'ApplicationOrganisationAccessSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationOrganisationAccess', 'version': 'ApplicationOrganisationAccessSerializerDetailRequest'}, 'ApplicationOrganisationAccessSerializerList': {'kind': 'model', 'model': 'ApplicationOrganisationAccess', 'version': 'ApplicationOrganisationAccessSerializerList'}, 'PatchedApplicationOrganisationAccessSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationOrganisationAccess', 'version': 'PatchedApplicationOrganisationAccessSerializerDetailRequest'}, 'ApplicationSerializerDetail': {'kind': 'model', 'model': 'Application', 'version': 'ApplicationSerializerDetail'}, 'ApplicationSerializerDetailRequest': {'kind': 'model', 'model': 'Application', 'version': 'ApplicationSerializerDetailRequest'}, 'ApplicationSerializerList': {'kind': 'model', 'model': 'Application', 'version': 'ApplicationSerializerList'}, 'PatchedApplicationSerializerDetailRequest': {'kind': 'model', 'model': 'Application', 'version': 'PatchedApplicationSerializerDetailRequest'}, 'PublicApplicationSerializerList': {'kind': 'model', 'model': 'Application', 'version': 'PublicApplicationSerializerList'}, 'SlimApplicationDetail': {'kind': 'model', 'model': 'Application', 'version': 'SlimApplicationDetail'}, 'SlimApplicationList': {'kind': 'model', 'model': 'Application', 'version': 'SlimApplicationList'}, 'ApplicationTemplateSerializerDetail': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'ApplicationTemplateSerializerDetail'}, 'ApplicationTemplateSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'ApplicationTemplateSerializerDetailRequest'}, 'ApplicationTemplateSerializerList': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'ApplicationTemplateSerializerList'}, 'PatchedApplicationTemplateSerializerDetailRequest': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'PatchedApplicationTemplateSerializerDetailRequest'}, 'SlimApplicationTemplateSerializerDetail': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'SlimApplicationTemplateSerializerDetail'}, 'SlimApplicationTemplateSerializerList': {'kind': 'model', 'model': 'ApplicationTemplate', 'version': 'SlimApplicationTemplateSerializerList'}, 'AttachmentSerializerDetail': {'kind': 'model', 'model': 'Attachment', 'version': 'AttachmentSerializerDetail'}, 'AttachmentSerializerList': {'kind': 'model', 'model': 'Attachment', 'version': 'AttachmentSerializerList'}, 'BasicDeviceTypeSerializerDetail': {'kind': 'model', 'model': 'DeviceType', 'version': 'BasicDeviceTypeSerializerDetail'}, 'BasicDeviceTypeSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceType', 'version': 'BasicDeviceTypeSerializerDetailRequest'}, 'BasicDeviceTypeSerializerList': {'kind': 'model', 'model': 'DeviceType', 'version': 'BasicDeviceTypeSerializerList'}, 'DeviceTypeSerializerDetail': {'kind': 'model', 'model': 'DeviceType', 'version': 'DeviceTypeSerializerDetail'}, 'DeviceTypeSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceType', 'version': 'DeviceTypeSerializerDetailRequest'}, 'DeviceTypeSerializerList': {'kind': 'model', 'model': 'DeviceType', 'version': 'DeviceTypeSerializerList'}, 'PatchedDeviceTypeSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceType', 'version': 'PatchedDeviceTypeSerializerDetailRequest'}, 'BasicGroupRoleDetail': {'kind': 'model', 'model': 'GroupRole', 'version': 'BasicGroupRoleDetail'}, 'BasicGroupRoleList': {'kind': 'model', 'model': 'GroupRole', 'version': 'BasicGroupRoleList'}, 'GroupRoleSerializerDetail': {'kind': 'model', 'model': 'GroupRole', 'version': 'GroupRoleSerializerDetail'}, 'GroupRoleSerializerDetailRequest': {'kind': 'model', 'model': 'GroupRole', 'version': 'GroupRoleSerializerDetailRequest'}, 'GroupRoleSerializerList': {'kind': 'model', 'model': 'GroupRole', 'version': 'GroupRoleSerializerList'}, 'PatchedGroupRoleSerializerDetailRequest': {'kind': 'model', 'model': 'GroupRole', 'version': 'PatchedGroupRoleSerializerDetailRequest'}, 'BasicOrganisationDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'BasicOrganisationDetail'}, 'BasicOrganisationList': {'kind': 'model', 'model': 'Organisation', 'version': 'BasicOrganisationList'}, 'OrganisationBasicSerializerDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationBasicSerializerDetail'}, 'OrganisationBasicSerializerList': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationBasicSerializerList'}, 'OrganisationSerializerDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSerializerDetail'}, 'OrganisationSerializerDetailRequest': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSerializerDetailRequest'}, 'OrganisationSerializerList': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSerializerList'}, 'OrganisationSimpleSerialiserDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSimpleSerialiserDetail'}, 'OrganisationSimpleSerialiserList': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSimpleSerialiserList'}, 'OrganisationSuperBasicSerialiserDetail': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSuperBasicSerialiserDetail'}, 'OrganisationSuperBasicSerialiserList': {'kind': 'model', 'model': 'Organisation', 'version': 'OrganisationSuperBasicSerialiserList'}, 'PatchedOrganisationSerializerDetailRequest': {'kind': 'model', 'model': 'Organisation', 'version': 'PatchedOrganisationSerializerDetailRequest'}, 'BillingAccountSerializerDetail': {'kind': 'model', 'model': 'BillingAccount', 'version': 'BillingAccountSerializerDetail'}, 'BillingAccountSerializerDetailRequest': {'kind': 'model', 'model': 'BillingAccount', 'version': 'BillingAccountSerializerDetailRequest'}, 'BillingAccountSerializerList': {'kind': 'model', 'model': 'BillingAccount', 'version': 'BillingAccountSerializerList'}, 'PatchedBillingAccountSerializerDetailRequest': {'kind': 'model', 'model': 'BillingAccount', 'version': 'PatchedBillingAccountSerializerDetailRequest'}, 'BillingProductOrgSerializerDetail': {'kind': 'model', 'model': 'BillingProductOrg', 'version': 'BillingProductOrgSerializerDetail'}, 'BillingProductOrgSerializerList': {'kind': 'model', 'model': 'BillingProductOrg', 'version': 'BillingProductOrgSerializerList'}, 'BillingProductSerializerDetail': {'kind': 'model', 'model': 'BillingProduct', 'version': 'BillingProductSerializerDetail'}, 'BillingProductSerializerDetailRequest': {'kind': 'model', 'model': 'BillingProduct', 'version': 'BillingProductSerializerDetailRequest'}, 'BillingProductSerializerList': {'kind': 'model', 'model': 'BillingProduct', 'version': 'BillingProductSerializerList'}, 'PatchedBillingProductSerializerDetailRequest': {'kind': 'model', 'model': 'BillingProduct', 'version': 'PatchedBillingProductSerializerDetailRequest'}, 'BillingSubscriptionItemSerializerDetail': {'kind': 'model', 'model': 'BillingSubscriptionItem', 'version': 'BillingSubscriptionItemSerializerDetail'}, 'BillingSubscriptionSerializerDetail': {'kind': 'model', 'model': 'BillingSubscription', 'version': 'BillingSubscriptionSerializerDetail'}, 'BillingSubscriptionSerializerList': {'kind': 'model', 'model': 'BillingSubscription', 'version': 'BillingSubscriptionSerializerList'}, 'ChatActionPayloadSerializerDetail': {'kind': 'model', 'model': 'ChatActionPayload', 'version': 'ChatActionPayloadSerializerDetail'}, 'ChatActionSerializerDetail': {'kind': 'model', 'model': 'ChatAction', 'version': 'ChatActionSerializerDetail'}, 'ChatMessageSerializerDetail': {'kind': 'model', 'model': 'ChatMessage', 'version': 'ChatMessageSerializerDetail'}, 'ContainerRegistryProfileSeraliserDetail': {'kind': 'model', 'model': 'ContainerRegistryProfile', 'version': 'ContainerRegistryProfileSeraliserDetail'}, 'ContainerRegistryProfileSeraliserDetailRequest': {'kind': 'model', 'model': 'ContainerRegistryProfile', 'version': 'ContainerRegistryProfileSeraliserDetailRequest'}, 'ContainerRegistryProfileSeraliserList': {'kind': 'model', 'model': 'ContainerRegistryProfile', 'version': 'ContainerRegistryProfileSeraliserList'}, 'PatchedContainerRegistryProfileSeraliserDetailRequest': {'kind': 'model', 'model': 'ContainerRegistryProfile', 'version': 'PatchedContainerRegistryProfileSeraliserDetailRequest'}, 'CreateReportResponseSerializerOverrideDetail': {'kind': 'model', 'model': 'CreateReportResponseOverride', 'version': 'CreateReportResponseSerializerOverrideDetail'}, 'CustomerSiteSerializerDetail': {'kind': 'model', 'model': 'CustomerSite', 'version': 'CustomerSiteSerializerDetail'}, 'DTBillingConfigDeviceTypeSerializerDetail': {'kind': 'model', 'model': 'DTBillingConfigDeviceType', 'version': 'DTBillingConfigDeviceTypeSerializerDetail'}, 'DTBillingConfigDeviceTypeSerializerList': {'kind': 'model', 'model': 'DTBillingConfigDeviceType', 'version': 'DTBillingConfigDeviceTypeSerializerList'}, 'DTBillingConfigOwnerOrgSerializerDetail': {'kind': 'model', 'model': 'DTBillingConfigOwnerOrg', 'version': 'DTBillingConfigOwnerOrgSerializerDetail'}, 'DTBillingConfigOwnerOrgSerializerList': {'kind': 'model', 'model': 'DTBillingConfigOwnerOrg', 'version': 'DTBillingConfigOwnerOrgSerializerList'}, 'DTBillingConfigProductSerializerDetail': {'kind': 'model', 'model': 'DTBillingConfigProduct', 'version': 'DTBillingConfigProductSerializerDetail'}, 'DTBillingConfigProductSerializerList': {'kind': 'model', 'model': 'DTBillingConfigProduct', 'version': 'DTBillingConfigProductSerializerList'}, 'DeviceBillingConfigSerializerDetail': {'kind': 'model', 'model': 'DeviceBillingConfig', 'version': 'DeviceBillingConfigSerializerDetail'}, 'DeviceBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceBillingConfig', 'version': 'DeviceBillingConfigSerializerDetailRequest'}, 'DeviceBillingConfigSerializerList': {'kind': 'model', 'model': 'DeviceBillingConfig', 'version': 'DeviceBillingConfigSerializerList'}, 'PatchedDeviceBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceBillingConfig', 'version': 'PatchedDeviceBillingConfigSerializerDetailRequest'}, 'DeviceInstallerInfoResponseDetail': {'kind': 'model', 'model': 'DeviceInstallerInfoResponse', 'version': 'DeviceInstallerInfoResponseDetail'}, 'DeviceSerializerDetail': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSerializerDetail'}, 'DeviceSerializerDetailRequest': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSerializerDetailRequest'}, 'DeviceSerializerList': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSerializerList'}, 'DeviceSuperBasicSerialiserDetail': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSuperBasicSerialiserDetail'}, 'DeviceSuperBasicSerialiserList': {'kind': 'model', 'model': 'Device', 'version': 'DeviceSuperBasicSerialiserList'}, 'PatchedDeviceSerializerDetailRequest': {'kind': 'model', 'model': 'Device', 'version': 'PatchedDeviceSerializerDetailRequest'}, 'SlimDeviceSerializerDetail': {'kind': 'model', 'model': 'Device', 'version': 'SlimDeviceSerializerDetail'}, 'SlimDeviceSerializerList': {'kind': 'model', 'model': 'Device', 'version': 'SlimDeviceSerializerList'}, 'DeviceTypeBillingConfigSerializerDetail': {'kind': 'model', 'model': 'DeviceTypeBillingConfig', 'version': 'DeviceTypeBillingConfigSerializerDetail'}, 'DeviceTypeBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceTypeBillingConfig', 'version': 'DeviceTypeBillingConfigSerializerDetailRequest'}, 'DeviceTypeBillingConfigSerializerList': {'kind': 'model', 'model': 'DeviceTypeBillingConfig', 'version': 'DeviceTypeBillingConfigSerializerList'}, 'PatchedDeviceTypeBillingConfigSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceTypeBillingConfig', 'version': 'PatchedDeviceTypeBillingConfigSerializerDetailRequest'}, 'DeviceTypeOrganisationAccessSerializerDetail': {'kind': 'model', 'model': 'DeviceTypeOrganisationAccess', 'version': 'DeviceTypeOrganisationAccessSerializerDetail'}, 'DeviceTypeOrganisationAccessSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceTypeOrganisationAccess', 'version': 'DeviceTypeOrganisationAccessSerializerDetailRequest'}, 'DeviceTypeOrganisationAccessSerializerList': {'kind': 'model', 'model': 'DeviceTypeOrganisationAccess', 'version': 'DeviceTypeOrganisationAccessSerializerList'}, 'PatchedDeviceTypeOrganisationAccessSerializerDetailRequest': {'kind': 'model', 'model': 'DeviceTypeOrganisationAccess', 'version': 'PatchedDeviceTypeOrganisationAccessSerializerDetailRequest'}, 'GroupBasicSerialiserDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupBasicSerialiserDetail'}, 'GroupBasicSerialiserList': {'kind': 'model', 'model': 'Group', 'version': 'GroupBasicSerialiserList'}, 'GroupChildrenSerialiserDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupChildrenSerialiserDetail'}, 'GroupParentSerialiserDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupParentSerialiserDetail'}, 'GroupParentSerialiserList': {'kind': 'model', 'model': 'Group', 'version': 'GroupParentSerialiserList'}, 'GroupSerializerDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupSerializerDetail'}, 'GroupSerializerDetailRequest': {'kind': 'model', 'model': 'Group', 'version': 'GroupSerializerDetailRequest'}, 'GroupSerializerList': {'kind': 'model', 'model': 'Group', 'version': 'GroupSerializerList'}, 'GroupSimpleSerializerDetail': {'kind': 'model', 'model': 'Group', 'version': 'GroupSimpleSerializerDetail'}, 'PatchedGroupSerializerDetailRequest': {'kind': 'model', 'model': 'Group', 'version': 'PatchedGroupSerializerDetailRequest'}, 'SlimGroupSerializerDetail': {'kind': 'model', 'model': 'Group', 'version': 'SlimGroupSerializerDetail'}, 'SlimGroupSerializerList': {'kind': 'model', 'model': 'Group', 'version': 'SlimGroupSerializerList'}, 'GroupPermissionSerializerDetail': {'kind': 'model', 'model': 'GroupPermission', 'version': 'GroupPermissionSerializerDetail'}, 'GroupPermissionSerializerDetailRequest': {'kind': 'model', 'model': 'GroupPermission', 'version': 'GroupPermissionSerializerDetailRequest'}, 'GroupPermissionSerializerList': {'kind': 'model', 'model': 'GroupPermission', 'version': 'GroupPermissionSerializerList'}, 'PatchedGroupPermissionSerializerDetailRequest': {'kind': 'model', 'model': 'GroupPermission', 'version': 'PatchedGroupPermissionSerializerDetailRequest'}, 'GroupRoleAssignmentSerializerDetailRequest': {'kind': 'model', 'model': 'GroupRoleAssignment', 'version': 'GroupRoleAssignmentSerializerDetailRequest'}, 'IngestionEndpointSerializerDetail': {'kind': 'model', 'model': 'IngestionEndpoint', 'version': 'IngestionEndpointSerializerDetail'}, 'IngestionEndpointSerializerDetailRequest': {'kind': 'model', 'model': 'IngestionEndpoint', 'version': 'IngestionEndpointSerializerDetailRequest'}, 'IngestionEndpointSerializerList': {'kind': 'model', 'model': 'IngestionEndpoint', 'version': 'IngestionEndpointSerializerList'}, 'IntegrationSerializerDetail': {'kind': 'model', 'model': 'Integration', 'version': 'IntegrationSerializerDetail'}, 'IntegrationSerializerDetailRequest': {'kind': 'model', 'model': 'Integration', 'version': 'IntegrationSerializerDetailRequest'}, 'IntegrationSerializerList': {'kind': 'model', 'model': 'Integration', 'version': 'IntegrationSerializerList'}, 'PatchedIntegrationSerializerDetailRequest': {'kind': 'model', 'model': 'Integration', 'version': 'PatchedIntegrationSerializerDetailRequest'}, 'MeteringRunOrgSerializerDetail': {'kind': 'model', 'model': 'MeteringRunOrg', 'version': 'MeteringRunOrgSerializerDetail'}, 'MeteringRunOrgSerializerList': {'kind': 'model', 'model': 'MeteringRunOrg', 'version': 'MeteringRunOrgSerializerList'}, 'NavigationContextSerializerDetailRequest': {'kind': 'model', 'model': 'NavigationContext', 'version': 'NavigationContextSerializerDetailRequest'}, 'NestedDeviceTypeSerializerDetail': {'kind': 'model', 'model': 'NestedDeviceType', 'version': 'NestedDeviceTypeSerializerDetail'}, 'NestedDeviceTypeSerializerDetailRequest': {'kind': 'model', 'model': 'NestedDeviceType', 'version': 'NestedDeviceTypeSerializerDetailRequest'}, 'NestedDeviceTypeSerializerList': {'kind': 'model', 'model': 'NestedDeviceType', 'version': 'NestedDeviceTypeSerializerList'}, 'OrganisationDomainSerializerDetail': {'kind': 'model', 'model': 'OrganisationDomain', 'version': 'OrganisationDomainSerializerDetail'}, 'OrganisationDomainSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationDomain', 'version': 'OrganisationDomainSerializerDetailRequest'}, 'OrganisationDomainSerializerList': {'kind': 'model', 'model': 'OrganisationDomain', 'version': 'OrganisationDomainSerializerList'}, 'PatchedOrganisationDomainSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationDomain', 'version': 'PatchedOrganisationDomainSerializerDetailRequest'}, 'OrganisationRoleSerializerDetail': {'kind': 'model', 'model': 'OrganisationRole', 'version': 'OrganisationRoleSerializerDetail'}, 'OrganisationRoleSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationRole', 'version': 'OrganisationRoleSerializerDetailRequest'}, 'OrganisationRoleSerializerList': {'kind': 'model', 'model': 'OrganisationRole', 'version': 'OrganisationRoleSerializerList'}, 'PatchedOrganisationRoleSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationRole', 'version': 'PatchedOrganisationRoleSerializerDetailRequest'}, 'OrganisationSharedReceiveProfileSerializerDetail': {'kind': 'model', 'model': 'OrganisationSharedReceiveProfile', 'version': 'OrganisationSharedReceiveProfileSerializerDetail'}, 'OrganisationSharedReceiveProfileSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationSharedReceiveProfile', 'version': 'OrganisationSharedReceiveProfileSerializerDetailRequest'}, 'OrganisationSharedReceiveProfileSerializerList': {'kind': 'model', 'model': 'OrganisationSharedReceiveProfile', 'version': 'OrganisationSharedReceiveProfileSerializerList'}, 'PatchedOrganisationSharedReceiveProfileSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationSharedReceiveProfile', 'version': 'PatchedOrganisationSharedReceiveProfileSerializerDetailRequest'}, 'OrganisationSharingProfileSerializerDetail': {'kind': 'model', 'model': 'OrganisationSharingProfile', 'version': 'OrganisationSharingProfileSerializerDetail'}, 'OrganisationSharingProfileSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationSharingProfile', 'version': 'OrganisationSharingProfileSerializerDetailRequest'}, 'OrganisationSharingProfileSerializerList': {'kind': 'model', 'model': 'OrganisationSharingProfile', 'version': 'OrganisationSharingProfileSerializerList'}, 'PatchedOrganisationSharingProfileSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationSharingProfile', 'version': 'PatchedOrganisationSharingProfileSerializerDetailRequest'}, 'OrganisationUserSerializerDetail': {'kind': 'model', 'model': 'OrganisationUser', 'version': 'OrganisationUserSerializerDetail'}, 'OrganisationUserSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationUser', 'version': 'OrganisationUserSerializerDetailRequest'}, 'OrganisationUserSerializerList': {'kind': 'model', 'model': 'OrganisationUser', 'version': 'OrganisationUserSerializerList'}, 'PatchedOrganisationUserSerializerDetailRequest': {'kind': 'model', 'model': 'OrganisationUser', 'version': 'PatchedOrganisationUserSerializerDetailRequest'}, 'PatchedPendingUserSerializerDetailRequest': {'kind': 'model', 'model': 'PendingUser', 'version': 'PatchedPendingUserSerializerDetailRequest'}, 'PendingUserSerializerDetail': {'kind': 'model', 'model': 'PendingUser', 'version': 'PendingUserSerializerDetail'}, 'PendingUserSerializerDetailRequest': {'kind': 'model', 'model': 'PendingUser', 'version': 'PendingUserSerializerDetailRequest'}, 'PendingUserSerializerList': {'kind': 'model', 'model': 'PendingUser', 'version': 'PendingUserSerializerList'}, 'PatchedReportScheduleSerialiserDetailRequest': {'kind': 'model', 'model': 'ReportSchedule', 'version': 'PatchedReportScheduleSerialiserDetailRequest'}, 'ReportScheduleSerialiserDetail': {'kind': 'model', 'model': 'ReportSchedule', 'version': 'ReportScheduleSerialiserDetail'}, 'ReportScheduleSerialiserDetailRequest': {'kind': 'model', 'model': 'ReportSchedule', 'version': 'ReportScheduleSerialiserDetailRequest'}, 'ReportScheduleSerialiserList': {'kind': 'model', 'model': 'ReportSchedule', 'version': 'ReportScheduleSerialiserList'}, 'PatchedSellerCustomerSerializerDetailRequest': {'kind': 'model', 'model': 'SellerCustomer', 'version': 'PatchedSellerCustomerSerializerDetailRequest'}, 'SellerCustomerSerializerDetail': {'kind': 'model', 'model': 'SellerCustomer', 'version': 'SellerCustomerSerializerDetail'}, 'SellerCustomerSerializerDetailRequest': {'kind': 'model', 'model': 'SellerCustomer', 'version': 'SellerCustomerSerializerDetailRequest'}, 'SellerCustomerSerializerList': {'kind': 'model', 'model': 'SellerCustomer', 'version': 'SellerCustomerSerializerList'}, 'PatchedSharedDeviceSerializerDetailRequest': {'kind': 'model', 'model': 'SharedDevice', 'version': 'PatchedSharedDeviceSerializerDetailRequest'}, 'SharedDeviceSerializerDetail': {'kind': 'model', 'model': 'SharedDevice', 'version': 'SharedDeviceSerializerDetail'}, 'SharedDeviceSerializerDetailRequest': {'kind': 'model', 'model': 'SharedDevice', 'version': 'SharedDeviceSerializerDetailRequest'}, 'SharedDeviceSerializerList': {'kind': 'model', 'model': 'SharedDevice', 'version': 'SharedDeviceSerializerList'}, 'PatchedSharedGroupSerializerDetailRequest': {'kind': 'model', 'model': 'SharedGroup', 'version': 'PatchedSharedGroupSerializerDetailRequest'}, 'SharedGroupSerializerDetail': {'kind': 'model', 'model': 'SharedGroup', 'version': 'SharedGroupSerializerDetail'}, 'SharedGroupSerializerDetailRequest': {'kind': 'model', 'model': 'SharedGroup', 'version': 'SharedGroupSerializerDetailRequest'}, 'SharedGroupSerializerList': {'kind': 'model', 'model': 'SharedGroup', 'version': 'SharedGroupSerializerList'}, 'PatchedSolutionInstallationSerializerDetailRequest': {'kind': 'model', 'model': 'SolutionInstallation', 'version': 'PatchedSolutionInstallationSerializerDetailRequest'}, 'SolutionInstallationSerializerDetail': {'kind': 'model', 'model': 'SolutionInstallation', 'version': 'SolutionInstallationSerializerDetail'}, 'SolutionInstallationSerializerDetailRequest': {'kind': 'model', 'model': 'SolutionInstallation', 'version': 'SolutionInstallationSerializerDetailRequest'}, 'SolutionInstallationSerializerList': {'kind': 'model', 'model': 'SolutionInstallation', 'version': 'SolutionInstallationSerializerList'}, 'PatchedSolutionOrganisationAccessSerializerDetailRequest': {'kind': 'model', 'model': 'SolutionOrganisationAccess', 'version': 'PatchedSolutionOrganisationAccessSerializerDetailRequest'}, 'SolutionOrganisationAccessSerializerDetail': {'kind': 'model', 'model': 'SolutionOrganisationAccess', 'version': 'SolutionOrganisationAccessSerializerDetail'}, 'SolutionOrganisationAccessSerializerDetailRequest': {'kind': 'model', 'model': 'SolutionOrganisationAccess', 'version': 'SolutionOrganisationAccessSerializerDetailRequest'}, 'SolutionOrganisationAccessSerializerList': {'kind': 'model', 'model': 'SolutionOrganisationAccess', 'version': 'SolutionOrganisationAccessSerializerList'}, 'PatchedSolutionSerializerDetailRequest': {'kind': 'model', 'model': 'Solution', 'version': 'PatchedSolutionSerializerDetailRequest'}, 'SolutionSerializerDetail': {'kind': 'model', 'model': 'Solution', 'version': 'SolutionSerializerDetail'}, 'SolutionSerializerDetailRequest': {'kind': 'model', 'model': 'Solution', 'version': 'SolutionSerializerDetailRequest'}, 'SolutionSerializerList': {'kind': 'model', 'model': 'Solution', 'version': 'SolutionSerializerList'}, 'PatchedThemeSerializerWithIdDetailRequest': {'kind': 'model', 'model': 'Theme', 'version': 'PatchedThemeSerializerWithIdDetailRequest'}, 'ThemeSerializerDetail': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerDetail'}, 'ThemeSerializerDetailRequest': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerDetailRequest'}, 'ThemeSerializerList': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerList'}, 'ThemeSerializerWithIdDetail': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerWithIdDetail'}, 'ThemeSerializerWithIdDetailRequest': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerWithIdDetailRequest'}, 'ThemeSerializerWithIdList': {'kind': 'model', 'model': 'Theme', 'version': 'ThemeSerializerWithIdList'}, 'PatchedTunnelSerializerDetailRequest': {'kind': 'model', 'model': 'Tunnel', 'version': 'PatchedTunnelSerializerDetailRequest'}, 'TunnelSerializerDetail': {'kind': 'model', 'model': 'Tunnel', 'version': 'TunnelSerializerDetail'}, 'TunnelSerializerDetailRequest': {'kind': 'model', 'model': 'Tunnel', 'version': 'TunnelSerializerDetailRequest'}, 'TunnelSerializerList': {'kind': 'model', 'model': 'Tunnel', 'version': 'TunnelSerializerList'}, 'PatchedUserSerialiserDetailRequest': {'kind': 'model', 'model': 'User', 'version': 'PatchedUserSerialiserDetailRequest'}, 'UserBasicSerializerDetail': {'kind': 'model', 'model': 'User', 'version': 'UserBasicSerializerDetail'}, 'UserBasicSerializerList': {'kind': 'model', 'model': 'User', 'version': 'UserBasicSerializerList'}, 'UserSerialiserDetail': {'kind': 'model', 'model': 'User', 'version': 'UserSerialiserDetail'}, 'UserSerialiserDetailRequest': {'kind': 'model', 'model': 'User', 'version': 'UserSerialiserDetailRequest'}, 'UserSerialiserList': {'kind': 'model', 'model': 'User', 'version': 'UserSerialiserList'}, 'PermissionUserSerializerDetail': {'kind': 'model', 'model': 'PermissionUser', 'version': 'PermissionUserSerializerDetail'}, 'PermissionUserSerializerDetailRequest': {'kind': 'model', 'model': 'PermissionUser', 'version': 'PermissionUserSerializerDetailRequest'}, 'PermissionUserSerializerList': {'kind': 'model', 'model': 'PermissionUser', 'version': 'PermissionUserSerializerList'}, 'ProcessorSourceUploadRequestDetailRequest': {'kind': 'model', 'model': 'ProcessorSourceUploadRequest', 'version': 'ProcessorSourceUploadRequestDetailRequest'}, 'RemoteSharedDeviceGroupSerializerDetail': {'kind': 'model', 'model': 'RemoteSharedDeviceGroup', 'version': 'RemoteSharedDeviceGroupSerializerDetail'}, 'RemoteSharedDeviceGroupSerializerList': {'kind': 'model', 'model': 'RemoteSharedDeviceGroup', 'version': 'RemoteSharedDeviceGroupSerializerList'}, 'RemoteSharedDeviceSerializerDetail': {'kind': 'model', 'model': 'RemoteSharedDevice', 'version': 'RemoteSharedDeviceSerializerDetail'}, 'RemoteSharedDeviceSerializerList': {'kind': 'model', 'model': 'RemoteSharedDevice', 'version': 'RemoteSharedDeviceSerializerList'}, 'RemoteSharedDeviceTypeSerializerDetail': {'kind': 'model', 'model': 'RemoteSharedDeviceType', 'version': 'RemoteSharedDeviceTypeSerializerDetail'}, 'RemoteSharedDeviceTypeSerializerList': {'kind': 'model', 'model': 'RemoteSharedDeviceType', 'version': 'RemoteSharedDeviceTypeSerializerList'}, 'RemoteSharedGroupSerializerDetail': {'kind': 'model', 'model': 'RemoteSharedGroup', 'version': 'RemoteSharedGroupSerializerDetail'}, 'RemoteSharedGroupSerializerList': {'kind': 'model', 'model': 'RemoteSharedGroup', 'version': 'RemoteSharedGroupSerializerList'}, 'ReportCreateSerialiserDetailRequest': {'kind': 'model', 'model': 'ReportCreate', 'version': 'ReportCreateSerialiserDetailRequest'}, 'ReportListResponseSerializerOverrideList': {'kind': 'model', 'model': 'ReportListResponseOverride', 'version': 'ReportListResponseSerializerOverrideList'}, 'ReportSerialiserDetail': {'kind': 'model', 'model': 'Report', 'version': 'ReportSerialiserDetail'}, 'ReportSerialiserList': {'kind': 'model', 'model': 'Report', 'version': 'ReportSerialiserList'}, 'SellerCustomerGroupSerializerDetail': {'kind': 'model', 'model': 'SellerCustomerGroup', 'version': 'SellerCustomerGroupSerializerDetail'}, 'SellerCustomerGroupSerializerList': {'kind': 'model', 'model': 'SellerCustomerGroup', 'version': 'SellerCustomerGroupSerializerList'}, 'SellerCustomerOrgSerializerDetail': {'kind': 'model', 'model': 'SellerCustomerOrg', 'version': 'SellerCustomerOrgSerializerDetail'}, 'SellerCustomerOrgSerializerList': {'kind': 'model', 'model': 'SellerCustomerOrg', 'version': 'SellerCustomerOrgSerializerList'}, 'SlimContainerRegistryDetail': {'kind': 'model', 'model': 'ContainerRegistry', 'version': 'SlimContainerRegistryDetail'}, 'SlimContainerRegistryList': {'kind': 'model', 'model': 'ContainerRegistry', 'version': 'SlimContainerRegistryList'}, 'UsageMeteringRunSerializerDetail': {'kind': 'model', 'model': 'UsageMeteringRun', 'version': 'UsageMeteringRunSerializerDetail'}, 'UsageMeteringRunSerializerList': {'kind': 'model', 'model': 'UsageMeteringRun', 'version': 'UsageMeteringRunSerializerList'}, 'UsageRecordAppInstallSerializerDetail': {'kind': 'model', 'model': 'UsageRecordAppInstall', 'version': 'UsageRecordAppInstallSerializerDetail'}, 'UsageRecordAppInstallSerializerList': {'kind': 'model', 'model': 'UsageRecordAppInstall', 'version': 'UsageRecordAppInstallSerializerList'}, 'UsageRecordApplicationSerializerDetail': {'kind': 'model', 'model': 'UsageRecordApplication', 'version': 'UsageRecordApplicationSerializerDetail'}, 'UsageRecordApplicationSerializerList': {'kind': 'model', 'model': 'UsageRecordApplication', 'version': 'UsageRecordApplicationSerializerList'}, 'UsageRecordBillingProductSerializerDetail': {'kind': 'model', 'model': 'UsageRecordBillingProduct', 'version': 'UsageRecordBillingProductSerializerDetail'}, 'UsageRecordBillingProductSerializerList': {'kind': 'model', 'model': 'UsageRecordBillingProduct', 'version': 'UsageRecordBillingProductSerializerList'}, 'UsageRecordDeviceSerializerDetail': {'kind': 'model', 'model': 'UsageRecordDevice', 'version': 'UsageRecordDeviceSerializerDetail'}, 'UsageRecordDeviceSerializerList': {'kind': 'model', 'model': 'UsageRecordDevice', 'version': 'UsageRecordDeviceSerializerList'}, 'UsageRecordOrgSerializerDetail': {'kind': 'model', 'model': 'UsageRecordOrg', 'version': 'UsageRecordOrgSerializerDetail'}, 'UsageRecordOrgSerializerList': {'kind': 'model', 'model': 'UsageRecordOrg', 'version': 'UsageRecordOrgSerializerList'}, 'UsageRecordSellerCustomerSerializerDetail': {'kind': 'model', 'model': 'UsageRecordSellerCustomer', 'version': 'UsageRecordSellerCustomerSerializerDetail'}, 'UsageRecordSellerCustomerSerializerList': {'kind': 'model', 'model': 'UsageRecordSellerCustomer', 'version': 'UsageRecordSellerCustomerSerializerList'}, 'UsageRecordSerializerDetail': {'kind': 'model', 'model': 'UsageRecord', 'version': 'UsageRecordSerializerDetail'}, 'UsageRecordSerializerList': {'kind': 'model', 'model': 'UsageRecord', 'version': 'UsageRecordSerializerList'}, 'UsageRecordSolutionSerializerDetail': {'kind': 'model', 'model': 'UsageRecordSolution', 'version': 'UsageRecordSolutionSerializerDetail'}, 'UsageRecordSolutionSerializerList': {'kind': 'model', 'model': 'UsageRecordSolution', 'version': 'UsageRecordSolutionSerializerList'}, 'UserOrganisationInfoSerializerDetail': {'kind': 'model', 'model': 'UserOrganisationInfo', 'version': 'UserOrganisationInfoSerializerDetail'}, 'UserOrganisationInfoSerializerList': {'kind': 'model', 'model': 'UserOrganisationInfo', 'version': 'UserOrganisationInfoSerializerList'}, 'OpenAPIErrorResponse': {'kind': 'model', 'model': 'OpenAPIErrorResponse', 'version': 'OpenAPIErrorResponse'}, 'PaginatedAIChatMessageSerializerListList': {'kind': 'page', 'model': 'AIChatMessage', 'version': 'AIChatMessageSerializerList'}, 'PaginatedAIChatSessionSerializerListList': {'kind': 'page', 'model': 'AIChatSession', 'version': 'AIChatSessionSerializerList'}, 'PaginatedAgentBillingItemSerializerListList': {'kind': 'page', 'model': 'AgentBillingItem', 'version': 'AgentBillingItemSerializerList'}, 'PaginatedAppBillingConfigSerializerListList': {'kind': 'page', 'model': 'AppBillingConfig', 'version': 'AppBillingConfigSerializerList'}, 'PaginatedApplicationConfigProfileSerializerListList': {'kind': 'page', 'model': 'ApplicationConfigProfile', 'version': 'ApplicationConfigProfileSerializerList'}, 'PaginatedApplicationDeploymentSerializerListList': {'kind': 'page', 'model': 'ApplicationDeployment', 'version': 'ApplicationDeploymentSerializerList'}, 'PaginatedApplicationInstallationSerializerListList': {'kind': 'page', 'model': 'ApplicationInstallation', 'version': 'ApplicationInstallationSerializerList'}, 'PaginatedApplicationOrganisationAccessSerializerListList': {'kind': 'page', 'model': 'ApplicationOrganisationAccess', 'version': 'ApplicationOrganisationAccessSerializerList'}, 'PaginatedApplicationSerializerListList': {'kind': 'page', 'model': 'Application', 'version': 'ApplicationSerializerList'}, 'PaginatedApplicationTemplateSerializerListList': {'kind': 'page', 'model': 'ApplicationTemplate', 'version': 'ApplicationTemplateSerializerList'}, 'PaginatedBillingAccountSerializerListList': {'kind': 'page', 'model': 'BillingAccount', 'version': 'BillingAccountSerializerList'}, 'PaginatedBillingProductSerializerListList': {'kind': 'page', 'model': 'BillingProduct', 'version': 'BillingProductSerializerList'}, 'PaginatedBillingSubscriptionSerializerListList': {'kind': 'page', 'model': 'BillingSubscription', 'version': 'BillingSubscriptionSerializerList'}, 'PaginatedContainerRegistryProfileSeraliserListList': {'kind': 'page', 'model': 'ContainerRegistryProfile', 'version': 'ContainerRegistryProfileSeraliserList'}, 'PaginatedDeviceBillingConfigSerializerListList': {'kind': 'page', 'model': 'DeviceBillingConfig', 'version': 'DeviceBillingConfigSerializerList'}, 'PaginatedDeviceSerializerListList': {'kind': 'page', 'model': 'Device', 'version': 'DeviceSerializerList'}, 'PaginatedDeviceTypeBillingConfigSerializerListList': {'kind': 'page', 'model': 'DeviceTypeBillingConfig', 'version': 'DeviceTypeBillingConfigSerializerList'}, 'PaginatedDeviceTypeOrganisationAccessSerializerListList': {'kind': 'page', 'model': 'DeviceTypeOrganisationAccess', 'version': 'DeviceTypeOrganisationAccessSerializerList'}, 'PaginatedDeviceTypeSerializerListList': {'kind': 'page', 'model': 'DeviceType', 'version': 'DeviceTypeSerializerList'}, 'PaginatedGroupPermissionSerializerListList': {'kind': 'page', 'model': 'GroupPermission', 'version': 'GroupPermissionSerializerList'}, 'PaginatedGroupRoleSerializerListList': {'kind': 'page', 'model': 'GroupRole', 'version': 'GroupRoleSerializerList'}, 'PaginatedGroupSerializerListList': {'kind': 'page', 'model': 'Group', 'version': 'GroupSerializerList'}, 'PaginatedIntegrationSerializerListList': {'kind': 'page', 'model': 'Integration', 'version': 'IntegrationSerializerList'}, 'PaginatedOrganisationDomainSerializerListList': {'kind': 'page', 'model': 'OrganisationDomain', 'version': 'OrganisationDomainSerializerList'}, 'PaginatedOrganisationRoleSerializerListList': {'kind': 'page', 'model': 'OrganisationRole', 'version': 'OrganisationRoleSerializerList'}, 'PaginatedOrganisationSerializerListList': {'kind': 'page', 'model': 'Organisation', 'version': 'OrganisationSerializerList'}, 'PaginatedOrganisationSharedReceiveProfileSerializerListList': {'kind': 'page', 'model': 'OrganisationSharedReceiveProfile', 'version': 'OrganisationSharedReceiveProfileSerializerList'}, 'PaginatedOrganisationSharingProfileSerializerListList': {'kind': 'page', 'model': 'OrganisationSharingProfile', 'version': 'OrganisationSharingProfileSerializerList'}, 'PaginatedOrganisationUserSerializerListList': {'kind': 'page', 'model': 'OrganisationUser', 'version': 'OrganisationUserSerializerList'}, 'PaginatedPendingUserSerializerListList': {'kind': 'page', 'model': 'PendingUser', 'version': 'PendingUserSerializerList'}, 'PaginatedPublicApplicationSerializerListList': {'kind': 'page', 'model': 'Application', 'version': 'PublicApplicationSerializerList'}, 'PaginatedReportScheduleSerialiserListList': {'kind': 'page', 'model': 'ReportSchedule', 'version': 'ReportScheduleSerialiserList'}, 'PaginatedSellerCustomerSerializerListList': {'kind': 'page', 'model': 'SellerCustomer', 'version': 'SellerCustomerSerializerList'}, 'PaginatedSharedDeviceSerializerListList': {'kind': 'page', 'model': 'SharedDevice', 'version': 'SharedDeviceSerializerList'}, 'PaginatedSharedGroupSerializerListList': {'kind': 'page', 'model': 'SharedGroup', 'version': 'SharedGroupSerializerList'}, 'PaginatedSolutionInstallationSerializerListList': {'kind': 'page', 'model': 'SolutionInstallation', 'version': 'SolutionInstallationSerializerList'}, 'PaginatedSolutionOrganisationAccessSerializerListList': {'kind': 'page', 'model': 'SolutionOrganisationAccess', 'version': 'SolutionOrganisationAccessSerializerList'}, 'PaginatedSolutionSerializerListList': {'kind': 'page', 'model': 'Solution', 'version': 'SolutionSerializerList'}, 'PaginatedThemeSerializerWithIdListList': {'kind': 'page', 'model': 'Theme', 'version': 'ThemeSerializerWithIdList'}, 'PaginatedTunnelSerializerListList': {'kind': 'page', 'model': 'Tunnel', 'version': 'TunnelSerializerList'}, 'PaginatedUsageMeteringRunSerializerListList': {'kind': 'page', 'model': 'UsageMeteringRun', 'version': 'UsageMeteringRunSerializerList'}, 'PaginatedUsageRecordSerializerListList': {'kind': 'page', 'model': 'UsageRecord', 'version': 'UsageRecordSerializerList'}, 'PaginatedUserSerialiserListList': {'kind': 'page', 'model': 'User', 'version': 'UserSerialiserList'}}
 
 __all__ = [
     "CONTROL_SCHEMA_REGISTRY",
@@ -6259,6 +6838,7 @@ __all__ = [
     "ApplicationDeployment",
     "ApplicationInstallation",
     "ApplicationInstallationSolution",
+    "ApplicationOrganisationAccess",
     "ApplicationTemplate",
     "Attachment",
     "BillingAccount",
@@ -6281,6 +6861,7 @@ __all__ = [
     "DeviceInstallerInfoResponse",
     "DeviceType",
     "DeviceTypeBillingConfig",
+    "DeviceTypeOrganisationAccess",
     "Group",
     "GroupPermission",
     "GroupRole",
@@ -6289,6 +6870,7 @@ __all__ = [
     "Integration",
     "MeteringRunOrg",
     "NavigationContext",
+    "NestedDeviceType",
     "OpenAPIErrorResponse",
     "Organisation",
     "OrganisationDomain",
@@ -6314,15 +6896,18 @@ __all__ = [
     "SharedGroup",
     "Solution",
     "SolutionInstallation",
+    "SolutionOrganisationAccess",
     "Theme",
     "Tunnel",
     "UsageMeteringRun",
     "UsageRecord",
     "UsageRecordAppInstall",
+    "UsageRecordApplication",
     "UsageRecordBillingProduct",
     "UsageRecordDevice",
     "UsageRecordOrg",
     "UsageRecordSellerCustomer",
+    "UsageRecordSolution",
     "User",
     "UserOrganisationInfo",
 ]
