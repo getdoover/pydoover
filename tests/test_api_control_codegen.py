@@ -43,8 +43,11 @@ def test_included_operation_ids_cover_expected_examples():
 
 def test_codegen_emits_return_annotations_for_generated_methods():
     assert DevicesSyncGroup.create.__annotations__["return"] == "control_models.Device"
+    assert DevicesSyncGroup.installer.__annotations__["return"] == "str"
+    assert DevicesSyncGroup.installer_download.__annotations__["return"] == "bytes"
     assert (
         DevicesSyncGroup.list.__annotations__["return"]
         == "control_models.ControlPage[control_models.Device]"
     )
     assert DevicesAsyncGroup.create.__annotations__["return"] == "control_models.Device"
+    assert DevicesAsyncGroup.installer.__annotations__["return"] == "str"

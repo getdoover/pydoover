@@ -1,4 +1,4 @@
-#!uv run
+#!/usr/bin/env -S uv run
 
 from __future__ import annotations
 
@@ -208,11 +208,19 @@ def response_info(path: str, operation: dict):
     if not content:
         return {"kind": "none", "schema_name": None, "item_schema": None}
 
+    media_type = None
     media_schema = None
     if "application/json" in content:
+        media_type = "application/json"
         media_schema = content["application/json"].get("schema") or {}
     else:
-        media_schema = next(iter(content.values())).get("schema") or {}
+        media_type, media_content = next(iter(content.items()))
+        media_schema = media_content.get("schema") or {}
+
+    if media_schema.get("format") == "binary":
+        return {"kind": "bytes", "schema_name": None, "item_schema": None}
+    if media_type == "text/plain" and media_schema.get("type") == "string":
+        return {"kind": "text", "schema_name": None, "item_schema": None}
 
     schema_name = ref_name(media_schema)
     if schema_name:
@@ -346,6 +354,8 @@ def render_return_hint(response: dict) -> str:
         return "None"
     if kind == "bytes":
         return "bytes"
+    if kind == "text":
+        return "str"
     if kind == "model":
         model_name = schema_model_name(response["schema_name"])
         if model_name:
@@ -380,7 +390,10 @@ def render_method(operation: dict, async_mode: bool) -> list[str]:
     path_expr = operation["path"]
     for original, variable in param_mappings:
         path_expr = path_expr.replace("{" + original + "}", "{" + variable + "}")
-    lines.append(f'        path = f"{path_expr}"')
+    if "{" in path_expr:
+        lines.append(f'        path = f"{path_expr}"')
+    else:
+        lines.append(f'        path = "{path_expr}"')
 
     if operation["query_params"]:
         lines.append("        params = {")
