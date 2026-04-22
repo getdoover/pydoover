@@ -1,3 +1,5 @@
+#!uv run
+
 from __future__ import annotations
 
 import keyword
