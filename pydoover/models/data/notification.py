@@ -125,3 +125,65 @@ class NotificationSubscription:
             "topic_filter": self.topic_filter,
             "endpoints": [e.to_dict() for e in self.endpoints],
         }
+
+
+class Notification:
+    """A notification message sent via the ``notifications`` channel.
+
+    Mirrors the server-side ``NotificationChannelMessagePayload``. Publishing a
+    message with this payload to an agent's ``notifications`` channel causes
+    the Doover cloud to fan the notification out to matching subscriptions.
+
+    Parameters
+    ----------
+    message : str
+        The notification body. Required.
+    title : str, optional
+        An optional title / headline for the notification.
+    severity : NotificationSeverity, optional
+        The severity level. Subscribers only receive notifications at or
+        above their subscription severity.
+    topic : str, optional
+        An optional topic string used to filter subscriptions by
+        ``topic_filter``.
+    """
+
+    NOTIFICATIONS_CHANNEL: str = "notifications"
+
+    def __init__(
+        self,
+        message: str,
+        title: str | None = None,
+        severity: NotificationSeverity | int | None = None,
+        topic: str | None = None,
+    ):
+        self.message = message
+        self.title = title
+        self.severity = NotificationSeverity(severity) if severity is not None else None
+        self.topic = topic
+
+    def __repr__(self) -> str:
+        return (
+            f"Notification(message={self.message!r}, title={self.title!r}, "
+            f"severity={self.severity!r}, topic={self.topic!r})"
+        )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Notification":
+        severity = data.get("severity")
+        return cls(
+            message=data["message"],
+            title=data.get("title"),
+            severity=NotificationSeverity(severity) if severity is not None else None,
+            topic=data.get("topic"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"message": self.message}
+        if self.title is not None:
+            result["title"] = self.title
+        if self.severity is not None:
+            result["severity"] = self.severity.value
+        if self.topic is not None:
+            result["topic"] = self.topic
+        return result

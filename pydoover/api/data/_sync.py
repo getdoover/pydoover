@@ -48,6 +48,7 @@ from ...models.data import (
 )
 from ...models.data.alarm import AlarmOperator
 from ...models.data.notification import (
+    Notification,
     NotificationEndpoint,
     NotificationSeverity,
     NotificationSubscription,
@@ -814,6 +815,58 @@ class DataClient(BaseClient):
         return [ConnectionSubscription.from_dict(s) for s in data]
 
     # ── Notifications ──────────────────────────────────────────────────────
+
+    def send_notification(
+        self,
+        agent_id: int,
+        message: str | Notification,
+        *,
+        title: str | None = None,
+        severity: NotificationSeverity | int | None = None,
+        topic: str | None = None,
+        organisation_id: int | None = None,
+    ) -> Message:
+        """Send a notification for an agent.
+
+        Publishes a :class:`~pydoover.models.Notification` payload to the agent's
+        ``notifications`` channel, which the Doover cloud fans out to matching
+        subscriptions (email / SMS / web push / http).
+
+        Parameters
+        ----------
+        agent_id : int
+            The agent to send the notification on behalf of.
+        message : str | Notification
+            Either the message body, or a fully-constructed
+            :class:`Notification` (in which case ``title``, ``severity`` and
+            ``topic`` are ignored).
+        title : str, optional
+            An optional title / headline for the notification.
+        severity : NotificationSeverity | int, optional
+            Severity level. Subscribers only receive notifications at or above
+            their subscription severity.
+        topic : str, optional
+            Optional topic used to match subscription ``topic_filter`` entries.
+        organisation_id : int, optional
+            The organisation context for the request.
+
+        Returns
+        -------
+        Message
+            The created channel message.
+        """
+        if isinstance(message, Notification):
+            notification = message
+        else:
+            notification = Notification(
+                message=message, title=title, severity=severity, topic=topic
+            )
+        return self.create_message(
+            agent_id=agent_id,
+            channel_name=Notification.NOTIFICATIONS_CHANNEL,
+            data=notification.to_dict(),
+            organisation_id=organisation_id,
+        )
 
     def fetch_notifications(
         self,

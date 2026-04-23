@@ -36,6 +36,8 @@ from ..models import (
     Message,
     MessageCreateEvent,
     MessageUpdateEvent,
+    Notification,
+    NotificationSeverity,
     OneShotMessage,
 )
 from ..rpc import RPCManager
@@ -700,6 +702,50 @@ class Application:
             clear_attachments=clear_attachments,
             replace_data=replace_data,
             max_age_secs=max_age_secs,
+        )
+
+    async def send_notification(
+        self,
+        message: str | Notification,
+        *,
+        title: str | None = None,
+        severity: NotificationSeverity | int | None = None,
+        topic: str | None = None,
+    ) -> int:
+        """Send a notification via the ``notifications`` channel.
+
+        The Doover cloud fans this out to any notification subscriptions
+        (email / SMS / web push / http) that match the given severity and
+        topic.
+
+        Parameters
+        ----------
+        message : str | Notification
+            Either the notification body, or a fully-constructed
+            :class:`~pydoover.models.Notification` (in which case ``title``,
+            ``severity`` and ``topic`` are ignored).
+        title : str, optional
+            Optional title / headline for the notification.
+        severity : NotificationSeverity | int, optional
+            Severity level. Subscribers only receive notifications at or
+            above their subscription severity.
+        topic : str, optional
+            Optional topic used to match subscription ``topic_filter``
+            entries.
+
+        Returns
+        -------
+        int
+            The ID of the created channel message.
+        """
+        if isinstance(message, Notification):
+            notification = message
+        else:
+            notification = Notification(
+                message=message, title=title, severity=severity, topic=topic
+            )
+        return await self.device_agent.create_message(
+            Notification.NOTIFICATIONS_CHANNEL, notification.to_dict()
         )
 
     ## Platform Interface Functions
