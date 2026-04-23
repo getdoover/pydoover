@@ -1023,6 +1023,26 @@ class ApplicationPosition(Integer):
         )
 
 
+class ApplicationDefaultOpen(Boolean):
+    def __init__(
+        self,
+        display_name: str = "Default Open",
+        *,
+        description: str = "Whether the application is default open in the UI. "
+        "By default this is not set - which makes it dynamic on the number of apps installed.",
+        default: bool = None,
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            default=default,
+            name="dv_app_default_open",
+            hidden=True,
+            **kwargs,
+        )
+
+
 class LLMAPIKey(String):
     def __init__(
         self,

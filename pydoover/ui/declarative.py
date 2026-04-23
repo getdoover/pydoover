@@ -113,7 +113,8 @@ class UI:
         display_name: str = "$config.app().APP_DISPLAY_NAME",
         hidden: bool | str = "$config.app().hidden:boolean:false",
         position: int | str = "$config.app().dv_app_position:number:100",
-        default_open: int | str = False,
+        default_open: bool
+        | str = "$config.app().dv_app_default_open:boolean",  # default to None
         icon: str | None = None,
         colour: str | None = None,
         **kwargs,
