@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from .declarative import normalize_ui_value
 from .element import Element
-from .misc import Option, NotSet
+from .misc import ConfirmDialog, Option, NotSet
 
 if TYPE_CHECKING:
     from .manager import UICommandsManager
@@ -52,7 +52,7 @@ class Interaction(Element):
         value: str = NotSet,
         default: Any = NotSet,
         show_activity: bool = NotSet,
-        requires_confirm: bool = NotSet,
+        requires_confirm: bool | ConfirmDialog = NotSet,
         global_interaction: bool = False,
         **kwargs,
     ):
@@ -100,7 +100,10 @@ class Interaction(Element):
         res["currentValue"] = self._value_location
         res["appKey"] = self.app_key
         if self.requires_confirm is not NotSet:
-            res["requiresConfirm"] = self.requires_confirm
+            if isinstance(self.requires_confirm, ConfirmDialog):
+                res["requiresConfirm"] = self.requires_confirm.to_dict()
+            else:
+                res["requiresConfirm"] = self.requires_confirm
         if self.show_activity is not NotSet:
             res["showActivity"] = self.show_activity
         if self.default is not NotSet:

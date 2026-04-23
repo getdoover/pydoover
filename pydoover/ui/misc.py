@@ -227,6 +227,62 @@ class Option:
         return cls(data["display_str"])
 
 
+class ConfirmDialog:
+    """Configuration for the confirmation dialog shown when an interaction requires confirmation.
+
+    Pass an instance of this class to ``requires_confirm`` on any :class:`Interaction`
+    to customise the dialog. Passing ``True`` shows the default dialog; passing ``False``
+    disables confirmation.
+
+    Parameters
+    ----------
+    title: str, optional
+        The title of the confirmation dialog. Defaults to ``"Confirm {display_name} change"``.
+    subtitle: str, optional
+        An optional subtitle shown below the title.
+    warning_reason: str, optional
+        An optional warning message explaining why confirmation is required.
+    colour: str, optional
+        An optional colour for the dialog. Defaults to the interaction's colour.
+    help_text: str, optional
+        An optional help text explaining what the confirmation does.
+    icon: str, optional
+        An optional icon for the dialog. Defaults to the interaction's icon.
+    """
+
+    def __init__(
+        self,
+        title: str = NotSet,
+        subtitle: str = NotSet,
+        warning_reason: str = NotSet,
+        colour: str = NotSet,
+        help_text: str = NotSet,
+        icon: str = NotSet,
+    ):
+        self.title = title
+        self.subtitle = subtitle
+        self.warning_reason = warning_reason
+        self.colour = colour
+        self.help_text = help_text
+        self.icon = icon
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        if self.title is not NotSet:
+            result["title"] = self.title
+        if self.subtitle is not NotSet:
+            result["subtitle"] = self.subtitle
+        if self.warning_reason is not NotSet:
+            result["warningReason"] = self.warning_reason
+        if self.colour is not NotSet:
+            result["colour"] = self.colour
+        if self.help_text is not NotSet:
+            result["helpText"] = self.help_text
+        if self.icon is not NotSet:
+            result["icon"] = self.icon
+        return normalize_ui_value(result)
+
+
 class Widget:
     """Base class for UI widgets, which can be used to represent various UI elements.
 
