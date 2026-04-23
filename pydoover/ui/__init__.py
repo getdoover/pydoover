@@ -20,6 +20,7 @@ from .declarative import (
 from .misc import (
     NotSet as NotSet,
     Colour as Colour,
+    ConfirmDialog as ConfirmDialog,
     Series as Series,
     Range as Range,
     Option as Option,
