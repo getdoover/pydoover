@@ -193,11 +193,6 @@ class UI:
         return schema
 
     def export(self, fp: Path, app_name: str):
-        if not self.is_static:
-            raise RuntimeError(
-                "Cannot statically generate a ui schema that has a `setup` override."
-            )
-
         if fp.exists():
             data = json.loads(fp.read_text())
         else:
