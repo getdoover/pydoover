@@ -240,6 +240,7 @@ class ConfigElement:
         format: str | None = None,
         position: int | None = None,
         name: str | None = None,
+        advanced: bool | None = None,
     ):
         if name is not None:
             check_key(name)
@@ -254,6 +255,7 @@ class ConfigElement:
         self.hidden = hidden
         self.deprecated = deprecated
         self.format = format
+        self.advanced = advanced
         self._value = NotSet
 
         if (
@@ -333,6 +335,9 @@ class ConfigElement:
 
         if self.format is not None:
             payload["format"] = self.format
+
+        if self.advanced is not None:
+            payload["x-advanced"] = self.advanced
 
         return payload
 
