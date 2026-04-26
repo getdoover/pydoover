@@ -84,6 +84,10 @@ class Series:
         Labels for step-type series.
     range: tuple[int | float | str, int | float | str], optional
         A ``(min, max)`` tuple for the series range. Values may be numeric or ``"auto"``.
+    ranges: list[Range], optional
+        Ranges for the series, used as zones when the user picks the "zone" range view.
+    thresholds: list[Threshold], optional
+        Thresholds for the series, drawn as horizontal lines when the user picks the "line" range view.
     value: optional
         A bound tag reference (e.g. ``tag_ref("my_tag")``) that the series data is looked up from.
     """
@@ -101,6 +105,8 @@ class Series:
         units: str | None = None,
         step_labels: list[str] | None = None,
         range: tuple | None = None,
+        ranges: "list[Range] | None" = None,
+        thresholds: "list[Threshold] | None" = None,
     ):
         self.display_name = display_name
         self.value = value
@@ -113,6 +119,8 @@ class Series:
         self.units = units
         self.step_labels = step_labels
         self.range = range
+        self.ranges = ranges
+        self.thresholds = thresholds
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -136,6 +144,10 @@ class Series:
             result["stepLabels"] = self.step_labels
         if self.range is not None:
             result["range"] = {"min": self.range[0], "max": self.range[1]}
+        if self.ranges is not None:
+            result["ranges"] = [r.to_dict() for r in self.ranges]
+        if self.thresholds is not None:
+            result["thresholds"] = [t.to_dict() for t in self.thresholds]
         return normalize_ui_value(result)
 
 
@@ -198,6 +210,71 @@ class Range:
             Colour.from_string(data["colour"]),
             data["show_on_graph"],
         )
+
+
+class Threshold:
+    """Represents a threshold value drawn as a horizontal line on a plot.
+
+    Attributes
+    ----------
+    label: str
+        A label shown alongside the threshold line.
+    value: Union[int, float]
+        The y-axis value at which the threshold line is drawn.
+    colour: Colour
+        The colour of the threshold line.
+    """
+
+    def __init__(
+        self,
+        label: str,
+        value: Any,
+        colour: Any = Colour.blue,
+    ):
+        self.label = label
+        self.value = value
+        self.colour = colour
+
+    def __repr__(self) -> str:
+        return (
+            f"Threshold(label={self.label}, value={self.value}, colour={self.colour})"
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Threshold):
+            return NotImplemented
+        return self.to_dict() == other.to_dict()
+
+    def to_dict(self) -> dict[str, Any]:
+        return normalize_ui_value(
+            {"label": self.label, "value": self.value, "colour": self.colour}
+        )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            data["label"],
+            data["value"],
+            Colour.from_string(data["colour"]),
+        )
+
+
+class RangeView:
+    """Selectable views for plotting ranges/thresholds on a graph.
+
+    Attributes
+    ----------
+    line
+        Show thresholds as horizontal lines.
+    zone
+        Shade the area covered by each range.
+    off
+        Don't show ranges or thresholds.
+    """
+
+    line: ClassVar[str] = "line"
+    zone: ClassVar[str] = "zone"
+    off: ClassVar[str] = "off"
 
 
 class Option:
