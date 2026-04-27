@@ -33,6 +33,7 @@ from .events import (
 )
 from .message import Message
 from .notification import (
+    Notification,
     NotificationEndpoint,
     NotificationSeverity,
     NotificationSubscription,
@@ -85,6 +86,7 @@ __all__ = [
     "MessageCreateEvent",
     "MessageUpdateEvent",
     "NotFoundError",
+    "Notification",
     "NotificationEndpoint",
     "NotificationSeverity",
     "NotificationSubscription",

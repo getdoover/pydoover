@@ -24,6 +24,9 @@ from ..models import (
     AggregateUpdateEvent,
     ConnectionDetermination,
     ConnectionStatus,
+    Message,
+    Notification,
+    NotificationSeverity,
     SubscriptionInfo,
     DooverConnectionStatus,
 )
@@ -398,6 +401,56 @@ class Application:
         if self.tag_manager is None:
             raise RuntimeError("Tag manager has not been initialized.")
         await self.tag_manager.set_tag(key, value)
+
+    async def send_notification(
+        self,
+        message: str | Notification,
+        *,
+        title: str | None = None,
+        severity: NotificationSeverity | int | None = None,
+        topic: str | None = None,
+        agent_id: int | None = None,
+    ) -> Message:
+        """Send a notification via the ``notifications`` channel.
+
+        The Doover cloud fans this out to any notification subscriptions
+        (email / SMS / web push / http) that match the given severity and
+        topic.
+
+        Parameters
+        ----------
+        message : str | Notification
+            Either the notification body, or a fully-constructed
+            :class:`~pydoover.models.Notification` (in which case ``title``,
+            ``severity`` and ``topic`` are ignored).
+        title : str, optional
+            Optional title / headline for the notification.
+        severity : NotificationSeverity | int, optional
+            Severity level. Subscribers only receive notifications at or
+            above their subscription severity.
+        topic : str, optional
+            Optional topic used to match subscription ``topic_filter``
+            entries.
+        agent_id : int, optional
+            Override the agent to send the notification on behalf of.
+            Defaults to the processor's current agent.
+
+        Returns
+        -------
+        Message
+            The created channel message.
+        """
+        if isinstance(message, Notification):
+            notification = message
+        else:
+            notification = Notification(
+                message=message, title=title, severity=severity, topic=topic
+            )
+        return await self.api.create_message(
+            Notification.NOTIFICATIONS_CHANNEL,
+            notification.to_dict(),
+            agent_id=agent_id,
+        )
 
     async def publish_ui_schema(self, clear: bool = True):
         schema = self.ui.to_schema()

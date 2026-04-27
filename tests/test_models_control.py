@@ -7,9 +7,9 @@ from pydoover.models.control import (
     CONTROL_SCHEMA_REGISTRY,
     ControlPage,
     Device,
-    DeviceType,
     Group,
     Location,
+    NestedDeviceType,
     Organisation,
     Theme,
 )
@@ -60,7 +60,7 @@ def test_device_request_serialization_uses_output_id_mapping():
     device = Device(
         name="device-1",
         display_name="Device One",
-        type=DeviceType(id=201),
+        type=NestedDeviceType(id=201),
         group=Group(id=301),
         fixed_location=Location(latitude=-33.86, longitude=151.21),
         solution_config={"mode": "auto"},
@@ -86,7 +86,7 @@ def test_device_resource_fields_accept_bare_ids():
         group=301,
     )
 
-    assert isinstance(device.type, DeviceType)
+    assert isinstance(device.type, NestedDeviceType)
     assert device.type.id == 201
     assert isinstance(device.group, Group)
     assert device.group.id == 301
@@ -136,6 +136,7 @@ def test_required_non_nullable_fields_still_raise_when_missing_from_version_payl
 
 def test_control_models_expose_field_annotations_for_type_checkers():
     assert Device.__annotations__["display_name"] == "str"
+    assert Device.__annotations__["type"] == "NestedDeviceType"
     assert Device.__annotations__["group"] == "Group"
     assert Device.__annotations__["fa_icon"] == "str | None"
 

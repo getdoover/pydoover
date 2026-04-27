@@ -7,6 +7,17 @@ paths:
   /agents/:
     get:
       operationId: agents_retrieve
+      parameters:
+      - in: query
+        name: include-archived
+        schema:
+          type: boolean
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
       tags:
       - agents
       security:
@@ -48,13 +59,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenAPIErrorResponse'
-      parameters:
-      - name: X-Doover-Organisation
-        in: header
-        required: false
-        schema:
-          type: string
-        description: Optional organisation override header
   /analytics/summary/:
     get:
       operationId: analytics_summary_retrieve
@@ -1775,6 +1779,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /applications/{id}/widget/:
+    put:
+      operationId: applications_widget_update
+      description: Manage applications
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this application.
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplicationSerializerDetailRequest'
+        required: true
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
   /applications/{parent_lookup_application}/config_profiles/:
     get:
       operationId: applications_config_profiles_list
@@ -2385,6 +2447,412 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /applications/{parent_lookup_application}/organisation_access/:
+    get:
+      operationId: applications_organisation_access_list
+      description: Manage organisation whitelist/blacklist for applications
+      parameters:
+      - in: query
+        name: access
+        schema:
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          enum:
+          - BLK
+          - WHL
+        description: |-
+          Whether this organisation is whitelisted or blacklisted for this application.
+
+          * `WHL` - Whitelist
+          * `BLK` - Blacklist
+      - in: query
+        name: application
+        schema:
+          type: string
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: organisation
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: path
+        name: parent_lookup_application
+        schema:
+          type: string
+        required: true
+      - name: per_page
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedApplicationOrganisationAccessSerializerListList'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    post:
+      operationId: applications_organisation_access_create
+      description: Manage organisation whitelist/blacklist for applications
+      parameters:
+      - in: path
+        name: parent_lookup_application
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetailRequest'
+        required: true
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /applications/{parent_lookup_application}/organisation_access/{id}/:
+    get:
+      operationId: applications_organisation_access_retrieve
+      description: Manage organisation whitelist/blacklist for applications
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this application organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_application
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    put:
+      operationId: applications_organisation_access_update
+      description: Manage organisation whitelist/blacklist for applications
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this application organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_application
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetailRequest'
+        required: true
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    patch:
+      operationId: applications_organisation_access_partial_update
+      description: Manage organisation whitelist/blacklist for applications
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this application organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_application
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedApplicationOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedApplicationOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedApplicationOrganisationAccessSerializerDetailRequest'
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    delete:
+      operationId: applications_organisation_access_destroy
+      description: Manage organisation whitelist/blacklist for applications
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this application organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_application
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
   /assistant/message/:
     post:
       operationId: assistant_message_create
@@ -2703,6 +3171,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /billing/billing-block-status/:
+    get:
+      operationId: billing_billing_block_status_retrieve
+      description: |-
+        Check whether the current user is billing-blocked.
+
+        GET /billing/billing-block-status/
+
+        Returns whether the user is blocked by any SellerCustomer billing block
+        on their groups or ancestor groups. For UNTIL_PAYMENT_METHOD blocks,
+        checks Stripe and auto-clears if a payment method exists.
+      tags:
+      - billing
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          description: No response body
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '502':
+          description: Provider or upstream dependency error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+      parameters:
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+    post:
+      operationId: billing_billing_block_status_create
+      description: |-
+        Generate a fresh Stripe portal URL for a blocked seller customer.
+
+        POST /billing/billing-block-status/
+        Body: { "seller_customer_id": "..." }
+      tags:
+      - billing
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          description: No response body
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '502':
+          description: Provider or upstream dependency error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+      parameters:
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
   /container/registry/:
     get:
       operationId: container_registry_list
@@ -3610,6 +4184,63 @@ paths:
             text/plain:
               schema:
                 type: string
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /devices/{id}/installer/download/:
+    get:
+      operationId: devices_installer_download_retrieve
+      description: Manage devices
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - devices
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
           description: ''
         '400':
           description: Error response
@@ -5293,6 +5924,412 @@ paths:
               schema:
                 $ref: '#/components/schemas/DeviceTypeSerializerDetail'
           description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /devices/types/{parent_lookup_device_type}/organisation_access/:
+    get:
+      operationId: devices_types_organisation_access_list
+      description: Manage organisation whitelist/blacklist for device types
+      parameters:
+      - in: query
+        name: access
+        schema:
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          enum:
+          - BLK
+          - WHL
+        description: |-
+          Whether this organisation is whitelisted or blacklisted for this device type.
+
+          * `WHL` - Whitelist
+          * `BLK` - Blacklist
+      - in: query
+        name: device_type
+        schema:
+          type: string
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: organisation
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: path
+        name: parent_lookup_device_type
+        schema:
+          type: string
+        required: true
+      - name: per_page
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - devices
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDeviceTypeOrganisationAccessSerializerListList'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    post:
+      operationId: devices_types_organisation_access_create
+      description: Manage organisation whitelist/blacklist for device types
+      parameters:
+      - in: path
+        name: parent_lookup_device_type
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetailRequest'
+        required: true
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /devices/types/{parent_lookup_device_type}/organisation_access/{id}/:
+    get:
+      operationId: devices_types_organisation_access_retrieve
+      description: Manage organisation whitelist/blacklist for device types
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this device type organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_device_type
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - devices
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    put:
+      operationId: devices_types_organisation_access_update
+      description: Manage organisation whitelist/blacklist for device types
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this device type organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_device_type
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetailRequest'
+        required: true
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    patch:
+      operationId: devices_types_organisation_access_partial_update
+      description: Manage organisation whitelist/blacklist for device types
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this device type organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_device_type
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDeviceTypeOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDeviceTypeOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDeviceTypeOrganisationAccessSerializerDetailRequest'
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    delete:
+      operationId: devices_types_organisation_access_destroy
+      description: Manage organisation whitelist/blacklist for device types
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this device type organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_device_type
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - devices
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '204':
+          description: No response body
         '400':
           description: Error response
           content:
@@ -8303,9 +9340,67 @@ paths:
     get:
       operationId: organisations_billing_admin_group_seller_customer_overview_retrieve
       description: |-
-        Admin-only overview of seller-customer billing for a group.
+        Overview of seller-customer billing for a group.
+
+        Accessible to superusers and organisation billing managers.
 
         GET /organisations/billing/admin/group/{id}/seller-customer-overview/
+      parameters:
+      - in: path
+        name: group_id
+        schema:
+          type: integer
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - organisations
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          description: No response body
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '502':
+          description: Provider or upstream dependency error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    post:
+      operationId: organisations_billing_admin_group_seller_customer_overview_create
+      description: |-
+        Update billing_block on a seller customer within this group.
+
+        POST /organisations/billing/admin/group/{id}/seller-customer-overview/
+        Body: { "seller_customer_id": "...", "billing_block": "NON"|"PAY"|"IND" }
       parameters:
       - in: path
         name: group_id
@@ -10802,6 +11897,9 @@ paths:
         POST /organisations/billing/group/{id}/billing/
         action=portal: Creates a Stripe billing portal session.
         action=setup:  Creates SellerCustomer + Stripe customer + subscription.
+
+        Accessible to users with org-level billing_manager OR group-level
+        billing_manager on the target group (or any of its ancestors).
       parameters:
       - in: path
         name: group_id
@@ -10864,6 +11962,9 @@ paths:
         POST /organisations/billing/group/{id}/billing/
         action=portal: Creates a Stripe billing portal session.
         action=setup:  Creates SellerCustomer + Stripe customer + subscription.
+
+        Accessible to users with org-level billing_manager OR group-level
+        billing_manager on the target group (or any of its ancestors).
       parameters:
       - in: path
         name: group_id
@@ -15856,6 +16957,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenAPIErrorResponse'
+    delete:
+      operationId: reports_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - reports
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '502':
+          description: Provider or upstream dependency error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
   /reports/schedules/:
     get:
       operationId: reports_schedules_list
@@ -18836,6 +19989,412 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /solutions/{parent_lookup_solution}/organisation_access/:
+    get:
+      operationId: solutions_organisation_access_list
+      description: Manage organisation whitelist/blacklist for solutions
+      parameters:
+      - in: query
+        name: access
+        schema:
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          enum:
+          - BLK
+          - WHL
+        description: |-
+          Whether this organisation is whitelisted or blacklisted for this solution.
+
+          * `WHL` - Whitelist
+          * `BLK` - Blacklist
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: organisation
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: path
+        name: parent_lookup_solution
+        schema:
+          type: string
+        required: true
+      - name: per_page
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: solution
+        schema:
+          type: string
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - solutions
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSolutionOrganisationAccessSerializerListList'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    post:
+      operationId: solutions_organisation_access_create
+      description: Manage organisation whitelist/blacklist for solutions
+      parameters:
+      - in: path
+        name: parent_lookup_solution
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - solutions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetailRequest'
+        required: true
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /solutions/{parent_lookup_solution}/organisation_access/{id}/:
+    get:
+      operationId: solutions_organisation_access_retrieve
+      description: Manage organisation whitelist/blacklist for solutions
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this solution organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_solution
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - solutions
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    put:
+      operationId: solutions_organisation_access_update
+      description: Manage organisation whitelist/blacklist for solutions
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this solution organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_solution
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - solutions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetailRequest'
+        required: true
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    patch:
+      operationId: solutions_organisation_access_partial_update
+      description: Manage organisation whitelist/blacklist for solutions
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this solution organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_solution
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - solutions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSolutionOrganisationAccessSerializerDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSolutionOrganisationAccessSerializerDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSolutionOrganisationAccessSerializerDetailRequest'
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionOrganisationAccessSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    delete:
+      operationId: solutions_organisation_access_destroy
+      description: Manage organisation whitelist/blacklist for solutions
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this solution organisation access.
+        required: true
+      - in: path
+        name: parent_lookup_solution
+        schema:
+          type: string
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - solutions
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
   /themes/:
     get:
       operationId: themes_list
@@ -19775,6 +21334,69 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/PatchedUserSerialiserDetailRequest'
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSerialiserDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /users/{id}/sync/:
+    post:
+      operationId: users_sync_create
+      description: API endpoint that allows users to be viewed or edited.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSerialiserDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserSerialiserDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserSerialiserDetailRequest'
       security:
       - bearer_or_cookie_auth: []
       responses:
@@ -20893,9 +22515,21 @@ components:
           nullable: true
         template:
           allOf:
-          - $ref: '#/components/schemas/ApplicationTemplateSerializerDetail'
+          - $ref: '#/components/schemas/SlimApplicationTemplateSerializerDetail'
           readOnly: true
           nullable: true
+        synced:
+          enum:
+          - OK
+          - 'NO'
+          - OV
+          type: string
+          description: |-
+            * `OK` - Synced
+            * `NO` - Out of sync
+            * `OV` - Overrides set
+          x-spec-enum-id: becb3240622ae426
+          readOnly: true
       required:
       - application
       - archived
@@ -20908,6 +22542,7 @@ components:
       - organisation
       - pre_archive_latest_deployment
       - solution
+      - synced
       - template
     ApplicationInstallationSerializerDetailRequest:
       type: object
@@ -21014,9 +22649,21 @@ components:
           nullable: true
         template:
           allOf:
-          - $ref: '#/components/schemas/ApplicationTemplateSerializerList'
+          - $ref: '#/components/schemas/SlimApplicationTemplateSerializerList'
           readOnly: true
           nullable: true
+        synced:
+          enum:
+          - OK
+          - 'NO'
+          - OV
+          type: string
+          description: |-
+            * `OK` - Synced
+            * `NO` - Out of sync
+            * `OV` - Overrides set
+          x-spec-enum-id: becb3240622ae426
+          readOnly: true
       required:
       - application
       - archived
@@ -21029,6 +22676,7 @@ components:
       - organisation
       - pre_archive_latest_deployment
       - solution
+      - synced
       - template
     ApplicationInstallationSolutionSerializerDetail:
       type: object
@@ -21050,6 +22698,83 @@ components:
       required:
       - id
       - name
+    ApplicationOrganisationAccessSerializerDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationDetail'
+          readOnly: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this application.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - id
+      - organisation
+    ApplicationOrganisationAccessSerializerDetailRequest:
+      type: object
+      properties:
+        application_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+        organisation_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+          nullable: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this application.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - application_id
+      - organisation_id
+    ApplicationOrganisationAccessSerializerList:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationList'
+          readOnly: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this application.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - id
+      - organisation
     ApplicationSerializerDetail:
       type: object
       properties:
@@ -21164,6 +22889,12 @@ components:
           type: string
           nullable: true
           description: URL to the application banner image.
+          maxLength: 500
+        repository_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to the source code repository (e.g. GitHub).
           maxLength: 500
       required:
       - approx_installs
@@ -21284,6 +23015,12 @@ components:
           type: string
           nullable: true
           description: URL to the application banner image.
+          maxLength: 500
+        repository_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to the source code repository (e.g. GitHub).
           maxLength: 500
       required:
       - container_registry_profile_id
@@ -21409,6 +23146,12 @@ components:
           nullable: true
           description: URL to the application banner image.
           maxLength: 500
+        repository_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to the source code repository (e.g. GitHub).
+          maxLength: 500
       required:
       - approx_installs
       - archived
@@ -21447,8 +23190,11 @@ components:
           items:
             $ref: '#/components/schemas/ApplicationConfigProfileSerializerDetail'
           readOnly: true
+        base_config:
+          readOnly: true
       required:
       - application
+      - base_config
       - config_profiles
       - display_name
       - id
@@ -21513,8 +23259,11 @@ components:
           items:
             $ref: '#/components/schemas/ApplicationConfigProfileSerializerList'
           readOnly: true
+        base_config:
+          readOnly: true
       required:
       - application
+      - base_config
       - config_profiles
       - display_name
       - id
@@ -21550,6 +23299,57 @@ components:
       - filename
       - size
       - url
+    BasicDeviceTypeSerializerDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationDetail'
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+      required:
+      - archived
+      - id
+      - name
+      - organisation
+    BasicDeviceTypeSerializerDetailRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+      required:
+      - name
+    BasicDeviceTypeSerializerList:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationList'
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+      required:
+      - archived
+      - id
+      - name
+      - organisation
     BasicGroupRoleDetail:
       type: object
       properties:
@@ -22435,11 +24235,18 @@ components:
         copy:
           type: string
           nullable: true
+        install_package_url:
+          type: string
+          nullable: true
+        install_type:
+          type: string
         panel_type:
           type: string
       required:
       - copy
       - description
+      - install_package_url
+      - install_type
       - panel_type
       - title
     DeviceSerializerDetail:
@@ -22458,7 +24265,7 @@ components:
           maxLength: 255
         type:
           allOf:
-          - $ref: '#/components/schemas/DeviceTypeSerializerDetail'
+          - $ref: '#/components/schemas/NestedDeviceTypeSerializerDetail'
           readOnly: true
         organisation:
           allOf:
@@ -22466,7 +24273,7 @@ components:
           readOnly: true
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerDetail'
+          - $ref: '#/components/schemas/SlimGroupSerializerDetail'
           readOnly: true
         fa_icon:
           type: string
@@ -22496,6 +24303,10 @@ components:
           example:
             latitude: -27.5598
             longitude: 151.9507
+          nullable: true
+        history_since:
+          type: string
+          format: date-time
           nullable: true
       required:
       - archived
@@ -22545,6 +24356,10 @@ components:
           nullable: true
         solution_config:
           writeOnly: true
+        history_since:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - display_name
       - group_id
@@ -22565,7 +24380,7 @@ components:
           maxLength: 255
         type:
           allOf:
-          - $ref: '#/components/schemas/DeviceTypeSerializerList'
+          - $ref: '#/components/schemas/NestedDeviceTypeSerializerList'
           readOnly: true
         organisation:
           allOf:
@@ -22573,7 +24388,7 @@ components:
           readOnly: true
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerList'
+          - $ref: '#/components/schemas/SlimGroupSerializerList'
           readOnly: true
         fa_icon:
           type: string
@@ -22603,6 +24418,10 @@ components:
           example:
             latitude: -27.5598
             longitude: 151.9507
+          nullable: true
+        history_since:
+          type: string
+          format: date-time
           nullable: true
       required:
       - archived
@@ -22753,6 +24572,83 @@ components:
       - id
       - owner_organisation
       - updated_at
+    DeviceTypeOrganisationAccessSerializerDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationDetail'
+          readOnly: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this device type.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - id
+      - organisation
+    DeviceTypeOrganisationAccessSerializerDetailRequest:
+      type: object
+      properties:
+        device_type_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+        organisation_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+          nullable: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this device type.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - device_type_id
+      - organisation_id
+    DeviceTypeOrganisationAccessSerializerList:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationList'
+          readOnly: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this device type.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - id
+      - organisation
     DeviceTypeSerializerDetail:
       type: object
       properties:
@@ -22778,6 +24674,19 @@ components:
           nullable: true
         installer_info:
           type: string
+        install_type:
+          enum:
+          - NONE
+          - COPY_COMMAND
+          - INSTALL_PACKAGE
+          - BOTH
+          type: string
+          description: |-
+            * `NONE` - None
+            * `COPY_COMMAND` - Copy Command
+            * `INSTALL_PACKAGE` - Install Package
+            * `BOTH` - Both
+          x-spec-enum-id: d995764a632a51b7
         copy_command:
           type: string
         description:
@@ -22809,6 +24718,9 @@ components:
         active_count:
           type: integer
           readOnly: true
+        hooks:
+          type: string
+          maxLength: 255
       required:
       - active_count
       - archived
@@ -22833,6 +24745,19 @@ components:
         installer_info:
           type: string
           minLength: 1
+        install_type:
+          enum:
+          - NONE
+          - COPY_COMMAND
+          - INSTALL_PACKAGE
+          - BOTH
+          type: string
+          description: |-
+            * `NONE` - None
+            * `COPY_COMMAND` - Copy Command
+            * `INSTALL_PACKAGE` - Install Package
+            * `BOTH` - Both
+          x-spec-enum-id: d995764a632a51b7
         copy_command:
           type: string
           minLength: 1
@@ -22863,6 +24788,9 @@ components:
           minLength: 1
           nullable: true
           writeOnly: true
+        hooks:
+          type: string
+          maxLength: 255
       required:
       - name
     DeviceTypeSerializerList:
@@ -22890,6 +24818,19 @@ components:
           nullable: true
         installer_info:
           type: string
+        install_type:
+          enum:
+          - NONE
+          - COPY_COMMAND
+          - INSTALL_PACKAGE
+          - BOTH
+          type: string
+          description: |-
+            * `NONE` - None
+            * `COPY_COMMAND` - Copy Command
+            * `INSTALL_PACKAGE` - Install Package
+            * `BOTH` - Both
+          x-spec-enum-id: d995764a632a51b7
         copy_command:
           type: string
         description:
@@ -22921,6 +24862,9 @@ components:
         active_count:
           type: integer
           readOnly: true
+        hooks:
+          type: string
+          maxLength: 255
       required:
       - active_count
       - archived
@@ -23253,9 +25197,22 @@ components:
           - $ref: '#/components/schemas/GroupParentSerialiserDetail'
           nullable: true
           readOnly: true
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupChildrenSerialiserDetail'
+          readOnly: true
+        my_permissions:
+          type: object
+          additionalProperties:
+            type: boolean
+          nullable: true
+          readOnly: true
       required:
       - archived
+      - children
       - id
+      - my_permissions
       - name
       - organisation
       - parent
@@ -23266,8 +25223,13 @@ components:
           type: string
           minLength: 1
           maxLength: 255
+        parent_id:
+          type: string
+          minLength: 1
+          writeOnly: true
       required:
       - name
+      - parent_id
     GroupSerializerList:
       type: object
       properties:
@@ -23509,6 +25471,245 @@ components:
           nullable: true
         agentName:
           type: string
+    NestedDeviceTypeSerializerDetail:
+      type: object
+      description: |-
+        Device type serializer for nesting inside DeviceSerializer.
+
+        Drops the full SolutionSerializer (which pulls in application_templates ->
+        applications -> depends_on / config_profiles and causes heavy N+1 on list views).
+        Consumers that need the full solution should hit the device-types endpoint directly.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationDetail'
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        config: {}
+        config_schema: {}
+        device_extra_config_schema: {}
+        installer:
+          type: string
+          format: uri
+          nullable: true
+        installer_info:
+          type: string
+        install_type:
+          enum:
+          - NONE
+          - COPY_COMMAND
+          - INSTALL_PACKAGE
+          - BOTH
+          type: string
+          description: |-
+            * `NONE` - None
+            * `COPY_COMMAND` - Copy Command
+            * `INSTALL_PACKAGE` - Install Package
+            * `BOTH` - Both
+          x-spec-enum-id: d995764a632a51b7
+        copy_command:
+          type: string
+        description:
+          type: string
+        logo_url:
+          type: string
+          nullable: true
+          description: URL to the application icon image.
+          maxLength: 500
+        extra_info:
+          type: string
+          nullable: true
+          description: Markdown formatted page for extra info on a device type or
+            link to external page.
+        stars:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        default_icon:
+          type: string
+          nullable: true
+          description: Default icon for devices of this type.
+          maxLength: 100
+        solution:
+          type: string
+          readOnly: true
+          nullable: true
+        active_count:
+          type: integer
+          readOnly: true
+        hooks:
+          type: string
+          maxLength: 255
+      required:
+      - active_count
+      - archived
+      - id
+      - name
+      - organisation
+      - solution
+    NestedDeviceTypeSerializerDetailRequest:
+      type: object
+      description: |-
+        Device type serializer for nesting inside DeviceSerializer.
+
+        Drops the full SolutionSerializer (which pulls in application_templates ->
+        applications -> depends_on / config_profiles and causes heavy N+1 on list views).
+        Consumers that need the full solution should hit the device-types endpoint directly.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        config: {}
+        config_schema: {}
+        device_extra_config_schema: {}
+        installer:
+          type: string
+          format: binary
+          nullable: true
+        installer_info:
+          type: string
+          minLength: 1
+        install_type:
+          enum:
+          - NONE
+          - COPY_COMMAND
+          - INSTALL_PACKAGE
+          - BOTH
+          type: string
+          description: |-
+            * `NONE` - None
+            * `COPY_COMMAND` - Copy Command
+            * `INSTALL_PACKAGE` - Install Package
+            * `BOTH` - Both
+          x-spec-enum-id: d995764a632a51b7
+        copy_command:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        logo_url:
+          type: string
+          nullable: true
+          description: URL to the application icon image.
+          maxLength: 500
+        extra_info:
+          type: string
+          nullable: true
+          description: Markdown formatted page for extra info on a device type or
+            link to external page.
+        stars:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        default_icon:
+          type: string
+          nullable: true
+          description: Default icon for devices of this type.
+          maxLength: 100
+        solution_id:
+          type: string
+          minLength: 1
+          nullable: true
+          writeOnly: true
+        hooks:
+          type: string
+          maxLength: 255
+      required:
+      - name
+    NestedDeviceTypeSerializerList:
+      type: object
+      description: |-
+        Device type serializer for nesting inside DeviceSerializer.
+
+        Drops the full SolutionSerializer (which pulls in application_templates ->
+        applications -> depends_on / config_profiles and causes heavy N+1 on list views).
+        Consumers that need the full solution should hit the device-types endpoint directly.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationList'
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        config: {}
+        config_schema: {}
+        device_extra_config_schema: {}
+        installer:
+          type: string
+          format: uri
+          nullable: true
+        installer_info:
+          type: string
+        install_type:
+          enum:
+          - NONE
+          - COPY_COMMAND
+          - INSTALL_PACKAGE
+          - BOTH
+          type: string
+          description: |-
+            * `NONE` - None
+            * `COPY_COMMAND` - Copy Command
+            * `INSTALL_PACKAGE` - Install Package
+            * `BOTH` - Both
+          x-spec-enum-id: d995764a632a51b7
+        copy_command:
+          type: string
+        description:
+          type: string
+        logo_url:
+          type: string
+          nullable: true
+          description: URL to the application icon image.
+          maxLength: 500
+        extra_info:
+          type: string
+          nullable: true
+          description: Markdown formatted page for extra info on a device type or
+            link to external page.
+        stars:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        default_icon:
+          type: string
+          nullable: true
+          description: Default icon for devices of this type.
+          maxLength: 100
+        solution:
+          type: string
+          readOnly: true
+          nullable: true
+        active_count:
+          type: integer
+          readOnly: true
+        hooks:
+          type: string
+          maxLength: 255
+      required:
+      - active_count
+      - archived
+      - id
+      - name
+      - organisation
+      - solution
     OrganisationBasicSerializerDetail:
       type: object
       description: Basic organisation info for nested serialization.
@@ -23786,6 +25987,7 @@ components:
           type: string
           nullable: true
           maxLength: 255
+        extra_config: {}
         theme:
           $ref: '#/components/schemas/ThemeSerializerDetail'
       required:
@@ -23818,6 +26020,7 @@ components:
           type: string
           nullable: true
           maxLength: 255
+        extra_config: {}
         theme:
           $ref: '#/components/schemas/ThemeSerializerDetailRequest'
       required:
@@ -23862,6 +26065,7 @@ components:
           type: string
           nullable: true
           maxLength: 255
+        extra_config: {}
         theme:
           $ref: '#/components/schemas/ThemeSerializerList'
       required:
@@ -24391,6 +26595,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ApplicationInstallationSerializerList'
+    PaginatedApplicationOrganisationAccessSerializerListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationOrganisationAccessSerializerList'
     PaginatedApplicationSerializerListList:
       type: object
       required:
@@ -24598,6 +26825,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DeviceTypeBillingConfigSerializerList'
+    PaginatedDeviceTypeOrganisationAccessSerializerListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceTypeOrganisationAccessSerializerList'
     PaginatedDeviceTypeSerializerListList:
       type: object
       required:
@@ -25012,6 +27262,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SolutionInstallationSerializerList'
+    PaginatedSolutionOrganisationAccessSerializerListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SolutionOrganisationAccessSerializerList'
     PaginatedSolutionSerializerListList:
       type: object
       required:
@@ -25253,6 +27526,29 @@ components:
           type: string
           minLength: 1
           nullable: true
+    PatchedApplicationOrganisationAccessSerializerDetailRequest:
+      type: object
+      properties:
+        application_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+        organisation_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+          nullable: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this application.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
     PatchedApplicationSerializerDetailRequest:
       type: object
       properties:
@@ -25359,6 +27655,12 @@ components:
           type: string
           nullable: true
           description: URL to the application banner image.
+          maxLength: 500
+        repository_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to the source code repository (e.g. GitHub).
           maxLength: 500
     PatchedApplicationTemplateSerializerDetailRequest:
       type: object
@@ -25554,6 +27856,10 @@ components:
           nullable: true
         solution_config:
           writeOnly: true
+        history_since:
+          type: string
+          format: date-time
+          nullable: true
     PatchedDeviceTypeBillingConfigSerializerDetailRequest:
       type: object
       properties:
@@ -25578,6 +27884,29 @@ components:
           minLength: 1
           writeOnly: true
           nullable: true
+    PatchedDeviceTypeOrganisationAccessSerializerDetailRequest:
+      type: object
+      properties:
+        device_type_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+        organisation_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+          nullable: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this device type.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
     PatchedDeviceTypeSerializerDetailRequest:
       type: object
       properties:
@@ -25595,6 +27924,19 @@ components:
         installer_info:
           type: string
           minLength: 1
+        install_type:
+          enum:
+          - NONE
+          - COPY_COMMAND
+          - INSTALL_PACKAGE
+          - BOTH
+          type: string
+          description: |-
+            * `NONE` - None
+            * `COPY_COMMAND` - Copy Command
+            * `INSTALL_PACKAGE` - Install Package
+            * `BOTH` - Both
+          x-spec-enum-id: d995764a632a51b7
         copy_command:
           type: string
           minLength: 1
@@ -25625,6 +27967,9 @@ components:
           minLength: 1
           nullable: true
           writeOnly: true
+        hooks:
+          type: string
+          maxLength: 255
     PatchedGroupPermissionSerializerDetailRequest:
       type: object
       properties:
@@ -25795,6 +28140,7 @@ components:
           type: string
           nullable: true
           maxLength: 255
+        extra_config: {}
         theme:
           $ref: '#/components/schemas/ThemeSerializerDetailRequest'
     PatchedOrganisationSharedReceiveProfileSerializerDetailRequest:
@@ -25933,6 +28279,19 @@ components:
           nullable: true
           description: Stripe customer ID on the seller's connected account.
           maxLength: 255
+        billing_block:
+          enum:
+          - NON
+          - PAY
+          - IND
+          type: string
+          x-spec-enum-id: b29e06ef00e954ca
+          description: |-
+            Block the customer from using the site until conditions are met.
+
+            * `NON` - None
+            * `PAY` - Until Payment Method
+            * `IND` - Indefinitely
         notes:
           type: string
     PatchedSharedDeviceSerializerDetailRequest:
@@ -25985,6 +28344,29 @@ components:
           minLength: 1
           writeOnly: true
         deployment_config: {}
+    PatchedSolutionOrganisationAccessSerializerDetailRequest:
+      type: object
+      properties:
+        solution_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+        organisation_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+          nullable: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this solution.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
     PatchedSolutionSerializerDetailRequest:
       type: object
       properties:
@@ -26199,6 +28581,10 @@ components:
         last_name:
           type: string
           maxLength: 150
+        last_activity:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - username
     PermissionUserSerializerDetailRequest:
@@ -26225,6 +28611,10 @@ components:
         last_name:
           type: string
           maxLength: 150
+        last_activity:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - username
     PermissionUserSerializerList:
@@ -26249,6 +28639,10 @@ components:
         last_name:
           type: string
           maxLength: 150
+        last_activity:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - username
     ProcessorSourceUploadRequestDetailRequest:
@@ -26805,6 +29199,23 @@ components:
         has_subscription:
           type: boolean
           readOnly: true
+        subscription_status:
+          type: string
+          nullable: true
+          readOnly: true
+        billing_block:
+          enum:
+          - NON
+          - PAY
+          - IND
+          type: string
+          x-spec-enum-id: b29e06ef00e954ca
+          description: |-
+            Block the customer from using the site until conditions are met.
+
+            * `NON` - None
+            * `PAY` - Until Payment Method
+            * `IND` - Indefinitely
         notes:
           type: string
         created_at:
@@ -26821,6 +29232,7 @@ components:
       - has_subscription
       - id
       - seller_organisation
+      - subscription_status
       - updated_at
     SellerCustomerSerializerDetailRequest:
       type: object
@@ -26841,6 +29253,19 @@ components:
           nullable: true
           description: Stripe customer ID on the seller's connected account.
           maxLength: 255
+        billing_block:
+          enum:
+          - NON
+          - PAY
+          - IND
+          type: string
+          x-spec-enum-id: b29e06ef00e954ca
+          description: |-
+            Block the customer from using the site until conditions are met.
+
+            * `NON` - None
+            * `PAY` - Until Payment Method
+            * `IND` - Indefinitely
         notes:
           type: string
       required:
@@ -26874,6 +29299,19 @@ components:
         has_subscription:
           type: boolean
           readOnly: true
+        billing_block:
+          enum:
+          - NON
+          - PAY
+          - IND
+          type: string
+          x-spec-enum-id: b29e06ef00e954ca
+          description: |-
+            Block the customer from using the site until conditions are met.
+
+            * `NON` - None
+            * `PAY` - Until Payment Method
+            * `IND` - Indefinitely
         created_at:
           type: string
           format: date-time
@@ -26899,7 +29337,7 @@ components:
           $ref: '#/components/schemas/BasicOrganisationDetail'
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerDetail'
+          - $ref: '#/components/schemas/SlimGroupSerializerDetail'
           readOnly: true
         shared_profile:
           allOf:
@@ -26946,7 +29384,7 @@ components:
           $ref: '#/components/schemas/BasicOrganisationList'
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerList'
+          - $ref: '#/components/schemas/SlimGroupSerializerList'
           readOnly: true
         shared_profile:
           allOf:
@@ -26966,7 +29404,7 @@ components:
           $ref: '#/components/schemas/BasicOrganisationDetail'
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerDetail'
+          - $ref: '#/components/schemas/SlimGroupSerializerDetail'
           readOnly: true
         shared_profile:
           allOf:
@@ -27013,7 +29451,7 @@ components:
           $ref: '#/components/schemas/BasicOrganisationList'
         group:
           allOf:
-          - $ref: '#/components/schemas/GroupSerializerList'
+          - $ref: '#/components/schemas/SlimGroupSerializerList'
           readOnly: true
         shared_profile:
           allOf:
@@ -27233,6 +29671,84 @@ components:
       - name
       - organisation
       - type
+    SlimApplicationTemplateSerializerDetail:
+      type: object
+      description: |-
+        Lightweight template serializer for nested use in app install lists.
+        Uses SlimApplication instead of the full ApplicationSerializer to avoid
+        N+1 queries on depends_on and config_profiles.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        application:
+          allOf:
+          - $ref: '#/components/schemas/SlimApplicationDetail'
+          readOnly: true
+        deployment_config:
+          readOnly: true
+        synced:
+          type: boolean
+          readOnly: true
+        base_config:
+          readOnly: true
+      required:
+      - application
+      - base_config
+      - deployment_config
+      - description
+      - display_name
+      - id
+      - name
+      - synced
+    SlimApplicationTemplateSerializerList:
+      type: object
+      description: |-
+        Lightweight template serializer for nested use in app install lists.
+        Uses SlimApplication instead of the full ApplicationSerializer to avoid
+        N+1 queries on depends_on and config_profiles.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        application:
+          allOf:
+          - $ref: '#/components/schemas/SlimApplicationList'
+          readOnly: true
+        deployment_config:
+          readOnly: true
+        synced:
+          type: boolean
+          readOnly: true
+        base_config:
+          readOnly: true
+      required:
+      - application
+      - base_config
+      - deployment_config
+      - description
+      - display_name
+      - id
+      - name
+      - synced
     SlimContainerRegistryDetail:
       type: object
       properties:
@@ -27277,6 +29793,118 @@ components:
       - description
       - id
       - name
+    SlimDeviceSerializerDetail:
+      type: object
+      description: |-
+        Lightweight device serializer for solution install lists.
+        Avoids the full DeviceTypeSerializer -> SolutionSerializer -> ApplicationTemplateSerializer
+        chain that causes N+1 queries.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationDetail'
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/BasicDeviceTypeSerializerDetail'
+          readOnly: true
+      required:
+      - display_name
+      - id
+      - name
+      - organisation
+      - type
+    SlimDeviceSerializerList:
+      type: object
+      description: |-
+        Lightweight device serializer for solution install lists.
+        Avoids the full DeviceTypeSerializer -> SolutionSerializer -> ApplicationTemplateSerializer
+        chain that causes N+1 queries.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationList'
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/BasicDeviceTypeSerializerList'
+          readOnly: true
+      required:
+      - display_name
+      - id
+      - name
+      - organisation
+      - type
+    SlimGroupSerializerDetail:
+      type: object
+      description: |-
+        Group serializer for nested use (e.g. device list).
+
+        Drops the MPTT parent/children/ancestors lookups and per-request permission
+        checks done by the full GroupSerializer.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationDetail'
+          readOnly: true
+      required:
+      - archived
+      - id
+      - name
+      - organisation
+    SlimGroupSerializerList:
+      type: object
+      description: |-
+        Group serializer for nested use (e.g. device list).
+
+        Drops the MPTT parent/children/ancestors lookups and per-request permission
+        checks done by the full GroupSerializer.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationList'
+          readOnly: true
+      required:
+      - archived
+      - id
+      - name
+      - organisation
     SolutionInstallationSerializerDetail:
       type: object
       properties:
@@ -27288,7 +29916,7 @@ components:
           maxLength: 100
         device:
           allOf:
-          - $ref: '#/components/schemas/DeviceSerializerDetail'
+          - $ref: '#/components/schemas/SlimDeviceSerializerDetail'
           readOnly: true
         organisation:
           allOf:
@@ -27325,6 +29953,9 @@ components:
           - $ref: '#/components/schemas/SolutionSerializerDetail'
           readOnly: true
         deployment_config: {}
+        synced:
+          type: string
+          readOnly: true
       required:
       - application_installs
       - deployed_at
@@ -27334,6 +29965,7 @@ components:
       - organisation
       - solution
       - status
+      - synced
     SolutionInstallationSerializerDetailRequest:
       type: object
       properties:
@@ -27365,7 +29997,7 @@ components:
           maxLength: 100
         device:
           allOf:
-          - $ref: '#/components/schemas/DeviceSerializerList'
+          - $ref: '#/components/schemas/SlimDeviceSerializerList'
           readOnly: true
         organisation:
           allOf:
@@ -27402,6 +30034,9 @@ components:
           - $ref: '#/components/schemas/SolutionSerializerList'
           readOnly: true
         deployment_config: {}
+        synced:
+          type: string
+          readOnly: true
       required:
       - application_installs
       - deployed_at
@@ -27411,6 +30046,84 @@ components:
       - organisation
       - solution
       - status
+      - synced
+    SolutionOrganisationAccessSerializerDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationDetail'
+          readOnly: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this solution.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - id
+      - organisation
+    SolutionOrganisationAccessSerializerDetailRequest:
+      type: object
+      properties:
+        solution_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+        organisation_id:
+          type: string
+          minLength: 1
+          writeOnly: true
+          nullable: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this solution.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - organisation_id
+      - solution_id
+    SolutionOrganisationAccessSerializerList:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation:
+          allOf:
+          - $ref: '#/components/schemas/BasicOrganisationList'
+          readOnly: true
+        access:
+          enum:
+          - WHL
+          - BLK
+          type: string
+          x-spec-enum-id: b6af17a48e0ca77e
+          description: |-
+            Whether this organisation is whitelisted or blacklisted for this solution.
+
+            * `WHL` - Whitelist
+            * `BLK` - Blacklist
+      required:
+      - access
+      - id
+      - organisation
     SolutionSerializerDetail:
       type: object
       properties:
@@ -28124,6 +30837,32 @@ components:
       required:
       - id
       - name
+    UsageRecordApplicationSerializerDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+          description: Internal name for the application. This must be globally unique.
+      required:
+      - id
+      - name
+    UsageRecordApplicationSerializerList:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+          description: Internal name for the application. This must be globally unique.
+      required:
+      - id
+      - name
     UsageRecordBillingProductSerializerDetail:
       type: object
       properties:
@@ -28256,6 +30995,16 @@ components:
           - $ref: '#/components/schemas/UsageRecordAppInstallSerializerDetail'
           readOnly: true
           nullable: true
+        application:
+          allOf:
+          - $ref: '#/components/schemas/UsageRecordApplicationSerializerDetail'
+          readOnly: true
+          nullable: true
+        solution:
+          allOf:
+          - $ref: '#/components/schemas/UsageRecordSolutionSerializerDetail'
+          nullable: true
+          readOnly: true
         agent_billing_item:
           type: string
           readOnly: true
@@ -28311,6 +31060,7 @@ components:
       required:
       - agent_billing_item
       - app_install
+      - application
       - billing_product
       - created_at
       - developer_amount_cents
@@ -28324,6 +31074,7 @@ components:
       - record_type
       - revenue_target
       - seller_customer
+      - solution
       - subscription_item
       - unit_amount_cents
     UsageRecordSerializerList:
@@ -28366,6 +31117,16 @@ components:
           - $ref: '#/components/schemas/UsageRecordAppInstallSerializerList'
           readOnly: true
           nullable: true
+        application:
+          allOf:
+          - $ref: '#/components/schemas/UsageRecordApplicationSerializerList'
+          readOnly: true
+          nullable: true
+        solution:
+          allOf:
+          - $ref: '#/components/schemas/UsageRecordSolutionSerializerList'
+          nullable: true
+          readOnly: true
         agent_billing_item:
           type: string
           readOnly: true
@@ -28421,6 +31182,7 @@ components:
       required:
       - agent_billing_item
       - app_install
+      - application
       - billing_product
       - created_at
       - developer_amount_cents
@@ -28434,8 +31196,29 @@ components:
       - record_type
       - revenue_target
       - seller_customer
+      - solution
       - subscription_item
       - unit_amount_cents
+    UsageRecordSolutionSerializerDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
+    UsageRecordSolutionSerializerList:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
     UserBasicSerializerDetail:
       type: object
       description: Basic user info for nested serialization.
@@ -28532,13 +31315,23 @@ components:
           readOnly: true
         custom_data:
           nullable: true
+        last_synced:
+          type: integer
+          nullable: true
+          readOnly: true
+        last_login:
+          type: integer
+          nullable: true
+          readOnly: true
       required:
       - email
       - first_name
       - fusionauth_id
       - id
       - is_superuser
+      - last_login
       - last_name
+      - last_synced
       - organisation_info
       - username
     UserSerialiserDetailRequest:
@@ -28586,13 +31379,23 @@ components:
           readOnly: true
         custom_data:
           nullable: true
+        last_synced:
+          type: integer
+          nullable: true
+          readOnly: true
+        last_login:
+          type: integer
+          nullable: true
+          readOnly: true
       required:
       - email
       - first_name
       - fusionauth_id
       - id
       - is_superuser
+      - last_login
       - last_name
+      - last_synced
       - organisation_info
       - username
     OpenAPIErrorResponse:
