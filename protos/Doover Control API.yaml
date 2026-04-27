@@ -1802,17 +1802,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ApplicationSerializerDetailRequest'
+              $ref: '#/components/schemas/ApplicationWidgetUploadRequestDetailRequest'
         required: true
       security:
       - bearer_or_cookie_auth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApplicationSerializerDetail'
-          description: ''
+          description: No response body
         '400':
           description: Error response
           content:
@@ -23267,6 +23263,14 @@ components:
       - config_profiles
       - display_name
       - id
+    ApplicationWidgetUploadRequestDetailRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
     AttachmentSerializerDetail:
       type: object
       properties:
