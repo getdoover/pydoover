@@ -1082,8 +1082,8 @@ class Application(ControlModel):
         "display_name": ControlField(type="string", nullable=False),
         "description": ControlField(type="string", nullable=False),
         "long_description": ControlField(type="string", nullable=False),
-        "type": ControlField(type="string", nullable=False),
-        "visibility": ControlField(type="string", nullable=False),
+        "type": ControlField(type="string", nullable=False, choices=('DEV', 'PRO', 'TAS', 'INT', 'REP')),
+        "visibility": ControlField(type="string", nullable=False, choices=('COR', 'PUB', 'PRI', 'INT')),
         "allow_many": ControlField(type="boolean", nullable=False),
         "config_schema": ControlField(type="json", nullable=False),
         "ui_schema": ControlField(type="json", nullable=False),
@@ -1401,7 +1401,7 @@ class ApplicationDeployment(ControlModel):
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "app_install": ControlField(type="string", nullable=False),
-        "status": ControlField(type="string", nullable=False),
+        "status": ControlField(type="string", nullable=False, choices=('QUE', 'RUN', 'SUC', 'FAI', 'CAN')),
         "created_at": ControlField(type="string", nullable=False),
         "log_output": ControlField(type="string", nullable=False),
         "deployment_config": ControlField(type="json", nullable=False),
@@ -1504,7 +1504,7 @@ class ApplicationInstallation(ControlModel):
         "config_profiles": ControlField(type="resource", nullable=False, is_array=True, ref="ApplicationConfigProfile"),
         "solution": ControlField(type="resource", nullable=True, ref="ApplicationInstallationSolution"),
         "template": ControlField(type="resource", nullable=True, ref="ApplicationTemplate"),
-        "synced": ControlField(type="string", nullable=False),
+        "synced": ControlField(type="string", nullable=False, choices=('OK', 'NO', 'OV')),
     }
     _versions = {
         "ApplicationInstallationSerializerDetail": {
@@ -1631,7 +1631,7 @@ class ApplicationOrganisationAccess(ControlModel):
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
-        "access": ControlField(type="string", nullable=False),
+        "access": ControlField(type="string", nullable=False, choices=('WHL', 'BLK')),
         "application_id": ControlField(type="id", nullable=False),
     }
     _versions = {
@@ -1875,7 +1875,7 @@ class BillingAccount(ControlModel):
         "organisation": ControlField(type="string", nullable=False),
         "stripe_customer_id": ControlField(type="id", nullable=True),
         "billing_email": ControlField(type="string", nullable=True),
-        "metering_mode": ControlField(type="string", nullable=False),
+        "metering_mode": ControlField(type="string", nullable=False, choices=('enabled', 'disabled')),
         "created_at": ControlField(type="string", nullable=False),
         "updated_at": ControlField(type="string", nullable=False),
     }
@@ -1965,8 +1965,8 @@ class BillingProduct(ControlModel):
         "stripe_product_id": ControlField(type="id", nullable=False),
         "offline_stripe_product_id": ControlField(type="id", nullable=True),
         "stripe_account": ControlField(type="string", nullable=True),
-        "product_type": ControlField(type="string", nullable=False),
-        "default_product_role": ControlField(type="string", nullable=True),
+        "product_type": ControlField(type="string", nullable=False, choices=('DEVICE', 'APP_INSTALL', 'AGENT_ITEM', 'BILLING_FEE')),
+        "default_product_role": ControlField(type="string", nullable=True, choices=('PUB_APP', 'PRI_APP', 'DEVICE', 'BILL_FEE', '', 'None')),
         "owner_organisation": ControlField(type="resource", nullable=True, ref="BillingProductOrg"),
         "active": ControlField(type="boolean", nullable=False),
         "created_at": ControlField(type="string", nullable=False),
@@ -2100,7 +2100,7 @@ class BillingSubscription(ControlModel):
         "id": ControlField(type="SnowflakeId", nullable=False),
         "billing_account": ControlField(type="string", nullable=False),
         "stripe_subscription_id": ControlField(type="id", nullable=False),
-        "status": ControlField(type="string", nullable=False),
+        "status": ControlField(type="string", nullable=False, choices=('active', 'past_due', 'canceled', 'incomplete', 'trialing', 'unpaid')),
         "current_period_start": ControlField(type="string", nullable=True),
         "current_period_end": ControlField(type="string", nullable=True),
         "items": ControlField(type="resource", nullable=False, is_array=True, ref="BillingSubscriptionItem"),
@@ -2202,7 +2202,7 @@ class ChatAction(ControlModel):
         )
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
-        "type": ControlField(type="string", nullable=False),
+        "type": ControlField(type="string", nullable=False, choices=('navigate', 'prefill', 'filter_list')),
         "description": ControlField(type="string", nullable=False),
         "payload": ControlField(type="resource", nullable=False, ref="ChatActionPayload"),
     }
@@ -2279,7 +2279,7 @@ class ChatMessage(ControlModel):
             content=content,
         )
     _field_defs = {
-        "role": ControlField(type="string", nullable=False),
+        "role": ControlField(type="string", nullable=False, choices=('user', 'assistant')),
         "content": ControlField(type="string", nullable=False),
     }
     _versions = {
@@ -2786,7 +2786,7 @@ class DeviceBillingConfig(ControlModel):
         "id": ControlField(type="SnowflakeId", nullable=False),
         "device": ControlField(type="string", nullable=False),
         "device_name": ControlField(type="string", nullable=False),
-        "billing_mode": ControlField(type="string", nullable=False),
+        "billing_mode": ControlField(type="string", nullable=False, choices=('OFF', 'ACTIVE_ONLY', 'ALWAYS')),
         "created_at": ControlField(type="string", nullable=False),
         "updated_at": ControlField(type="string", nullable=False),
     }
@@ -2947,7 +2947,7 @@ class DeviceType(ControlModel):
         "device_extra_config_schema": ControlField(type="json", nullable=False),
         "installer": ControlField(type="string", nullable=True),
         "installer_info": ControlField(type="string", nullable=False),
-        "install_type": ControlField(type="string", nullable=False),
+        "install_type": ControlField(type="string", nullable=False, choices=('NONE', 'COPY_COMMAND', 'INSTALL_PACKAGE', 'BOTH')),
         "copy_command": ControlField(type="string", nullable=False),
         "description": ControlField(type="string", nullable=False),
         "logo_url": ControlField(type="string", nullable=True),
@@ -3172,7 +3172,7 @@ class DeviceTypeOrganisationAccess(ControlModel):
     _field_defs = {
         "id": ControlField(type="SnowflakeId", nullable=False),
         "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
-        "access": ControlField(type="string", nullable=False),
+        "access": ControlField(type="string", nullable=False, choices=('WHL', 'BLK')),
         "device_type_id": ControlField(type="id", nullable=False),
     }
     _versions = {
@@ -3948,7 +3948,7 @@ class NestedDeviceType(ControlModel):
         "device_extra_config_schema": ControlField(type="json", nullable=False),
         "installer": ControlField(type="string", nullable=True),
         "installer_info": ControlField(type="string", nullable=False),
-        "install_type": ControlField(type="string", nullable=False),
+        "install_type": ControlField(type="string", nullable=False, choices=('NONE', 'COPY_COMMAND', 'INSTALL_PACKAGE', 'BOTH')),
         "copy_command": ControlField(type="string", nullable=False),
         "description": ControlField(type="string", nullable=False),
         "logo_url": ControlField(type="string", nullable=True),
@@ -5387,7 +5387,7 @@ class SellerCustomer(ControlModel):
         "group": ControlField(type="resource", nullable=False, ref="SellerCustomerGroup"),
         "billing_email": ControlField(type="string", nullable=True),
         "stripe_customer_id": ControlField(type="id", nullable=True),
-        "billing_block": ControlField(type="string", nullable=False),
+        "billing_block": ControlField(type="string", nullable=False, choices=('NON', 'PAY', 'IND')),
         "notes": ControlField(type="string", nullable=False),
         "id": ControlField(type="SnowflakeId", nullable=False),
         "seller_organisation": ControlField(type="resource", nullable=False, ref="SellerCustomerOrg"),
@@ -5797,7 +5797,7 @@ class SolutionInstallation(ControlModel):
         "id": ControlField(type="SnowflakeId", nullable=False),
         "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
         "deployed_at": ControlField(type="string", nullable=False),
-        "status": ControlField(type="string", nullable=False),
+        "status": ControlField(type="string", nullable=False, choices=('QUE', 'RUN', 'SUC', 'FAI', 'CAN')),
         "application_installs": ControlField(type="resource", nullable=False, is_array=True, ref="ApplicationInstallation"),
         "synced": ControlField(type="string", nullable=False),
     }
@@ -5873,7 +5873,7 @@ class SolutionOrganisationAccess(ControlModel):
     _field_defs = {
         "solution_id": ControlField(type="id", nullable=False),
         "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
-        "access": ControlField(type="string", nullable=False),
+        "access": ControlField(type="string", nullable=False, choices=('WHL', 'BLK')),
         "id": ControlField(type="SnowflakeId", nullable=False),
     }
     _versions = {
@@ -6126,7 +6126,7 @@ class Tunnel(ControlModel):
         "device": ControlField(type="resource", nullable=False, ref="Device"),
         "hostname": ControlField(type="string", nullable=False),
         "port": ControlField(type="integer", nullable=False),
-        "protocol": ControlField(type="string", nullable=False),
+        "protocol": ControlField(type="string", nullable=False, choices=('tcp', 'rtsp', 'http', 'https')),
         "username": ControlField(type="string", nullable=True),
         "password": ControlField(type="string", nullable=True),
         "timeout": ControlField(type="integer", nullable=False),
@@ -6259,7 +6259,7 @@ class UsageMeteringRun(ControlModel):
         "organisation": ControlField(type="resource", nullable=False, ref="MeteringRunOrg"),
         "started_at": ControlField(type="string", nullable=False),
         "completed_at": ControlField(type="string", nullable=True),
-        "status": ControlField(type="string", nullable=False),
+        "status": ControlField(type="string", nullable=False, choices=('running', 'success', 'partial_failure', 'failure')),
         "devices_metered": ControlField(type="integer", nullable=False),
         "app_installs_metered": ControlField(type="integer", nullable=False),
         "agent_items_metered": ControlField(type="integer", nullable=False),
@@ -6370,7 +6370,7 @@ class UsageRecord(ControlModel):
         "metering_run": ControlField(type="string", nullable=False),
         "organisation": ControlField(type="resource", nullable=False, ref="UsageRecordOrg"),
         "subscription_item": ControlField(type="string", nullable=True),
-        "record_type": ControlField(type="string", nullable=False),
+        "record_type": ControlField(type="string", nullable=False, choices=('DEVICE', 'APP_INSTALL', 'AGENT_ITEM', 'BILLING_FEE')),
         "device": ControlField(type="resource", nullable=False, ref="UsageRecordDevice"),
         "app_install": ControlField(type="resource", nullable=True, ref="UsageRecordAppInstall"),
         "application": ControlField(type="resource", nullable=True, ref="UsageRecordApplication"),
@@ -6379,7 +6379,7 @@ class UsageRecord(ControlModel):
         "seller_customer": ControlField(type="resource", nullable=True, ref="UsageRecordSellerCustomer"),
         "billing_product": ControlField(type="resource", nullable=False, ref="UsageRecordBillingProduct"),
         "quantity": ControlField(type="integer", nullable=False),
-        "revenue_target": ControlField(type="string", nullable=False),
+        "revenue_target": ControlField(type="string", nullable=False, choices=('PLATFORM', 'SELLER', 'DEVELOPER')),
         "developer_amount_cents": ControlField(type="integer", nullable=False),
         "platform_fee_cents": ControlField(type="integer", nullable=False),
         "device_online": ControlField(type="boolean", nullable=True),
