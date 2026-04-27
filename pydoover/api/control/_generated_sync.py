@@ -840,7 +840,7 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def widget(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Application:
+    def widget(self, id: str, body: Any, organisation_id: int | None = None) -> None:
         path = f"/applications/{id}/widget/"
         params = None
         return self._root._execute(
@@ -848,12 +848,12 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationSerializerDetailRequest',
+            body_schema='ApplicationWidgetUploadRequestDetailRequest',
             body_mode="multipart",
-            binary_fields=[],
+            binary_fields=['file'],
             organisation_id=organisation_id,
-            response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_kind="none",
+            response_schema=None,
             item_schema=None,
         )
 

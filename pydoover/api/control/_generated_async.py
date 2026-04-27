@@ -840,7 +840,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
             item_schema=None,
         )
 
-    async def widget(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Application:
+    async def widget(self, id: str, body: Any, organisation_id: int | None = None) -> None:
         path = f"/applications/{id}/widget/"
         params = None
         return await self._root._execute(
@@ -848,12 +848,12 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationSerializerDetailRequest',
+            body_schema='ApplicationWidgetUploadRequestDetailRequest',
             body_mode="multipart",
-            binary_fields=[],
+            binary_fields=['file'],
             organisation_id=organisation_id,
-            response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_kind="none",
+            response_schema=None,
             item_schema=None,
         )
 
