@@ -26064,6 +26064,11 @@ components:
           minimum: -2147483648
         protocol:
           type: string
+          enum:
+          - tcp
+          - rtsp
+          - http
+          - https
           minLength: 1
           maxLength: 200
         username:
@@ -27812,6 +27817,11 @@ components:
           minimum: -2147483648
         protocol:
           type: string
+          enum:
+          - tcp
+          - rtsp
+          - http
+          - https
           maxLength: 200
         username:
           type: string
@@ -27863,6 +27873,11 @@ components:
           minimum: -2147483648
         protocol:
           type: string
+          enum:
+          - tcp
+          - rtsp
+          - http
+          - https
           minLength: 1
           maxLength: 200
         username:
@@ -27920,6 +27935,11 @@ components:
           minimum: -2147483648
         protocol:
           type: string
+          enum:
+          - tcp
+          - rtsp
+          - http
+          - https
           maxLength: 200
         username:
           type: string
