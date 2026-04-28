@@ -161,3 +161,23 @@ class TestConfigSchemaA:
 
         assert schema.inner.x.value == "hello"
         assert schema.inner.y.value == 42
+
+    def test_subclass_can_redeclare_to_override_default(self):
+        class Base(config.Schema):
+            n = config.Integer("N", default=1)
+            arr = config.Array("Arr", element=config.String("Item"), default=[])
+
+        class Sub(Base):
+            n = config.Integer("N", default=99)
+            arr = config.Array("Arr", element=config.String("Item"), default=["a", "b"])
+
+        # Base defaults are unaffected
+        assert Base._element_map["n"].default == 1
+        assert Base._element_map["arr"].default == []
+
+        # Subclass picks up overridden defaults
+        assert Sub._element_map["n"].default == 99
+        assert Sub._element_map["arr"].default == ["a", "b"]
+
+        # Field order in subclass matches the base (override preserves position)
+        assert list(Sub._element_map.keys()) == list(Base._element_map.keys())
