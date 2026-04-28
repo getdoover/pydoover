@@ -115,7 +115,7 @@ class Schema:
                 if name not in cls._element_map:
                     cls._element_map[name] = elem
 
-        # collect own elements
+        # collect own elements (subclass declarations override inherited fields with the same name)
         for k, v in cls.__dict__.items():
             if isinstance(v, ConfigElement):
                 if k in RESERVED_NAMES:
@@ -123,7 +123,12 @@ class Schema:
                         f"Config element name '{k}' is reserved. "
                         f"Choose a different attribute name."
                     )
-                cls.add_element(v)
+                if v._name in cls._element_map:
+                    if v._position is None:
+                        v._position = cls._element_map[v._name]._position
+                    cls._element_map[v._name] = v
+                else:
+                    cls.add_element(v)
 
     @classmethod
     def clear_elements(cls):
