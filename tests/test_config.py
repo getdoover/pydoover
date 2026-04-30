@@ -162,6 +162,54 @@ class TestConfigSchemaA:
         assert schema.inner.x.value == "hello"
         assert schema.inner.y.value == 42
 
+    def test_nested_object_applies_defaults_for_missing_keys(self):
+        # Schema applies defaults for keys absent from incoming data;
+        # nested Object must do the same so .value doesn't raise on the
+        # half of the schema the user didn't supply.
+        class Inner(config.Object):
+            present = config.Integer("Present")
+            missing_with_default = config.Integer("Missing", default=42)
+
+        class Outer(config.Schema):
+            inner = Inner("Inner")
+
+        schema = Outer()
+        schema._inject_deployment_config({"inner": {"present": 1}})
+
+        assert schema.inner.present.value == 1
+        assert schema.inner.missing_with_default.value == 42
+
+    def test_nested_object_raises_for_missing_required_key(self):
+        # Match Schema's eager-raise behaviour for required-but-missing.
+        class Inner(config.Object):
+            required_no_default = config.Integer("Req")
+
+        class Outer(config.Schema):
+            inner = Inner("Inner")
+
+        with pytest.raises(ValueError, match="req"):
+            Outer()._inject_deployment_config({"inner": {}})
+
+    def test_object_load_data_handles_none(self):
+        # ``load_data(None)`` is what nested loaders pass when the parent
+        # key is absent / null. It must not crash.
+        class Inner(config.Object):
+            n = config.Integer("N", default=7)
+
+        inner = Inner("inner")
+        inner.load_data(None)
+        assert inner.n.value == 7
+
+    def test_additional_elements_freeform_keys_are_readable(self):
+        # ``additional_elements=True`` synthesises a ConfigElement for each
+        # free-form key. Without load_data on it, .value raises for any
+        # non-None value — which makes the feature unusable.
+        obj = config.Object("o", additional_elements=True)
+        obj.load_data({"freeform_int": 42, "freeform_str": "hi"})
+
+        assert obj._elements["freeform_int"].value == 42
+        assert obj._elements["freeform_str"].value == "hi"
+
     def test_subclass_can_redeclare_to_override_default(self):
         class Base(config.Schema):
             n = config.Integer("N", default=1)

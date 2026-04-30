@@ -221,3 +221,82 @@ class EgressChannelConfig(String):
             hidden=hidden,
             **kwargs,
         )
+
+
+class InvocationPublishTarget(Object):
+    """One destination for the per-invocation summary message."""
+
+    agent_id = String(
+        "Agent ID",
+        default=None,
+        description="Agent to post the invocation summary on behalf of. Defaults to this agent.",
+    )
+    channel = String(
+        "Channel",
+        description="Channel name on the target agent.",
+    )
+
+    def __init__(
+        self,
+        display_name: str = "Invocation Publish Target",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name, name="inv_target", additional_elements=False, **kwargs
+        )
+
+
+class ProcessorConfig(Object):
+    """Framework-level runtime config for processor invocations.
+
+    Delivered via ``deployment_config["dv_proc_config"]``. Users can also
+    embed this in their app schema to surface the fields in the Doover UI
+    and set app-level defaults; per-install overrides then merge in via
+    the normal deployment-config flow.
+    """
+
+    log_level = Enum(
+        "Log Level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        description="Default log level for the root logger after setup.",
+        name="log_level",
+    )
+    log_overrides = Object(
+        "Log Level Overrides",
+        additional_elements=True,
+        default={},
+        description="Per-logger level overrides, e.g. {'pydoover.api': 'WARNING'}.",
+        name="log_overrides",
+    )
+    inv_targets = Array(
+        "Invocation Publish Targets",
+        element=InvocationPublishTarget(),
+        default=[{"agent_id": None, "channel": "dv-proc-inv-$app_id"}],
+        description="Agents/channels to fan the invocation summary out to. Empty = disabled.",
+        name="inv_targets",
+    )
+    live_logs = Boolean(
+        "Live Logs",
+        default=False,
+        hidden=True,
+        description="Stream log records to a Doover channel during the invocation so they "
+        "can be tailed live from the CLI or web UI. Intended for app development; "
+        "leave disabled in production (adds per-invocation latency and channel writes).",
+        name="live_logs",
+    )
+
+    def __init__(
+        self,
+        display_name: str = "Processor Config",
+        *,
+        description: str = "Framework-level processor runtime config.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            name="dv_proc_config",
+            additional_elements=False,
+            **kwargs,
+        )
