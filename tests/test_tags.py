@@ -3,8 +3,9 @@ import types
 
 import pytest
 
+from pydoover import config
 from pydoover.docker.application import Application as DockerApplication
-from pydoover.tags import BoundTag, NotSet, Tag, Tags
+from pydoover.tags import BoundTag, NotSet, RemoteTag, Tag, Tags
 from pydoover.tags.manager import (
     FASTMODE_CHANNEL_NAME,
     TAG_CHANNEL_NAME,
@@ -18,6 +19,7 @@ class FakeTagsManager:
         self.values = dict(initial or {})
         self.get_calls = []
         self.set_calls = []
+        self.subscriptions: list = []
 
     def get_tag(self, key, default=None, app_key=None, raise_key_error=False):
         del raise_key_error
@@ -28,6 +30,15 @@ class FakeTagsManager:
         del kwargs
         self.set_calls.append((key, value, app_key))
         self.values[(app_key, key)] = value
+
+    def subscribe_to_tag(self, key, callback, app_key=None):
+        self.subscriptions.append((key, callback, app_key))
+
+
+class FakeTagsManagerNoSub(FakeTagsManager):
+    """Like FakeTagsManager but without subscription support — mirrors processor managers."""
+
+    subscribe_to_tag = None  # type: ignore[assignment]
 
 
 class FakeTagClient:
@@ -265,6 +276,365 @@ class TestTags:
             "speed": {"type": "number", "default": 0},
             "enabled": {"type": "boolean", "default": False},
         }
+
+
+class RemoteTagSchema(config.Schema):
+    upstream_pump = config.TagRef("Upstream Pump")
+
+
+class RemoteTagSchemaWithSecond(config.Schema):
+    upstream_pump = config.TagRef("Upstream Pump")
+    upstream_valve = config.TagRef("Upstream Valve")
+
+
+class RemoteTagTags(Tags):
+    upstream_status = RemoteTag(
+        "boolean",
+        reference_name="upstream_pump_status",
+        republish_locally=True,
+        default=False,
+    )
+
+
+def _make_pump_config(
+    *,
+    reference_name: str = "upstream_pump_status",
+    app_name: str = "pump_controller",
+    tag_name: str = "running",
+    agent_id: str | None = None,
+) -> dict:
+    # Always include every field so prior tests can't leak state through the
+    # shared module-level TagRef instance.
+    return {
+        "upstream_pump": {
+            "reference_name": reference_name,
+            "agent_id": agent_id,
+            "app_name": app_name,
+            "tag_name": tag_name,
+        }
+    }
+
+
+class TestRemoteTag:
+    @pytest.mark.asyncio
+    async def test_resolves_to_upstream_app_and_tag(self):
+        schema = RemoteTagSchema()
+        schema._inject_deployment_config(_make_pump_config())
+
+        manager = FakeTagsManager()
+        tags = RemoteTagTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()
+
+        # The seed-on-resolve path looks up the upstream value once.
+        assert ("running", NotSet, "pump_controller") in manager.get_calls
+        # No upstream value yet → no mirror set.
+        assert manager.set_calls == []
+
+        manager.values[("pump_controller", "running")] = True
+        assert tags.upstream_status.get() is True
+        assert ("running", False, "pump_controller") in manager.get_calls
+
+    @pytest.mark.asyncio
+    async def test_set_writes_to_upstream_namespace(self):
+        schema = RemoteTagSchema()
+        schema._inject_deployment_config(_make_pump_config())
+
+        manager = FakeTagsManager()
+        tags = RemoteTagTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()
+
+        await tags.upstream_status.set(True)
+
+        assert ("running", True, "pump_controller") in manager.set_calls
+        assert manager.values[("pump_controller", "running")] is True
+
+    @pytest.mark.asyncio
+    async def test_missing_tagref_raises(self):
+        schema = config.Schema()  # empty schema, no TagRef
+        manager = FakeTagsManager()
+        tags = RemoteTagTags("self_app", manager, schema)
+
+        with pytest.raises(ValueError, match="reference_name='upstream_pump_status'"):
+            await tags._resolve_remote_tags()
+
+    @pytest.mark.asyncio
+    async def test_duplicate_reference_name_in_config_raises(self):
+        schema = RemoteTagSchemaWithSecond()
+        schema._inject_deployment_config(
+            {
+                "upstream_pump": {
+                    "reference_name": "upstream_pump_status",
+                    "app_name": "a",
+                    "tag_name": "x",
+                },
+                "upstream_valve": {
+                    "reference_name": "upstream_pump_status",  # collision
+                    "app_name": "b",
+                    "tag_name": "y",
+                },
+            }
+        )
+
+        manager = FakeTagsManager()
+        tags = RemoteTagTags("self_app", manager, schema)
+
+        with pytest.raises(ValueError, match="Duplicate TagRef reference_name"):
+            await tags._resolve_remote_tags()
+
+    @pytest.mark.asyncio
+    async def test_cross_agent_raises_at_runtime_not_at_setup(self):
+        schema = RemoteTagSchema()
+        schema._inject_deployment_config(_make_pump_config(agent_id="42"))
+
+        manager = FakeTagsManager()
+        tags = RemoteTagTags("self_app", manager, schema)
+
+        # Setup itself succeeds — the schema field is accepted.
+        await tags._resolve_remote_tags()
+
+        # The mirror subscription was skipped (cross-agent path is not wired).
+        assert manager.subscriptions == []
+
+        # But touching the value at runtime trips the not-implemented guard.
+        with pytest.raises(NotImplementedError, match="Cross-agent RemoteTag"):
+            tags.upstream_status.get()
+
+        with pytest.raises(NotImplementedError, match="Cross-agent RemoteTag"):
+            await tags.upstream_status.set(True)
+
+    @pytest.mark.asyncio
+    async def test_unresolved_remote_tag_raises_on_access(self):
+        manager = FakeTagsManager()
+        tags = RemoteTagTags("self_app", manager, FakeSchema())
+
+        # _resolve_remote_tags() not called yet → access errors.
+        with pytest.raises(RuntimeError, match="not been resolved"):
+            tags.upstream_status.get()
+
+    @pytest.mark.asyncio
+    async def test_republish_locally_subscribes_and_seeds_mirror(self):
+        schema = RemoteTagSchema()
+        schema._inject_deployment_config(_make_pump_config())
+
+        manager = FakeTagsManager(
+            {("pump_controller", "running"): True}  # upstream already has a value
+        )
+        tags = RemoteTagTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()
+
+        # Subscription registered against the upstream (app_key, tag_name).
+        assert len(manager.subscriptions) == 1
+        sub_key, sub_callback, sub_app_key = manager.subscriptions[0]
+        assert sub_key == "running"
+        assert sub_app_key == "pump_controller"
+
+        # Initial mirror seed: local app namespace, key = reference_name.
+        assert manager.values[("self_app", "upstream_pump_status")] is True
+
+        # Subsequent upstream change fires the mirror callback.
+        await sub_callback("running", False)
+        assert manager.values[("self_app", "upstream_pump_status")] is False
+
+    @pytest.mark.asyncio
+    async def test_republish_locally_disabled_skips_subscription(self):
+        class NoMirrorTags(Tags):
+            upstream_status = RemoteTag(
+                "boolean",
+                reference_name="upstream_pump_status",
+                republish_locally=False,
+                default=False,
+            )
+
+        schema = RemoteTagSchema()
+        schema._inject_deployment_config(_make_pump_config())
+        manager = FakeTagsManager({("pump_controller", "running"): True})
+        tags = NoMirrorTags("self_app", manager, schema)
+
+        await tags._resolve_remote_tags()
+
+        assert manager.subscriptions == []
+        # No initial seed either when republish is off.
+        assert ("self_app", "upstream_pump_status") not in manager.values
+
+    @pytest.mark.asyncio
+    async def test_processor_style_manager_skips_subscription_but_still_routes(self):
+        schema = RemoteTagSchema()
+        schema._inject_deployment_config(_make_pump_config())
+
+        manager = FakeTagsManagerNoSub({("pump_controller", "running"): True})
+        tags = RemoteTagTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()
+
+        # subscribe_to_tag is None → no subscription / no seeding attempted.
+        assert tags.upstream_status.get() is True
+
+        await tags.upstream_status.set(False)
+        assert manager.values[("pump_controller", "running")] is False
+
+
+class TestOptionalRemoteTag:
+    """Optional TagRef + RemoteTag pair: the operator can leave the config
+    blank and the matching RemoteTag falls back to its declared default
+    instead of raising at resolution or read time.
+    """
+
+    @pytest.mark.asyncio
+    async def test_optional_tagref_omitted_resolves_cleanly(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean",
+                reference_name="optional_ref_target",
+                optional=True,
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config({})  # optional_ref entirely omitted
+
+        manager = FakeTagsManager()
+        tags = OptionalTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()  # must not raise
+
+        # Read returns the auto-defaulted None; no manager calls were made
+        # against an upstream because nothing was resolved.
+        assert tags.upstream.get() is None
+        assert manager.subscriptions == []
+
+    @pytest.mark.asyncio
+    async def test_optional_tagref_null_resolves_cleanly(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean", reference_name="optional_ref_target", optional=True
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config({"optional_ref": None})
+
+        tags = OptionalTags("self_app", FakeTagsManager(), schema)
+        await tags._resolve_remote_tags()
+
+        assert tags.upstream.get() is None
+
+    @pytest.mark.asyncio
+    async def test_optional_tagref_empty_object_resolves_cleanly(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean", reference_name="optional_ref_target", optional=True
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config({"optional_ref": {}})
+
+        tags = OptionalTags("self_app", FakeTagsManager(), schema)
+        await tags._resolve_remote_tags()
+
+        assert tags.upstream.get() is None
+
+    @pytest.mark.asyncio
+    async def test_optional_set_on_unresolved_is_noop(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean", reference_name="optional_ref_target", optional=True
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config({})
+
+        manager = FakeTagsManager()
+        tags = OptionalTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()
+
+        # No upstream resolved → set is silently dropped.
+        await tags.upstream.set(True)
+        assert manager.set_calls == []
+
+    @pytest.mark.asyncio
+    async def test_optional_remote_tag_still_works_when_filled(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean",
+                reference_name="optional_ref_target",
+                optional=True,
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config(
+            {
+                "optional_ref": {
+                    "reference_name": "optional_ref_target",
+                    "app_name": "pump_controller",
+                    "tag_name": "running",
+                }
+            }
+        )
+
+        manager = FakeTagsManager({("pump_controller", "running"): True})
+        tags = OptionalTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()
+
+        assert tags.upstream.get() is True
+        await tags.upstream.set(False)
+        assert manager.values[("pump_controller", "running")] is False
+
+    @pytest.mark.asyncio
+    async def test_required_remote_tag_with_unset_optional_tagref_still_raises(self):
+        # Mixing: an *optional* TagRef left blank, plus a *required*
+        # RemoteTag that wanted to bind to it. The required RemoteTag must
+        # still raise — its requirement contract is independent of the
+        # TagRef's optionality.
+        class MixedSchema(config.Schema):
+            optional_ref = config.TagRef("Optional", optional=True, name="optional_ref")
+
+        class MixedTags(Tags):
+            upstream = RemoteTag(
+                "boolean", reference_name="optional_ref_target"
+            )  # NOT optional
+
+        schema = MixedSchema()
+        schema._inject_deployment_config({})
+
+        tags = MixedTags("self_app", FakeTagsManager(), schema)
+
+        with pytest.raises(ValueError, match="reference_name='optional_ref_target'"):
+            await tags._resolve_remote_tags()
+
+    def test_optional_remote_tag_default_is_none_when_unspecified(self):
+        tag = RemoteTag("boolean", reference_name="x", optional=True)
+        assert tag.default is None
+        assert tag.optional is True
+
+    def test_optional_remote_tag_explicit_default_wins(self):
+        tag = RemoteTag("boolean", reference_name="x", optional=True, default=False)
+        assert tag.default is False
+
+    def test_non_optional_remote_tag_default_unchanged(self):
+        tag = RemoteTag("boolean", reference_name="x")
+        assert tag.default is NotSet
+        assert tag.optional is False
 
 
 class TestKeyPath:

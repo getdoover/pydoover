@@ -162,6 +162,104 @@ class TestConfigSchemaA:
         assert schema.inner.x.value == "hello"
         assert schema.inner.y.value == 42
 
+    def test_tagref_schema_emits_format_and_required_fields(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref")
+
+        schema = S().to_schema()
+        ref_schema = schema["properties"]["ref"]
+
+        assert ref_schema["type"] == "object"
+        assert ref_schema["format"] == "doover-tag-reference"
+
+        # Sub-fields are present and addressable by their JSON keys.
+        sub_props = ref_schema["properties"]
+        assert set(sub_props) == {"reference_name", "agent_id", "app_name", "tag_name"}
+
+        # reference_name / app_name / tag_name are required; agent_id has default=None.
+        assert set(ref_schema["required"]) == {"reference_name", "app_name", "tag_name"}
+
+    def test_tagref_loads_runtime_values(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref")
+
+        schema = S()
+        schema._inject_deployment_config(
+            {
+                "ref": {
+                    "reference_name": "upstream_pump_status",
+                    "app_name": "pump_controller",
+                    "tag_name": "running",
+                }
+            }
+        )
+
+        assert schema.ref.reference_name.value == "upstream_pump_status"
+        assert schema.ref.agent_id.value is None
+        assert schema.ref.app_name.value == "pump_controller"
+        assert schema.ref.tag_name.value == "running"
+
+    def test_tagref_accepts_agent_id_when_supplied(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref")
+
+        schema = S()
+        schema._inject_deployment_config(
+            {
+                "ref": {
+                    "reference_name": "x",
+                    "agent_id": "42",
+                    "app_name": "a",
+                    "tag_name": "t",
+                }
+            }
+        )
+
+        assert schema.ref.agent_id.value == "42"
+
+    def test_optional_tagref_is_not_required(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref", optional=True)
+
+        schema = S().to_schema()
+        # Optional TagRef must not appear in the schema's `required` list.
+        assert "ref" not in schema["required"]
+
+    def test_optional_tagref_can_be_omitted_from_deployment_config(self):
+        from pydoover.config import NotSet
+
+        class S(config.Schema):
+            ref = config.TagRef("Ref", optional=True)
+
+        schema = S()
+        schema._inject_deployment_config({})  # must not raise
+
+        # Sub-fields stay unset; downstream code uses the same NotSet check
+        # in `_resolve_remote_tags` to decide whether to skip the binding.
+        assert schema.ref.reference_name._value is NotSet
+
+    def test_optional_tagref_accepts_null_in_deployment_config(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref", optional=True)
+
+        schema = S()
+        schema._inject_deployment_config({"ref": None})  # must not raise
+
+    def test_optional_tagref_accepts_empty_object_in_deployment_config(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref", optional=True)
+
+        schema = S()
+        schema._inject_deployment_config({"ref": {}})  # must not raise
+
+    def test_required_tagref_still_required_when_omitted(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref")  # default: not optional
+
+        schema = S()
+        with pytest.raises(ValueError, match="ref"):
+            schema._inject_deployment_config({})
+
     def test_nested_object_applies_defaults_for_missing_keys(self):
         # Schema applies defaults for keys absent from incoming data;
         # nested Object must do the same so .value doesn't raise on the

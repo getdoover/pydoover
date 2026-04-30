@@ -1107,6 +1107,7 @@ class Application:
 
         if self.tags is not None:
             await self.tags.setup()
+            await self.tags._resolve_remote_tags()
 
         if self.ui is not None:
             await self.ui.setup()
