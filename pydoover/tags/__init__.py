@@ -120,6 +120,16 @@ class Tag:
         return tags.app_key, declaration.name
 
 
+class _UnresolvedRemoteTag(Exception):
+    """Internal: an optional :class:`RemoteTag` has no resolved upstream target.
+
+    Raised by :meth:`RemoteTag._resolve_target` when the matching
+    :class:`pydoover.config.TagRef` was left blank by the operator. Caught
+    by :meth:`Tags._get_tag_value` (returns the declared default) and
+    :meth:`Tags._set_tag_value` (silently no-ops).
+    """
+
+
 class RemoteTag(Tag):
     """A tag declaration that resolves to a tag published by another application.
 
@@ -163,15 +173,24 @@ class RemoteTag(Tag):
         republish_locally: bool = True,
         default: Any = NotSet,
         name: str | None = None,
+        optional: bool = False,
     ):
+        # Optional RemoteTags need a sensible read-fallback when the matching
+        # TagRef is left blank. Default to None so callers don't have to
+        # restate it on every declaration.
+        if optional and default is NotSet:
+            default = None
+
         super().__init__(tag_type, default=default, name=name)
         self.reference_name = reference_name
         self.republish_locally = republish_locally
+        self.optional = optional
 
     def __repr__(self) -> str:
         return (
             f"RemoteTag(name={self.name!r}, reference_name={self.reference_name!r}, "
-            f"tag_type={self.tag_type!r}, republish_locally={self.republish_locally})"
+            f"tag_type={self.tag_type!r}, republish_locally={self.republish_locally}, "
+            f"optional={self.optional})"
         )
 
     def _resolve_target(
@@ -182,6 +201,10 @@ class RemoteTag(Tag):
         try:
             target = tags._remote_tag_targets[declaration.attr_name]
         except KeyError as exc:
+            if self.optional:
+                # Operator left the matching TagRef blank — caller falls
+                # back to the declared default (read) or no-ops (write).
+                raise _UnresolvedRemoteTag from exc
             raise RuntimeError(
                 f"RemoteTag '{declaration.attr_name}' has not been resolved "
                 f"against the config. The application framework should call "
@@ -405,11 +428,20 @@ class Tags:
         Only top-level ``TagRef`` elements on the schema are scanned for v1.
         """
         from ..config import TagRef  # local import to avoid module-load cycles
+        from ..config import (
+            NotSet as ConfigNotSet,
+        )  # distinct sentinel from tags.NotSet
 
         refs_by_name: dict[str, TagRef] = {}
         if self.config is not None:
             for elem in getattr(self.config, "_element_map", {}).values():
                 if not isinstance(elem, TagRef):
+                    continue
+                # An optional TagRef left blank has reference_name unset —
+                # skip it so optional RemoteTags fall through to their
+                # declared default at read time. (Note: `ConfigNotSet` is
+                # the config-module sentinel, distinct from `tags.NotSet`.)
+                if elem.reference_name._value is ConfigNotSet:
                     continue
                 ref_name = elem.reference_name.value
                 if ref_name in refs_by_name:
@@ -430,6 +462,10 @@ class Tags:
             try:
                 tagref = refs_by_name[template.reference_name]
             except KeyError as exc:
+                if template.optional:
+                    # Optional RemoteTag with no filled-in TagRef — silently
+                    # skip; reads return the declared default.
+                    continue
                 raise ValueError(
                     f"RemoteTag {declaration.attr_name!r} references "
                     f"reference_name={template.reference_name!r}, but no "
@@ -536,7 +572,11 @@ class Tags:
         if self._manager is None:
             return declaration.template.default
 
-        app_key, key_name = declaration.template._resolve_target(self, declaration)
+        try:
+            app_key, key_name = declaration.template._resolve_target(self, declaration)
+        except _UnresolvedRemoteTag:
+            return declaration.template.default
+
         value = self._manager.get_tag(
             key_name,
             default=declaration.template.default,
@@ -551,7 +591,13 @@ class Tags:
         if self._manager is None:
             raise RuntimeError("Tags manager has not been registered.")
 
-        app_key, key_name = declaration.template._resolve_target(self, declaration)
+        try:
+            app_key, key_name = declaration.template._resolve_target(self, declaration)
+        except _UnresolvedRemoteTag:
+            # Optional RemoteTag with no upstream — silently no-op so apps
+            # don't need to branch on resolution state at every write site.
+            return
+
         await self._manager.set_tag(key_name, value, app_key=app_key)
 
     def get(self, name: str) -> BoundTag | None:

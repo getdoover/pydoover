@@ -472,6 +472,171 @@ class TestRemoteTag:
         assert manager.values[("pump_controller", "running")] is False
 
 
+class TestOptionalRemoteTag:
+    """Optional TagRef + RemoteTag pair: the operator can leave the config
+    blank and the matching RemoteTag falls back to its declared default
+    instead of raising at resolution or read time.
+    """
+
+    @pytest.mark.asyncio
+    async def test_optional_tagref_omitted_resolves_cleanly(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean",
+                reference_name="optional_ref_target",
+                optional=True,
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config({})  # optional_ref entirely omitted
+
+        manager = FakeTagsManager()
+        tags = OptionalTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()  # must not raise
+
+        # Read returns the auto-defaulted None; no manager calls were made
+        # against an upstream because nothing was resolved.
+        assert tags.upstream.get() is None
+        assert manager.subscriptions == []
+
+    @pytest.mark.asyncio
+    async def test_optional_tagref_null_resolves_cleanly(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean", reference_name="optional_ref_target", optional=True
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config({"optional_ref": None})
+
+        tags = OptionalTags("self_app", FakeTagsManager(), schema)
+        await tags._resolve_remote_tags()
+
+        assert tags.upstream.get() is None
+
+    @pytest.mark.asyncio
+    async def test_optional_tagref_empty_object_resolves_cleanly(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean", reference_name="optional_ref_target", optional=True
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config({"optional_ref": {}})
+
+        tags = OptionalTags("self_app", FakeTagsManager(), schema)
+        await tags._resolve_remote_tags()
+
+        assert tags.upstream.get() is None
+
+    @pytest.mark.asyncio
+    async def test_optional_set_on_unresolved_is_noop(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean", reference_name="optional_ref_target", optional=True
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config({})
+
+        manager = FakeTagsManager()
+        tags = OptionalTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()
+
+        # No upstream resolved → set is silently dropped.
+        await tags.upstream.set(True)
+        assert manager.set_calls == []
+
+    @pytest.mark.asyncio
+    async def test_optional_remote_tag_still_works_when_filled(self):
+        class OptionalSchema(config.Schema):
+            optional_ref = config.TagRef(
+                "Optional Pump", optional=True, name="optional_ref"
+            )
+
+        class OptionalTags(Tags):
+            upstream = RemoteTag(
+                "boolean",
+                reference_name="optional_ref_target",
+                optional=True,
+            )
+
+        schema = OptionalSchema()
+        schema._inject_deployment_config(
+            {
+                "optional_ref": {
+                    "reference_name": "optional_ref_target",
+                    "app_name": "pump_controller",
+                    "tag_name": "running",
+                }
+            }
+        )
+
+        manager = FakeTagsManager({("pump_controller", "running"): True})
+        tags = OptionalTags("self_app", manager, schema)
+        await tags._resolve_remote_tags()
+
+        assert tags.upstream.get() is True
+        await tags.upstream.set(False)
+        assert manager.values[("pump_controller", "running")] is False
+
+    @pytest.mark.asyncio
+    async def test_required_remote_tag_with_unset_optional_tagref_still_raises(self):
+        # Mixing: an *optional* TagRef left blank, plus a *required*
+        # RemoteTag that wanted to bind to it. The required RemoteTag must
+        # still raise — its requirement contract is independent of the
+        # TagRef's optionality.
+        class MixedSchema(config.Schema):
+            optional_ref = config.TagRef("Optional", optional=True, name="optional_ref")
+
+        class MixedTags(Tags):
+            upstream = RemoteTag(
+                "boolean", reference_name="optional_ref_target"
+            )  # NOT optional
+
+        schema = MixedSchema()
+        schema._inject_deployment_config({})
+
+        tags = MixedTags("self_app", FakeTagsManager(), schema)
+
+        with pytest.raises(ValueError, match="reference_name='optional_ref_target'"):
+            await tags._resolve_remote_tags()
+
+    def test_optional_remote_tag_default_is_none_when_unspecified(self):
+        tag = RemoteTag("boolean", reference_name="x", optional=True)
+        assert tag.default is None
+        assert tag.optional is True
+
+    def test_optional_remote_tag_explicit_default_wins(self):
+        tag = RemoteTag("boolean", reference_name="x", optional=True, default=False)
+        assert tag.default is False
+
+    def test_non_optional_remote_tag_default_unchanged(self):
+        tag = RemoteTag("boolean", reference_name="x")
+        assert tag.default is NotSet
+        assert tag.optional is False
+
+
 class TestKeyPath:
     def test_single_key_path(self):
         path = KeyPath("voltage")

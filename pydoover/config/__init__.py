@@ -852,6 +852,11 @@ class Object(ConfigElement):
         return res
 
     def load_data(self, data):
+        if data is None:
+            # An optional Object that the operator chose to leave blank in
+            # deployment config — leave every sub-field at its declared
+            # default / NotSet rather than crashing on `None.items()`.
+            return
         for name, value in data.items():
             try:
                 self._elements[name].load_data(value)
@@ -1099,8 +1104,16 @@ class TagRef(Object):
         display_name: str = "Tag Reference",
         *,
         description: str | None = "Reference to a tag in another application.",
+        optional: bool = False,
         **kwargs,
     ):
+        # An optional TagRef may be omitted from deployment config (or sent
+        # as null / empty object). Setting `default=None` flips `required`
+        # off and routes the missing-element path through `Object.load_data`
+        # with `data=None`, which now early-returns.
+        if optional and "default" not in kwargs:
+            kwargs["default"] = None
+
         super().__init__(
             display_name,
             description=description,

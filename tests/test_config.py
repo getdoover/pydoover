@@ -217,6 +217,49 @@ class TestConfigSchemaA:
 
         assert schema.ref.agent_id.value == "42"
 
+    def test_optional_tagref_is_not_required(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref", optional=True)
+
+        schema = S().to_schema()
+        # Optional TagRef must not appear in the schema's `required` list.
+        assert "ref" not in schema["required"]
+
+    def test_optional_tagref_can_be_omitted_from_deployment_config(self):
+        from pydoover.config import NotSet
+
+        class S(config.Schema):
+            ref = config.TagRef("Ref", optional=True)
+
+        schema = S()
+        schema._inject_deployment_config({})  # must not raise
+
+        # Sub-fields stay unset; downstream code uses the same NotSet check
+        # in `_resolve_remote_tags` to decide whether to skip the binding.
+        assert schema.ref.reference_name._value is NotSet
+
+    def test_optional_tagref_accepts_null_in_deployment_config(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref", optional=True)
+
+        schema = S()
+        schema._inject_deployment_config({"ref": None})  # must not raise
+
+    def test_optional_tagref_accepts_empty_object_in_deployment_config(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref", optional=True)
+
+        schema = S()
+        schema._inject_deployment_config({"ref": {}})  # must not raise
+
+    def test_required_tagref_still_required_when_omitted(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref")  # default: not optional
+
+        schema = S()
+        with pytest.raises(ValueError, match="ref"):
+            schema._inject_deployment_config({})
+
     def test_subclass_can_redeclare_to_override_default(self):
         class Base(config.Schema):
             n = config.Integer("N", default=1)
