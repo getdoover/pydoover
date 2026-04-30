@@ -475,7 +475,7 @@ class Application:
 
         for target in targets:
             agent_id = target.agent_id.value
-            channel = target.channel.value
+            channel = target.channel.value.replace("$app_id", self.app_id)
             try:
                 await self.api.create_message(channel, body, agent_id=agent_id)
             except Exception as e:

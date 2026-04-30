@@ -228,7 +228,8 @@ class InvocationPublishTarget(Object):
 
     agent_id = String(
         "Agent ID",
-        description="Agent to post the invocation summary on behalf of.",
+        default=None,
+        description="Agent to post the invocation summary on behalf of. Defaults to this agent.",
     )
     channel = String(
         "Channel",
@@ -271,7 +272,7 @@ class ProcessorConfig(Object):
     inv_targets = Array(
         "Invocation Publish Targets",
         element=InvocationPublishTarget(),
-        default=[{"agent_id": "", "channel": "dv-proc-inv-$app_id"}],
+        default=[{"agent_id": None, "channel": "dv-proc-inv-$app_id"}],
         description="Agents/channels to fan the invocation summary out to. Empty = disabled.",
         name="inv_targets",
     )
