@@ -29,6 +29,7 @@ from ..models import (
     SubscriptionInfo,
     DooverConnectionStatus,
 )
+from ..models.data import ForbiddenError, NotFoundError, UnauthorizedError
 from .config import ProcessorConfig
 from .data_client import ProcessorDataClient
 from ._logging import apply_log_levels, update_context
@@ -491,6 +492,24 @@ class Application:
                 channel = channel.replace("$app_id", self.app_id)
             try:
                 await self.api.create_message(channel, body, agent_id=agent_id)
+            except (UnauthorizedError, ForbiddenError) as e:
+                # Token doesn't have permission to write to this channel —
+                # often a configuration issue (e.g. integration processor
+                # token not accepted by the data API for ``dv-proc-inv-*``
+                # writes). Not actionable per-invocation; one-line warn.
+                log.warning(
+                    "Invocation summary rejected at agent=%s channel=%s: %s",
+                    agent_id,
+                    channel,
+                    e,
+                )
+            except NotFoundError as e:
+                log.warning(
+                    "Invocation summary target missing at agent=%s channel=%s: %s",
+                    agent_id,
+                    channel,
+                    e,
+                )
             except Exception as e:
                 log.error(
                     "Failed to post invocation summary to %s/%s",
