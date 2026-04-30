@@ -1,11 +1,10 @@
 import base64
-import io
 import json
 import logging
 import os
 import time
-import sys
 from datetime import datetime, timedelta, timezone
+from enum import StrEnum
 
 from typing import Any
 
@@ -30,7 +29,9 @@ from ..models import (
     SubscriptionInfo,
     DooverConnectionStatus,
 )
+from .config import ProcessorConfig
 from .data_client import ProcessorDataClient
+from ._logging import apply_log_levels, update_context
 from ..ui import UI, UICommandsManager
 from ..config import Schema
 
@@ -41,7 +42,25 @@ log = logging.getLogger(__name__)
 DEFAULT_DATA_ENDPOINT = "https://data.doover.com/api"
 DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
 
-console_handler = logging.StreamHandler(sys.stdout)
+
+class SkipReason(StrEnum):
+    no_handler = "no_handler"
+    pre_hook_filter = "pre_hook_filter"
+    tag_values_self_loop = "tag_values_self_loop"
+    post_setup_filter = "post_setup_filter"
+
+
+class ProcessorSkipped(Exception):
+    """Raised inside ``_dispatch_invocation`` to signal a deliberate no-op.
+
+    The :class:`SkipReason` is recorded in the invocation summary's
+    ``skip_reason`` field. ``StrEnum`` means it serialises as its string
+    value when the body is JSON-encoded.
+    """
+
+    def __init__(self, reason: SkipReason):
+        super().__init__(reason.value)
+        self.reason = reason
 
 
 class Application:
@@ -53,6 +72,8 @@ class Application:
         self.config = self.config_cls()
 
         self.received_deployment_config = None
+        self.proc_config = ProcessorConfig()
+        self.proc_config.load_data({})
 
         self._api_endpoint = (
             os.environ.get("DOOVER_DATA_ENDPOINT") or DEFAULT_DATA_ENDPOINT
@@ -62,15 +83,20 @@ class Application:
 
         # set per-task
         self.agent_id: int | None = None
+        self.app_key: str | None = None
+        self.app_id: str | None = None
+        self.organisation_id: int | str | None = None
+        self.subscription_id: str | None = None
+        self.schedule_id: str | None = None
+        self.ingestion_id: str | None = None
+        self.event_type: str | None = None
+        self.lambda_request_id: str | None = None
+        self.lambda_function_name: str | None = None
+        self.lambda_function_version: str | None = None
         self._initial_token: str | None = None
 
         self.tag_manager: TagsManagerProcessor | None = None
         self._connection_config: dict[str, Any] | None = None
-
-        self.log_capture_string = io.StringIO()
-        self.string_stream_handler = logging.StreamHandler(self.log_capture_string)
-        logging.getLogger().addHandler(self.string_stream_handler)
-        logging.getLogger().addHandler(console_handler)
 
         self._record_tag_update: bool = True
         self._update_external_tags: bool = False
@@ -158,6 +184,10 @@ class Application:
         self.received_deployment_config = info.deployment_config
         self.display_name = self.received_deployment_config.get("APP_DISPLAY_NAME")
         self.app_id = self.received_deployment_config.get("APP_ID")
+        self.proc_config = ProcessorConfig()
+        self.proc_config.load_data(
+            self.received_deployment_config.get("dv_proc_config")
+        )
 
     async def _close(self):
         await self.api.close()
@@ -224,28 +254,64 @@ class Application:
 
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
+        started_at_ms = int(start_time * 1000)
+        # Set early so the summary still has them if dispatch raises before
+        # _dispatch_invocation gets a chance to populate the rest.
+        self.subscription_id = subscription_id
+        self.event_type = event.get("op")
+
         log.info("Initialising processor task")
         log.info(f"Started at {start_time}.")
 
-        # self.app_key: str = event.get("app_key", os.environ.get("APP_KEY"))
-        # self.agent_id: int = event["agent_id"]
-        self.subscription_id = subscription_id
+        result = None
+        status = "success"
+        skip_reason: SkipReason | None = None
+        error: dict[str, str] | None = None
 
         try:
-            self.schedule_id = event["d"]["schedule_id"]
-        except KeyError:
-            self.schedule_id = None
+            result = await self._dispatch_invocation(event, subscription_id)
+        except ProcessorSkipped as e:
+            status = "skipped"
+            skip_reason = e.reason
+        except Exception as e:
+            log.error("Unhandled error in invocation", exc_info=e)
+            status = "error"
+            error = {"type": type(e).__name__, "message": str(e)}
+        finally:
+            end_time = time.time()
+            log.info(
+                f"Finished at {end_time}. Process took {end_time - start_time} seconds. result: {result}"
+            )
+            try:
+                await self._publish_invocation_summary(
+                    started_at_ms=started_at_ms,
+                    duration_ms=int((end_time - start_time) * 1000),
+                    status=status,
+                    skip_reason=skip_reason,
+                    error=error,
+                )
+            except Exception as e:
+                log.error("Failed to publish invocation summary", exc_info=e)
+            try:
+                await self._close()
+            except Exception as e:
+                log.error("Error closing processor api client", exc_info=e)
 
-        try:
-            self.ingestion_id = event["d"]["ingestion_id"]
-        except KeyError:
-            self.ingestion_id = None
+        return result
 
-        try:
-            # org ID should be set in both schedules and subscriptions, but just in case it isn't...
-            self.organisation_id = event["d"]["organisation_id"]
-        except KeyError:
-            self.organisation_id = None
+    async def _dispatch_invocation(
+        self, event: dict[str, Any], subscription_id: str | None
+    ) -> Any:
+        """Run the event-handling pipeline and return the handler's result.
+
+        Raises :class:`ProcessorSkipped` when the invocation should be
+        recorded as a deliberate no-op (filter rejection, no overridden
+        handler, self-loop guard).
+        """
+        self.schedule_id = event["d"].get("schedule_id")
+        self.ingestion_id = event["d"].get("ingestion_id")
+        # org ID should be set in both schedules and subscriptions, but just in case it isn't...
+        self.organisation_id = event["d"].get("organisation_id")
 
         # this is the initial token provided. For a subscription, it will be a temporary token.
         # For a schedule, it will be a long-lived token.
@@ -291,17 +357,29 @@ class Application:
 
         if func == original_func:
             log.info(f"Skipping {func.__name__} event as no overridden handler found.")
-            return None
+            raise ProcessorSkipped(SkipReason.no_handler)
 
         self._payload = payload
 
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")
-            return None
+            raise ProcessorSkipped(SkipReason.pre_hook_filter)
 
         s = time.perf_counter()
         await self._setup(event)
         log.info(f"Setup took {time.perf_counter() - s} seconds.")
+
+        # Mirror app_id into the log-record filter so logs from here on
+        # carry it. Everything else summary-bound stays on ``self``.
+        update_context(app_id=self.app_id)
+
+        apply_log_levels(
+            self.proc_config.log_level.value,
+            {
+                name: elem.value
+                for name, elem in self.proc_config.log_overrides._elements.items()
+            },
+        )
 
         if (
             isinstance(payload, AggregateUpdateEvent)
@@ -313,7 +391,7 @@ class Application:
             and self.app_key in payload.message.data
         ):
             log.info("Rejecting event publishing to tag_values within this app key.")
-            return None
+            raise ProcessorSkipped(SkipReason.tag_values_self_loop)
 
         s = time.perf_counter()
         try:
@@ -324,7 +402,7 @@ class Application:
 
         if not await self.post_setup_filter(payload):
             log.info("Post-setup filter rejected event.")
-            return None
+            raise ProcessorSkipped(SkipReason.post_setup_filter)
 
         # fixme: publish UI if needed
         if not self.ui.is_static:
@@ -361,14 +439,52 @@ class Application:
         except Exception as e:
             log.error(f"Error attempting to close processor: {e} ", exc_info=e)
 
-        await self._close()
+        return result, None
 
-        end_time = time.time()
-        log.info(
-            f"Finished at {end_time}. Process took {end_time - start_time} seconds. result: {result}"
-        )
+    async def _publish_invocation_summary(
+        self,
+        *,
+        started_at_ms: int,
+        duration_ms: int,
+        status: str,
+        skip_reason: SkipReason | None,
+        error: dict[str, str] | None,
+    ) -> None:
+        targets = self.proc_config.inv_targets.value
+        if not targets:
+            return
 
-        return result
+        body = {
+            "app_key": self.app_key,
+            "app_id": self.app_id,
+            # Doover IDs are 64-bit; JS truncates above 2^53.
+            "agent_id": str(self.agent_id) if self.agent_id is not None else None,
+            "event_type": self.event_type,
+            "subscription_id": self.subscription_id,
+            "schedule_id": self.schedule_id,
+            "ingestion_id": self.ingestion_id,
+            "started_at": started_at_ms,
+            "duration_ms": duration_ms,
+            "status": status,
+            "skip_reason": skip_reason,
+            "error": error,
+            "requestId": self.lambda_request_id,
+            "function_name": self.lambda_function_name,
+            "function_version": self.lambda_function_version,
+        }
+
+        for target in targets:
+            agent_id = target.agent_id.value
+            channel = target.channel.value
+            try:
+                await self.api.create_message(channel, body, agent_id=agent_id)
+            except Exception as e:
+                log.error(
+                    "Failed to post invocation summary to %s/%s",
+                    agent_id,
+                    channel,
+                    exc_info=e,
+                )
 
     async def fetch_channel(self, channel_name: str) -> Channel:
         """Helper method to fetch a channel by its name.
