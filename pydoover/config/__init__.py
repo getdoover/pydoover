@@ -852,6 +852,14 @@ class Object(ConfigElement):
         return res
 
     def load_data(self, data):
+        # An optional Object (``default=None`` → ``required is False``) sent
+        # as ``null`` or ``{}`` represents "operator left this blank". Leave
+        # sub-elements at NotSet so callers can detect "not provided" — and
+        # crucially, skip the required-sub-element check below, which would
+        # otherwise raise for fields the user never intended to fill in.
+        if not data and not self.required:
+            return
+
         data = data or {}
         for name, value in data.items():
             try:
