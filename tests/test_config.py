@@ -162,6 +162,61 @@ class TestConfigSchemaA:
         assert schema.inner.x.value == "hello"
         assert schema.inner.y.value == 42
 
+    def test_tagref_schema_emits_format_and_required_fields(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref")
+
+        schema = S().to_schema()
+        ref_schema = schema["properties"]["ref"]
+
+        assert ref_schema["type"] == "object"
+        assert ref_schema["format"] == "doover-tag-reference"
+
+        # Sub-fields are present and addressable by their JSON keys.
+        sub_props = ref_schema["properties"]
+        assert set(sub_props) == {"reference_name", "agent_id", "app_name", "tag_name"}
+
+        # reference_name / app_name / tag_name are required; agent_id has default=None.
+        assert set(ref_schema["required"]) == {"reference_name", "app_name", "tag_name"}
+
+    def test_tagref_loads_runtime_values(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref")
+
+        schema = S()
+        schema._inject_deployment_config(
+            {
+                "ref": {
+                    "reference_name": "upstream_pump_status",
+                    "app_name": "pump_controller",
+                    "tag_name": "running",
+                }
+            }
+        )
+
+        assert schema.ref.reference_name.value == "upstream_pump_status"
+        assert schema.ref.agent_id.value is None
+        assert schema.ref.app_name.value == "pump_controller"
+        assert schema.ref.tag_name.value == "running"
+
+    def test_tagref_accepts_agent_id_when_supplied(self):
+        class S(config.Schema):
+            ref = config.TagRef("Ref")
+
+        schema = S()
+        schema._inject_deployment_config(
+            {
+                "ref": {
+                    "reference_name": "x",
+                    "agent_id": "42",
+                    "app_name": "a",
+                    "tag_name": "t",
+                }
+            }
+        )
+
+        assert schema.ref.agent_id.value == "42"
+
     def test_subclass_can_redeclare_to_override_default(self):
         class Base(config.Schema):
             n = config.Integer("N", default=1)

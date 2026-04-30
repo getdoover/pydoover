@@ -1053,6 +1053,62 @@ class ApplicationDefaultOpen(Boolean):
         )
 
 
+class TagRef(Object):
+    """Represents a reference to a tag exposed by another application (or, in
+    future, another agent).
+
+    The user supplies four sub-fields:
+
+    - ``reference_name`` — a local handle that the developer codes against,
+      matched at setup time against a :class:`pydoover.tags.RemoteTag` declared
+      with the same ``reference_name``.
+    - ``agent_id`` — the agent that owns the upstream tag. Leave blank to
+      target this agent. (Cross-agent resolution is not yet wired up; the
+      field is exposed so the schema does not need to change later.)
+    - ``app_name`` — the upstream application's app key.
+    - ``tag_name`` — the upstream tag's name within that app.
+
+    A custom ``format`` (``doover-tag-reference``) is set so a future UI can
+    render this as a single cascading picker without any schema migration.
+    """
+
+    reference_name = String(
+        "Reference Name",
+        description="Local handle for this tag. Match this in your `RemoteTag` declaration.",
+        name="reference_name",
+    )
+    agent_id = Device(
+        "Agent",
+        description="Agent that owns the upstream tag. Leave blank to use this agent.",
+        default=None,
+        name="agent_id",
+    )
+    app_name = ApplicationInstall(
+        "Application",
+        description="Application that publishes the upstream tag.",
+        name="app_name",
+    )
+    tag_name = String(
+        "Tag Name",
+        description="Name of the upstream tag within the chosen application.",
+        name="tag_name",
+    )
+
+    def __init__(
+        self,
+        display_name: str = "Tag Reference",
+        *,
+        description: str | None = "Reference to a tag in another application.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            format="doover-tag-reference",
+            **kwargs,
+        )
+
+
 class LLMAPIKey(String):
     def __init__(
         self,

@@ -107,6 +107,94 @@ class Tag:
         del other
         self._raise_unbound_error()
 
+    def _resolve_target(
+        self, tags: "Tags", declaration: "_DeclaredTag"
+    ) -> tuple[str | None, str]:
+        """Return ``(app_key, key_name)`` for manager-backed get/set calls.
+
+        The default implementation routes through the owning ``Tags`` instance's
+        own ``app_key`` and the declared tag name. Subclasses (e.g.
+        :class:`RemoteTag`) override this to redirect reads and writes
+        elsewhere.
+        """
+        return tags.app_key, declaration.name
+
+
+class RemoteTag(Tag):
+    """A tag declaration that resolves to a tag published by another application.
+
+    The runtime target is described by a :class:`pydoover.config.TagRef` config
+    element whose ``reference_name`` matches this tag's ``reference_name``. The
+    binding happens at setup time via :meth:`Tags._resolve_remote_tags`.
+
+    When ``republish_locally`` is true (the default), the resolved upstream
+    value is mirrored into this app's own tag namespace under the
+    ``reference_name`` key — so other consumers on the device (UIs,
+    downstream tags) can read it as if it were a local tag.
+
+    Cross-agent references (``agent_id`` set on the underlying
+    :class:`~pydoover.config.TagRef`) are accepted in the schema but raise
+    :class:`NotImplementedError` at runtime: the wiring is deferred so the
+    schema does not need to change later.
+
+    Parameters
+    ----------
+    tag_type:
+        Asserted by the developer (matches the upstream type).
+    reference_name:
+        Local handle; must match a ``TagRef`` config element's
+        ``reference_name``.
+    republish_locally:
+        Mirror upstream changes into this app's namespace under
+        ``reference_name``. Defaults to ``True``. No-op on managers that do
+        not support subscriptions (e.g. processor contexts).
+    default:
+        Returned when the manager has no value for the upstream tag.
+    name:
+        Optional explicit declaration name (otherwise inherits the attribute
+        name on the owning :class:`Tags` subclass).
+    """
+
+    def __init__(
+        self,
+        tag_type: str,
+        *,
+        reference_name: str,
+        republish_locally: bool = True,
+        default: Any = NotSet,
+        name: str | None = None,
+    ):
+        super().__init__(tag_type, default=default, name=name)
+        self.reference_name = reference_name
+        self.republish_locally = republish_locally
+
+    def __repr__(self) -> str:
+        return (
+            f"RemoteTag(name={self.name!r}, reference_name={self.reference_name!r}, "
+            f"tag_type={self.tag_type!r}, republish_locally={self.republish_locally})"
+        )
+
+    def _resolve_target(
+        self, tags: "Tags", declaration: "_DeclaredTag"
+    ) -> tuple[str | None, str]:
+        # Resolution state lives on the Tags instance because templates are
+        # shared across all instances of a given Tags subclass.
+        try:
+            target = tags._remote_tag_targets[declaration.attr_name]
+        except KeyError as exc:
+            raise RuntimeError(
+                f"RemoteTag '{declaration.attr_name}' has not been resolved "
+                f"against the config. The application framework should call "
+                f"`await tags._resolve_remote_tags()` after `Tags.setup()`."
+            ) from exc
+
+        if target["agent_id"]:
+            raise NotImplementedError(
+                f"Cross-agent RemoteTag (agent_id={target['agent_id']!r}) "
+                "is not yet supported."
+            )
+        return target["app_key"], target["tag_name"]
+
 
 class BoundTag:
     """Manager-backed runtime view of a declared tag.
@@ -289,9 +377,111 @@ class Tags:
         # Keep runtime declaration changes isolated to this instance.
         self._tag_declarations = dict(self.__class__.__tag_declarations__)
 
+        # Resolved targets for declared RemoteTags, keyed by attr_name.
+        # Populated by `_resolve_remote_tags()`.
+        self._remote_tag_targets: dict[str, dict[str, Any]] = {}
+
     async def setup(self):
         """Mutate this tag collection before it is bound to a manager."""
         pass
+
+    async def _resolve_remote_tags(self):
+        """Bind every declared :class:`RemoteTag` to its config-side ``TagRef``.
+
+        Walks ``self.config`` collecting every ``TagRef`` element by
+        ``reference_name``, then matches each declared :class:`RemoteTag` to
+        exactly one entry. Raises :class:`ValueError` on missing or duplicate
+        matches, and on duplicate ``reference_name`` values across the config.
+
+        For RemoteTags with ``republish_locally=True``, registers a
+        manager-level subscription that mirrors upstream changes into this
+        app's own namespace under ``reference_name`` and seeds the local
+        mirror with the current upstream value (if any).
+
+        Cross-agent ``TagRef`` entries (where ``agent_id`` is set) are
+        recorded but not subscribed to — see :meth:`RemoteTag._resolve_target`
+        for the runtime behaviour.
+
+        Only top-level ``TagRef`` elements on the schema are scanned for v1.
+        """
+        from ..config import TagRef  # local import to avoid module-load cycles
+
+        refs_by_name: dict[str, TagRef] = {}
+        if self.config is not None:
+            for elem in getattr(self.config, "_element_map", {}).values():
+                if not isinstance(elem, TagRef):
+                    continue
+                ref_name = elem.reference_name.value
+                if ref_name in refs_by_name:
+                    raise ValueError(
+                        f"Duplicate TagRef reference_name {ref_name!r} in config."
+                    )
+                refs_by_name[ref_name] = elem
+
+        # Always re-resolve from scratch — keeps the operation idempotent and
+        # avoids stale state when a Tags instance is reused.
+        self._remote_tag_targets = {}
+
+        for declaration in self._tag_declarations.values():
+            template = declaration.template
+            if not isinstance(template, RemoteTag):
+                continue
+
+            try:
+                tagref = refs_by_name[template.reference_name]
+            except KeyError as exc:
+                raise ValueError(
+                    f"RemoteTag {declaration.attr_name!r} references "
+                    f"reference_name={template.reference_name!r}, but no "
+                    f"TagRef with that reference_name was found in the config."
+                ) from exc
+
+            agent_id = tagref.agent_id.value or None
+            target = {
+                "agent_id": agent_id,
+                "app_key": tagref.app_name.value,
+                "tag_name": tagref.tag_name.value,
+            }
+            self._remote_tag_targets[declaration.attr_name] = target
+
+            if (
+                template.republish_locally
+                and self._manager is not None
+                and not agent_id
+            ):
+                await self._install_remote_mirror(template, target)
+
+    async def _install_remote_mirror(
+        self, template: "RemoteTag", target: dict[str, Any]
+    ) -> None:
+        """Register the republish-locally subscription for a resolved RemoteTag.
+
+        No-op on managers that do not support tag subscriptions (e.g.
+        processor contexts).
+        """
+        subscribe = getattr(self._manager, "subscribe_to_tag", None)
+        if subscribe is None:
+            return
+
+        ref_name = template.reference_name
+        local_app_key = self.app_key
+        upstream_app_key = target["app_key"]
+        upstream_tag_name = target["tag_name"]
+        manager = self._manager
+
+        async def _mirror(_key, value):
+            await manager.set_tag(ref_name, value, app_key=local_app_key)
+
+        subscribe(upstream_tag_name, _mirror, app_key=upstream_app_key)
+
+        # Seed the local mirror with the current upstream value so other
+        # consumers see something on first read instead of waiting for the
+        # next upstream change.
+        current = manager.get_tag(
+            upstream_tag_name, default=NotSet, app_key=upstream_app_key
+        )
+        if current is not NotSet and current is not None:
+            await manager.set_tag(ref_name, current, app_key=local_app_key)
 
     @property
     def definitions(self) -> list[Tag]:
@@ -346,10 +536,11 @@ class Tags:
         if self._manager is None:
             return declaration.template.default
 
+        app_key, key_name = declaration.template._resolve_target(self, declaration)
         value = self._manager.get_tag(
-            declaration.name,
+            key_name,
             default=declaration.template.default,
-            app_key=self.app_key,
+            app_key=app_key,
         )
         return _coerce_tag_value(value, declaration.template.tag_type)
 
@@ -360,7 +551,8 @@ class Tags:
         if self._manager is None:
             raise RuntimeError("Tags manager has not been registered.")
 
-        await self._manager.set_tag(declaration.name, value, app_key=self.app_key)
+        app_key, key_name = declaration.template._resolve_target(self, declaration)
+        await self._manager.set_tag(key_name, value, app_key=app_key)
 
     def get(self, name: str) -> BoundTag | None:
         """Return the bound runtime proxy for a tag, if it exists."""
