@@ -159,7 +159,7 @@ class Schema:
             try:
                 elem = self._element_map[name]
             except KeyError:
-                print(f"Loading new element: {name}, {value}")
+                log.debug("Loading new element: %s, %s", name, value)
                 v = ConfigElement(name)
                 v.load_data(value)
                 setattr(self, name, v)
@@ -852,19 +852,29 @@ class Object(ConfigElement):
         return res
 
     def load_data(self, data):
-        if data is None:
-            # An optional Object that the operator chose to leave blank in
-            # deployment config — leave every sub-field at its declared
-            # default / NotSet rather than crashing on `None.items()`.
-            return
+        data = data or {}
         for name, value in data.items():
             try:
                 self._elements[name].load_data(value)
             except KeyError:
                 if self.additional_elements is True:
-                    self._elements[name] = ConfigElement(name, default=value)
+                    # Without ``load_data``, the synthesised element ends up
+                    # with ``_value=NotSet`` and ``.value`` raises for any
+                    # non-None value — making free-form keys unreadable.
+                    elem = ConfigElement(name, default=value)
+                    elem.load_data(value)
+                    self._elements[name] = elem
                 else:
                     raise ValueError(f"Unknown element {name} in config.")
+        # Mirror ``Schema._inject_deployment_config``: declared elements
+        # absent from the incoming data either raise (if required) or
+        # fall back to their declared default.
+        for name, elem in self._elements.items():
+            if name in data:
+                continue
+            if elem.required:
+                raise ValueError(f"Required config element {name} not found in config.")
+            elem.load_data(elem.default)
 
 
 class Variable:
