@@ -306,12 +306,15 @@ class TagsManagerDocker(TagsManager):
                 )
                 return
 
-        # Add to list of changes to be sent to the log
-        apply_diff(self._pending_tag_log, tags, clone=False)
+        # Add to list of changes to be sent to the log. Preserve None so
+        # ``tag.set(None)`` propagates upstream as "clear this tag" rather
+        # than silently disappearing — the default ``do_delete=True`` would
+        # pop the key from the pending diff before it ever leaves the client.
+        apply_diff(self._pending_tag_log, tags, do_delete=False, clone=False)
 
         if flush:
             log.debug(f"set_tags: tags={tags} Flushing to dda")
-            apply_diff(self._pending_tag_aggregate, tags, clone=False)
+            apply_diff(self._pending_tag_aggregate, tags, do_delete=False, clone=False)
             await self.client.update_channel_aggregate(
                 TAG_CHANNEL_NAME,
                 self._pending_tag_aggregate,
@@ -323,7 +326,7 @@ class TagsManagerDocker(TagsManager):
 
         # Just add to the pending aggregate to be flushed at the end of the main loop
         log.debug(f"set_tags: tags={tags} Added to pending aggregate")
-        apply_diff(self._pending_tag_aggregate, tags, clone=False)
+        apply_diff(self._pending_tag_aggregate, tags, do_delete=False, clone=False)
         self._tags_dirty = True
 
     async def commit_tags(self):
