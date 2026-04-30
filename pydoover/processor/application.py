@@ -475,7 +475,20 @@ class Application:
 
         for target in targets:
             agent_id = target.agent_id.value
-            channel = target.channel.value.replace("$app_id", self.app_id)
+            channel = target.channel.value
+            if "$app_id" in channel:
+                if self.app_id is None:
+                    # Invocation skipped before ``_setup`` populated app_id
+                    # (pre_hook_filter rejection, SNS parse failure, etc.).
+                    # Targets that don't depend on it still publish.
+                    log.debug(
+                        "Skipping invocation summary target %r: channel "
+                        "template needs $app_id but invocation didn't "
+                        "reach setup.",
+                        channel,
+                    )
+                    continue
+                channel = channel.replace("$app_id", self.app_id)
             try:
                 await self.api.create_message(channel, body, agent_id=agent_id)
             except Exception as e:
