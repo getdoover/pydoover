@@ -37,6 +37,7 @@ from ...models.data import (
     BatchAggregateResponse,
     BatchMessageResponse,
     Channel,
+    ChannelID,
     File,
     Message,
     ProcessorTokenResponse,
@@ -382,12 +383,20 @@ class AsyncDataClient(BaseClient):
         files: list[File] | None = None,
         message_id: int | None = None,
         organisation_id: int | None = None,
+        ttl: int | None = None,
+        duplicate: list[ChannelID] | None = None,
     ) -> Message:
+        # ``duplicate`` lists extra channels the server should fan this
+        # message out to alongside the primary destination.
         payload: dict[str, Any] = {"data": data}
         if timestamp is not None:
             if isinstance(timestamp, datetime):
                 timestamp = int(timestamp.timestamp() * 1000)
             payload["ts"] = timestamp
+        if ttl is not None:
+            payload["ttl"] = ttl
+        if duplicate:
+            payload["duplicate"] = [c.to_dict() for c in duplicate]
 
         if message_id is not None:
             path = f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}"

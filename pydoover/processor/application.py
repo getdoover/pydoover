@@ -28,6 +28,7 @@ from ..models import (
     NotificationSeverity,
     SubscriptionInfo,
     DooverConnectionStatus,
+    ChannelID,
 )
 from ..models.data import ForbiddenError, NotFoundError, UnauthorizedError
 from .config import ProcessorConfig
@@ -42,6 +43,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_DATA_ENDPOINT = "https://data.doover.com/api"
 DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
+INVOCATION_SUMMARY_TTL = 14 * 24 * 60 * 60  # 2 weeks
 
 
 class SkipReason(StrEnum):
@@ -474,6 +476,9 @@ class Application:
             "function_version": self.lambda_function_version,
         }
 
+        # take the first channel as the original message and then just chain the remainder.
+
+        channels = []
         for target in targets:
             agent_id = target.agent_id.value
             channel = target.channel.value
@@ -490,8 +495,19 @@ class Application:
                     )
                     continue
                 channel = channel.replace("$app_id", self.app_id)
+
+            channels.append(ChannelID(agent_id, channel))
+
+        if channels:
+            agent_id, channel_name = channels.pop(0)
             try:
-                await self.api.create_message(channel, body, agent_id=agent_id)
+                await self.api.create_message(
+                    channel_name,
+                    body,
+                    agent_id=agent_id,
+                    ttl=INVOCATION_SUMMARY_TTL,
+                    duplicate=channels,
+                )
             except (UnauthorizedError, ForbiddenError) as e:
                 # Token doesn't have permission to write to this channel —
                 # often a configuration issue (e.g. integration processor

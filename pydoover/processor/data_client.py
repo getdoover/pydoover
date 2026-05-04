@@ -8,6 +8,7 @@ from ..api.data import AsyncMessageIterator
 from ..models.data import (
     Aggregate,
     Channel,
+    ChannelID,
     File,
     Message,
     ConnectionConfig,
@@ -209,6 +210,8 @@ class ProcessorDataClient(AsyncDataClient):
         allow_invoking_channel: bool = False,
         agent_id: int | None = None,
         organisation_id: int | None = None,
+        ttl: int | None = None,
+        duplicate: list[ChannelID] | None = None,
     ) -> Message:
         if channel_name == self._invoking_channel_name:
             self._check_invoking_channel(channel_name, data, allow_invoking_channel)
@@ -220,6 +223,8 @@ class ProcessorDataClient(AsyncDataClient):
             timestamp=timestamp,
             files=files,
             organisation_id=organisation_id,
+            ttl=ttl,
+            duplicate=duplicate,
         )
 
     async def update_channel_aggregate(
