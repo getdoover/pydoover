@@ -405,11 +405,19 @@ class TestAggregateUpdateEvent:
 
 class TestDeploymentEvent:
     def test_from_dict(self):
-        d = {"agent_id": 1, "app_id": 2, "app_install_id": 3}
+        d = {
+            "agent_id": 1,
+            "app_id": 2,
+            "app_install_id": 3,
+            "app_key": "my.app",
+            "app_display_name": "My App",
+        }
         e = DeploymentEvent.from_dict(d)
         assert e.agent_id == 1
         assert e.app_id == 2
         assert e.app_install_id == 3
+        assert e.app_key == "my.app"
+        assert e.app_display_name == "My App"
 
 
 # ── ScheduleEvent ────────────────────────────────────────────────────
