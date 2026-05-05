@@ -3,7 +3,8 @@ import copy
 
 import pytest
 
-from pydoover import ui
+from pydoover import config, ui
+from pydoover.config import ApplicationPosition
 from pydoover.tags import Tag, Tags
 
 from tests.test_tags import (
@@ -190,6 +191,44 @@ class TestCanonicalUiTypes:
         assert data["series"]["temperature"]["displayString"] == "Temperature"
         assert data["series"]["temperature"]["colour"] == "red"
         assert data["series"]["temperature"]["units"] == "C"
+
+
+class TestConfigRefResolution:
+    def _make_schema_cls(self):
+        class S(config.Schema):
+            position = ApplicationPosition(default=120)
+
+        return S
+
+    def test_resolves_position_from_explicit_deployment_value(self):
+        schema = self._make_schema_cls()()
+        schema._inject_deployment_config({"dv_app_position": 120})
+
+        class MyUI(ui.UI):
+            pass
+
+        assert MyUI(schema, None, "app_key").to_schema()["position"] == 120
+
+    def test_resolves_position_from_schema_default_when_omitted(self):
+        schema = self._make_schema_cls()()
+        schema._inject_deployment_config({})
+
+        class MyUI(ui.UI):
+            pass
+
+        assert MyUI(schema, None, "app_key").to_schema()["position"] == 120
+
+    def test_falls_back_to_lookup_default_when_element_absent(self):
+        class S(config.Schema):
+            pass
+
+        schema = S()
+        schema._inject_deployment_config({})
+
+        class MyUI(ui.UI):
+            pass
+
+        assert MyUI(schema, None, "app_key").to_schema()["position"] == 100
 
 
 class TestApplicationUIResolution:
