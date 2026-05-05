@@ -23,6 +23,8 @@ service deviceAgent {
   rpc GetMessage (GetMessageRequest) returns (GetMessageResponse) {}
   rpc GetMessages (GetMessagesRequest) returns (GetMessagesResponse) {}
   rpc FetchAttachment (FetchAttachmentRequest) returns (FetchAttachmentResponse) {}
+
+  rpc SendOneShotMessage (SendOneShotMessageRequest) returns (SendOneShotMessageResponse) {}
 }
 
 message RequestHeader {
@@ -306,4 +308,14 @@ message FetchAttachmentRequest {
 message FetchAttachmentResponse {
   ResponseHeader response_header = 1;
   File file = 2;
+}
+
+message SendOneShotMessageRequest {
+  RequestHeader header = 1;
+  string channel_name = 2;
+  google.protobuf.Struct data = 3;
+}
+
+message SendOneShotMessageResponse {
+  ResponseHeader response_header = 1;
 }

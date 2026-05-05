@@ -105,6 +105,11 @@ class deviceAgentStub(object):
                 request_serializer=device__agent_dot_device__agent__pb2.FetchAttachmentRequest.SerializeToString,
                 response_deserializer=device__agent_dot_device__agent__pb2.FetchAttachmentResponse.FromString,
                 _registered_method=True)
+        self.SendOneShotMessage = channel.unary_unary(
+                '/device_agent.deviceAgent/SendOneShotMessage',
+                request_serializer=device__agent_dot_device__agent__pb2.SendOneShotMessageRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.SendOneShotMessageResponse.FromString,
+                _registered_method=True)
 
 
 class deviceAgentServicer(object):
@@ -192,6 +197,12 @@ class deviceAgentServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SendOneShotMessage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_deviceAgentServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -259,6 +270,11 @@ def add_deviceAgentServicer_to_server(servicer, server):
                     servicer.FetchAttachment,
                     request_deserializer=device__agent_dot_device__agent__pb2.FetchAttachmentRequest.FromString,
                     response_serializer=device__agent_dot_device__agent__pb2.FetchAttachmentResponse.SerializeToString,
+            ),
+            'SendOneShotMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendOneShotMessage,
+                    request_deserializer=device__agent_dot_device__agent__pb2.SendOneShotMessageRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.SendOneShotMessageResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -613,6 +629,33 @@ class deviceAgent(object):
             '/device_agent.deviceAgent/FetchAttachment',
             device__agent_dot_device__agent__pb2.FetchAttachmentRequest.SerializeToString,
             device__agent_dot_device__agent__pb2.FetchAttachmentResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SendOneShotMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/device_agent.deviceAgent/SendOneShotMessage',
+            device__agent_dot_device__agent__pb2.SendOneShotMessageRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.SendOneShotMessageResponse.FromString,
             options,
             channel_credentials,
             insecure,

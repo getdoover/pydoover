@@ -471,3 +471,19 @@ class FetchAttachmentResponse(_message.Message):
     response_header: ResponseHeader
     file: File
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., file: _Optional[_Union[File, _Mapping]] = ...) -> None: ...
+
+class SendOneShotMessageRequest(_message.Message):
+    __slots__ = ("header", "channel_name", "data")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    channel_name: str
+    data: _struct_pb2.Struct
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+
+class SendOneShotMessageResponse(_message.Message):
+    __slots__ = ("response_header",)
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ...) -> None: ...
