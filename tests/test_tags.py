@@ -482,7 +482,7 @@ class TestOptionalRemoteTag:
     async def test_optional_tagref_omitted_resolves_cleanly(self):
         class OptionalSchema(config.Schema):
             optional_ref = config.TagRef(
-                "Optional Pump", optional=True, name="optional_ref"
+                "Optional Pump", default=None, required=False, name="optional_ref"
             )
 
         class OptionalTags(Tags):
@@ -508,7 +508,7 @@ class TestOptionalRemoteTag:
     async def test_optional_tagref_null_resolves_cleanly(self):
         class OptionalSchema(config.Schema):
             optional_ref = config.TagRef(
-                "Optional Pump", optional=True, name="optional_ref"
+                "Optional Pump", default=None, required=False, name="optional_ref"
             )
 
         class OptionalTags(Tags):
@@ -528,7 +528,7 @@ class TestOptionalRemoteTag:
     async def test_optional_tagref_empty_object_resolves_cleanly(self):
         class OptionalSchema(config.Schema):
             optional_ref = config.TagRef(
-                "Optional Pump", optional=True, name="optional_ref"
+                "Optional Pump", default=None, required=False, name="optional_ref"
             )
 
         class OptionalTags(Tags):
@@ -548,7 +548,7 @@ class TestOptionalRemoteTag:
     async def test_optional_set_on_unresolved_is_noop(self):
         class OptionalSchema(config.Schema):
             optional_ref = config.TagRef(
-                "Optional Pump", optional=True, name="optional_ref"
+                "Optional Pump", default=None, required=False, name="optional_ref"
             )
 
         class OptionalTags(Tags):
@@ -571,7 +571,7 @@ class TestOptionalRemoteTag:
     async def test_optional_remote_tag_still_works_when_filled(self):
         class OptionalSchema(config.Schema):
             optional_ref = config.TagRef(
-                "Optional Pump", optional=True, name="optional_ref"
+                "Optional Pump", default=None, required=False, name="optional_ref"
             )
 
         class OptionalTags(Tags):
@@ -607,7 +607,9 @@ class TestOptionalRemoteTag:
         # still raise — its requirement contract is independent of the
         # TagRef's optionality.
         class MixedSchema(config.Schema):
-            optional_ref = config.TagRef("Optional", optional=True, name="optional_ref")
+            optional_ref = config.TagRef(
+                "Optional", default=None, required=False, name="optional_ref"
+            )
 
         class MixedTags(Tags):
             upstream = RemoteTag(
