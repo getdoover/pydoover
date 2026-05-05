@@ -443,9 +443,23 @@ def _resolve_single_config_ref(value: str, config: Schema) -> Any:
 
     key, type_hint, default = match.groups()
 
+    # Lookup is keyed by the element's `_name` (e.g. "dv_app_position"), which
+    # may differ from the Python attribute on the Schema (e.g. `position`).
+    # Prefer `_element_map` (keyed by `_name`); fall back to attribute access
+    # for elements injected dynamically via `_inject_deployment_config`.
+    element = None
     try:
-        element = getattr(config, key)
-        raw = element.value
+        element = config._element_map.get(key)
+    except AttributeError:
+        pass
+    if element is None:
+        try:
+            element = getattr(config, key)
+        except AttributeError:
+            element = None
+
+    try:
+        raw = element.value if element is not None else None
     except (ValueError, AttributeError):
         raw = None
 
