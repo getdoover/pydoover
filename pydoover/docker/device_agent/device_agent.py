@@ -554,6 +554,19 @@ class DeviceAgentInterface(GRPCInterface):
         return resp.message_id
 
     @cli_command()
+    async def send_oneshot_message(
+        self, channel_name: str, data: dict[str, Any]
+    ) -> None:
+        d = Struct()
+        json_format.ParseDict(data, d)
+        req = device_agent_pb2.SendOneShotMessageRequest(
+            header=device_agent_pb2.RequestHeader(app_id=self.app_key),
+            channel_name=channel_name,
+            data=d,
+        )
+        await self.make_request("SendOneShotMessage", req)
+
+    @cli_command()
     async def update_message(
         self,
         channel_name: str,
