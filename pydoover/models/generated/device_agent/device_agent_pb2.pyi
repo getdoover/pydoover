@@ -473,14 +473,16 @@ class FetchAttachmentResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., file: _Optional[_Union[File, _Mapping]] = ...) -> None: ...
 
 class SendOneShotMessageRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "data")
+    __slots__ = ("header", "channel_name", "data", "timestamp")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
+    TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     data: _struct_pb2.Struct
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    timestamp: int
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., timestamp: _Optional[int] = ...) -> None: ...
 
 class SendOneShotMessageResponse(_message.Message):
     __slots__ = ("response_header",)

@@ -314,6 +314,7 @@ message SendOneShotMessageRequest {
   RequestHeader header = 1;
   string channel_name = 2;
   google.protobuf.Struct data = 3;
+  optional uint64 timestamp = 4;
 }
 
 message SendOneShotMessageResponse {
