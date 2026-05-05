@@ -185,7 +185,7 @@ class DeploymentEvent:
             "app_id": self.app_id,
             "app_install_id": self.app_install_id,
             "app_key": self.app_key,
-            "app_display_name": self.display_name,
+            "app_display_name": self.app_display_name,
         }
 
     @classmethod
