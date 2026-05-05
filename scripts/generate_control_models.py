@@ -1,3 +1,5 @@
+#!/usr/bin/env -S uv run
+
 from __future__ import annotations
 
 import json
@@ -152,6 +154,13 @@ class ObjectTypeRegistry:
         return self._definitions
 
 
+def _enum_choices(schema: dict) -> tuple[str, ...] | None:
+    raw = schema.get("enum")
+    if not isinstance(raw, list) or not raw:
+        return None
+    return tuple(str(value) for value in raw)
+
+
 def describe_property(
     *,
     parent_model: str,
@@ -168,6 +177,7 @@ def describe_property(
             "nullable": nullable,
             "is_array": False,
             "ref": canonical_model_name(target),
+            "choices": None,
         }
 
     if schema.get("type") == "array":
@@ -179,6 +189,7 @@ def describe_property(
                 "nullable": nullable,
                 "is_array": True,
                 "ref": canonical_model_name(item_ref),
+                "choices": None,
             }
         if items.get("type") == "object" and items.get("properties"):
             object_name = object_types.register(parent_model, field_name, items)
@@ -187,12 +198,14 @@ def describe_property(
                 "nullable": nullable,
                 "is_array": True,
                 "ref": None,
+                "choices": None,
             }
         return {
             "type": map_scalar_type(field_name, items),
             "nullable": nullable,
             "is_array": True,
             "ref": None,
+            "choices": _enum_choices(items),
         }
 
     if schema.get("type") == "object" and schema.get("properties"):
@@ -202,6 +215,7 @@ def describe_property(
             "nullable": nullable,
             "is_array": False,
             "ref": None,
+            "choices": None,
         }
 
     return {
@@ -209,6 +223,7 @@ def describe_property(
         "nullable": nullable,
         "is_array": False,
         "ref": None,
+        "choices": _enum_choices(schema),
     }
 
 
@@ -315,6 +330,8 @@ def build_models(spec: dict):
                     existing["is_array"] = (
                         existing["is_array"] or description["is_array"]
                     )
+                    if not existing.get("choices") and description.get("choices"):
+                        existing["choices"] = description["choices"]
 
                 config: dict[str, object] = {}
                 if property_name in required_fields:
@@ -367,6 +384,8 @@ def render_control_field(defn: dict) -> str:
         parts.append("is_array=True")
     if defn["ref"] is not None:
         parts.append(f'ref="{defn["ref"]}"')
+    if defn.get("choices"):
+        parts.append(f"choices={defn['choices']!r}")
     return f"ControlField({', '.join(parts)})"
 
 

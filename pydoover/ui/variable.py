@@ -4,7 +4,7 @@ from typing import Any
 
 from .declarative import is_tag_reference, normalize_ui_value
 from .element import Element
-from .misc import Range, Widget, NotSet
+from .misc import Range, Threshold, Widget, NotSet
 
 
 class Variable(Element):
@@ -24,6 +24,13 @@ class Variable(Element):
         The number of decimal places to round the current value to. Defaults to None.
     ranges: list[Range]
         A list of ranges associated with the variable, used for display purposes.
+    thresholds: list[Threshold], optional
+        Thresholds drawn as horizontal lines on the variable's plot.
+    default_range_view: str, optional
+        The initial range view (``"line"``, ``"zone"`` or ``"off"``) for the
+        plot's hamburger menu. If unset, the site falls back to ``"line"``
+        when thresholds are defined, ``"zone"`` when ranges are defined,
+        otherwise ``"off"``.
     earliest_data_time: datetime, optional
         The earliest time for which data is available for this variable. Defaults to None.
     default_range_since: timedelta, optional
@@ -43,6 +50,8 @@ class Variable(Element):
         value: Any = NotSet,
         precision: int = NotSet,
         ranges: list[Range] = NotSet,
+        thresholds: list[Threshold] = NotSet,
+        default_range_view: str = NotSet,
         earliest_data_time: datetime = NotSet,
         default_range_since: timedelta = NotSet,
         default_zoom: str = NotSet,
@@ -63,6 +72,8 @@ class Variable(Element):
         self.graphable = graphable
 
         self.ranges = ranges
+        self.thresholds = thresholds
+        self.default_range_view = default_range_view
 
     def to_dict(self) -> dict[str, Any]:
         result = super().to_dict()
@@ -93,6 +104,12 @@ class Variable(Element):
         if self.ranges is not NotSet:
             result["ranges"] = [r.to_dict() for r in self.ranges]
 
+        if self.thresholds is not NotSet:
+            result["thresholds"] = [t.to_dict() for t in self.thresholds]
+
+        if self.default_range_view is not NotSet:
+            result["defaultRangeView"] = self.default_range_view
+
         if self.graphable is not NotSet:
             if isinstance(self.graphable, bool):
                 result["notGraphable"] = not self.graphable
@@ -118,6 +135,10 @@ class NumericVariable(Variable):
         The number of decimal places to round the current value to. Defaults to None.
     ranges: list[Range], optional
         A list of ranges associated with the variable, used for display purposes. Defaults to None.
+    thresholds: list[Threshold], optional
+        Thresholds drawn as horizontal lines on the variable's plot.
+    default_range_view: str, optional
+        Initial range view for the plot (``"line"``, ``"zone"`` or ``"off"``).
     form: Widget, optional
         A widget or string representing the form for this variable. Defaults to None.
     """
@@ -128,6 +149,8 @@ class NumericVariable(Variable):
         value: Any = None,
         precision: int = NotSet,
         ranges: list[Range] = NotSet,
+        thresholds: list[Threshold] = NotSet,
+        default_range_view: str = NotSet,
         form: Widget = NotSet,
         **kwargs,
     ):
@@ -137,6 +160,8 @@ class NumericVariable(Variable):
             value=value,
             precision=precision,
             ranges=ranges,
+            thresholds=thresholds,
+            default_range_view=default_range_view,
             **kwargs,
         )
         self.form = form

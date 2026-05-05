@@ -115,7 +115,7 @@ class Schema:
                 if name not in cls._element_map:
                     cls._element_map[name] = elem
 
-        # collect own elements
+        # collect own elements (subclass declarations override inherited fields with the same name)
         for k, v in cls.__dict__.items():
             if isinstance(v, ConfigElement):
                 if k in RESERVED_NAMES:
@@ -123,7 +123,12 @@ class Schema:
                         f"Config element name '{k}' is reserved. "
                         f"Choose a different attribute name."
                     )
-                cls.add_element(v)
+                if v._name in cls._element_map:
+                    if v._position is None:
+                        v._position = cls._element_map[v._name]._position
+                    cls._element_map[v._name] = v
+                else:
+                    cls.add_element(v)
 
     @classmethod
     def clear_elements(cls):
@@ -154,7 +159,7 @@ class Schema:
             try:
                 elem = self._element_map[name]
             except KeyError:
-                print(f"Loading new element: {name}, {value}")
+                log.debug("Loading new element: %s, %s", name, value)
                 v = ConfigElement(name)
                 v.load_data(value)
                 setattr(self, name, v)
@@ -219,12 +224,22 @@ class ConfigElement:
     ----------
     display_name: str
         The display name of the config element. This is used in the UI.
-    default: int
-        The default value for the integer. If NotSet, the value is required.
+    default: Any
+        The default value for the element. If ``NotSet`` (and ``required``
+        is left at ``None``), the element is treated as required.
     description: str | None
         A help text for the config element.
     hidden: bool
         Whether the config element should be hidden in the UI.
+    required: bool | None
+        Explicit override of the required-ness derived from ``default``.
+        ``None`` (default) → required is True iff ``default`` is ``NotSet``
+        (the historical behaviour).
+        ``True`` → required regardless of ``default`` (config file must
+        carry the key explicitly even though a fallback exists).
+        ``False`` → not required; the loader uses ``default`` when absent.
+        Passing ``required=False`` without a ``default`` raises ``ValueError``
+        because there'd be no value to fall back to.
     """
 
     _type = "unknown"
@@ -240,12 +255,20 @@ class ConfigElement:
         format: str | None = None,
         position: int | None = None,
         name: str | None = None,
+        advanced: bool | None = None,
+        required: bool | None = None,
     ):
         if name is not None:
             check_key(name)
             self._name = name
         else:
             self._name = sanitize_display_name(display_name)
+
+        if required is False and default is NotSet:
+            raise ValueError(
+                f"Config element {self._name!r}: required=False needs a "
+                f"default to fall back to, but none was supplied."
+            )
 
         self._position = position
         self._display_name = display_name
@@ -254,6 +277,8 @@ class ConfigElement:
         self.hidden = hidden
         self.deprecated = deprecated
         self.format = format
+        self.advanced = advanced
+        self._required = required
         self._value = NotSet
 
         if (
@@ -280,7 +305,15 @@ class ConfigElement:
 
     @property
     def required(self):
-        """Whether the config element is required."""
+        """Whether the config element is required.
+
+        If an explicit override was passed to ``__init__`` (``required=True``
+        or ``required=False``), that wins. Otherwise falls back to the
+        historical default-derived behaviour: required iff ``default`` is
+        ``NotSet``.
+        """
+        if self._required is not None:
+            return self._required
         return self.default is NotSet
 
     @property
@@ -333,6 +366,9 @@ class ConfigElement:
 
         if self.format is not None:
             payload["format"] = self.format
+
+        if self.advanced is not None:
+            payload["x-advanced"] = self.advanced
 
         return payload
 
@@ -762,11 +798,52 @@ class Object(ConfigElement):
         if default_collapsed and not collapsible:
             raise ValueError("default_collapsed is not allowed if collapsible is False")
 
+        # Django-style nested overrides: a kwarg whose key contains ``__`` is
+        # routed to a child element rather than passed up to ConfigElement.
+        # ``reference_name__advanced=True`` becomes
+        # ``self._elements["reference_name"].advanced = True``; deeper paths
+        # like ``alerts__minimum_clear_duration_s__default=30.0`` walk the
+        # element tree segment-by-segment with the final segment as the attr.
+        # Constraint: element ``_name``s must not contain ``__`` (mirrors
+        # Django's field-name rule). Pop these before super().__init__ so
+        # ConfigElement doesn't choke on unknown kwargs.
+        child_overrides = {k: kwargs.pop(k) for k in list(kwargs) if "__" in k}
+
         super().__init__(display_name, **kwargs)
         self._elements = copy.deepcopy(self._cls_elements)
         self.additional_elements = additional_elements
         self.collapsible = collapsible
         self.default_collapsed = default_collapsed
+
+        for path_str, value in child_overrides.items():
+            self._apply_child_override(path_str, value)
+
+    def _apply_child_override(self, path_str: str, value: Any) -> None:
+        *child_path, attr = path_str.split("__")
+        if not child_path or not attr or any(not seg for seg in child_path):
+            raise TypeError(
+                f"Invalid override key {path_str!r}: expected "
+                f"'<child>__<attr>' (at least one element segment plus an "
+                f"attribute name, separated by '__'; no empty segments)."
+            )
+        target: ConfigElement = self
+        walked: list[str] = []
+        for seg in child_path:
+            elements = getattr(target, "_elements", None)
+            if elements is None or seg not in elements:
+                walked_str = ".".join(walked) or "<self>"
+                raise TypeError(
+                    f"Cannot apply override {path_str!r}: no child element "
+                    f"named {seg!r} on {walked_str} ({type(target).__name__})."
+                )
+            target = elements[seg]
+            walked.append(seg)
+        if not hasattr(target, attr):
+            raise TypeError(
+                f"Cannot apply override {path_str!r}: "
+                f"{type(target).__name__} has no attribute {attr!r}."
+            )
+        setattr(target, attr, value)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -842,14 +919,37 @@ class Object(ConfigElement):
         return res
 
     def load_data(self, data):
+        # An optional Object (``default=None`` → ``required is False``) sent
+        # as ``null`` or ``{}`` represents "operator left this blank". Leave
+        # sub-elements at NotSet so callers can detect "not provided" — and
+        # crucially, skip the required-sub-element check below, which would
+        # otherwise raise for fields the user never intended to fill in.
+        if not data and not self.required:
+            return
+
+        data = data or {}
         for name, value in data.items():
             try:
                 self._elements[name].load_data(value)
             except KeyError:
                 if self.additional_elements is True:
-                    self._elements[name] = ConfigElement(name, default=value)
+                    # Without ``load_data``, the synthesised element ends up
+                    # with ``_value=NotSet`` and ``.value`` raises for any
+                    # non-None value — making free-form keys unreadable.
+                    elem = ConfigElement(name, default=value)
+                    elem.load_data(value)
+                    self._elements[name] = elem
                 else:
                     raise ValueError(f"Unknown element {name} in config.")
+        # Mirror ``Schema._inject_deployment_config``: declared elements
+        # absent from the incoming data either raise (if required) or
+        # fall back to their declared default.
+        for name, elem in self._elements.items():
+            if name in data:
+                continue
+            if elem.required:
+                raise ValueError(f"Required config element {name} not found in config.")
+            elem.load_data(elem.default)
 
 
 class Variable:
@@ -1019,6 +1119,82 @@ class ApplicationPosition(Integer):
             default=default,
             name="dv_app_position",
             hidden=True,
+            **kwargs,
+        )
+
+
+class ApplicationDefaultOpen(Boolean):
+    def __init__(
+        self,
+        display_name: str = "Default Open",
+        *,
+        description: str = "Whether the application is default open in the UI. "
+        "By default this is not set - which makes it dynamic on the number of apps installed.",
+        default: bool = None,
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            default=default,
+            name="dv_app_default_open",
+            hidden=True,
+            **kwargs,
+        )
+
+
+class TagRef(Object):
+    """Represents a reference to a tag exposed by another application (or, in
+    future, another agent).
+
+    The user supplies four sub-fields:
+
+    - ``reference_name`` — a local handle that the developer codes against,
+      matched at setup time against a :class:`pydoover.tags.RemoteTag` declared
+      with the same ``reference_name``.
+    - ``agent_id`` — the agent that owns the upstream tag. Leave blank to
+      target this agent. (Cross-agent resolution is not yet wired up; the
+      field is exposed so the schema does not need to change later.)
+    - ``app_name`` — the upstream application's app key.
+    - ``tag_name`` — the upstream tag's name within that app.
+
+    A custom ``format`` (``doover-tag-reference``) is set so a future UI can
+    render this as a single cascading picker without any schema migration.
+    """
+
+    reference_name = String(
+        "Reference Name",
+        description="Local handle for this tag. Match this in your `RemoteTag` declaration.",
+        name="reference_name",
+    )
+    agent_id = Device(
+        "Agent",
+        description="Agent that owns the upstream tag. Leave blank to use this agent.",
+        default=None,
+        name="agent_id",
+    )
+    app_name = ApplicationInstall(
+        "Application",
+        description="Application that publishes the upstream tag.",
+        name="app_name",
+    )
+    tag_name = String(
+        "Tag Name",
+        description="Name of the upstream tag within the chosen application.",
+        name="tag_name",
+    )
+
+    def __init__(
+        self,
+        display_name: str = "Tag Reference",
+        *,
+        description: str | None = "Reference to a tag in another application.",
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            format="doover-tag-reference",
             **kwargs,
         )
 

@@ -142,6 +142,14 @@ def test_sync_client_handles_bytes_and_none_responses():
     none_client.close()
 
 
+def test_sync_client_handles_text_responses():
+    client, _ = make_client(DummyResponse(200, content=b"#!/bin/sh\necho install\n"))
+
+    assert client.devices.installer("9") == "#!/bin/sh\necho install\n"
+
+    client.close()
+
+
 def test_sync_client_can_deserialize_model_lists():
     client, _ = make_client(DummyResponse(204))
 

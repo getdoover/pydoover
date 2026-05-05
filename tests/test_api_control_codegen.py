@@ -13,9 +13,9 @@ from pydoover.api.control._generated_sync import OPERATION_COUNT as SYNC_OPERATI
 
 
 def test_generated_group_tree_matches_expected_surface():
-    assert OPERATION_COUNT == 299
-    assert SYNC_OPERATION_COUNT == 299
-    assert ASYNC_OPERATION_COUNT == 299
+    assert OPERATION_COUNT == 324
+    assert SYNC_OPERATION_COUNT == 324
+    assert ASYNC_OPERATION_COUNT == 324
     assert "public" not in GROUP_TREE
     assert "pwa" not in GROUP_TREE
     assert GROUP_TREE["container"] == {"registry": {}}
@@ -43,8 +43,11 @@ def test_included_operation_ids_cover_expected_examples():
 
 def test_codegen_emits_return_annotations_for_generated_methods():
     assert DevicesSyncGroup.create.__annotations__["return"] == "control_models.Device"
+    assert DevicesSyncGroup.installer.__annotations__["return"] == "str"
+    assert DevicesSyncGroup.installer_download.__annotations__["return"] == "bytes"
     assert (
         DevicesSyncGroup.list.__annotations__["return"]
         == "control_models.ControlPage[control_models.Device]"
     )
     assert DevicesAsyncGroup.create.__annotations__["return"] == "control_models.Device"
+    assert DevicesAsyncGroup.installer.__annotations__["return"] == "str"

@@ -113,7 +113,8 @@ class UI:
         display_name: str = "$config.app().APP_DISPLAY_NAME",
         hidden: bool | str = "$config.app().hidden:boolean:false",
         position: int | str = "$config.app().dv_app_position:number:100",
-        default_open: int | str = False,
+        default_open: bool
+        | str = "$config.app().dv_app_default_open:boolean",  # default to None
         icon: str | None = None,
         colour: str | None = None,
         **kwargs,
@@ -192,11 +193,6 @@ class UI:
         return schema
 
     def export(self, fp: Path, app_name: str):
-        if not self.is_static:
-            raise RuntimeError(
-                "Cannot statically generate a ui schema that has a `setup` override."
-            )
-
         if fp.exists():
             data = json.loads(fp.read_text())
         else:
@@ -447,9 +443,23 @@ def _resolve_single_config_ref(value: str, config: Schema) -> Any:
 
     key, type_hint, default = match.groups()
 
+    # Lookup is keyed by the element's `_name` (e.g. "dv_app_position"), which
+    # may differ from the Python attribute on the Schema (e.g. `position`).
+    # Prefer `_element_map` (keyed by `_name`); fall back to attribute access
+    # for elements injected dynamically via `_inject_deployment_config`.
+    element = None
     try:
-        element = getattr(config, key)
-        raw = element.value
+        element = config._element_map.get(key)
+    except AttributeError:
+        pass
+    if element is None:
+        try:
+            element = getattr(config, key)
+        except AttributeError:
+            element = None
+
+    try:
+        raw = element.value if element is not None else None
     except (ValueError, AttributeError):
         raw = None
 

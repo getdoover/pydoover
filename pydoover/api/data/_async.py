@@ -47,6 +47,7 @@ from ...models.data import (
 )
 from ...models.data.alarm import AlarmOperator
 from ...models.data.notification import (
+    Notification,
     NotificationEndpoint,
     NotificationSeverity,
     NotificationSubscription,
@@ -510,6 +511,7 @@ class AsyncDataClient(BaseClient):
         suppress_response: bool = False,
         clear_attachments: bool = False,
         log_update: bool = False,
+        replace_keys: list[str] | None = None,
         organisation_id: int | None = None,
     ) -> Aggregate | None:
         method = "PUT" if replace_data else "PATCH"
@@ -522,6 +524,7 @@ class AsyncDataClient(BaseClient):
                 "suppress_response": suppress_response if suppress_response else None,
                 "clear_attachments": clear_attachments if clear_attachments else None,
                 "log_update": log_update if log_update else None,
+                "replace": replace_keys or None,
             },
             organisation_id=organisation_id,
         )
@@ -853,6 +856,58 @@ class AsyncDataClient(BaseClient):
 
     # ── Notifications ──────────────────────────────────────────────────────
 
+    async def send_notification(
+        self,
+        agent_id: int,
+        message: str | Notification,
+        *,
+        title: str | None = None,
+        severity: NotificationSeverity | int | None = None,
+        topic: str | None = None,
+        organisation_id: int | None = None,
+    ) -> Message:
+        """Send a notification for an agent.
+
+        Publishes a :class:`~pydoover.models.Notification` payload to the agent's
+        ``notifications`` channel, which the Doover cloud fans out to matching
+        subscriptions (email / SMS / web push / http).
+
+        Parameters
+        ----------
+        agent_id : int
+            The agent to send the notification on behalf of.
+        message : str | Notification
+            Either the message body, or a fully-constructed
+            :class:`Notification` (in which case ``title``, ``severity`` and
+            ``topic`` are ignored).
+        title : str, optional
+            An optional title / headline for the notification.
+        severity : NotificationSeverity | int, optional
+            Severity level. Subscribers only receive notifications at or above
+            their subscription severity.
+        topic : str, optional
+            Optional topic used to match subscription ``topic_filter`` entries.
+        organisation_id : int, optional
+            The organisation context for the request.
+
+        Returns
+        -------
+        Message
+            The created channel message.
+        """
+        if isinstance(message, Notification):
+            notification = message
+        else:
+            notification = Notification(
+                message=message, title=title, severity=severity, topic=topic
+            )
+        return await self.create_message(
+            agent_id=agent_id,
+            channel_name=Notification.NOTIFICATIONS_CHANNEL,
+            data=notification.to_dict(),
+            organisation_id=organisation_id,
+        )
+
     async def fetch_notifications(
         self,
         agent_id: int,
@@ -1146,6 +1201,7 @@ class AsyncDataClient(BaseClient):
         permissions: list[dict[str, str]],
         is_org: bool | None = None,
         organisation_id: int | None = None,
+        subscribed_to_agent: int | None = None,
     ):
         payload: dict[str, Any] = {
             "subscription_arn": subscription_arn,
@@ -1154,6 +1210,8 @@ class AsyncDataClient(BaseClient):
         }
         if is_org is not None:
             payload["is_org"] = is_org
+        if subscribed_to_agent is not None:
+            payload["subscribed_to_agent"] = subscribed_to_agent
         await self._request(
             "PUT",
             f"/agents/{agent_id}/processors/subscriptions/{subscription_id}",

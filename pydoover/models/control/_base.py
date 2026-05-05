@@ -11,6 +11,7 @@ class ControlField:
     is_array: bool = False
     ref: str | None = None
     version: str | None = None
+    choices: tuple[str, ...] | None = None
 
 
 _MODEL_REGISTRY: dict[str, type["ControlModel"]] = {}

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from .declarative import normalize_ui_value
 from .element import Element
-from .misc import Option, NotSet
+from .misc import ConfirmDialog, Option, NotSet
 
 if TYPE_CHECKING:
     from .manager import UICommandsManager
@@ -52,8 +52,8 @@ class Interaction(Element):
         value: str = NotSet,
         default: Any = NotSet,
         show_activity: bool = NotSet,
-        requires_confirm: bool = NotSet,
-        global_interaction: bool = False,
+        requires_confirm: bool | ConfirmDialog = NotSet,
+        global_interaction: bool = NotSet,
         **kwargs,
     ):
         super().__init__(display_name, **kwargs)
@@ -72,10 +72,7 @@ class Interaction(Element):
         self.show_activity = show_activity
         self.requires_confirm = requires_confirm
 
-        if global_interaction:
-            self.app_key = None
-        else:
-            self.app_key = "$config.app().APP_KEY"
+        self.global_interaction = global_interaction
 
     @property
     def value(self):
@@ -98,9 +95,13 @@ class Interaction(Element):
     def to_dict(self):
         res = super().to_dict()
         res["currentValue"] = self._value_location
-        res["appKey"] = self.app_key
         if self.requires_confirm is not NotSet:
-            res["requiresConfirm"] = self.requires_confirm
+            if isinstance(self.requires_confirm, ConfirmDialog):
+                res["requiresConfirm"] = self.requires_confirm.to_dict()
+            else:
+                res["requiresConfirm"] = self.requires_confirm
+        if self.global_interaction is not NotSet:
+            res["global"] = self.global_interaction
         if self.show_activity is not NotSet:
             res["showActivity"] = self.show_activity
         if self.default is not NotSet:

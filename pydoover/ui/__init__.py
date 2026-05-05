@@ -20,8 +20,11 @@ from .declarative import (
 from .misc import (
     NotSet as NotSet,
     Colour as Colour,
+    ConfirmDialog as ConfirmDialog,
     Series as Series,
     Range as Range,
+    RangeView as RangeView,
+    Threshold as Threshold,
     Option as Option,
     Widget as Widget,
     ApplicationVariant as ApplicationVariant,

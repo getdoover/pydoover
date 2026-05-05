@@ -224,6 +224,9 @@ class Multiplot(Element):
         The title of the multiplot.
     default_zoom: str, optional
         The default zoom level for the multiplot.
+    default_range_view: str, optional
+        Initial range view for the plot (``"line"``, ``"zone"`` or ``"off"``).
+        Only applies when exactly one series defines ranges or thresholds.
     """
 
     type = "uiMultiPlot"
@@ -234,6 +237,7 @@ class Multiplot(Element):
         series: list[Series],
         earliest_data_time: Optional[datetime] = None,
         default_zoom: Optional[str] = None,
+        default_range_view: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(title, **kwargs)
@@ -242,6 +246,7 @@ class Multiplot(Element):
         self.earliest_data_time = earliest_data_time
         self.title = title
         self.default_zoom = default_zoom
+        self.default_range_view = default_range_view
 
     def to_dict(self):
         result = super().to_dict()
@@ -249,6 +254,8 @@ class Multiplot(Element):
 
         if self.default_zoom is not None:
             result["defaultZoom"] = self.default_zoom
+        if self.default_range_view is not None:
+            result["defaultRangeView"] = self.default_range_view
         if self.title is not None:
             result["title"] = self.title
 

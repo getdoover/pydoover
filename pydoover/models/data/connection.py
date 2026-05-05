@@ -35,6 +35,13 @@ class ConnectionType(Enum):
                 raise ValueError(f"Unknown connection type: {data}")
 
 
+class ConnectionDisplay(Enum):
+    always = "Always"
+    online_only = "OnlineOnly"
+    offline_only = "OfflineOnly"
+    never = "Never"
+
+
 class ConnectionConfig:
     # pub struct ConnectionConfig {
     #     pub connection_type: Option<ConnectionType>,
@@ -46,26 +53,30 @@ class ConnectionConfig:
     def __init__(
         self,
         connection_type: ConnectionType,
-        expected_interval: float | None,
-        offline_after: float | None,
-        sleep_time: float | None,
-        next_wake_time: float | None,
+        expected_interval: float | None = None,
+        offline_after: float | None = None,
+        sleep_time: float | None = None,
+        next_wake_time: float | None = None,
+        display: ConnectionDisplay | None = None,
     ):
         self.connection_type = connection_type
         self.expected_interval = expected_interval
         self.offline_after = offline_after
         self.sleep_time = sleep_time
         self.next_wake_time = next_wake_time
+        self.display = display
 
     @classmethod
     def from_dict(cls, data):
         connection_type = data.get("connection_type")
+        display = data.get("display")
         return cls(
             connection_type and ConnectionType(connection_type),
             data.get("expected_interval"),
             data.get("offline_after"),
             data.get("sleep_time"),
             data.get("next_wake_time"),
+            display and ConnectionDisplay(display),
         )
 
     @classmethod
@@ -80,13 +91,16 @@ class ConnectionConfig:
         )
 
     def to_dict(self):
-        return {
+        result = {
             "connection_type": self.connection_type and self.connection_type.value,
             "expected_interval": self.expected_interval,
             "offline_after": self.offline_after,
             "sleep_time": self.sleep_time,
             "next_wake_time": self.next_wake_time,
         }
+        if self.display is not None:
+            result["display"] = self.display.value
+        return result
 
     def __eq__(self, other):
         if not isinstance(other, ConnectionConfig):
@@ -98,6 +112,7 @@ class ConnectionConfig:
             and self.offline_after == other.offline_after
             and self.sleep_time == other.sleep_time
             and self.next_wake_time == other.next_wake_time
+            and self.display == other.display
         )
 
 
