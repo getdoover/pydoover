@@ -224,12 +224,22 @@ class ConfigElement:
     ----------
     display_name: str
         The display name of the config element. This is used in the UI.
-    default: int
-        The default value for the integer. If NotSet, the value is required.
+    default: Any
+        The default value for the element. If ``NotSet`` (and ``required``
+        is left at ``None``), the element is treated as required.
     description: str | None
         A help text for the config element.
     hidden: bool
         Whether the config element should be hidden in the UI.
+    required: bool | None
+        Explicit override of the required-ness derived from ``default``.
+        ``None`` (default) → required is True iff ``default`` is ``NotSet``
+        (the historical behaviour).
+        ``True`` → required regardless of ``default`` (config file must
+        carry the key explicitly even though a fallback exists).
+        ``False`` → not required; the loader uses ``default`` when absent.
+        Passing ``required=False`` without a ``default`` raises ``ValueError``
+        because there'd be no value to fall back to.
     """
 
     _type = "unknown"
@@ -246,12 +256,19 @@ class ConfigElement:
         position: int | None = None,
         name: str | None = None,
         advanced: bool | None = None,
+        required: bool | None = None,
     ):
         if name is not None:
             check_key(name)
             self._name = name
         else:
             self._name = sanitize_display_name(display_name)
+
+        if required is False and default is NotSet:
+            raise ValueError(
+                f"Config element {self._name!r}: required=False needs a "
+                f"default to fall back to, but none was supplied."
+            )
 
         self._position = position
         self._display_name = display_name
@@ -261,6 +278,7 @@ class ConfigElement:
         self.deprecated = deprecated
         self.format = format
         self.advanced = advanced
+        self._required = required
         self._value = NotSet
 
         if (
@@ -287,7 +305,15 @@ class ConfigElement:
 
     @property
     def required(self):
-        """Whether the config element is required."""
+        """Whether the config element is required.
+
+        If an explicit override was passed to ``__init__`` (``required=True``
+        or ``required=False``), that wins. Otherwise falls back to the
+        historical default-derived behaviour: required iff ``default`` is
+        ``NotSet``.
+        """
+        if self._required is not None:
+            return self._required
         return self.default is NotSet
 
     @property
@@ -772,11 +798,52 @@ class Object(ConfigElement):
         if default_collapsed and not collapsible:
             raise ValueError("default_collapsed is not allowed if collapsible is False")
 
+        # Django-style nested overrides: a kwarg whose key contains ``__`` is
+        # routed to a child element rather than passed up to ConfigElement.
+        # ``reference_name__advanced=True`` becomes
+        # ``self._elements["reference_name"].advanced = True``; deeper paths
+        # like ``alerts__minimum_clear_duration_s__default=30.0`` walk the
+        # element tree segment-by-segment with the final segment as the attr.
+        # Constraint: element ``_name``s must not contain ``__`` (mirrors
+        # Django's field-name rule). Pop these before super().__init__ so
+        # ConfigElement doesn't choke on unknown kwargs.
+        child_overrides = {k: kwargs.pop(k) for k in list(kwargs) if "__" in k}
+
         super().__init__(display_name, **kwargs)
         self._elements = copy.deepcopy(self._cls_elements)
         self.additional_elements = additional_elements
         self.collapsible = collapsible
         self.default_collapsed = default_collapsed
+
+        for path_str, value in child_overrides.items():
+            self._apply_child_override(path_str, value)
+
+    def _apply_child_override(self, path_str: str, value: Any) -> None:
+        *child_path, attr = path_str.split("__")
+        if not child_path or not attr or any(not seg for seg in child_path):
+            raise TypeError(
+                f"Invalid override key {path_str!r}: expected "
+                f"'<child>__<attr>' (at least one element segment plus an "
+                f"attribute name, separated by '__'; no empty segments)."
+            )
+        target: ConfigElement = self
+        walked: list[str] = []
+        for seg in child_path:
+            elements = getattr(target, "_elements", None)
+            if elements is None or seg not in elements:
+                walked_str = ".".join(walked) or "<self>"
+                raise TypeError(
+                    f"Cannot apply override {path_str!r}: no child element "
+                    f"named {seg!r} on {walked_str} ({type(target).__name__})."
+                )
+            target = elements[seg]
+            walked.append(seg)
+        if not hasattr(target, attr):
+            raise TypeError(
+                f"Cannot apply override {path_str!r}: "
+                f"{type(target).__name__} has no attribute {attr!r}."
+            )
+        setattr(target, attr, value)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -1122,16 +1189,8 @@ class TagRef(Object):
         display_name: str = "Tag Reference",
         *,
         description: str | None = "Reference to a tag in another application.",
-        optional: bool = False,
         **kwargs,
     ):
-        # An optional TagRef may be omitted from deployment config (or sent
-        # as null / empty object). Setting `default=None` flips `required`
-        # off and routes the missing-element path through `Object.load_data`
-        # with `data=None`, which now early-returns.
-        if optional and "default" not in kwargs:
-            kwargs["default"] = None
-
         super().__init__(
             display_name,
             description=description,
