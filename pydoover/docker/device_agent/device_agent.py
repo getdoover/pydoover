@@ -555,7 +555,7 @@ class DeviceAgentInterface(GRPCInterface):
 
     @cli_command()
     async def send_oneshot_message(
-        self, channel_name: str, data: dict[str, Any]
+        self, channel_name: str, data: dict[str, Any], timestamp: datetime | None = None
     ) -> None:
         d = Struct()
         json_format.ParseDict(data, d)
@@ -564,6 +564,8 @@ class DeviceAgentInterface(GRPCInterface):
             channel_name=channel_name,
             data=d,
         )
+        if timestamp is not None:
+            req.timestamp = int(timestamp.timestamp() * 1000)
         await self.make_request("SendOneShotMessage", req)
 
     @cli_command()
