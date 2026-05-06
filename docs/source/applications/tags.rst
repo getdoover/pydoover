@@ -23,11 +23,11 @@ Tags are declared as class attributes on a :class:`Tags` subclass.
 Use the typed classes — :class:`Number`, :class:`Boolean`,
 :class:`String` — for every declaration::
 
-    from pydoover.tags import Tags, Number, Boolean, String, Cross, Change, Enter, Exit
+    from pydoover.tags import Tags, Number, Boolean, String, Cross, AnyChange, Enter, Exit
 
     class MyTags(Tags):
         voltage = Number(default=0.0, log_on=Cross(90, 110, deadband=2))
-        fault   = Boolean(default=False, log_on=Change())
+        fault   = Boolean(default=False, log_on=AnyChange())
         state   = String(log_on=[Enter("error"), Exit("error")])
 
 Inside an application the runtime exposes a :class:`BoundTag` proxy::
@@ -73,9 +73,9 @@ update is automatically promoted to ``log=True``.
 Numeric tags
 ~~~~~~~~~~~~
 
-:class:`Number` accepts :class:`Cross`, :class:`Rise`, and
-:class:`Fall`. Each takes one or more thresholds as positional
-arguments, plus an optional ``deadband`` keyword::
+:class:`Number` accepts :class:`Cross`, :class:`Rise`, :class:`Fall`,
+and :class:`Delta`. Crossing descriptors take one or more thresholds as
+positional arguments plus an optional ``deadband`` keyword::
 
     voltage = Number(log_on=Cross(100, deadband=2))   # both directions
     multi   = Number(log_on=Cross(90, 100, 110))      # multiple thresholds
@@ -94,15 +94,28 @@ threshold, suppressing repeat logs while the value oscillates close to
 it. The "silent" opposite direction still updates the internal state
 machine, so subsequent crossings the other way work correctly.
 
+:class:`Delta` logs whenever the value moves far enough from the *last
+value this descriptor logged on* — useful for analog signals that
+drift continuously rather than crossing fixed thresholds. Specify
+exactly one of ``amount=`` (absolute change) or ``percent=`` (relative
+change against the last logged value)::
+
+    flow    = Number(log_on=Delta(amount=5))    # log on ±5 unit moves
+    rpm     = Number(log_on=Delta(percent=10))  # log on ±10% swings
+
+The first set always fires so graphs have a baseline data point.
+Combine descriptors freely — e.g. ``log_on=[Cross(100), Delta(amount=5)]``
+captures both alarm transitions and significant drift.
+
 Boolean and string tags
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-:class:`Boolean` and :class:`String` accept :class:`Change`,
+:class:`Boolean` and :class:`String` accept :class:`AnyChange`,
 :class:`Enter`, and :class:`Exit`. :class:`Enter` and :class:`Exit`
 each take a single value — combine them in a list to react to multiple
 values or both directions::
 
-    fault   = Boolean(log_on=Change())                # every transition
+    fault   = Boolean(log_on=AnyChange())             # every transition
     state   = String(log_on=Enter("error"))           # only entering "error"
     state   = String(log_on=Exit("ok"))               # only exiting "ok"
 
@@ -122,7 +135,7 @@ Type validation
 ~~~~~~~~~~~~~~~
 
 Each typed tag accepts only its corresponding descriptors —
-``Number(log_on=Change())`` raises :class:`TypeError` at class
+``Number(log_on=AnyChange())`` raises :class:`TypeError` at class
 definition time, surfacing the mistake before the application runs.
 
 API reference
@@ -154,7 +167,8 @@ Trigger descriptors
 .. autoclass:: pydoover.tags.Cross
 .. autoclass:: pydoover.tags.Rise
 .. autoclass:: pydoover.tags.Fall
-.. autoclass:: pydoover.tags.Change
+.. autoclass:: pydoover.tags.Delta
+.. autoclass:: pydoover.tags.AnyChange
 .. autoclass:: pydoover.tags.Enter
 .. autoclass:: pydoover.tags.Exit
 
