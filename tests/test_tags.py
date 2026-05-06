@@ -6,10 +6,11 @@ import pytest
 from pydoover import config
 from pydoover.docker.application import Application as DockerApplication
 from pydoover.tags import (
+    AnyChange,
     Boolean,
     BoundTag,
-    Change,
     Cross,
+    Delta,
     Enter,
     Exit,
     Fall,
@@ -874,7 +875,7 @@ class TestConcreteTagClasses:
         assert n.log_on == []
 
     def test_boolean_subclass_sets_type(self):
-        b = Boolean(default=False, log_on=Change())
+        b = Boolean(default=False, log_on=AnyChange())
         assert b.tag_type == "boolean"
         assert len(b.log_on) == 1
 
@@ -898,7 +899,7 @@ class TestConcreteTagClasses:
 
     def test_number_rejects_non_numeric_descriptors(self):
         with pytest.raises(TypeError, match="Number log_on accepts"):
-            Number(log_on=Change())
+            Number(log_on=AnyChange())
         with pytest.raises(TypeError, match="Number log_on accepts"):
             Number(log_on=Enter(1))
 
@@ -1080,8 +1081,92 @@ class TestDirectionalNumericTriggers:
         assert log_flags == [False, True, True]
 
 
+class _DeltaTags(Tags):
+    abs_5 = Number(log_on=Delta(amount=5))
+    pct_10 = Number(log_on=Delta(percent=10))
+
+
+class TestDeltaTrigger:
+    def test_requires_exactly_one_of_amount_or_percent(self):
+        with pytest.raises(ValueError, match="exactly one"):
+            Delta()
+        with pytest.raises(ValueError, match="exactly one"):
+            Delta(amount=5, percent=10)
+
+    def test_only_allowed_on_number(self):
+        with pytest.raises(TypeError, match="Boolean log_on accepts"):
+            Boolean(log_on=Delta(amount=1))
+        with pytest.raises(TypeError, match="String log_on accepts"):
+            String(log_on=Delta(amount=1))
+
+    @pytest.mark.asyncio
+    async def test_first_set_logs_and_seeds_baseline(self):
+        manager = FakeTagsManager()
+        tags = _DeltaTags("test_app", manager, FakeSchema())
+
+        await tags.abs_5.set(80)
+
+        assert manager.set_call_kwargs[-1].get("log") is True
+
+    @pytest.mark.asyncio
+    async def test_absolute_delta_fires_on_swing(self):
+        manager = FakeTagsManager()
+        tags = _DeltaTags("test_app", manager, FakeSchema())
+
+        await tags.abs_5.set(80)  # baseline — log
+        await tags.abs_5.set(82)  # diff 2 < 5 — no log
+        await tags.abs_5.set(83)  # diff 3 — no log
+        await tags.abs_5.set(86)  # diff 6 — log; new baseline 86
+        await tags.abs_5.set(89)  # diff 3 from 86 — no log
+        await tags.abs_5.set(80)  # diff 6 from 86 — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, False, False, True, False, True]
+
+    @pytest.mark.asyncio
+    async def test_percent_delta_fires_on_relative_swing(self):
+        manager = FakeTagsManager()
+        tags = _DeltaTags("test_app", manager, FakeSchema())
+
+        await tags.pct_10.set(100)  # baseline — log
+        await tags.pct_10.set(105)  # 5% — no log
+        await tags.pct_10.set(110)  # 10% — log; baseline now 110
+        await tags.pct_10.set(115)  # 4.5% from 110 — no log
+        await tags.pct_10.set(99)  # 10% drop from 110 — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, False, True, False, True]
+
+    @pytest.mark.asyncio
+    async def test_percent_delta_handles_zero_baseline(self):
+        manager = FakeTagsManager()
+        tags = _DeltaTags("test_app", manager, FakeSchema())
+
+        await tags.pct_10.set(0)  # baseline 0 — log (first set)
+        await tags.pct_10.set(0)  # unchanged — no log
+        await tags.pct_10.set(5)  # zero baseline + non-zero new — log; baseline 5
+        await tags.pct_10.set(5)  # 0% from 5 — no log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, False, True, False]
+
+    @pytest.mark.asyncio
+    async def test_baseline_only_advances_when_descriptor_fires(self):
+        # Ensures last_logged tracks fired values, not every set.
+        manager = FakeTagsManager()
+        tags = _DeltaTags("test_app", manager, FakeSchema())
+
+        await tags.abs_5.set(80)  # baseline — log
+        await tags.abs_5.set(82)  # diff 2 — no log; baseline still 80
+        await tags.abs_5.set(83)  # diff 3 — no log; baseline still 80
+        await tags.abs_5.set(85)  # diff 5 from 80 — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, False, False, True]
+
+
 class _BoolTags(Tags):
-    fault_change = Boolean(log_on=Change())
+    fault_change = Boolean(log_on=AnyChange())
     # Bidirectional on a single value via composition.
     fault_bidirectional = Boolean(log_on=[Enter(True), Exit(True)])
 

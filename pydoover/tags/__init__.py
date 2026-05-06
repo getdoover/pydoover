@@ -245,11 +245,78 @@ class Fall(_Crossing):
     _DIRECTIONS = frozenset({"fall"})
 
 
-class Change(_LogTrigger):
+class Delta(_LogTrigger):
+    """Log when the value moves far enough from the last logged value.
+
+    Unlike :class:`Cross`, ``Delta`` doesn't track threshold sides — it
+    compares each new value against the *last value this descriptor
+    fired on*. The first set fires unconditionally (and seeds the
+    baseline) so graphs always have an initial data point.
+
+    Exactly one of ``amount=`` or ``percent=`` must be provided.
+
+    Parameters
+    ----------
+    amount:
+        Minimum absolute change required to fire — e.g. ``amount=5``
+        fires on any move of at least 5 units up or down from the last
+        logged value.
+    percent:
+        Minimum percentage change required to fire, computed against
+        the magnitude of the last logged value. ``percent=10`` fires on
+        a 10% swing. When the last logged value is ``0``, any non-zero
+        new value fires.
+    """
+
+    def __init__(
+        self,
+        *,
+        amount: float | None = None,
+        percent: float | None = None,
+    ):
+        if (amount is None) == (percent is None):
+            raise ValueError("Delta requires exactly one of `amount=` or `percent=`.")
+        self.amount: float | None = float(amount) if amount is not None else None
+        self.percent: float | None = float(percent) if percent is not None else None
+
+    def __repr__(self) -> str:
+        if self.amount is not None:
+            return f"Delta(amount={self.amount!r})"
+        return f"Delta(percent={self.percent!r})"
+
+    def evaluate(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        if new is None or new is NotSet or isinstance(new, bool):
+            return False
+        if not isinstance(new, (int, float)):
+            return False
+
+        last_logged = state.get("last_logged", NotSet)
+        if last_logged is NotSet:
+            # First set — log unconditionally and seed the baseline.
+            state["last_logged"] = new
+            return True
+
+        diff = abs(new - last_logged)
+        if self.amount is not None:
+            fired = diff >= self.amount
+        elif last_logged == 0:
+            # Percent change against zero is undefined; treat any
+            # non-zero new value as significant so the baseline shifts
+            # off zero and percentage comparisons can resume normally.
+            fired = new != 0
+        else:
+            fired = (diff / abs(last_logged)) * 100 >= self.percent
+
+        if fired:
+            state["last_logged"] = new
+        return fired
+
+
+class AnyChange(_LogTrigger):
     """Log on every value transition (for :class:`Boolean` / :class:`String`)."""
 
     def __repr__(self) -> str:
-        return "Change()"
+        return "AnyChange()"
 
     def evaluate(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
         if prev is NotSet:
@@ -324,12 +391,12 @@ class Number(Tag):
         Optional explicit declaration name (otherwise inherits the
         attribute name on the owning :class:`Tags` subclass).
     log_on:
-        One :class:`Cross` / :class:`Rise` / :class:`Fall` descriptor,
-        or a list of them. Each describes a threshold-based rule that
-        promotes the update to an immediate log when fired.
+        One :class:`Cross` / :class:`Rise` / :class:`Fall` /
+        :class:`Delta` descriptor, or a list of them. Each describes a
+        rule that promotes the update to an immediate log when fired.
     """
 
-    _ALLOWED_TRIGGERS: tuple[type, ...] = (Cross, Rise, Fall)
+    _ALLOWED_TRIGGERS: tuple[type, ...] = (Cross, Rise, Fall, Delta)
 
     def __init__(
         self,
@@ -355,11 +422,11 @@ class Boolean(Tag):
     default, name:
         See :class:`Tag`.
     log_on:
-        One :class:`Change` / :class:`Enter` / :class:`Exit` descriptor,
+        One :class:`AnyChange` / :class:`Enter` / :class:`Exit` descriptor,
         or a list of them.
     """
 
-    _ALLOWED_TRIGGERS: tuple[type, ...] = (Change, Enter, Exit)
+    _ALLOWED_TRIGGERS: tuple[type, ...] = (AnyChange, Enter, Exit)
 
     def __init__(
         self,
@@ -383,7 +450,7 @@ class String(Tag):
     See :class:`Boolean` for the meaning of ``log_on``.
     """
 
-    _ALLOWED_TRIGGERS: tuple[type, ...] = (Change, Enter, Exit)
+    _ALLOWED_TRIGGERS: tuple[type, ...] = (AnyChange, Enter, Exit)
 
     def __init__(
         self,
