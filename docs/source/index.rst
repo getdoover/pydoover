@@ -29,6 +29,7 @@ Contents
     applications/docker
     applications/processor
     applications/config_schema
+    applications/tags
 
 .. toctree::
     :maxdepth: 2

@@ -61,8 +61,12 @@ class Tag:
     def get(self) -> Any:
         self._raise_unbound_error()
 
-    def set(self, value: Any) -> Any:
-        del value
+    def set(self, value: Any, log: bool = False) -> Any:
+        del value, log
+        self._raise_unbound_error()
+
+    def delete(self, log: bool = False) -> Any:
+        del log
         self._raise_unbound_error()
 
     def clear(self) -> Any:
@@ -71,12 +75,12 @@ class Tag:
     def is_set(self) -> bool:
         self._raise_unbound_error()
 
-    def increment(self, amount: int | float = 1) -> Any:
-        del amount
+    def increment(self, amount: int | float = 1, log: bool = False) -> Any:
+        del amount, log
         self._raise_unbound_error()
 
-    def decrement(self, amount: int | float = 1) -> Any:
-        del amount
+    def decrement(self, amount: int | float = 1, log: bool = False) -> Any:
+        del amount, log
         self._raise_unbound_error()
 
     def __str__(self) -> str:
@@ -118,6 +122,192 @@ class Tag:
         elsewhere.
         """
         return tags.app_key, declaration.name
+
+    def _evaluate_log_trigger(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        """Return ``True`` if this update should be promoted to an immediate log.
+
+        The base implementation always returns ``False``; typed subclasses
+        (:class:`Number`, :class:`Boolean`, :class:`String`) override this
+        to encode their crossing/state-transition semantics. ``state`` is
+        a mutable per-tag scratchpad owned by the :class:`Tags` instance.
+        """
+        del prev, new, state
+        return False
+
+
+def _as_list(value: Any) -> list[Any]:
+    """Normalise ``None | scalar | iterable`` into a list."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return list(value)
+    return [value]
+
+
+class Number(Tag):
+    """A numeric tag declaration with optional crossing-based auto-logging.
+
+    Parameters
+    ----------
+    default:
+        Value returned by reads when the manager has nothing stored.
+    name:
+        Optional explicit declaration name (otherwise inherits the
+        attribute name on the owning :class:`Tags` subclass).
+    log_on_cross:
+        Threshold(s) that, when crossed, promote the update to an
+        immediate logged data point. Accepts a scalar or iterable.
+    deadband:
+        Hysteresis band around each threshold. Crossings only fire when
+        the value moves at least ``deadband / 2`` beyond the threshold,
+        suppressing repeat logs while the value oscillates near it.
+        Defaults to ``0`` (sharp crossings).
+    """
+
+    def __init__(
+        self,
+        *,
+        default: Any = NotSet,
+        name: str | None = None,
+        log_on_cross: float | list[float] | None = None,
+        deadband: float = 0.0,
+    ):
+        super().__init__("number", default=default, name=name)
+        self.log_on_cross: list[float] = sorted(
+            float(t) for t in _as_list(log_on_cross)
+        )
+        self.deadband: float = float(deadband or 0.0)
+
+    def _evaluate_log_trigger(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        del prev  # state is the source of truth for crossings.
+        if not self.log_on_cross:
+            return False
+        if new is None or new is NotSet or isinstance(new, bool):
+            return False
+        if not isinstance(new, (int, float)):
+            return False
+
+        # Per-threshold side: "below" (default for the implicit prior
+        # state) or "above". Crossings fire when the value clears the
+        # deadband zone on the opposite side from the recorded one.
+        sides: dict[float, str] = state.setdefault("sides", {})
+        half_band = self.deadband / 2
+        fired = False
+        for t in self.log_on_cross:
+            upper = t + half_band
+            lower = t - half_band
+            current = sides.get(t, "below")
+            if new >= upper and current == "below":
+                sides[t] = "above"
+                fired = True
+            elif new <= lower and current == "above":
+                sides[t] = "below"
+                fired = True
+        return fired
+
+
+class _StateTransitionTag(Tag):
+    """Shared trigger logic for :class:`Boolean` and :class:`String`."""
+
+    def __init__(
+        self,
+        tag_type: str,
+        *,
+        default: Any = NotSet,
+        name: str | None = None,
+        log_on_change: bool = False,
+        log_on_state: Any = None,
+        log_on_enter: Any = None,
+        log_on_exit: Any = None,
+    ):
+        super().__init__(tag_type, default=default, name=name)
+        self.log_on_change = bool(log_on_change)
+        # ``log_on_state`` is sugar for "fire on entry to OR exit from
+        # any of these values" — fold it into both enter and exit sets.
+        unified = _as_list(log_on_state)
+        self.log_on_enter: list[Any] = unified + _as_list(log_on_enter)
+        self.log_on_exit: list[Any] = unified + _as_list(log_on_exit)
+
+    def _evaluate_log_trigger(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        del state  # state-transition tags don't need scratch state.
+        if prev is NotSet:
+            prev = None
+        if prev == new:
+            return False
+        if self.log_on_change:
+            return True
+        if new in self.log_on_enter:
+            return True
+        if prev in self.log_on_exit:
+            return True
+        return False
+
+
+class Boolean(_StateTransitionTag):
+    """A boolean tag declaration with optional state-based auto-logging.
+
+    Parameters
+    ----------
+    default, name:
+        See :class:`Tag`.
+    log_on_change:
+        Promote every transition to an immediate log.
+    log_on_state:
+        Promote when entering OR exiting any of these values. Sugar for
+        passing the same list to both ``log_on_enter`` and
+        ``log_on_exit``.
+    log_on_enter:
+        Promote only when the new value is one of these.
+    log_on_exit:
+        Promote only when the previous value was one of these.
+    """
+
+    def __init__(
+        self,
+        *,
+        default: Any = NotSet,
+        name: str | None = None,
+        log_on_change: bool = False,
+        log_on_state: bool | list[bool] | None = None,
+        log_on_enter: bool | list[bool] | None = None,
+        log_on_exit: bool | list[bool] | None = None,
+    ):
+        super().__init__(
+            "boolean",
+            default=default,
+            name=name,
+            log_on_change=log_on_change,
+            log_on_state=log_on_state,
+            log_on_enter=log_on_enter,
+            log_on_exit=log_on_exit,
+        )
+
+
+class String(_StateTransitionTag):
+    """A string tag declaration with optional state-based auto-logging.
+
+    See :class:`Boolean` for the meaning of the ``log_on_*`` parameters.
+    """
+
+    def __init__(
+        self,
+        *,
+        default: Any = NotSet,
+        name: str | None = None,
+        log_on_change: bool = False,
+        log_on_state: str | list[str] | None = None,
+        log_on_enter: str | list[str] | None = None,
+        log_on_exit: str | list[str] | None = None,
+    ):
+        super().__init__(
+            "string",
+            default=default,
+            name=name,
+            log_on_change=log_on_change,
+            log_on_state=log_on_state,
+            log_on_enter=log_on_enter,
+            log_on_exit=log_on_exit,
+        )
 
 
 class _UnresolvedRemoteTag(Exception):
@@ -260,9 +450,30 @@ class BoundTag:
         """Return the current value of this tag from the registered manager."""
         return self._tags._get_tag_value(self._declaration.attr_name)
 
-    async def set(self, value: Any) -> None:
-        """Async variant of :meth:`set`."""
-        await self._tags._set_tag_value(self._declaration.attr_name, value)
+    async def set(self, value: Any, log: bool = False) -> None:
+        """Set this tag's value via the registered manager.
+
+        Parameters
+        ----------
+        value:
+            The new value.
+        log:
+            When ``True``, the update is also recorded as a logged data
+            point (a channel message) as soon as possible — typically at
+            the end of the current main-loop iteration in docker apps,
+            or at the end of the current invocation in processors —
+            rather than waiting for the next periodic log flush (up to
+            15 minutes).
+        """
+        await self._tags._set_tag_value(self._declaration.attr_name, value, log=log)
+
+    async def delete(self, log: bool = False) -> None:
+        """Delete this tag from the cloud.
+
+        Removes the tag's entry from the aggregate channel. Prefer this
+        over ``tag.set(None)`` to make the deletion intent explicit.
+        """
+        await self._tags._delete_tag_value(self._declaration.attr_name, log=log)
 
     async def clear(self) -> None:
         """Reset this tag back to its declared default value."""
@@ -272,24 +483,24 @@ class BoundTag:
         """Return ``True`` when this tag currently has a concrete value."""
         return self.get() is not NotSet
 
-    async def increment(self, amount: int | float = 1) -> Any:
+    async def increment(self, amount: int | float = 1, log: bool = False) -> Any:
         """Increment a numeric tag and return the new value."""
         self._validate_numeric("increment")
         current = self.get()
         if current is NotSet:
             raise ValueError(f"Cannot increment unset tag '{self.name}'.")
         new_value = current + amount
-        await self.set(new_value)
+        await self.set(new_value, log=log)
         return new_value
 
-    async def decrement(self, amount: int | float = 1) -> Any:
+    async def decrement(self, amount: int | float = 1, log: bool = False) -> Any:
         """Decrement a numeric tag and return the new value."""
         self._validate_numeric("decrement")
         current = self.get()
         if current is NotSet:
             raise ValueError(f"Cannot decrement unset tag '{self.name}'.")
         new_value = current - amount
-        await self.set(new_value)
+        await self.set(new_value, log=log)
         return new_value
 
     def _validate_numeric(self, operation: str) -> None:
@@ -403,6 +614,12 @@ class Tags:
         # Resolved targets for declared RemoteTags, keyed by attr_name.
         # Populated by `_resolve_remote_tags()`.
         self._remote_tag_targets: dict[str, dict[str, Any]] = {}
+
+        # Per-tag scratch state for log-trigger evaluation (e.g. tracked
+        # threshold sides on Number tags). Owned here so it survives
+        # across writes without leaking between Tags instances that
+        # share class-level Tag templates.
+        self._trigger_states: dict[str, dict[str, Any]] = {}
 
     async def setup(self):
         """Mutate this tag collection before it is bound to a manager."""
@@ -584,7 +801,7 @@ class Tags:
         )
         return _coerce_tag_value(value, declaration.template.tag_type)
 
-    async def _set_tag_value(self, name: str, value: Any) -> None:
+    async def _set_tag_value(self, name: str, value: Any, log: bool = False) -> None:
         declaration = self._get_declaration(name)
         if declaration is None:
             raise AttributeError(f"Unknown tag '{name}'")
@@ -598,7 +815,24 @@ class Tags:
             # don't need to branch on resolution state at every write site.
             return
 
-        await self._manager.set_tag(key_name, value, app_key=app_key)
+        # Always evaluate the trigger so per-tag state (e.g. threshold
+        # sides) stays consistent — even when ``log`` was already True
+        # at the call site. Only the boolean result matters when log
+        # was False.
+        trigger_state = self._trigger_states.setdefault(name, {})
+        prev_value = self._get_tag_value(name)
+        triggered = declaration.template._evaluate_log_trigger(
+            prev_value, value, trigger_state
+        )
+        if triggered:
+            log = True
+
+        await self._manager.set_tag(key_name, value, app_key=app_key, log=log)
+
+    async def _delete_tag_value(self, name: str, log: bool = False) -> None:
+        # Deletion is communicated upstream as ``value=None`` — the cloud
+        # interprets it as "remove this key from the aggregate".
+        await self._set_tag_value(name, None, log=log)
 
     def get(self, name: str) -> BoundTag | None:
         """Return the bound runtime proxy for a tag, if it exists."""

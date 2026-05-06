@@ -5,7 +5,16 @@ import pytest
 
 from pydoover import config
 from pydoover.docker.application import Application as DockerApplication
-from pydoover.tags import BoundTag, NotSet, RemoteTag, Tag, Tags
+from pydoover.tags import (
+    Boolean,
+    BoundTag,
+    NotSet,
+    Number,
+    RemoteTag,
+    String,
+    Tag,
+    Tags,
+)
 from pydoover.tags.manager import (
     FASTMODE_CHANNEL_NAME,
     TAG_CHANNEL_NAME,
@@ -19,6 +28,7 @@ class FakeTagsManager:
         self.values = dict(initial or {})
         self.get_calls = []
         self.set_calls = []
+        self.set_call_kwargs: list[dict] = []
         self.subscriptions: list = []
 
     def get_tag(self, key, default=None, app_key=None, raise_key_error=False):
@@ -27,8 +37,8 @@ class FakeTagsManager:
         return self.values.get((app_key, key), default)
 
     async def set_tag(self, key, value, app_key=None, **kwargs):
-        del kwargs
         self.set_calls.append((key, value, app_key))
+        self.set_call_kwargs.append(dict(kwargs))
         self.values[(app_key, key)] = value
 
     def subscribe_to_tag(self, key, callback, app_key=None):
@@ -688,6 +698,394 @@ class TestTagsManagerDocker:
         )
 
         assert updates == [("voltage", 13.2)]
+
+
+class TestImmediateLog:
+    @pytest.mark.asyncio
+    async def test_set_with_log_buffers_immediate_not_periodic(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        await manager.set_tag("voltage", 13.2, app_key="test_app", log=True)
+
+        assert manager._pending_immediate_log == {"test_app": {"voltage": 13.2}}
+        assert manager._pending_tag_log == {}
+        assert manager._pending_tag_aggregate == {"test_app": {"voltage": 13.2}}
+
+    @pytest.mark.asyncio
+    async def test_commit_tags_creates_message_for_immediate_log(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        await manager.set_tag("voltage", 13.2, app_key="test_app", log=True)
+        await manager.commit_tags()
+
+        assert client.messages == [(TAG_CHANNEL_NAME, {"test_app": {"voltage": 13.2}})]
+        # Aggregate update also fires (end-of-loop flush_tags).
+        assert any(entry[0] == TAG_CHANNEL_NAME for entry in client.aggregate_updates)
+        # Immediate buffer is drained after the flush.
+        assert manager._pending_immediate_log == {}
+
+    @pytest.mark.asyncio
+    async def test_log_true_strips_previous_periodic_entry(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        await manager.set_tag("voltage", 12.0, app_key="test_app")
+        assert manager._pending_tag_log == {"test_app": {"voltage": 12.0}}
+
+        await manager.set_tag("voltage", 13.0, app_key="test_app", log=True)
+
+        # Old periodic entry for the same path is removed; the new value
+        # lives only in the immediate buffer.
+        assert manager._pending_tag_log == {}
+        assert manager._pending_immediate_log == {"test_app": {"voltage": 13.0}}
+
+    @pytest.mark.asyncio
+    async def test_multiple_log_true_calls_coalesce_into_one_message(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        await manager.set_tag("voltage", 13.2, app_key="test_app", log=True)
+        await manager.set_tag("speed", 50, app_key="test_app", log=True)
+        await manager.commit_tags()
+
+        assert client.messages == [
+            (
+                TAG_CHANNEL_NAME,
+                {"test_app": {"voltage": 13.2, "speed": 50}},
+            )
+        ]
+
+    @pytest.mark.asyncio
+    async def test_log_false_routes_to_periodic_buffer(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+
+        await manager.set_tag("voltage", 13.2, app_key="test_app")
+
+        assert manager._pending_tag_log == {"test_app": {"voltage": 13.2}}
+        assert manager._pending_immediate_log == {}
+
+    @pytest.mark.asyncio
+    async def test_bound_tag_set_forwards_log_kwarg(self):
+        manager = FakeTagsManager()
+        tags = make_tags(manager)
+
+        await tags.voltage.set(13.2, log=True)
+
+        assert manager.set_calls == [("voltage", 13.2, "test_app")]
+        assert manager.set_call_kwargs[-1].get("log") is True
+
+    @pytest.mark.asyncio
+    async def test_bound_tag_increment_forwards_log_kwarg(self):
+        manager = FakeTagsManager({("test_app", "voltage"): 12.0})
+        tags = make_tags(manager)
+
+        await tags.voltage.increment(log=True)
+
+        assert manager.set_call_kwargs[-1].get("log") is True
+
+
+class TestDelete:
+    @pytest.mark.asyncio
+    async def test_bound_tag_delete_writes_none(self):
+        manager = FakeTagsManager({("test_app", "voltage"): 12.0})
+        tags = make_tags(manager)
+
+        await tags.voltage.delete()
+
+        assert manager.set_calls[-1] == ("voltage", None, "test_app")
+
+    @pytest.mark.asyncio
+    async def test_bound_tag_delete_forwards_log_kwarg(self):
+        manager = FakeTagsManager({("test_app", "voltage"): 12.0})
+        tags = make_tags(manager)
+
+        await tags.voltage.delete(log=True)
+
+        assert manager.set_calls[-1] == ("voltage", None, "test_app")
+        assert manager.set_call_kwargs[-1].get("log") is True
+
+    @pytest.mark.asyncio
+    async def test_docker_manager_delete_via_tag_logs_immediately(self):
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+        # Seed an existing value so the diff registers as a change.
+        manager._tag_values = {"test_app": {"voltage": 12.0}}
+
+        await manager.set_tag("voltage", None, app_key="test_app", log=True)
+        await manager.commit_tags()
+
+        assert client.messages == [(TAG_CHANNEL_NAME, {"test_app": {"voltage": None}})]
+
+
+class TestProcessorImmediateLog:
+    @pytest.mark.asyncio
+    async def test_log_true_forces_message_when_record_disabled(self):
+        from pydoover.tags.manager import TagsManagerProcessor
+
+        client = FakeTagClient()
+        manager = TagsManagerProcessor(
+            app_key="test_app",
+            client=client,
+            agent_id=1,
+            tag_values={},
+            record_tag_update=False,
+        )
+
+        await manager.set_tag("voltage", 13.2, log=True)
+        await manager.commit_tags()
+
+        assert client.messages == [(TAG_CHANNEL_NAME, {"test_app": {"voltage": 13.2}})]
+
+    @pytest.mark.asyncio
+    async def test_log_false_respects_record_disabled(self):
+        from pydoover.tags.manager import TagsManagerProcessor
+
+        client = FakeTagClient()
+        manager = TagsManagerProcessor(
+            app_key="test_app",
+            client=client,
+            agent_id=1,
+            tag_values={},
+            record_tag_update=False,
+        )
+
+        await manager.set_tag("voltage", 13.2)
+        await manager.commit_tags()
+
+        # Aggregate updates but no message is created.
+        assert client.messages == []
+        assert client.aggregate_updates  # at least one aggregate update
+
+
+class TestConcreteTagClasses:
+    def test_number_subclass_sets_type(self):
+        n = Number(default=0)
+        assert n.tag_type == "number"
+        assert n.default == 0
+        assert n.log_on_cross == []
+        assert n.deadband == 0.0
+
+    def test_number_normalises_thresholds(self):
+        scalar = Number(log_on_cross=100)
+        assert scalar.log_on_cross == [100.0]
+
+        unsorted = Number(log_on_cross=[110, 90, 100])
+        assert unsorted.log_on_cross == [90.0, 100.0, 110.0]
+
+    def test_boolean_subclass_sets_type(self):
+        b = Boolean(default=False, log_on_change=True)
+        assert b.tag_type == "boolean"
+        assert b.log_on_change is True
+
+    def test_string_subclass_sets_type(self):
+        s = String(default="idle")
+        assert s.tag_type == "string"
+
+    def test_log_on_state_folds_into_enter_and_exit(self):
+        s = String(log_on_state=["error", "ok"])
+        assert s.log_on_enter == ["error", "ok"]
+        assert s.log_on_exit == ["error", "ok"]
+
+    def test_log_on_enter_and_log_on_state_combine(self):
+        s = String(log_on_state=["error"], log_on_enter=["warn"])
+        assert s.log_on_enter == ["error", "warn"]
+        assert s.log_on_exit == ["error"]
+
+    def test_legacy_tag_constructor_still_works(self):
+        # Backwards compat: ``Tag(type, ...)`` keeps working even after
+        # the typed subclasses are introduced.
+        t = Tag("number", default=5)
+        assert t.tag_type == "number"
+        assert t.default == 5
+        assert t._evaluate_log_trigger(None, 100, {}) is False
+
+
+class _NumericTags(Tags):
+    voltage = Number(log_on_cross=[100])
+    temp = Number(log_on_cross=[50, 100], deadband=4)
+
+
+class TestNumberTriggers:
+    @pytest.mark.asyncio
+    async def test_initial_value_above_threshold_logs(self):
+        manager = FakeTagsManager()
+        tags = _NumericTags("test_app", manager, FakeSchema())
+
+        await tags.voltage.set(120)
+
+        assert manager.set_call_kwargs[-1].get("log") is True
+
+    @pytest.mark.asyncio
+    async def test_initial_value_below_threshold_does_not_log(self):
+        manager = FakeTagsManager()
+        tags = _NumericTags("test_app", manager, FakeSchema())
+
+        await tags.voltage.set(80)
+
+        assert manager.set_call_kwargs[-1].get("log") is False
+
+    @pytest.mark.asyncio
+    async def test_crossing_up_then_down_both_log(self):
+        manager = FakeTagsManager()
+        tags = _NumericTags("test_app", manager, FakeSchema())
+
+        await tags.voltage.set(80)  # below — no log
+        await tags.voltage.set(120)  # crosses up — log
+        await tags.voltage.set(70)  # crosses down — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [False, True, True]
+
+    @pytest.mark.asyncio
+    async def test_no_relog_while_staying_above(self):
+        manager = FakeTagsManager()
+        tags = _NumericTags("test_app", manager, FakeSchema())
+
+        await tags.voltage.set(120)  # crosses up — log
+        await tags.voltage.set(130)  # still above — no log
+        await tags.voltage.set(110)  # still above — no log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, False, False]
+
+    @pytest.mark.asyncio
+    async def test_deadband_suppresses_oscillation(self):
+        manager = FakeTagsManager()
+        tags = _NumericTags("test_app", manager, FakeSchema())
+
+        # threshold=50, deadband=4 → fires up at >=52, down at <=48.
+        # Oscillation between 49 and 51 must not fire.
+        await tags.temp.set(40)  # below band — no log, state stays "below"
+        await tags.temp.set(51)  # still inside band — no log
+        await tags.temp.set(49)  # still inside band — no log
+        await tags.temp.set(53)  # clears upper edge — log (crosses 50)
+        await tags.temp.set(49)  # back inside band — no log
+        await tags.temp.set(47)  # clears lower edge — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [False, False, False, True, False, True]
+
+    @pytest.mark.asyncio
+    async def test_multiple_thresholds_each_fire_independently(self):
+        manager = FakeTagsManager()
+        tags = _NumericTags("test_app", manager, FakeSchema())
+
+        # thresholds: 50, 100. deadband=4. Both start "below".
+        await tags.temp.set(60)  # crosses 50 — log
+        await tags.temp.set(110)  # crosses 100 — log
+        await tags.temp.set(95)  # back below 100 (well clear of band) — log
+        await tags.temp.set(40)  # back below 50 — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, True, True, True]
+
+    @pytest.mark.asyncio
+    async def test_explicit_log_true_combines_with_threshold(self):
+        manager = FakeTagsManager()
+        tags = _NumericTags("test_app", manager, FakeSchema())
+
+        # User-forced log=True still results in log=True even if no
+        # crossing fired.
+        await tags.voltage.set(50, log=True)
+
+        assert manager.set_call_kwargs[-1].get("log") is True
+
+
+class _BoolTags(Tags):
+    fault_change = Boolean(log_on_change=True)
+    fault_state = Boolean(log_on_state=[True])
+
+
+class TestBooleanTriggers:
+    @pytest.mark.asyncio
+    async def test_log_on_change_fires_each_transition(self):
+        manager = FakeTagsManager()
+        tags = _BoolTags("test_app", manager, FakeSchema())
+
+        await tags.fault_change.set(True)
+        await tags.fault_change.set(False)
+        await tags.fault_change.set(True)
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, True, True]
+
+    @pytest.mark.asyncio
+    async def test_log_on_state_fires_on_enter_and_exit(self):
+        manager = FakeTagsManager()
+        tags = _BoolTags("test_app", manager, FakeSchema())
+
+        await tags.fault_state.set(True)  # entering [True] — log
+        await tags.fault_state.set(False)  # exiting [True] — log
+        await tags.fault_state.set(False)  # prev == new → no log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, True, False]
+
+
+class _StringTags(Tags):
+    state_unified = String(log_on_state=["error", "ok"])
+    state_enter_only = String(log_on_enter=["error"])
+    state_exit_only = String(log_on_exit=["ok"])
+
+
+class TestStringTriggers:
+    @pytest.mark.asyncio
+    async def test_log_on_state_fires_in_both_directions(self):
+        manager = FakeTagsManager()
+        tags = _StringTags("test_app", manager, FakeSchema())
+
+        await tags.state_unified.set("error")  # enter — log
+        await tags.state_unified.set("warn")  # exit — log
+        await tags.state_unified.set("ok")  # enter — log
+        await tags.state_unified.set("warn")  # exit — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, True, True, True]
+
+    @pytest.mark.asyncio
+    async def test_log_on_enter_only_fires_on_entry(self):
+        manager = FakeTagsManager()
+        tags = _StringTags("test_app", manager, FakeSchema())
+
+        await tags.state_enter_only.set("error")  # enter — log
+        await tags.state_enter_only.set("warn")  # exit, but exit not configured
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, False]
+
+    @pytest.mark.asyncio
+    async def test_log_on_exit_only_fires_on_exit(self):
+        manager = FakeTagsManager()
+        tags = _StringTags("test_app", manager, FakeSchema())
+
+        await tags.state_exit_only.set("ok")  # enter, but enter not configured
+        await tags.state_exit_only.set("warn")  # exit — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [False, True]
+
+
+class TestTriggerEndToEnd:
+    @pytest.mark.asyncio
+    async def test_threshold_crossing_creates_message_via_docker_manager(self):
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {},
+                FASTMODE_CHANNEL_NAME: {},
+            }
+        )
+        manager = TagsManagerDocker(client=client)
+        await manager.setup()
+
+        tags = _NumericTags("test_app", manager, FakeSchema())
+
+        await tags.voltage.set(120)  # crosses 100 — should immediate-log
+        await manager.commit_tags()
+
+        assert client.messages == [(TAG_CHANNEL_NAME, {"test_app": {"voltage": 120}})]
 
 
 class TestDockerApplicationStartup:

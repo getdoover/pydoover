@@ -20,7 +20,7 @@ TAG_OBSERVED_MAX_AGE = 3  # 3 seconds
 TAG_CHANNEL_NAME = "tag_values"
 FASTMODE_CHANNEL_NAME = "doover_ui_fastmode"
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class KeyPath:
@@ -110,6 +110,24 @@ class KeyPath:
         return hash(".".join(self.path))
 
 
+def _strip_paths(target: dict[str, Any], paths: dict[str, Any]) -> None:
+    """Recursively remove leaf keys present in ``paths`` from ``target``.
+
+    Used to dedupe the periodic-log buffer when the same keys have been
+    promoted to the immediate-log buffer — avoids logging the same value
+    twice (once now, once at the next 15-min flush).
+    """
+    for k, v in paths.items():
+        if k not in target:
+            continue
+        if isinstance(v, dict) and isinstance(target[k], dict):
+            _strip_paths(target[k], v)
+            if not target[k]:
+                del target[k]
+        else:
+            del target[k]
+
+
 class TagsManager:
     """Base interface for manager-backed tag access."""
 
@@ -124,9 +142,19 @@ class TagsManager:
         raise NotImplementedError
 
     async def set_tag(
-        self, key: str, value: Any, app_key: str | None = None, flush: bool = False
+        self,
+        key: str,
+        value: Any,
+        app_key: str | None = None,
+        flush: bool = False,
+        log: bool = False,
     ) -> None:
-        """Set a tag value in the backing store."""
+        """Set a tag value in the backing store.
+
+        ``log=True`` requests that this update be recorded as a logged
+        data point as soon as possible (typically end of loop), rather
+        than waiting for the next periodic log flush.
+        """
         raise NotImplementedError
 
     async def commit_tags(self) -> None:
@@ -153,6 +181,7 @@ class TagsManagerDocker(TagsManager):
 
         self._last_tag_log_time: float = 0.0
         self._pending_tag_log: dict[str, Any] = {}
+        self._pending_immediate_log: dict[str, Any] = {}
         self._pending_tag_aggregate: dict[str, Any] = {}
 
         self._tags_dirty = False
@@ -219,7 +248,7 @@ class TagsManagerDocker(TagsManager):
                     call_maybe_async(callback, tag_key, new_value), timeout=1
                 )
             except Exception as e:
-                log.exception(f"Error in {callback.__name__}: {e}", exc_info=e)
+                logger.exception(f"Error in {callback.__name__}: {e}", exc_info=e)
 
         for k, callback in self._tag_subscriptions.items():
             if k.in_dict(diff):
@@ -260,7 +289,7 @@ class TagsManagerDocker(TagsManager):
         )
 
         if not key_path.in_dict(current_values):
-            log.debug(f"Tag {key_path} not found in current tags")
+            logger.debug(f"Tag {key_path} not found in current tags")
             if raise_key_error:
                 raise KeyError(key_path)
             return default
@@ -273,11 +302,12 @@ class TagsManagerDocker(TagsManager):
         app_key: str | None = None,
         only_if_changed: bool = True,
         flush: bool = False,
+        log: bool = False,
     ) -> None:
         """Set a single tag value and publish the resulting diff to the tag channel."""
         key_path = KeyPath(key, app_key=app_key)
         await self.set_tags(
-            key_path.construct_dict(value), only_if_changed, flush=flush
+            key_path.construct_dict(value), only_if_changed, flush=flush, log=log
         )
 
     async def set_tags(
@@ -287,6 +317,7 @@ class TagsManagerDocker(TagsManager):
         key=None,
         app_key: str | None = None,
         flush: bool = False,
+        log: bool = False,
     ):
         """Publish multiple tag values to the device agent tag channel."""
         if key is not None or app_key is not None:
@@ -301,19 +332,26 @@ class TagsManagerDocker(TagsManager):
                 do_delete=False,
             )
             if len(diff) == 0:
-                log.debug(
+                logger.debug(
                     f"set_tags: tags={tags} Value did not change existing values {self._tag_values}"
                 )
                 return
 
-        # Add to list of changes to be sent to the log. Preserve None so
-        # ``tag.set(None)`` propagates upstream as "clear this tag" rather
-        # than silently disappearing — the default ``do_delete=True`` would
-        # pop the key from the pending diff before it ever leaves the client.
-        apply_diff(self._pending_tag_log, tags, do_delete=False, clone=False)
+        if log:
+            # Promote these paths to the immediate-log buffer (flushed at
+            # end of loop) and drop any prior periodic-log entries for the
+            # same paths so the same change isn't logged twice.
+            apply_diff(self._pending_immediate_log, tags, do_delete=False, clone=False)
+            _strip_paths(self._pending_tag_log, tags)
+        else:
+            # Add to list of changes to be sent to the logger. Preserve None so
+            # ``tag.set(None)`` propagates upstream as "clear this tag" rather
+            # than silently disappearing — the default ``do_delete=True`` would
+            # pop the key from the pending diff before it ever leaves the client.
+            apply_diff(self._pending_tag_log, tags, do_delete=False, clone=False)
 
         if flush:
-            log.debug(f"set_tags: tags={tags} Flushing to dda")
+            logger.debug(f"set_tags: tags={tags} Flushing to dda")
             apply_diff(self._pending_tag_aggregate, tags, do_delete=False, clone=False)
             await self.client.update_channel_aggregate(
                 TAG_CHANNEL_NAME,
@@ -325,13 +363,16 @@ class TagsManagerDocker(TagsManager):
             return
 
         # Just add to the pending aggregate to be flushed at the end of the main loop
-        log.debug(f"set_tags: tags={tags} Added to pending aggregate")
+        logger.debug(f"set_tags: tags={tags} Added to pending aggregate")
         apply_diff(self._pending_tag_aggregate, tags, do_delete=False, clone=False)
         self._tags_dirty = True
 
     async def commit_tags(self):
         """Publish a mesage with the changed tag values to the tag channel."""
         await self.flush_tags()
+
+        if self._pending_immediate_log:
+            await self.flush_immediate_logs()
 
         now = time.time()
         if self._pending_tag_log and (
@@ -365,6 +406,25 @@ class TagsManagerDocker(TagsManager):
         await self.client.create_message(
             TAG_CHANNEL_NAME, log_data, timestamp=timestamp
         )
+
+    async def flush_immediate_logs(self, timestamp: datetime = None):
+        """Flush any tag updates marked for immediate logging.
+
+        Called from :meth:`commit_tags` at the end of every main loop
+        iteration, so updates set with ``log=True`` become channel
+        messages within a single loop rather than waiting up to 15
+        minutes for the periodic log flush.
+        """
+        if not self._pending_immediate_log:
+            return False  # Nothing to flush
+
+        log_data = self._pending_immediate_log
+        self._pending_immediate_log = {}
+
+        await self.client.create_message(
+            TAG_CHANNEL_NAME, log_data, timestamp=timestamp
+        )
+        return True
 
 
 class TagsManagerProcessor(TagsManager):
@@ -403,9 +463,19 @@ class TagsManagerProcessor(TagsManager):
             return default
 
     async def set_tag(
-        self, key: str, value: Any, app_key: str | None = None, flush: bool = False
+        self,
+        key: str,
+        value: Any,
+        app_key: str | None = None,
+        flush: bool = False,
+        log: bool = False,
     ) -> None:
-        """Update a tag value in the buffered processor payload."""
+        """Update a tag value in the buffered processor payload.
+
+        ``log=True`` requests a logged data point in addition to the
+        aggregate update — the message is created when
+        :meth:`commit_tags` runs at the end of the processor invocation.
+        """
         app_key = app_key or self.app_key
 
         try:
@@ -422,6 +492,8 @@ class TagsManagerProcessor(TagsManager):
             self._tag_values[app_key] = {key: value}
 
         self._update_tags = True
+        if log:
+            self._record_tag_update = True
         if app_key != self.app_key:
             self._update_external_tags = True
 

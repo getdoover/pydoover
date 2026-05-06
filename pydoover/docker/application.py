@@ -933,6 +933,7 @@ class Application:
         value: Any,
         app_key: str = None,
         only_if_changed: bool = True,
+        log: bool = False,
     ) -> None:
         """Set a tag value.
 
@@ -956,26 +957,39 @@ class Application:
             The app key to set the tag for. This defaults to the current app's key.
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
+        log: bool, optional
+            If True, the update is also recorded as a logged data point at the end of the current main loop iteration,
+            rather than waiting for the next periodic log flush (up to 15 minutes). Defaults to False.
         """
         await self.tag_manager.set_tag(
             tag_key,
             value,
             app_key=app_key or self.app_key,
             only_if_changed=only_if_changed,
+            log=log,
         )
 
     async def set_tags(
-        self, tags: dict[str, Any], app_key: str = None, only_if_changed: bool = True
+        self,
+        tags: dict[str, Any],
+        app_key: str = None,
+        only_if_changed: bool = True,
+        log: bool = False,
     ) -> None:
         """Set multiple tags at once."""
         await self.tag_manager.set_tags(
             tags,
             app_key=app_key or self.app_key,
             only_if_changed=only_if_changed,
+            log=log,
         )
 
     async def set_global_tag(
-        self, tag_key: str, value: Any, only_if_changed: bool = True
+        self,
+        tag_key: str,
+        value: Any,
+        only_if_changed: bool = True,
+        log: bool = False,
     ) -> None:
         """Set a global tag value.
 
@@ -994,12 +1008,15 @@ class Application:
             The value to set the global tag to.
         only_if_changed: bool, optional
             If True, the tag will only be set if the value is different from the current value. Defaults to True.
+        log: bool, optional
+            If True, the update is also recorded as a logged data point at the end of the current main loop iteration. Defaults to False.
         """
         await self.tag_manager.set_tag(
             tag_key,
             value,
             app_key=None,
             only_if_changed=only_if_changed,
+            log=log,
         )
 
     def _do_set_tags(

@@ -3,6 +3,13 @@ Changelog
 This page keeps a fairly detailed, human readable version
 of what has changed, and whats new for each version of the library.
 
+Unreleased
+----------
+- Add ``log=True`` to :meth:`pydoover.tags.BoundTag.set` (and ``increment`` / ``decrement``) to publish a logged data point at the end of the current loop instead of waiting for the next periodic flush
+- Add :meth:`pydoover.tags.BoundTag.delete` as the explicit alternative to ``tag.set(None)``
+- Add typed tag classes :class:`pydoover.tags.Number`, :class:`pydoover.tags.Boolean`, and :class:`pydoover.tags.String` (the existing ``Tag(type=...)`` form continues to work)
+- Add threshold-driven auto-logging: ``log_on_cross`` (with optional ``deadband``) on :class:`~pydoover.tags.Number`; ``log_on_change`` / ``log_on_state`` / ``log_on_enter`` / ``log_on_exit`` on :class:`~pydoover.tags.Boolean` and :class:`~pydoover.tags.String`
+
 v0.4.18
 -------
 - Add `MockDeviceAgentInterface` for testing purposes
