@@ -19,20 +19,16 @@ behaviours can be overridden per call via ``log=True`` (see below).
 Declaring tags
 --------------
 
-Tags are declared as class attributes on a :class:`Tags` subclass. Use
-the typed subclasses — :class:`Number`, :class:`Boolean`,
-:class:`String` — when you want IDE autocomplete to surface
-type-specific options like threshold-based logging::
+Tags are declared as class attributes on a :class:`Tags` subclass.
+Use the typed classes — :class:`Number`, :class:`Boolean`,
+:class:`String` — for every declaration::
 
-    from pydoover.tags import Tags, Number, Boolean, String
+    from pydoover.tags import Tags, Number, Boolean, String, Cross, Change, Enter, Exit
 
     class MyTags(Tags):
-        voltage = Number(default=0.0, log_on_cross=[90, 110], deadband=2)
-        fault   = Boolean(default=False, log_on_change=True)
-        state   = String(log_on_state=["error", "ok"])
-
-The legacy form ``Tag("number", default=0)`` still works and is fully
-supported.
+        voltage = Number(default=0.0, log_on=Cross(90, 110, deadband=2))
+        fault   = Boolean(default=False, log_on=Change())
+        state   = String(log_on=[Enter("error"), Exit("error")])
 
 Inside an application the runtime exposes a :class:`BoundTag` proxy::
 
@@ -70,39 +66,64 @@ This is the documented way to express deletion intent — prefer it over
 Threshold-driven auto-logging
 -----------------------------
 
-The typed tag classes accept declarative trigger configuration. When a
-trigger fires, the update is automatically promoted to ``log=True``.
+The typed tag classes take a single ``log_on=`` parameter that accepts
+one descriptor or a list of descriptors. When any descriptor fires, the
+update is automatically promoted to ``log=True``.
 
-Numeric crossings
-~~~~~~~~~~~~~~~~~
+Numeric tags
+~~~~~~~~~~~~
 
-:class:`Number` accepts ``log_on_cross`` (a scalar or list of
-thresholds) and an optional ``deadband``. A crossing fires when the
-value moves from one side of a threshold to the other; the implicit
-prior side is ``below``, so an initial value above any threshold also
-logs::
+:class:`Number` accepts :class:`Cross`, :class:`Rise`, and
+:class:`Fall`. Each takes one or more thresholds as positional
+arguments, plus an optional ``deadband`` keyword::
 
-    voltage = Number(log_on_cross=[90, 110], deadband=2)
+    voltage = Number(log_on=Cross(100, deadband=2))   # both directions
+    multi   = Number(log_on=Cross(90, 100, 110))      # multiple thresholds
+    pressure = Number(log_on=Rise(110))               # high alarm
+    fuel     = Number(log_on=Fall(10))                # low alarm
+    pump     = Number(log_on=[Rise(110), Fall(10)])   # high + low
 
-With ``deadband=2``, the crossing only fires once the value clears
-``threshold ± deadband / 2``. This suppresses repeat logs while the
-value oscillates close to the threshold.
+A crossing fires when the value moves from one side of a threshold to
+the other. The implicit prior side is "below", so an initial value
+above any threshold also logs (whereas an initial value below it does
+not).
 
-State transitions
-~~~~~~~~~~~~~~~~~
+``deadband`` widens each threshold into a hysteresis band: a crossing
+only fires once the value moves at least ``deadband / 2`` past the
+threshold, suppressing repeat logs while the value oscillates close to
+it. The "silent" opposite direction still updates the internal state
+machine, so subsequent crossings the other way work correctly.
 
-:class:`Boolean` and :class:`String` accept four trigger options:
+Boolean and string tags
+~~~~~~~~~~~~~~~~~~~~~~~
 
-* ``log_on_change=True`` — log every transition.
-* ``log_on_state=[...]`` — log when entering OR exiting any of the
-  listed values.
-* ``log_on_enter=[...]`` — log only when entering one of the listed
-  values.
-* ``log_on_exit=[...]`` — log only when exiting one of the listed
-  values.
+:class:`Boolean` and :class:`String` accept :class:`Change`,
+:class:`Enter`, and :class:`Exit`. :class:`Enter` and :class:`Exit`
+each take a single value — combine them in a list to react to multiple
+values or both directions::
 
-``log_on_state`` is sugar for passing the same list to both
-``log_on_enter`` and ``log_on_exit``; the three can be combined.
+    fault   = Boolean(log_on=Change())                # every transition
+    state   = String(log_on=Enter("error"))           # only entering "error"
+    state   = String(log_on=Exit("ok"))               # only exiting "ok"
+
+    # Bidirectional on a single value:
+    state   = String(log_on=[Enter("error"), Exit("error")])
+
+    # Multiple "interesting" values, both directions:
+    state   = String(log_on=[
+        Enter("error"), Exit("error"),
+        Enter("ok"),    Exit("ok"),
+    ])
+
+    # Asymmetric: log entry to "error" but exit from "ok":
+    state   = String(log_on=[Enter("error"), Exit("ok")])
+
+Type validation
+~~~~~~~~~~~~~~~
+
+Each typed tag accepts only its corresponding descriptors —
+``Number(log_on=Change())`` raises :class:`TypeError` at class
+definition time, surfacing the mistake before the application runs.
 
 API reference
 -------------
@@ -126,6 +147,16 @@ API reference
 .. autoclass:: pydoover.tags.RemoteTag
    :members:
    :show-inheritance:
+
+Trigger descriptors
+~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: pydoover.tags.Cross
+.. autoclass:: pydoover.tags.Rise
+.. autoclass:: pydoover.tags.Fall
+.. autoclass:: pydoover.tags.Change
+.. autoclass:: pydoover.tags.Enter
+.. autoclass:: pydoover.tags.Exit
 
 .. autoclass:: pydoover.tags.Tags
    :members:

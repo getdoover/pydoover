@@ -8,9 +8,15 @@ from pydoover.docker.application import Application as DockerApplication
 from pydoover.tags import (
     Boolean,
     BoundTag,
+    Change,
+    Cross,
+    Enter,
+    Exit,
+    Fall,
     NotSet,
     Number,
     RemoteTag,
+    Rise,
     String,
     Tag,
     Tags,
@@ -861,38 +867,20 @@ class TestProcessorImmediateLog:
 
 
 class TestConcreteTagClasses:
-    def test_number_subclass_sets_type(self):
+    def test_number_subclass_sets_type_and_no_triggers_by_default(self):
         n = Number(default=0)
         assert n.tag_type == "number"
         assert n.default == 0
-        assert n.log_on_cross == []
-        assert n.deadband == 0.0
-
-    def test_number_normalises_thresholds(self):
-        scalar = Number(log_on_cross=100)
-        assert scalar.log_on_cross == [100.0]
-
-        unsorted = Number(log_on_cross=[110, 90, 100])
-        assert unsorted.log_on_cross == [90.0, 100.0, 110.0]
+        assert n.log_on == []
 
     def test_boolean_subclass_sets_type(self):
-        b = Boolean(default=False, log_on_change=True)
+        b = Boolean(default=False, log_on=Change())
         assert b.tag_type == "boolean"
-        assert b.log_on_change is True
+        assert len(b.log_on) == 1
 
     def test_string_subclass_sets_type(self):
         s = String(default="idle")
         assert s.tag_type == "string"
-
-    def test_log_on_state_folds_into_enter_and_exit(self):
-        s = String(log_on_state=["error", "ok"])
-        assert s.log_on_enter == ["error", "ok"]
-        assert s.log_on_exit == ["error", "ok"]
-
-    def test_log_on_enter_and_log_on_state_combine(self):
-        s = String(log_on_state=["error"], log_on_enter=["warn"])
-        assert s.log_on_enter == ["error", "warn"]
-        assert s.log_on_exit == ["error"]
 
     def test_legacy_tag_constructor_still_works(self):
         # Backwards compat: ``Tag(type, ...)`` keeps working even after
@@ -902,13 +890,50 @@ class TestConcreteTagClasses:
         assert t.default == 5
         assert t._evaluate_log_trigger(None, 100, {}) is False
 
+    def test_log_on_accepts_single_descriptor_or_list(self):
+        n_one = Number(log_on=Cross(100))
+        n_many = Number(log_on=[Cross(100), Rise(110)])
+        assert len(n_one.log_on) == 1
+        assert len(n_many.log_on) == 2
+
+    def test_number_rejects_non_numeric_descriptors(self):
+        with pytest.raises(TypeError, match="Number log_on accepts"):
+            Number(log_on=Change())
+        with pytest.raises(TypeError, match="Number log_on accepts"):
+            Number(log_on=Enter(1))
+
+    def test_boolean_rejects_numeric_descriptors(self):
+        with pytest.raises(TypeError, match="Boolean log_on accepts"):
+            Boolean(log_on=Cross(1))
+        with pytest.raises(TypeError, match="Boolean log_on accepts"):
+            Boolean(log_on=Rise(1))
+
+    def test_string_rejects_numeric_descriptors(self):
+        with pytest.raises(TypeError, match="String log_on accepts"):
+            String(log_on=Fall(1))
+
+    def test_crossing_descriptors_require_a_threshold(self):
+        with pytest.raises(ValueError, match="requires at least one threshold"):
+            Cross()
+
+    def test_crossing_accepts_multiple_thresholds(self):
+        c = Cross(90, 100, 110, deadband=2)
+        assert c.thresholds == [90.0, 100.0, 110.0]
+        assert c.deadband == 2.0
+
+    def test_membership_holds_single_value(self):
+        e = Enter("error")
+        assert e.value == "error"
+        x = Exit(True)
+        assert x.value is True
+
 
 class _NumericTags(Tags):
-    voltage = Number(log_on_cross=[100])
-    temp = Number(log_on_cross=[50, 100], deadband=4)
+    voltage = Number(log_on=Cross(100))
+    temp = Number(log_on=Cross(50, 100, deadband=4))
 
 
-class TestNumberTriggers:
+class TestNumericTriggers:
     @pytest.mark.asyncio
     async def test_initial_value_above_threshold_logs(self):
         manager = FakeTagsManager()
@@ -957,11 +982,10 @@ class TestNumberTriggers:
         tags = _NumericTags("test_app", manager, FakeSchema())
 
         # threshold=50, deadband=4 → fires up at >=52, down at <=48.
-        # Oscillation between 49 and 51 must not fire.
-        await tags.temp.set(40)  # below band — no log, state stays "below"
-        await tags.temp.set(51)  # still inside band — no log
-        await tags.temp.set(49)  # still inside band — no log
-        await tags.temp.set(53)  # clears upper edge — log (crosses 50)
+        await tags.temp.set(40)  # below band — no log
+        await tags.temp.set(51)  # inside band — no log
+        await tags.temp.set(49)  # inside band — no log
+        await tags.temp.set(53)  # clears upper edge — log
         await tags.temp.set(49)  # back inside band — no log
         await tags.temp.set(47)  # clears lower edge — log
 
@@ -973,11 +997,10 @@ class TestNumberTriggers:
         manager = FakeTagsManager()
         tags = _NumericTags("test_app", manager, FakeSchema())
 
-        # thresholds: 50, 100. deadband=4. Both start "below".
         await tags.temp.set(60)  # crosses 50 — log
         await tags.temp.set(110)  # crosses 100 — log
-        await tags.temp.set(95)  # back below 100 (well clear of band) — log
-        await tags.temp.set(40)  # back below 50 — log
+        await tags.temp.set(95)  # below 100 (clear of band) — log
+        await tags.temp.set(40)  # below 50 — log
 
         log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
         assert log_flags == [True, True, True, True]
@@ -987,21 +1010,85 @@ class TestNumberTriggers:
         manager = FakeTagsManager()
         tags = _NumericTags("test_app", manager, FakeSchema())
 
-        # User-forced log=True still results in log=True even if no
-        # crossing fired.
         await tags.voltage.set(50, log=True)
 
         assert manager.set_call_kwargs[-1].get("log") is True
 
 
+class _DirectionalNumericTags(Tags):
+    high_alarm = Number(log_on=Rise(100))
+    low_alarm = Number(log_on=Fall(10))
+    combined = Number(log_on=[Rise(100), Fall(10)])
+
+
+class TestDirectionalNumericTriggers:
+    @pytest.mark.asyncio
+    async def test_rise_only_fires_going_up(self):
+        manager = FakeTagsManager()
+        tags = _DirectionalNumericTags("test_app", manager, FakeSchema())
+
+        await tags.high_alarm.set(80)  # below — no log
+        await tags.high_alarm.set(120)  # rise → log
+        await tags.high_alarm.set(80)  # fall — no log (one-sided)
+        await tags.high_alarm.set(120)  # rise again — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [False, True, False, True]
+
+    @pytest.mark.asyncio
+    async def test_fall_only_fires_going_down(self):
+        manager = FakeTagsManager()
+        tags = _DirectionalNumericTags("test_app", manager, FakeSchema())
+
+        await tags.low_alarm.set(50)  # above 10 — silent rise
+        await tags.low_alarm.set(5)  # fall through 10 — log
+        await tags.low_alarm.set(50)  # rise — no log (one-sided)
+        await tags.low_alarm.set(5)  # fall — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [False, True, False, True]
+
+    @pytest.mark.asyncio
+    async def test_rise_initial_above_fires(self):
+        manager = FakeTagsManager()
+        tags = _DirectionalNumericTags("test_app", manager, FakeSchema())
+
+        await tags.high_alarm.set(120)
+
+        assert manager.set_call_kwargs[-1].get("log") is True
+
+    @pytest.mark.asyncio
+    async def test_fall_initial_below_does_not_fire(self):
+        manager = FakeTagsManager()
+        tags = _DirectionalNumericTags("test_app", manager, FakeSchema())
+
+        await tags.low_alarm.set(5)
+
+        assert manager.set_call_kwargs[-1].get("log") is False
+
+    @pytest.mark.asyncio
+    async def test_combining_rise_and_fall_descriptors(self):
+        manager = FakeTagsManager()
+        tags = _DirectionalNumericTags("test_app", manager, FakeSchema())
+
+        # combined = Number(log_on=[Rise(100), Fall(10)])
+        await tags.combined.set(50)  # 10 silent (Fall only); not at 100 — no log
+        await tags.combined.set(150)  # rise through 100 — log
+        await tags.combined.set(5)  # silent fall through 100; fall through 10 — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [False, True, True]
+
+
 class _BoolTags(Tags):
-    fault_change = Boolean(log_on_change=True)
-    fault_state = Boolean(log_on_state=[True])
+    fault_change = Boolean(log_on=Change())
+    # Bidirectional on a single value via composition.
+    fault_bidirectional = Boolean(log_on=[Enter(True), Exit(True)])
 
 
 class TestBooleanTriggers:
     @pytest.mark.asyncio
-    async def test_log_on_change_fires_each_transition(self):
+    async def test_change_fires_each_transition(self):
         manager = FakeTagsManager()
         tags = _BoolTags("test_app", manager, FakeSchema())
 
@@ -1013,59 +1100,80 @@ class TestBooleanTriggers:
         assert log_flags == [True, True, True]
 
     @pytest.mark.asyncio
-    async def test_log_on_state_fires_on_enter_and_exit(self):
+    async def test_enter_plus_exit_fires_both_directions(self):
         manager = FakeTagsManager()
         tags = _BoolTags("test_app", manager, FakeSchema())
 
-        await tags.fault_state.set(True)  # entering [True] — log
-        await tags.fault_state.set(False)  # exiting [True] — log
-        await tags.fault_state.set(False)  # prev == new → no log
+        await tags.fault_bidirectional.set(True)  # entering True — log
+        await tags.fault_bidirectional.set(False)  # exiting True — log
+        await tags.fault_bidirectional.set(False)  # prev == new — no log
 
         log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
         assert log_flags == [True, True, False]
 
 
 class _StringTags(Tags):
-    state_unified = String(log_on_state=["error", "ok"])
-    state_enter_only = String(log_on_enter=["error"])
-    state_exit_only = String(log_on_exit=["ok"])
+    enter_only = String(log_on=Enter("error"))
+    exit_only = String(log_on=Exit("ok"))
+    # Multi-value bidirectional via list composition.
+    multi = String(log_on=[Enter("error"), Exit("error"), Enter("ok"), Exit("ok")])
 
 
 class TestStringTriggers:
     @pytest.mark.asyncio
-    async def test_log_on_state_fires_in_both_directions(self):
+    async def test_enter_only_fires_on_entry(self):
         manager = FakeTagsManager()
         tags = _StringTags("test_app", manager, FakeSchema())
 
-        await tags.state_unified.set("error")  # enter — log
-        await tags.state_unified.set("warn")  # exit — log
-        await tags.state_unified.set("ok")  # enter — log
-        await tags.state_unified.set("warn")  # exit — log
-
-        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
-        assert log_flags == [True, True, True, True]
-
-    @pytest.mark.asyncio
-    async def test_log_on_enter_only_fires_on_entry(self):
-        manager = FakeTagsManager()
-        tags = _StringTags("test_app", manager, FakeSchema())
-
-        await tags.state_enter_only.set("error")  # enter — log
-        await tags.state_enter_only.set("warn")  # exit, but exit not configured
+        await tags.enter_only.set("error")  # enter — log
+        await tags.enter_only.set("warn")  # exit not configured
 
         log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
         assert log_flags == [True, False]
 
     @pytest.mark.asyncio
-    async def test_log_on_exit_only_fires_on_exit(self):
+    async def test_exit_only_fires_on_exit(self):
         manager = FakeTagsManager()
         tags = _StringTags("test_app", manager, FakeSchema())
 
-        await tags.state_exit_only.set("ok")  # enter, but enter not configured
-        await tags.state_exit_only.set("warn")  # exit — log
+        await tags.exit_only.set("ok")  # enter not configured
+        await tags.exit_only.set("warn")  # exit — log
 
         log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
         assert log_flags == [False, True]
+
+    @pytest.mark.asyncio
+    async def test_multi_value_via_list_composition(self):
+        manager = FakeTagsManager()
+        tags = _StringTags("test_app", manager, FakeSchema())
+
+        await tags.multi.set("error")  # Enter("error") — log
+        await tags.multi.set("warn")  # Exit("error") — log
+        await tags.multi.set("ok")  # Enter("ok") — log
+        await tags.multi.set("warn")  # Exit("ok") — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [True, True, True, True]
+
+
+class _CompositeStringTags(Tags):
+    # Asymmetric: log entry to "error" but exit from "ok".
+    state = String(log_on=[Enter("error"), Exit("ok")])
+
+
+class TestCompositeTriggers:
+    @pytest.mark.asyncio
+    async def test_each_descriptor_fires_independently(self):
+        manager = FakeTagsManager()
+        tags = _CompositeStringTags("test_app", manager, FakeSchema())
+
+        await tags.state.set("ok")  # not entering "error", no prev to exit from
+        await tags.state.set("warn")  # exits "ok" — log via Exit
+        await tags.state.set("error")  # enters "error" — log via Enter
+        await tags.state.set("warn")  # exit not configured for "error"
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [False, True, True, False]
 
 
 class TestTriggerEndToEnd:

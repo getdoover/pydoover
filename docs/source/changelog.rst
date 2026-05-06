@@ -7,8 +7,8 @@ Unreleased
 ----------
 - Add ``log=True`` to :meth:`pydoover.tags.BoundTag.set` (and ``increment`` / ``decrement``) to publish a logged data point at the end of the current loop instead of waiting for the next periodic flush
 - Add :meth:`pydoover.tags.BoundTag.delete` as the explicit alternative to ``tag.set(None)``
-- Add typed tag classes :class:`pydoover.tags.Number`, :class:`pydoover.tags.Boolean`, and :class:`pydoover.tags.String` (the existing ``Tag(type=...)`` form continues to work)
-- Add threshold-driven auto-logging: ``log_on_cross`` (with optional ``deadband``) on :class:`~pydoover.tags.Number`; ``log_on_change`` / ``log_on_state`` / ``log_on_enter`` / ``log_on_exit`` on :class:`~pydoover.tags.Boolean` and :class:`~pydoover.tags.String`
+- Add typed tag classes :class:`pydoover.tags.Number`, :class:`pydoover.tags.Boolean`, and :class:`pydoover.tags.String` for tag declarations
+- Add automatic logging triggers via a single ``log_on=`` kwarg taking descriptor objects: :class:`~pydoover.tags.Cross`, :class:`~pydoover.tags.Rise`, :class:`~pydoover.tags.Fall` (with optional ``deadband``) for numerics; :class:`~pydoover.tags.Change`, :class:`~pydoover.tags.Enter`, :class:`~pydoover.tags.Exit` for booleans and strings
 
 v0.4.18
 -------
