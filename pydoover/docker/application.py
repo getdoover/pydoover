@@ -69,13 +69,13 @@ class Application:
         from pydoover.docker import Application, run_app
         from pydoover.config import Schema
         from pydoover import ui
-        from pydoover.tags import Tag, Tags
+        from pydoover.tags import Boolean, Tags
 
         class MyTags(Tags):
-            ready = Tag("boolean", default=False)
+            ready = Boolean(default=False)
 
         class MyUI(ui.UI):
-            ready = ui.BooleanVariable("ready", "Ready", curr_val=MyTags.ready)
+            ready = ui.BooleanVariable("ready", "Ready", value=MyTags.ready)
 
         class MyApp(Application):
             config_cls = Schema

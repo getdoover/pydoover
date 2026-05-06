@@ -22,10 +22,10 @@ such as ``$tag.voltage:number`` rather than the expanded object form.
 Static declarative UI example::
 
     from pydoover import ui
-    from pydoover.tags import Tag, Tags
+    from pydoover.tags import Number, Tags
 
     class MyTags(Tags):
-        voltage = Tag("number")
+        voltage = Number()
 
     class MyUI(ui.UI):
         voltage = ui.NumericVariable(
@@ -58,14 +58,14 @@ Application wiring example::
 Config-aware setup example::
 
     from pydoover import ui
-    from pydoover.tags import Tag, Tags
+    from pydoover.tags import Number, String, Tags
 
     class ConfiguredTags(Tags):
-        voltage = Tag("number")
+        voltage = Number()
 
         async def setup(self, config):
             if config.show_extra.value:
-                self.add_tag("extra", Tag("string"))
+                self.add_tag("extra", String())
 
     class ConfiguredUI(ui.UI):
         voltage = ui.NumericVariable(

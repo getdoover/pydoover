@@ -131,7 +131,6 @@ class Tag:
         to encode their crossing/state-transition semantics. ``state`` is
         a mutable per-tag scratchpad owned by the :class:`Tags` instance.
         """
-        del prev, new, state
         return False
 
 
@@ -144,6 +143,176 @@ def _as_list(value: Any) -> list[Any]:
     return [value]
 
 
+# ---------------------------------------------------------------------------
+# Log-on descriptors
+# ---------------------------------------------------------------------------
+#
+# Each descriptor encodes one auto-logging rule. The typed tag classes
+# (Number, Boolean, String) accept ``log_on=descriptor`` (or a list of
+# descriptors); on every set, every configured descriptor is consulted
+# so its private state stays consistent — the tag fires an immediate
+# log if any descriptor returns ``True``.
+
+
+class _LogTrigger:
+    """Base class for ``log_on=`` descriptors.
+
+    Subclasses implement :meth:`evaluate`. ``state`` is a per-descriptor
+    dict owned by the :class:`Tags` instance — descriptors are shared
+    across :class:`Tags` instances, so they must not store runtime state
+    on themselves.
+    """
+
+    def evaluate(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        raise NotImplementedError
+
+
+class _Crossing(_LogTrigger):
+    """Shared crossing-detection state machine for ``Cross``/``Rise``/``Fall``."""
+
+    _DIRECTIONS: frozenset[str] = frozenset()
+
+    def __init__(
+        self,
+        *thresholds: float,
+        deadband: float = 0.0,
+    ):
+        if not thresholds:
+            raise ValueError(f"{type(self).__name__} requires at least one threshold.")
+        self.thresholds: list[float] = sorted(float(t) for t in thresholds)
+        self.deadband: float = float(deadband or 0.0)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.thresholds!r}, deadband={self.deadband!r})"
+
+    def evaluate(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        # ``prev`` is unused — the recorded side per threshold (in
+        # ``state``) is the source of truth for crossing detection.
+        if new is None or new is NotSet or isinstance(new, bool):
+            return False
+        if not isinstance(new, (int, float)):
+            return False
+
+        sides: dict[float, str] = state.setdefault("sides", {})
+        half_band = self.deadband / 2
+        fired = False
+        for t in self.thresholds:
+            upper = t + half_band
+            lower = t - half_band
+            current = sides.get(t, "below")
+            if new >= upper and current == "below":
+                sides[t] = "above"
+                if "rise" in self._DIRECTIONS:
+                    fired = True
+            elif new <= lower and current == "above":
+                sides[t] = "below"
+                if "fall" in self._DIRECTIONS:
+                    fired = True
+        return fired
+
+
+class Cross(_Crossing):
+    """Log on crossing any of the given threshold(s) in either direction.
+
+    Parameters
+    ----------
+    thresholds:
+        A single threshold, or an iterable of thresholds.
+    deadband:
+        Hysteresis band — crossings only fire when the value moves at
+        least ``deadband / 2`` beyond the threshold, suppressing repeat
+        logs while the value oscillates near it. Defaults to ``0``.
+    """
+
+    _DIRECTIONS = frozenset({"rise", "fall"})
+
+
+class Rise(_Crossing):
+    """Log only on rising crossings (value moving from below to above).
+
+    Use for high-side alarms. See :class:`Cross` for parameter details.
+    """
+
+    _DIRECTIONS = frozenset({"rise"})
+
+
+class Fall(_Crossing):
+    """Log only on falling crossings (value moving from above to below).
+
+    Use for low-side alarms. See :class:`Cross` for parameter details.
+    """
+
+    _DIRECTIONS = frozenset({"fall"})
+
+
+class Change(_LogTrigger):
+    """Log on every value transition (for :class:`Boolean` / :class:`String`)."""
+
+    def __repr__(self) -> str:
+        return "Change()"
+
+    def evaluate(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        if prev is NotSet:
+            prev = None
+        return prev != new
+
+
+class _StateMembership(_LogTrigger):
+    """Shared logic for ``Enter`` / ``Exit`` descriptors."""
+
+    _CHECK_NEW: bool = False
+    _CHECK_PREV: bool = False
+
+    def __init__(self, value: Any):
+        self.value: Any = value
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.value!r})"
+
+    def evaluate(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        if prev is NotSet:
+            prev = None
+        if prev == new:
+            return False
+        if self._CHECK_NEW and new == self.value:
+            return True
+        if self._CHECK_PREV and prev == self.value:
+            return True
+        return False
+
+
+class Enter(_StateMembership):
+    """Log only on entering the given value."""
+
+    _CHECK_NEW = True
+
+
+class Exit(_StateMembership):
+    """Log only on exiting the given value."""
+
+    _CHECK_PREV = True
+
+
+# ---------------------------------------------------------------------------
+# Typed tag classes
+# ---------------------------------------------------------------------------
+
+
+def _normalise_log_on(
+    log_on: Any, allowed: tuple[type, ...], owner: str
+) -> list[_LogTrigger]:
+    """Validate and unpack ``log_on=`` into a list of trigger descriptors."""
+    triggers = _as_list(log_on)
+    for t in triggers:
+        if not isinstance(t, allowed):
+            allowed_names = ", ".join(c.__name__ for c in allowed)
+            raise TypeError(
+                f"{owner} log_on accepts {allowed_names} descriptors, "
+                f"got {type(t).__name__}."
+            )
+    return triggers
+
+
 class Number(Tag):
     """A numeric tag declaration with optional crossing-based auto-logging.
 
@@ -154,160 +323,99 @@ class Number(Tag):
     name:
         Optional explicit declaration name (otherwise inherits the
         attribute name on the owning :class:`Tags` subclass).
-    log_on_cross:
-        Threshold(s) that, when crossed, promote the update to an
-        immediate logged data point. Accepts a scalar or iterable.
-    deadband:
-        Hysteresis band around each threshold. Crossings only fire when
-        the value moves at least ``deadband / 2`` beyond the threshold,
-        suppressing repeat logs while the value oscillates near it.
-        Defaults to ``0`` (sharp crossings).
+    log_on:
+        One :class:`Cross` / :class:`Rise` / :class:`Fall` descriptor,
+        or a list of them. Each describes a threshold-based rule that
+        promotes the update to an immediate log when fired.
     """
 
+    _ALLOWED_TRIGGERS: tuple[type, ...] = (Cross, Rise, Fall)
+
     def __init__(
         self,
         *,
         default: Any = NotSet,
         name: str | None = None,
-        log_on_cross: float | list[float] | None = None,
-        deadband: float = 0.0,
+        log_on: _LogTrigger | list[_LogTrigger] | None = None,
     ):
         super().__init__("number", default=default, name=name)
-        self.log_on_cross: list[float] = sorted(
-            float(t) for t in _as_list(log_on_cross)
+        self.log_on: list[_LogTrigger] = _normalise_log_on(
+            log_on, self._ALLOWED_TRIGGERS, type(self).__name__
         )
-        self.deadband: float = float(deadband or 0.0)
 
     def _evaluate_log_trigger(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
-        del prev  # state is the source of truth for crossings.
-        if not self.log_on_cross:
-            return False
-        if new is None or new is NotSet or isinstance(new, bool):
-            return False
-        if not isinstance(new, (int, float)):
-            return False
-
-        # Per-threshold side: "below" (default for the implicit prior
-        # state) or "above". Crossings fire when the value clears the
-        # deadband zone on the opposite side from the recorded one.
-        sides: dict[float, str] = state.setdefault("sides", {})
-        half_band = self.deadband / 2
-        fired = False
-        for t in self.log_on_cross:
-            upper = t + half_band
-            lower = t - half_band
-            current = sides.get(t, "below")
-            if new >= upper and current == "below":
-                sides[t] = "above"
-                fired = True
-            elif new <= lower and current == "above":
-                sides[t] = "below"
-                fired = True
-        return fired
+        return _evaluate_triggers(self.log_on, prev, new, state)
 
 
-class _StateTransitionTag(Tag):
-    """Shared trigger logic for :class:`Boolean` and :class:`String`."""
-
-    def __init__(
-        self,
-        tag_type: str,
-        *,
-        default: Any = NotSet,
-        name: str | None = None,
-        log_on_change: bool = False,
-        log_on_state: Any = None,
-        log_on_enter: Any = None,
-        log_on_exit: Any = None,
-    ):
-        super().__init__(tag_type, default=default, name=name)
-        self.log_on_change = bool(log_on_change)
-        # ``log_on_state`` is sugar for "fire on entry to OR exit from
-        # any of these values" — fold it into both enter and exit sets.
-        unified = _as_list(log_on_state)
-        self.log_on_enter: list[Any] = unified + _as_list(log_on_enter)
-        self.log_on_exit: list[Any] = unified + _as_list(log_on_exit)
-
-    def _evaluate_log_trigger(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
-        del state  # state-transition tags don't need scratch state.
-        if prev is NotSet:
-            prev = None
-        if prev == new:
-            return False
-        if self.log_on_change:
-            return True
-        if new in self.log_on_enter:
-            return True
-        if prev in self.log_on_exit:
-            return True
-        return False
-
-
-class Boolean(_StateTransitionTag):
-    """A boolean tag declaration with optional state-based auto-logging.
+class Boolean(Tag):
+    """A boolean tag declaration with optional state-transition auto-logging.
 
     Parameters
     ----------
     default, name:
         See :class:`Tag`.
-    log_on_change:
-        Promote every transition to an immediate log.
-    log_on_state:
-        Promote when entering OR exiting any of these values. Sugar for
-        passing the same list to both ``log_on_enter`` and
-        ``log_on_exit``.
-    log_on_enter:
-        Promote only when the new value is one of these.
-    log_on_exit:
-        Promote only when the previous value was one of these.
+    log_on:
+        One :class:`Change` / :class:`Enter` / :class:`Exit` descriptor,
+        or a list of them.
     """
+
+    _ALLOWED_TRIGGERS: tuple[type, ...] = (Change, Enter, Exit)
 
     def __init__(
         self,
         *,
         default: Any = NotSet,
         name: str | None = None,
-        log_on_change: bool = False,
-        log_on_state: bool | list[bool] | None = None,
-        log_on_enter: bool | list[bool] | None = None,
-        log_on_exit: bool | list[bool] | None = None,
+        log_on: _LogTrigger | list[_LogTrigger] | None = None,
     ):
-        super().__init__(
-            "boolean",
-            default=default,
-            name=name,
-            log_on_change=log_on_change,
-            log_on_state=log_on_state,
-            log_on_enter=log_on_enter,
-            log_on_exit=log_on_exit,
+        super().__init__("boolean", default=default, name=name)
+        self.log_on: list[_LogTrigger] = _normalise_log_on(
+            log_on, self._ALLOWED_TRIGGERS, type(self).__name__
         )
 
+    def _evaluate_log_trigger(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        return _evaluate_triggers(self.log_on, prev, new, state)
 
-class String(_StateTransitionTag):
-    """A string tag declaration with optional state-based auto-logging.
 
-    See :class:`Boolean` for the meaning of the ``log_on_*`` parameters.
+class String(Tag):
+    """A string tag declaration with optional state-transition auto-logging.
+
+    See :class:`Boolean` for the meaning of ``log_on``.
     """
+
+    _ALLOWED_TRIGGERS: tuple[type, ...] = (Change, Enter, Exit)
 
     def __init__(
         self,
         *,
         default: Any = NotSet,
         name: str | None = None,
-        log_on_change: bool = False,
-        log_on_state: str | list[str] | None = None,
-        log_on_enter: str | list[str] | None = None,
-        log_on_exit: str | list[str] | None = None,
+        log_on: _LogTrigger | list[_LogTrigger] | None = None,
     ):
-        super().__init__(
-            "string",
-            default=default,
-            name=name,
-            log_on_change=log_on_change,
-            log_on_state=log_on_state,
-            log_on_enter=log_on_enter,
-            log_on_exit=log_on_exit,
+        super().__init__("string", default=default, name=name)
+        self.log_on: list[_LogTrigger] = _normalise_log_on(
+            log_on, self._ALLOWED_TRIGGERS, type(self).__name__
         )
+
+    def _evaluate_log_trigger(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
+        return _evaluate_triggers(self.log_on, prev, new, state)
+
+
+def _evaluate_triggers(
+    triggers: list[_LogTrigger],
+    prev: Any,
+    new: Any,
+    state: dict[str, Any],
+) -> bool:
+    """Run every trigger so each updates its private state, OR results."""
+    if not triggers:
+        return False
+    fired = False
+    for i, trigger in enumerate(triggers):
+        sub_state = state.setdefault(f"_t{i}", {})
+        if trigger.evaluate(prev, new, sub_state):
+            fired = True
+    return fired
 
 
 class _UnresolvedRemoteTag(Exception):
