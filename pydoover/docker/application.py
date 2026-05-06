@@ -830,6 +830,9 @@ class Application:
         await self._check_shutdown_at(shutdown_at)
 
     async def _check_shutdown_at(self, shutdown_at):
+        if shutdown_at is None:
+            return
+
         if not self.is_ready:
             log.info("Ignoring check shutdown request, app not ready yet.")
             return
