@@ -524,10 +524,10 @@ class Application:
             raise RuntimeError("Tag manager has not been initialized.")
         return self.tag_manager.get_tag(key, default)
 
-    async def set_tag(self, key: str, value: Any):
+    async def set_tag(self, key: str, value: Any, log: bool = False):
         if self.tag_manager is None:
             raise RuntimeError("Tag manager has not been initialized.")
-        await self.tag_manager.set_tag(key, value)
+        await self.tag_manager.set_tag(key, value, log=log)
 
     async def send_notification(
         self,
