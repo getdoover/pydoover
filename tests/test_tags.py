@@ -889,7 +889,33 @@ class TestConcreteTagClasses:
         t = Tag("number", default=5)
         assert t.tag_type == "number"
         assert t.default == 5
+        assert t.log_on == []
         assert t._evaluate_log_trigger(None, 100, {}) is False
+
+    def test_legacy_tag_accepts_numeric_log_on(self):
+        t = Tag("number", log_on=Cross(100))
+        assert len(t.log_on) == 1
+        # Initial value above threshold fires (matches Number semantics).
+        assert t._evaluate_log_trigger(None, 120, {}) is True
+
+    def test_legacy_tag_accepts_state_log_on(self):
+        t = Tag("boolean", log_on=AnyChange())
+        assert len(t.log_on) == 1
+        assert t._evaluate_log_trigger(False, True, {}) is True
+
+    def test_legacy_tag_accepts_list_of_descriptors(self):
+        t = Tag("number", log_on=[Rise(100), Fall(10)])
+        assert len(t.log_on) == 2
+
+    def test_legacy_tag_rejects_mismatched_descriptor(self):
+        with pytest.raises(TypeError, match="Tag log_on accepts"):
+            Tag("number", log_on=AnyChange())
+        with pytest.raises(TypeError, match="Tag log_on accepts"):
+            Tag("string", log_on=Cross(1))
+
+    def test_legacy_tag_rejects_log_on_for_unknown_type(self):
+        with pytest.raises(TypeError, match="log_on is not supported"):
+            Tag("widget", log_on=AnyChange())
 
     def test_log_on_accepts_single_descriptor_or_list(self):
         n_one = Number(log_on=Cross(100))
@@ -932,6 +958,26 @@ class TestConcreteTagClasses:
 class _NumericTags(Tags):
     voltage = Number(log_on=Cross(100))
     temp = Number(log_on=Cross(50, 100, deadband=4))
+
+
+class _LegacyNumericTags(Tags):
+    # Same auto-logging as _NumericTags but declared via the legacy
+    # ``Tag(type, log_on=...)`` form.
+    voltage = Tag("number", log_on=Cross(100))
+
+
+class TestLegacyTagTriggersEndToEnd:
+    @pytest.mark.asyncio
+    async def test_legacy_tag_log_on_fires_via_manager(self):
+        manager = FakeTagsManager()
+        tags = _LegacyNumericTags("test_app", manager, FakeSchema())
+
+        await tags.voltage.set(80)  # below — no log
+        await tags.voltage.set(120)  # crosses up — log
+        await tags.voltage.set(70)  # crosses down — log
+
+        log_flags = [kw.get("log") for kw in manager.set_call_kwargs]
+        assert log_flags == [False, True, True]
 
 
 class TestNumericTriggers:

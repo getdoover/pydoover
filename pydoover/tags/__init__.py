@@ -26,13 +26,34 @@ def _coerce_tag_value(value: Any, tag_type: str) -> Any:
 
 
 class Tag:
-    """Represents a single declared tag definition."""
+    """Represents a single declared tag definition.
 
-    def __init__(self, tag_type: str, default: Any = NotSet, name: str | None = None):
+    The ``log_on`` parameter accepts the same descriptor objects as the
+    typed subclasses (:class:`Number`, :class:`Boolean`, :class:`String`)
+    so the legacy ``Tag("number", log_on=...)`` form supports auto-logging
+    too. Descriptors are validated against ``tag_type``: numerics accept
+    :class:`Cross` / :class:`Rise` / :class:`Fall` / :class:`Delta`, and
+    booleans/strings accept :class:`AnyChange` / :class:`Enter` /
+    :class:`Exit`.
+    """
+
+    def __init__(
+        self,
+        tag_type: str,
+        default: Any = NotSet,
+        name: str | None = None,
+        log_on: "_LogTrigger | list[_LogTrigger] | None" = None,
+    ):
         self.tag_type = tag_type
         self.name = name
         self.default = default
         self._declared_attr_name: str | None = None
+        if log_on is None:
+            self.log_on: list[_LogTrigger] = []
+        else:
+            self.log_on = _normalise_log_on(
+                log_on, _allowed_log_on_for_type(tag_type), type(self).__name__
+            )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert this tag definition to its schema-style dictionary form."""
@@ -126,12 +147,12 @@ class Tag:
     def _evaluate_log_trigger(self, prev: Any, new: Any, state: dict[str, Any]) -> bool:
         """Return ``True`` if this update should be promoted to an immediate log.
 
-        The base implementation always returns ``False``; typed subclasses
-        (:class:`Number`, :class:`Boolean`, :class:`String`) override this
-        to encode their crossing/state-transition semantics. ``state`` is
-        a mutable per-tag scratchpad owned by the :class:`Tags` instance.
+        Evaluates every descriptor in ``self.log_on``; returns ``True`` if
+        any of them fired. Tags declared without ``log_on=`` always return
+        ``False``. ``state`` is a mutable per-tag scratchpad owned by the
+        :class:`Tags` instance.
         """
-        return False
+        return _evaluate_triggers(self.log_on, prev, new, state)
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -363,6 +384,27 @@ class Exit(_StateMembership):
 # ---------------------------------------------------------------------------
 # Typed tag classes
 # ---------------------------------------------------------------------------
+
+
+_NUMERIC_TAG_TYPES: frozenset[str] = frozenset({"number", "integer", "float"})
+_STATE_TAG_TYPES: frozenset[str] = frozenset({"boolean", "string"})
+
+
+def _allowed_log_on_for_type(tag_type: str) -> tuple[type, ...]:
+    """Return the descriptor classes accepted by ``log_on=`` for ``tag_type``.
+
+    Used by the base :class:`Tag` constructor so the legacy
+    ``Tag("number", log_on=...)`` form validates against the same rules
+    the typed subclasses enforce.
+    """
+    if tag_type in _NUMERIC_TAG_TYPES:
+        return (Cross, Rise, Fall, Delta)
+    if tag_type in _STATE_TAG_TYPES:
+        return (AnyChange, Enter, Exit)
+    raise TypeError(
+        f"log_on is not supported for tag_type {tag_type!r}; "
+        f"supported types are: number, integer, float, boolean, string."
+    )
 
 
 def _normalise_log_on(
