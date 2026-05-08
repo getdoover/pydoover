@@ -19,7 +19,7 @@ uv add pydoover
 pip install -U pydoover
 
 # to install the development version:
-pip install -U git+https://github.com/spaneng/pydoover
+pip install -U git+https://github.com/getdoover/pydoover
 ```
 
 If you are using `pydoover` and need **grpc** support and **are not** using the `doover_device_base` docker image, install the grpc optional dependencies:
