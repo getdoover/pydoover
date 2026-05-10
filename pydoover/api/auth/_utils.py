@@ -37,7 +37,7 @@ def decode_jwt_exp_datetime(token: str) -> datetime | None:
 
 def token_needs_refresh(token: str | None, expires_at: datetime | float | None) -> bool:
     """Return True if the token is missing or expired (or about to expire)."""
-    if token is None:
+    if not token:  # None or empty string
         return True
     if expires_at is None:
         return False  # No expiry info — assume valid

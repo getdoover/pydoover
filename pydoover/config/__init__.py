@@ -72,6 +72,8 @@ class Schema:
     To export the schema to the `doover_config.json` file, use the Doover cli: ``doover config-schema export``.
     This will validate and export the schema to the `doover_config.json` file in the root of your Doover project.
 
+    If you want to mark the entire application as "Advanced Config" and hide it from the UI, set `advanced=True` in the subclass init.
+
     Examples
     --------
 
@@ -99,9 +101,10 @@ class Schema:
 
         cls._element_map[element._name] = element
 
-    def __init_subclass__(cls, name: str = "$default", **kwargs):
+    def __init_subclass__(cls, name: str = "$default", advanced: bool = None, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.name = name
+        cls._advanced = advanced
         cls._element_map = {}
         cls._load_elements()
 
@@ -136,7 +139,7 @@ class Schema:
 
     @classmethod
     def to_schema(cls):
-        return {
+        payload = {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "",
             "title": cls.name,
@@ -153,6 +156,9 @@ class Schema:
                 if isinstance(element, ConfigElement) and element.required
             ],
         }
+        if cls._advanced is not None:
+            payload["x-advanced"] = cls._advanced
+        return payload
 
     def _inject_deployment_config(self, config: dict[str, Any]):
         for name, value in config.items():

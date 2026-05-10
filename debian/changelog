@@ -1,3 +1,9 @@
+pydoover (1.0.1) focal jammy; urgency=medium
+
+  * Release v1.0.1. See docs.doover.com for release notes.
+
+ -- Doover Team <hello@span-eng.com>  Thu, 10 Nov 2025 12:16:20 +1000
+
 pydoover (1.0.0) focal jammy; urgency=medium
 
   * Release v1.0.0. See docs.doover.com for release notes.
