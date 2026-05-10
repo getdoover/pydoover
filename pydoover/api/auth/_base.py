@@ -119,7 +119,9 @@ class SyncAuthBase:
         timeout: float = 60.0,
     ):
         self.timeout = timeout
-        self._token: str | None = token
+        # Treat an empty token the same as no token at all, so the refresh
+        # path (client credentials / refresh token) still engages.
+        self._token: str | None = token or None
         self.token_expires: datetime | None = _normalise_datetime(token_expires)
         if self._token and self.token_expires is None:
             self.token_expires = decode_jwt_exp_datetime(self._token)
@@ -146,10 +148,10 @@ class SyncAuthBase:
         token_expires: datetime | float | int | None = None,
         expires_in: float | int | None = None,
     ) -> None:
-        self._token = token
+        self._token = token or None
         self.token_expires = _normalise_datetime(token_expires)
-        if self.token_expires is None:
-            self.token_expires = decode_jwt_exp_datetime(token)
+        if self.token_expires is None and self._token:
+            self.token_expires = decode_jwt_exp_datetime(self._token)
         if self.token_expires is None and expires_in is not None:
             self.token_expires = datetime.now(timezone.utc).replace(
                 microsecond=0
@@ -175,7 +177,9 @@ class AsyncAuthBase:
         timeout: float = 60.0,
     ):
         self.timeout = timeout
-        self._token: str | None = token
+        # Treat an empty token the same as no token at all, so the refresh
+        # path (client credentials / refresh token) still engages.
+        self._token: str | None = token or None
         self.token_expires: datetime | None = _normalise_datetime(token_expires)
         if self._token and self.token_expires is None:
             self.token_expires = decode_jwt_exp_datetime(self._token)
@@ -203,10 +207,10 @@ class AsyncAuthBase:
         token_expires: datetime | float | int | None = None,
         expires_in: float | int | None = None,
     ) -> None:
-        self._token = token
+        self._token = token or None
         self.token_expires = _normalise_datetime(token_expires)
-        if self.token_expires is None:
-            self.token_expires = decode_jwt_exp_datetime(token)
+        if self.token_expires is None and self._token:
+            self.token_expires = decode_jwt_exp_datetime(self._token)
         if self.token_expires is None and expires_in is not None:
             self.token_expires = datetime.now(timezone.utc).replace(
                 microsecond=0
