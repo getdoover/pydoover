@@ -617,6 +617,18 @@ class Application:
 
         if self.agent_id is None:
             raise RuntimeError("Agent ID has not been initialized.")
+
+        if (
+            offline_at is not None
+            and self.connection_config is not None
+            and self.connection_config.offline_after != offline_after
+        ):
+            self.connection_config.offline_after = offline_after
+            self._connection_config = self.connection_config.to_dict()
+            await self.api.update_connection_config(
+                self.connection_config, agent_id=self.agent_id
+            )
+
         await self.api.ping_connection_at(
             online_at,
             connection_status=connection_status,
