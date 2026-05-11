@@ -604,7 +604,7 @@ class Application:
 
         # prefer the user's settings if they've set it.
         if offline_at:
-            offline_after = (offline_at - online_at).total_seconds()
+            offline_after = int((offline_at - online_at).total_seconds())
         else:
             offline_after = (self._connection_config or {}).get(
                 "offline_after", DEFAULT_OFFLINE_AFTER
