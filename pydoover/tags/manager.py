@@ -7,7 +7,7 @@ from pydoover.models import EventSubscription, AggregateUpdateEvent, ChannelSync
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterable
 
 from pydoover.utils.diff import apply_diff, generate_diff
 from pydoover.utils.utils import call_maybe_async
@@ -18,6 +18,11 @@ if TYPE_CHECKING:
 TAG_CLOUD_MAX_AGE = 60 * 15  # 15min
 TAG_OBSERVED_MAX_AGE = 3  # 3 seconds
 TAG_CHANNEL_NAME = "tag_values"
+# Channel that `live=True` tags are streamed to as one-shot messages every
+# main-loop iteration. Currently the same channel as the persisted tag
+# values; point it at a dedicated channel if live traffic should be kept out
+# of the tag-value message history.
+LIVE_TAG_CHANNEL_NAME = "tag_values"
 FASTMODE_CHANNEL_NAME = "doover_ui_fastmode"
 
 logger = logging.getLogger(__name__)
@@ -174,6 +179,10 @@ class TagsManagerDocker(TagsManager):
 
         self._tag_values: dict[str, Any] = {}
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
+
+        # Resolved (app_key, tag_name) paths for tags declared ``live=True``;
+        # populated by ``set_live_tags`` once tag setup completes.
+        self._live_tag_keys: list[KeyPath] = []
 
         self.tag_log_interval = tag_log_interval
         self.observed_max_age = TAG_OBSERVED_MAX_AGE
@@ -370,6 +379,7 @@ class TagsManagerDocker(TagsManager):
     async def commit_tags(self):
         """Publish a mesage with the changed tag values to the tag channel."""
         await self.flush_tags()
+        await self.flush_live_tags()
 
         if self._pending_immediate_log:
             await self.flush_immediate_logs()
@@ -394,6 +404,51 @@ class TagsManagerDocker(TagsManager):
             TAG_CHANNEL_NAME, data, max_age_secs=self.max_age_secs
         )
         apply_diff(self._tag_values, data, clone=False)
+
+    def set_live_tags(self, keys: Iterable[KeyPath | tuple[str | None, str]]) -> None:
+        """Register the tag paths that :meth:`flush_live_tags` should publish.
+
+        Called by the application after tag setup with the resolved
+        ``(app_key, tag_name)`` pairs of every ``live=True`` tag (see
+        :meth:`pydoover.tags.Tags.get_live_tag_keys`).
+        """
+        self._live_tag_keys = [
+            k if isinstance(k, KeyPath) else KeyPath(k[1], app_key=k[0]) for k in keys
+        ]
+
+    async def flush_live_tags(self):
+        """Publish current values of all ``live=True`` tags as a one-shot message.
+
+        Called from :meth:`commit_tags` on every main-loop iteration, but only
+        does anything while the device is being observed (a fastmode client has
+        pinged within the last 2min) — there's no point streaming live values
+        when nothing is watching. Sends a fire-and-forget snapshot of every live
+        tag's current value so a watching UI gets fresh data without it being
+        persisted as a logged message. No-op when no tags are declared ``live``,
+        nothing is observing, or no live tag currently has a value.
+        """
+        if not self._live_tag_keys or not self.is_being_observed:
+            return False
+
+        current = apply_diff(
+            self._tag_values, self._pending_tag_aggregate, do_delete=False
+        )
+        payload: dict[str, Any] = {}
+        for key_path in self._live_tag_keys:
+            if not key_path.in_dict(current):
+                continue
+            apply_diff(
+                payload,
+                key_path.construct_dict(key_path.lookup_dict(current)),
+                do_delete=False,
+                clone=False,
+            )
+
+        if not payload:
+            return False
+
+        await self.client.send_oneshot_message(LIVE_TAG_CHANNEL_NAME, payload)
+        return True
 
     async def flush_logs(self, timestamp: datetime = None):
         if not self._pending_tag_log:

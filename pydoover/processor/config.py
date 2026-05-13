@@ -128,6 +128,45 @@ class IngestionEndpointConfig(Object):
         )
 
 
+# Optional fields apps may request alongside name/display_name in DEVICE_MAP via
+# `extra_fields=` on ExtendedPermissionsConfig. Each entry is a Django ORM
+# lookup path on the Device model — doover-control passes them straight to
+# `.values()`, so what you put here is what app code reads out of DEVICE_MAP.
+# This whitelist exists so apps fail fast at schema-build time on a typo, and
+# so the allowed set is documented in one place. Keep in sync with the
+# matching whitelist in doover_control/applications/models.py.
+ALLOWED_EXTRA_DEVICE_FIELDS = (
+    "id",
+    "name",
+    "display_name",
+    "type__id",
+    "type__name",
+    "group__id",
+    "group__name",
+    "organisation__id",
+    "organisation__name",
+    "latitude",
+    "longitude",
+    "fa_icon",
+    "notes",
+    "extra_config",
+    # Compound entries — each expands on the doover-control side to a list of
+    # dicts (active installs only). The bare name is sugar for "all sub-fields";
+    # `<compound>__<subfield>` opts into a specific subset.
+    "app_installs",
+    "app_installs__id",
+    "app_installs__name",
+    "app_installs__display_name",
+    "app_installs__application_id",
+    "app_installs__application_name",
+    "solution_installs",
+    "solution_installs__id",
+    "solution_installs__display_name",
+    "solution_installs__solution_id",
+    "solution_installs__solution_display_name",
+)
+
+
 class ExtendedPermissionsConfig(Object):
     devices = DevicesConfig(
         description="List of devices to grant extended permissions to."
@@ -144,10 +183,21 @@ class ExtendedPermissionsConfig(Object):
         default=False,
     )
     """
-    If `default_device_group` is True, the permissions will default to the group that the device is in. Useful to mimic doover 1.0 behaviour
+    If `default_device_group` is True, the permissions will default to the group that the device is in. Useful to mimic doover 1.0 behaviour.
+
+    `extra_fields` opts the app into additional per-device entries in DEVICE_MAP.
+    `name` and `display_name` are always included; anything in `extra_fields`
+    must be a member of `ALLOWED_EXTRA_DEVICE_FIELDS`. Pick the minimum set the
+    app actually consumes — every requested field costs a column (and `type_name`
+    forces a join) at deployment build time, multiplied by every device the
+    processor has permission for.
     """
 
-    def __init__(self, default_device_group: bool = NotSet):
+    def __init__(
+        self,
+        default_device_group: bool = NotSet,
+        extra_fields: list[str] | None = None,
+    ):
         super().__init__(
             "Devices",
             description="Give Permission to access devices.",
@@ -156,10 +206,21 @@ class ExtendedPermissionsConfig(Object):
 
         self.default_device_group = default_device_group
 
+        if extra_fields is not None:
+            invalid = [f for f in extra_fields if f not in ALLOWED_EXTRA_DEVICE_FIELDS]
+            if invalid:
+                raise ValueError(
+                    f"Unknown extra_fields {invalid!r}; allowed: "
+                    f"{sorted(ALLOWED_EXTRA_DEVICE_FIELDS)}"
+                )
+        self.extra_fields = extra_fields
+
     def to_dict(self):
         res = super().to_dict()
         if self.default_device_group is not NotSet:
             res["x-defaultDeviceGroup"] = self.default_device_group
+        if self.extra_fields is not None:
+            res["x-extraDeviceFields"] = list(self.extra_fields)
         return res
 
 

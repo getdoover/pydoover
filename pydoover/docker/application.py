@@ -1128,6 +1128,7 @@ class Application:
         if self.tags is not None:
             await self.tags.setup()
             await self.tags._resolve_remote_tags()
+            self.tag_manager.set_live_tags(self.tags.get_live_tag_keys())
 
         if self.ui is not None:
             await self.ui.setup()

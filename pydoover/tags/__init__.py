@@ -43,10 +43,16 @@ class Tag:
         default: Any = NotSet,
         name: str | None = None,
         log_on: "_LogTrigger | list[_LogTrigger] | None" = None,
+        live: bool = False,
     ):
         self.tag_type = tag_type
         self.name = name
         self.default = default
+        # When True, the docker application republishes this tag's current
+        # value as a one-shot message on every main-loop iteration (see
+        # ``TagsManagerDocker.flush_live_tags``) so a watching UI gets a
+        # fresh value without it being persisted as a logged data point.
+        self.live = live
         self._declared_attr_name: str | None = None
         if log_on is None:
             self.log_on: list[_LogTrigger] = []
@@ -60,6 +66,8 @@ class Tag:
         data = {"type": self.tag_type}
         if self.default is not NotSet:
             data["default"] = self.default
+        if self.live:
+            data["live"] = True
         return data
 
     def to_schema(self) -> dict[str, Any]:
@@ -446,8 +454,9 @@ class Number(Tag):
         default: Any = NotSet,
         name: str | None = None,
         log_on: _LogTrigger | list[_LogTrigger] | None = None,
+        live: bool = False,
     ):
-        super().__init__("number", default=default, name=name)
+        super().__init__("number", default=default, name=name, live=live)
         self.log_on: list[_LogTrigger] = _normalise_log_on(
             log_on, self._ALLOWED_TRIGGERS, type(self).__name__
         )
@@ -476,8 +485,9 @@ class Boolean(Tag):
         default: Any = NotSet,
         name: str | None = None,
         log_on: _LogTrigger | list[_LogTrigger] | None = None,
+        live: bool = False,
     ):
-        super().__init__("boolean", default=default, name=name)
+        super().__init__("boolean", default=default, name=name, live=live)
         self.log_on: list[_LogTrigger] = _normalise_log_on(
             log_on, self._ALLOWED_TRIGGERS, type(self).__name__
         )
@@ -500,8 +510,9 @@ class String(Tag):
         default: Any = NotSet,
         name: str | None = None,
         log_on: _LogTrigger | list[_LogTrigger] | None = None,
+        live: bool = False,
     ):
-        super().__init__("string", default=default, name=name)
+        super().__init__("string", default=default, name=name, live=live)
         self.log_on: list[_LogTrigger] = _normalise_log_on(
             log_on, self._ALLOWED_TRIGGERS, type(self).__name__
         )
@@ -581,6 +592,7 @@ class RemoteTag(Tag):
         default: Any = NotSet,
         name: str | None = None,
         optional: bool = False,
+        live: bool = False,
     ):
         # Optional RemoteTags need a sensible read-fallback when the matching
         # TagRef is left blank. Default to None so callers don't have to
@@ -588,7 +600,7 @@ class RemoteTag(Tag):
         if optional and default is NotSet:
             default = None
 
-        super().__init__(tag_type, default=default, name=name)
+        super().__init__(tag_type, default=default, name=name, live=live)
         self.reference_name = reference_name
         self.republish_locally = republish_locally
         self.optional = optional
@@ -957,6 +969,28 @@ class Tags:
     def definitions(self) -> list[Tag]:
         """list[Tag]: The declared tag definitions for this instance."""
         return [declaration.template for declaration in self._tag_declarations.values()]
+
+    def get_live_tag_keys(self) -> list[tuple[str | None, str]]:
+        """Return ``(app_key, tag_name)`` pairs for every ``live=True`` tag.
+
+        The application framework calls this after :meth:`setup` and
+        :meth:`_resolve_remote_tags` to register the live-tag set with the
+        tag manager, which republishes those values as one-shot messages
+        each main-loop iteration. Unresolved optional :class:`RemoteTag`
+        declarations are skipped.
+        """
+        keys: list[tuple[str | None, str]] = []
+        for declaration in self._tag_declarations.values():
+            if not getattr(declaration.template, "live", False):
+                continue
+            try:
+                app_key, key_name = declaration.template._resolve_target(
+                    self, declaration
+                )
+            except _UnresolvedRemoteTag:
+                continue
+            keys.append((app_key, key_name))
+        return keys
 
     @property
     def values(self) -> dict[str, Any]:
