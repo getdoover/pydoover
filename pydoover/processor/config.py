@@ -141,6 +141,7 @@ ALLOWED_EXTRA_DEVICE_FIELDS = (
     "display_name",
     "type__id",
     "type__name",
+    "type__config",
     "group__id",
     "group__name",
     "organisation__id",
@@ -187,10 +188,12 @@ class ExtendedPermissionsConfig(Object):
 
     `extra_fields` opts the app into additional per-device entries in DEVICE_MAP.
     `name` and `display_name` are always included; anything in `extra_fields`
-    must be a member of `ALLOWED_EXTRA_DEVICE_FIELDS`. Pick the minimum set the
-    app actually consumes — every requested field costs a column (and `type_name`
-    forces a join) at deployment build time, multiplied by every device the
-    processor has permission for.
+    must be a member of `ALLOWED_EXTRA_DEVICE_FIELDS`, or a sub-key lookup on
+    the JSON `extra_config` / `type__config` fields (e.g.
+    `extra_config__battery_voltage_tag`). Pick the minimum set the app actually
+    consumes — every requested field costs a column (and `type_name` forces a
+    join) at deployment build time, multiplied by every device the processor
+    has permission for.
     """
 
     def __init__(
@@ -207,7 +210,12 @@ class ExtendedPermissionsConfig(Object):
         self.default_device_group = default_device_group
 
         if extra_fields is not None:
-            invalid = [f for f in extra_fields if f not in ALLOWED_EXTRA_DEVICE_FIELDS]
+            invalid = [
+                f
+                for f in extra_fields
+                if f not in ALLOWED_EXTRA_DEVICE_FIELDS
+                and not f.startswith(("extra_config__", "type__config__"))
+            ]
             if invalid:
                 raise ValueError(
                     f"Unknown extra_fields {invalid!r}; allowed: "
