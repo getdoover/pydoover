@@ -147,6 +147,7 @@ class Application:
 
         self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
+            app_key=app_key,
         )
 
         self._ready = asyncio.Event()
@@ -182,6 +183,30 @@ class Application:
 
         self._is_healthy = False
         self._healthcheck_port = healthcheck_port
+
+    @property
+    def is_being_observed(self) -> bool:
+        """Whether any user has an active claim on this agent (any bucket)."""
+        return self.tag_manager.is_being_observed
+
+    @property
+    def is_agent_open(self) -> bool:
+        """Whether some user has this agent's page open."""
+        return self.tag_manager.is_agent_open
+
+    @property
+    def is_group_open(self) -> bool:
+        """Whether some user is viewing a context that renders this agent."""
+        return self.tag_manager.is_group_open
+
+    @property
+    def is_app_open(self) -> bool:
+        """Whether some user has this application expanded on the agent page."""
+        return self.tag_manager.is_app_open
+
+    def is_live_tag_open(self, tag_name: str, app_key: str | None = None) -> bool:
+        """Whether some user has the named tag in live mode on this agent."""
+        return self.tag_manager.is_live_tag_open(tag_name, app_key=app_key)
 
     async def _handle_healthcheck(self, _request):
         if self._is_healthy:

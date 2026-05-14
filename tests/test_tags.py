@@ -23,7 +23,7 @@ from pydoover.tags import (
     Tags,
 )
 from pydoover.tags.manager import (
-    FASTMODE_CHANNEL_NAME,
+    UI_SUB_CHANNEL_NAME,
     TAG_CHANNEL_NAME,
     KeyPath,
     TagsManagerDocker,
@@ -100,6 +100,11 @@ class FakeTagClient:
         self.messages.append((channel_name, data))
         return len(self.messages)
 
+    async def send_oneshot_message(self, channel_name, data, **kwargs):
+        del kwargs
+        self.oneshot_messages = getattr(self, "oneshot_messages", [])
+        self.oneshot_messages.append((channel_name, data))
+
 
 class FakeRuntimeDeviceAgent(FakeTagClient):
     def __init__(self, app_key: str = "test_app"):
@@ -109,7 +114,7 @@ class FakeRuntimeDeviceAgent(FakeTagClient):
                 "ui_state": {},
                 "ui_cmds": {},
                 TAG_CHANNEL_NAME: {},
-                FASTMODE_CHANNEL_NAME: {},
+                UI_SUB_CHANNEL_NAME: {},
             }
         )
         self.app_key = app_key
@@ -677,7 +682,7 @@ class TestTagsManagerDocker:
         client = FakeTagClient(
             {
                 TAG_CHANNEL_NAME: {"test_app": {"voltage": 12.3}},
-                FASTMODE_CHANNEL_NAME: {"viewer": 1},
+                UI_SUB_CHANNEL_NAME: {"viewer": 1},
             }
         )
         manager = TagsManagerDocker(client=client)
@@ -685,7 +690,7 @@ class TestTagsManagerDocker:
         await manager.setup()
 
         channel_names = {entry[0] for entry in client.event_callbacks}
-        assert channel_names == {TAG_CHANNEL_NAME, FASTMODE_CHANNEL_NAME}
+        assert channel_names == {TAG_CHANNEL_NAME, UI_SUB_CHANNEL_NAME}
         assert manager.get_tag("voltage", app_key="test_app") == 12.3
 
     @pytest.mark.asyncio
@@ -705,6 +710,178 @@ class TestTagsManagerDocker:
         )
 
         assert updates == [("voltage", 13.2)]
+
+
+class TestUiSubPresence:
+    @staticmethod
+    def _now_ms():
+        import time as _time
+
+        return int(_time.time() * 1000)
+
+    @pytest.mark.asyncio
+    async def test_is_app_open_true_when_app_key_in_apps_list(self):
+        now = self._now_ms()
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {},
+                UI_SUB_CHANNEL_NAME: {
+                    "app_open": {"user-1": {"ts": now, "apps": ["test_app"]}},
+                },
+            }
+        )
+        manager = TagsManagerDocker(client=client, app_key="test_app")
+        await manager.setup()
+
+        assert manager.is_app_open is True
+        assert manager.max_age_secs == manager.observed_max_age
+
+    @pytest.mark.asyncio
+    async def test_is_app_open_false_when_other_app_open(self):
+        now = self._now_ms()
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {},
+                UI_SUB_CHANNEL_NAME: {
+                    "app_open": {"user-1": {"ts": now, "apps": ["other_app"]}},
+                },
+            }
+        )
+        manager = TagsManagerDocker(client=client, app_key="test_app")
+        await manager.setup()
+
+        assert manager.is_app_open is False
+        assert manager.max_age_secs == manager.default_max_age
+
+    @pytest.mark.asyncio
+    async def test_is_app_open_false_when_stamp_stale(self):
+        stale = self._now_ms() - 130_000  # >120s old
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {},
+                UI_SUB_CHANNEL_NAME: {
+                    "app_open": {"user-1": {"ts": stale, "apps": ["test_app"]}},
+                },
+            }
+        )
+        manager = TagsManagerDocker(client=client, app_key="test_app")
+        await manager.setup()
+
+        assert manager.is_app_open is False
+
+    @pytest.mark.asyncio
+    async def test_is_app_open_ignores_agent_and_group_open_buckets(self):
+        # agent_open and group_open shouldn't drive fast-publish — only an
+        # actually-expanded application does.
+        now = self._now_ms()
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {},
+                UI_SUB_CHANNEL_NAME: {
+                    "agent_open": {"user-1": now},
+                    "group_open": {"user-2": now},
+                },
+            }
+        )
+        manager = TagsManagerDocker(client=client, app_key="test_app")
+        await manager.setup()
+
+        assert manager.is_app_open is False
+
+    @pytest.mark.asyncio
+    async def test_flush_live_tags_only_publishes_opened_tags(self):
+        now = self._now_ms()
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {"test_app": {"voltage": 12.3, "speed": 50}},
+                UI_SUB_CHANNEL_NAME: {
+                    "live_tag_open": {
+                        "user-1": {"ts": now, "tags": ["test_app.voltage"]},
+                    },
+                },
+            }
+        )
+        manager = TagsManagerDocker(client=client, app_key="test_app")
+        await manager.setup()
+        manager.set_live_tags([("test_app", "voltage"), ("test_app", "speed")])
+
+        published = await manager.flush_live_tags()
+
+        assert published is True
+        assert client.oneshot_messages == [
+            (TAG_CHANNEL_NAME, {"test_app": {"voltage": 12.3}})
+        ]
+
+    @pytest.mark.asyncio
+    async def test_flush_live_tags_distinguishes_same_name_across_apps(self):
+        # Two apps each declare a `voltage` live tag; only `other_app.voltage`
+        # is opened in live mode, so the bare-name overlap must not leak.
+        now = self._now_ms()
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {
+                    "test_app": {"voltage": 12.3},
+                    "other_app": {"voltage": 99.9},
+                },
+                UI_SUB_CHANNEL_NAME: {
+                    "live_tag_open": {
+                        "user-1": {"ts": now, "tags": ["other_app.voltage"]},
+                    },
+                },
+            }
+        )
+        manager = TagsManagerDocker(client=client, app_key="test_app")
+        await manager.setup()
+        manager.set_live_tags([("test_app", "voltage"), ("other_app", "voltage")])
+
+        published = await manager.flush_live_tags()
+
+        assert published is True
+        assert client.oneshot_messages == [
+            (TAG_CHANNEL_NAME, {"other_app": {"voltage": 99.9}})
+        ]
+
+    @pytest.mark.asyncio
+    async def test_flush_live_tags_noop_when_nothing_opened_in_live_mode(self):
+        now = self._now_ms()
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {"test_app": {"voltage": 12.3}},
+                # App is open but no tag has live mode enabled.
+                UI_SUB_CHANNEL_NAME: {
+                    "app_open": {"user-1": {"ts": now, "apps": ["test_app"]}},
+                },
+            }
+        )
+        manager = TagsManagerDocker(client=client, app_key="test_app")
+        await manager.setup()
+        manager.set_live_tags([("test_app", "voltage")])
+
+        published = await manager.flush_live_tags()
+
+        assert published is False
+        assert not hasattr(client, "oneshot_messages") or client.oneshot_messages == []
+
+    @pytest.mark.asyncio
+    async def test_flush_live_tags_skips_stale_live_tag_open(self):
+        stale = self._now_ms() - 130_000
+        client = FakeTagClient(
+            {
+                TAG_CHANNEL_NAME: {"test_app": {"voltage": 12.3}},
+                UI_SUB_CHANNEL_NAME: {
+                    "live_tag_open": {
+                        "user-1": {"ts": stale, "tags": ["test_app.voltage"]},
+                    },
+                },
+            }
+        )
+        manager = TagsManagerDocker(client=client, app_key="test_app")
+        await manager.setup()
+        manager.set_live_tags([("test_app", "voltage")])
+
+        published = await manager.flush_live_tags()
+
+        assert published is False
 
 
 class TestImmediateLog:
@@ -1313,7 +1490,7 @@ class TestTriggerEndToEnd:
         client = FakeTagClient(
             {
                 TAG_CHANNEL_NAME: {},
-                FASTMODE_CHANNEL_NAME: {},
+                UI_SUB_CHANNEL_NAME: {},
             }
         )
         manager = TagsManagerDocker(client=client)
