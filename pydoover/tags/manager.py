@@ -255,6 +255,48 @@ class TagsManagerDocker(TagsManager):
                 yield entry
 
     @property
+    def is_being_observed(self) -> bool:
+        """Whether *any* user has an active claim on this agent.
+
+        True if some user has the agent page open, has it rendered in a list
+        context (group / map / sidebar), has any app expanded, or has live mode
+        enabled on any tag. Coarse — for behaviour that should specifically
+        track "is this app expanded" or "is this tag in live mode" use the
+        narrower :attr:`is_app_open` / :attr:`is_live_tag_open` helpers.
+        """
+        return any(
+            next(self._fresh_bucket_entries(bucket), None) is not None
+            for bucket in ("agent_open", "group_open", "app_open", "live_tag_open")
+        )
+
+    @property
+    def is_agent_open(self) -> bool:
+        """Whether some user has this agent's page open."""
+        return next(self._fresh_bucket_entries("agent_open"), None) is not None
+
+    @property
+    def is_group_open(self) -> bool:
+        """Whether some user is viewing a context that renders this agent.
+
+        Includes the group page, home, map, sidebar, header — anything where
+        the customer-site renders the agent's icon. True even when the user is
+        not on the agent's own page.
+        """
+        return next(self._fresh_bucket_entries("group_open"), None) is not None
+
+    def is_live_tag_open(self, tag_name: str, app_key: str | None = None) -> bool:
+        """Whether some user has this tag in live mode.
+
+        ``tag_name`` matches the bare declared name; ``app_key`` defaults to
+        this manager's own app. The customer-site qualifies tags as
+        ``<app_key>.<tag_name>`` on the wire to disambiguate same-named tags
+        across apps.
+        """
+        app_key = app_key if app_key is not None else self.app_key
+        qualified = f"{app_key}.{tag_name}" if app_key else tag_name
+        return qualified in self._live_tags_opened()
+
+    @property
     def is_app_open(self) -> bool:
         """Whether some user has this app expanded on the customer-site.
 
