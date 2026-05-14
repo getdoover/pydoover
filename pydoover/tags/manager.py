@@ -23,7 +23,18 @@ TAG_CHANNEL_NAME = "tag_values"
 # values; point it at a dedicated channel if live traffic should be kept out
 # of the tag-value message history.
 LIVE_TAG_CHANNEL_NAME = "tag_values"
-FASTMODE_CHANNEL_NAME = "doover_ui_fastmode"
+# Per-device "what is this user doing that touches this device" channel.
+# Replaces the coarse `doover_ui_fastmode` aggregate with per-bucket presence:
+#   {
+#     "agent_open":    {<user_id>: <ts>},
+#     "group_open":    {<user_id>: <ts>},
+#     "app_open":      {<user_id>: {"ts": <ts>, "apps": [<app_key>, ...]}},
+#     "live_tag_open": {<user_id>: {"ts": <ts>, "tags": [<tag_name>, ...]}},
+#   }
+# Timestamps are ms-since-epoch. The customer-site re-stamps every 120s while
+# the tab is visible, so anything older than that is treated as gone.
+UI_SUB_CHANNEL_NAME = "dv-ui-sub"
+UI_SUB_FRESH_MS = 120_000
 
 logger = logging.getLogger(__name__)
 
@@ -174,8 +185,10 @@ class TagsManagerDocker(TagsManager):
         self,
         client: "DeviceAgentInterface" = None,
         tag_log_interval: int = TAG_CLOUD_MAX_AGE,
+        app_key: str | None = None,
     ):
         self.client: DeviceAgentInterface = client
+        self.app_key = app_key
 
         self._tag_values: dict[str, Any] = {}
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
@@ -195,7 +208,7 @@ class TagsManagerDocker(TagsManager):
 
         self._tags_dirty = False
 
-        self.fastmode_aggregate = {}
+        self.ui_sub_aggregate: dict[str, Any] = {}
 
     async def setup(self, skip_sync: bool = False):
         """Register the tag channel subscription with the backing client. Blocks until tags are synced."""
@@ -208,8 +221,8 @@ class TagsManagerDocker(TagsManager):
             TAG_CHANNEL_NAME, self._on_tag_sync, EventSubscription.channel_sync
         )
         self.client.add_event_callback(
-            FASTMODE_CHANNEL_NAME,
-            self.on_fastmode_update,
+            UI_SUB_CHANNEL_NAME,
+            self.on_ui_sub_update,
             EventSubscription.aggregate_update | EventSubscription.channel_sync,
         )
 
@@ -217,26 +230,56 @@ class TagsManagerDocker(TagsManager):
             return
 
         await self.client.wait_for_channels_sync(
-            [TAG_CHANNEL_NAME, FASTMODE_CHANNEL_NAME], timeout=10
+            [TAG_CHANNEL_NAME, UI_SUB_CHANNEL_NAME], timeout=10
         )
 
-    async def on_fastmode_update(self, event: AggregateUpdateEvent):
-        self.fastmode_aggregate = event.aggregate.data
+    async def on_ui_sub_update(self, event: AggregateUpdateEvent):
+        self.ui_sub_aggregate = event.aggregate.data or {}
+
+    def _fresh_bucket_entries(self, bucket: str) -> Iterable[Any]:
+        """Yield the non-stale per-user entries from a ``dv-ui-sub`` bucket.
+
+        Entries older than 120s are skipped — the customer-site re-stamps every
+        120s while the tab is visible, so a stamp older than that means the
+        claim has been dropped (or the tab was closed without a clean teardown).
+        """
+        entries = self.ui_sub_aggregate.get(bucket) or {}
+        now_ms = datetime.now(tz=timezone.utc).timestamp() * 1000
+        for entry in entries.values():
+            if entry is None:
+                continue
+            ts = entry.get("ts") if isinstance(entry, dict) else entry
+            if not isinstance(ts, (int, float)):
+                continue
+            if (now_ms - ts) < UI_SUB_FRESH_MS:
+                yield entry
 
     @property
-    def is_being_observed(self):
-        if not self.fastmode_aggregate:
-            return False
+    def is_app_open(self) -> bool:
+        """Whether some user has this app expanded on the customer-site.
 
-        # channel format is {"agent_id": "last_ping_ms"} for any non-default connections.
-        # basically just check if there's any active connections, where active is defined as
-        # having a heartbeat within the last 2min. (120 seconds -> milliseconds)
-        now = datetime.now(tz=timezone.utc).timestamp() * 1000
-        return any((now - v) < 120_000 for v in self.fastmode_aggregate.values())
+        Drives ``max_age_secs`` — there's no point fast-publishing tag values
+        when nobody has the application open.
+        """
+        if not self.app_key:
+            return False
+        return any(
+            self.app_key in (entry.get("apps") or [])
+            for entry in self._fresh_bucket_entries("app_open")
+            if isinstance(entry, dict)
+        )
+
+    def _live_tags_opened(self) -> set[str]:
+        """Tag names that some user has enabled live mode on for this agent."""
+        opened: set[str] = set()
+        for entry in self._fresh_bucket_entries("live_tag_open"):
+            if isinstance(entry, dict):
+                opened.update(entry.get("tags") or [])
+        return opened
 
     @property
     def max_age_secs(self):
-        return self.observed_max_age if self.is_being_observed else self.default_max_age
+        return self.observed_max_age if self.is_app_open else self.default_max_age
 
     async def _on_tag_sync(self, event: ChannelSyncEvent):
         self._tag_values = event.aggregate.data
@@ -417,17 +460,22 @@ class TagsManagerDocker(TagsManager):
         ]
 
     async def flush_live_tags(self):
-        """Publish current values of all ``live=True`` tags as a one-shot message.
+        """Publish current values of ``live=True`` tags as a one-shot message.
 
         Called from :meth:`commit_tags` on every main-loop iteration, but only
-        does anything while the device is being observed (a fastmode client has
-        pinged within the last 2min) — there's no point streaming live values
-        when nothing is watching. Sends a fire-and-forget snapshot of every live
-        tag's current value so a watching UI gets fresh data without it being
-        persisted as a logged message. No-op when no tags are declared ``live``,
-        nothing is observing, or no live tag currently has a value.
+        does anything for the subset of live tags that some user has enabled
+        live mode on (``dv-ui-sub.live_tag_open.tags``) — there's no point
+        streaming a live value when nothing is watching it. Sends a
+        fire-and-forget snapshot so a watching UI gets fresh data without it
+        being persisted as a logged message. No-op when no tags are declared
+        ``live``, nobody has any of them in live mode, or no matching live tag
+        currently has a value.
         """
-        if not self._live_tag_keys or not self.is_being_observed:
+        if not self._live_tag_keys:
+            return False
+
+        opened = self._live_tags_opened()
+        if not opened:
             return False
 
         current = apply_diff(
@@ -435,6 +483,15 @@ class TagsManagerDocker(TagsManager):
         )
         payload: dict[str, Any] = {}
         for key_path in self._live_tag_keys:
+            # The customer-site qualifies tags as "<app_key>.<tag_name>" to
+            # avoid collisions across apps that happen to share a tag name.
+            qualified = (
+                f"{key_path.app_key}.{key_path.key}"
+                if key_path.app_key
+                else key_path.key
+            )
+            if qualified not in opened:
+                continue
             if not key_path.in_dict(current):
                 continue
             apply_diff(

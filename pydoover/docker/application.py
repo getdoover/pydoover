@@ -147,6 +147,7 @@ class Application:
 
         self.tag_manager = TagsManagerDocker(
             client=self.device_agent,
+            app_key=app_key,
         )
 
         self._ready = asyncio.Event()
