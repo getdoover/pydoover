@@ -3,6 +3,7 @@ import copy
 import logging
 import re
 import sys
+import json
 
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -646,8 +647,7 @@ class DeviceAgentInterface(GRPCInterface):
         """
         try:
             async for event in self.stream_channel_events(channel_name):
-                if isinstance(event, AggregateUpdateEvent):
-                    print(event.channel.name, event.aggregate.data)
+                print(json.dumps(obj=event.to_dict()))
                 sys.stdout.flush()
         except asyncio.CancelledError:
             await self.close()
