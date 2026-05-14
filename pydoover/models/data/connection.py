@@ -143,10 +143,11 @@ class DooverConnectionStatus:
 
     @classmethod
     def from_dict(cls, data):
+        status = data.get("status")
         last_ping = data.get("last_ping")
         last_online = data.get("last_online")
         return cls(
-            ConnectionStatus(data.get("status")),
+            status and ConnectionStatus(status),
             last_online
             and datetime.fromtimestamp(last_online / 1000.0, tz=timezone.utc),
             last_ping and datetime.fromtimestamp(last_ping / 1000.0, tz=timezone.utc),

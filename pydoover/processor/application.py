@@ -146,19 +146,27 @@ class Application:
         self.tags = self.tags_cls(self.app_key, self.tag_manager, self.config)
         self.ui = self.ui_cls(self.config, self.tags, self.app_key)
 
-        connection_data = info.connection_data
-        if not connection_data:
-            # connection config isn't valid for org processors
-            # but fresh-ly created devices also won't have connection config...
-            self._connection_config = {}
-            self.connection_config = None
-        else:
-            self._connection_config = connection_data.get("config", {})
-            self._connection_status = connection_data.get("status", {})
-            self.connection_config = ConnectionConfig.from_dict(self._connection_config)
-            self.connection_status = DooverConnectionStatus.from_dict(
-                self._connection_status
-            )
+        # connection config isn't valid for org processors
+        # but fresh-ly created devices also won't have connection config...
+        connection_data = info.connection_data or {}
+        self._connection_config = connection_data.get("config") or {}
+        self._connection_status = connection_data.get("status") or {}
+        self.connection_config = None
+        self.connection_status = None
+        try:
+            if self._connection_config:
+                self.connection_config = ConnectionConfig.from_dict(
+                    self._connection_config
+                )
+        except Exception as e:
+            log.warning("Failed to parse connection_config: %s", e)
+        try:
+            if self._connection_status:
+                self.connection_status = DooverConnectionStatus.from_dict(
+                    self._connection_status
+                )
+        except Exception as e:
+            log.warning("Failed to parse connection_status: %s", e)
 
         self.ui_manager = UICommandsManager(self.api)
         self.rpc = RPCManager(self.api, self.app_key)
