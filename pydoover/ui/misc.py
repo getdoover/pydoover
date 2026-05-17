@@ -1,6 +1,6 @@
 from typing import Any, ClassVar
 
-from .declarative import normalize_ui_value
+from .declarative import _value_is_live, normalize_ui_value
 from ..utils.utils import sanitize_display_name
 
 
@@ -148,6 +148,8 @@ class Series:
             result["ranges"] = [r.to_dict() for r in self.ranges]
         if self.thresholds is not None:
             result["thresholds"] = [t.to_dict() for t in self.thresholds]
+        if _value_is_live(self.value):
+            result["live"] = True
         return normalize_ui_value(result)
 
 

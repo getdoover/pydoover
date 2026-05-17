@@ -671,6 +671,11 @@ class BoundTag:
         return self._declaration.template.default
 
     @property
+    def live(self) -> bool:
+        """bool: Whether the underlying tag was declared with ``live=True``."""
+        return bool(getattr(self._declaration.template, "live", False))
+
+    @property
     def value(self) -> Any:
         """Any: Convenience alias for :meth:`get`."""
         return self.get()

@@ -193,6 +193,78 @@ class TestCanonicalUiTypes:
         assert data["series"]["temperature"]["units"] == "C"
 
 
+class TestLiveTagPropagation:
+    """The customer-site gates Live Mode on a UI element's ``live`` field;
+    that field must be derived from the underlying tag's ``live=True`` flag
+    so dashboard authors don't have to declare it twice."""
+
+    def _live_tags_cls(self):
+        from pydoover.tags import Number
+
+        class LiveTags(Tags):
+            stream = Number(live=True)
+            quiet = Number()
+
+        return LiveTags
+
+    def test_variable_inherits_live_from_class_tag_reference(self):
+        LiveTags = self._live_tags_cls()
+
+        class MyUI(ui.UI):
+            stream = ui.NumericVariable("Stream", value=LiveTags.stream, name="stream")
+            quiet = ui.NumericVariable("Quiet", value=LiveTags.quiet, name="quiet")
+
+        tags = LiveTags("app", FakeTagsManager(), FakeSchema())
+        ui_obj = MyUI(None, tags, "app").bind_tags(tags)
+
+        assert ui_obj.stream.to_dict()["live"] is True
+        assert "live" not in ui_obj.quiet.to_dict()
+
+    def test_variable_inherits_live_from_bound_tag(self):
+        LiveTags = self._live_tags_cls()
+        tags = LiveTags("app", FakeTagsManager(), FakeSchema())
+
+        var = ui.NumericVariable("Stream", value=tags.stream, name="stream")
+
+        assert var.to_dict()["live"] is True
+
+    def test_variable_inherits_live_via_tag_ref(self):
+        LiveTags = self._live_tags_cls()
+
+        var = ui.NumericVariable(
+            "Stream", value=ui.tag_ref(LiveTags.stream), name="stream"
+        )
+
+        assert var.to_dict()["live"] is True
+
+    def test_series_inherits_live_from_class_tag_reference(self):
+        LiveTags = self._live_tags_cls()
+
+        class MyUI(ui.UI):
+            plot = ui.Multiplot(
+                "Plot",
+                name="plot",
+                series=[
+                    ui.Series("Stream", value=LiveTags.stream, data_type="number"),
+                    ui.Series("Quiet", value=LiveTags.quiet, data_type="number"),
+                ],
+            )
+
+        tags = LiveTags("app", FakeTagsManager(), FakeSchema())
+        ui_obj = MyUI(None, tags, "app").bind_tags(tags)
+        data = ui_obj.plot.to_dict()
+
+        assert data["series"]["stream"]["live"] is True
+        assert "live" not in data["series"]["quiet"]
+
+    def test_no_live_when_value_is_literal(self):
+        var = ui.NumericVariable("Stream", value=5, name="stream")
+        series = ui.Series("Stream", value=5, data_type="number")
+
+        assert "live" not in var.to_dict()
+        assert "live" not in series.to_dict()
+
+
 class TestConfigRefResolution:
     def _make_schema_cls(self):
         class S(config.Schema):

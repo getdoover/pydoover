@@ -47,17 +47,23 @@ class UITagBinding:
         tag_type: str | None = None,
         default_value: Any = _MISSING,
         app_nested: bool = True,
+        live: bool = False,
     ):
         self.tag_name = tag_name
         self.tag_type = _TAG_TYPE_MAP.get(tag_type, tag_type) if tag_type else tag_type
         self.default_value = default_value
         self.app_nested = app_nested
+        # Mirror of the underlying tag's ``live=True`` flag, captured at
+        # binding time so consumers (Series/Variable to_dict) can propagate
+        # it onto the emitted UI element without re-resolving the Tag.
+        self.live = live
 
     def __copy__(self):
         return type(self)(
             self.tag_name,
             tag_type=self.tag_type,
             default_value=self.default_value,
+            live=self.live,
         )
 
     def __deepcopy__(self, memo):
@@ -65,6 +71,7 @@ class UITagBinding:
             copy.deepcopy(self.tag_name, memo),
             tag_type=copy.deepcopy(self.tag_type, memo),
             default_value=copy.deepcopy(self.default_value, memo),
+            live=self.live,
         )
 
     def to_lookup(self) -> str:
@@ -279,11 +286,24 @@ def tag_ref(
                 if _is_missing_default(default_value)
                 else default_value
             ),
+            live=binding.live,
         )
     return UITagBinding(tag, tag_type=tag_type, default_value=default_value)
 
 
 bind_tag = tag_ref
+
+
+def _value_is_live(value: Any) -> bool:
+    """Whether *value* is a tag reference whose underlying tag is ``live=True``.
+
+    Used by Series/Variable to propagate the tag's live flag onto the emitted
+    UI element so the customer-site can offer Live Mode without a second
+    declaration.
+    """
+    return isinstance(value, (UITagBinding, BoundTag, Tag)) and bool(
+        getattr(value, "live", False)
+    )
 
 
 def is_tag_reference(value: Any) -> bool:
@@ -371,6 +391,7 @@ def _binding_from_bound_tag(tag: BoundTag) -> UITagBinding:
         tag_name=_qualify_tag_name(tag.name, getattr(tag._tags, "_app_key", None)),
         tag_type=tag.tag_type,
         default_value=_normalize_default(tag.default),
+        live=bool(getattr(tag, "live", False)),
     )
 
 
@@ -395,6 +416,7 @@ def _binding_from_tag(tag: Tag, app_key: str | None = None) -> UITagBinding:
         tag_name=_qualify_tag_name(_get_tag_name(tag), app_key),
         tag_type=tag.tag_type,
         default_value=_normalize_default(tag.default),
+        live=bool(getattr(tag, "live", False)),
     )
 
 
