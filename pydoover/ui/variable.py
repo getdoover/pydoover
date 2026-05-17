@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from typing import Any
 
-from .declarative import is_tag_reference, normalize_ui_value
+from .declarative import _value_is_live, is_tag_reference, normalize_ui_value
 from .element import Element
 from .misc import Range, Threshold, Widget, NotSet
 
@@ -116,6 +116,9 @@ class Variable(Element):
             else:
                 # allow a tag I suppose??
                 result["notGraphable"] = self.graphable
+
+        if _value_is_live(self.value):
+            result["live"] = True
 
         return normalize_ui_value(result)
 
