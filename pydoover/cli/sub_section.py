@@ -1,6 +1,8 @@
 import argparse
 import asyncio
+from datetime import datetime
 import inspect
+import json
 import typing
 from typing import Any, Protocol, cast
 
@@ -94,9 +96,11 @@ class SubSection:
                     return
 
                 if result is not None:
-                    if hasattr(result, "to_dict"):
-                        result = result.to_dict()
-                    print(result)
+                    result = self._normalise_output(result)
+                    if kwargs.get("json"):
+                        print(json.dumps(result))
+                    else:
+                        print(result)
 
             parser.set_defaults(callback=func_caller)
             argspec = inspect.signature(func)
@@ -143,6 +147,12 @@ class SubSection:
             parser.add_argument(
                 "--enable-traceback",
                 help=argparse.SUPPRESS,
+                default=False,
+                action="store_true",
+            )
+            parser.add_argument(
+                "--json",
+                help="Output command result as JSON.",
                 default=False,
                 action="store_true",
             )
@@ -217,6 +227,21 @@ class SubSection:
                 kwargs["type"] = annotation
         return kwargs
 
+    @classmethod
+    def _normalise_output(cls, value):
+        if hasattr(value, "to_dict"):
+            return cls._normalise_output(value.to_dict())
+        if isinstance(value, dict):
+            return {
+                cls._normalise_output(k): cls._normalise_output(v)
+                for k, v in value.items()
+            }
+        if isinstance(value, (list, tuple)):
+            return [cls._normalise_output(v) for v in value]
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return value
+
     @staticmethod
     def _resolve_cli_type(annotation):
         """Extract a CLI-friendly type from a union annotation.
@@ -246,13 +271,28 @@ class SubSection:
                 if inner and inner[0] is str:
                     return comma_separated_list
 
-        # Pick the best scalar type from the remaining args
-        # Prefer int > float > str, skip datetime (CLI will pass ints)
+        if datetime in non_none:
+            if int in non_none:
+                return SubSection._int_or_datetime
+            return SubSection._datetime
+
+        # Pick the best scalar type from the remaining args.
         for preferred in (int, float, str):
             if preferred in non_none:
                 return preferred
 
         return None
+
+    @staticmethod
+    def _datetime(value: str):
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+    @staticmethod
+    def _int_or_datetime(value: str):
+        try:
+            return int(value)
+        except ValueError:
+            return SubSection._datetime(value)
 
 
 class _CommandFunction(Protocol):

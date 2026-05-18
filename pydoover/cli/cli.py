@@ -74,7 +74,9 @@ class CLI:
                 passed_args = {k: v for k, v in vars(args).items()}
             args.callback(**passed_args)
         except Exception as e:
-            if args.debug:
+            if getattr(args, "enable_traceback", False) or getattr(
+                args, "debug", False
+            ):
                 traceback.print_exc()
             else:
                 print(f"An error occurred: {e}")
