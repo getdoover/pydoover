@@ -69,6 +69,7 @@ class DooverData:
 
         log.debug(f"Starting request: {method} {endpoint} (org_id={org_id})")
 
+        last_exc: BaseException | None = None
         for attempt in range(max_retries):
             try:
                 async with self.session.request(
@@ -116,18 +117,21 @@ class DooverData:
                         resp.raise_for_status()
 
             except aiohttp.ClientError as e:
+                last_exc = e
                 log.info(
                     f"Client error on {method} {endpoint}: "
                     f"{str(e)} attempt={attempt + 1}/{max_retries}",
                     exc_info=e,
                 )
 
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError as e:
+                last_exc = e
                 log.info(
                     f"Timeout on {method} {endpoint} attempt={attempt + 1}/{max_retries}"
                 )
 
             except Exception as e:
+                last_exc = e
                 log.info(
                     f"Unexpected error on {method} {endpoint}: {str(e)} attempt={attempt + 1}/{max_retries}",
                     exc_info=e,
@@ -138,7 +142,11 @@ class DooverData:
                 log.info(f"Retrying {method} {endpoint} in {delay}s...")
                 await asyncio.sleep(delay)
 
-        raise
+        # All retries exhausted. Raise the last captured exception so callers
+        # see the real failure instead of `RuntimeError: No active exception
+        # to reraise` from a bare `raise` outside any except block.
+        assert last_exc is not None
+        raise last_exc
 
     async def get_channel(
         self, agent_id: int, channel_name: str, organisation_id: int = None
