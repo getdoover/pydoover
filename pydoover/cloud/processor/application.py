@@ -4,6 +4,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 
 from typing import Any
 
@@ -19,6 +20,7 @@ from .types import (
     DooverConnectionStatus,
 )
 from .data_client import DooverData, ConnectionDetermination, ConnectionStatus
+from ._logging import update_context
 from ...ui import UIManager
 from ...config import Schema
 
@@ -28,6 +30,28 @@ log = logging.getLogger(__name__)
 
 DEFAULT_DATA_ENDPOINT = "https://data.doover.com/api"
 DEFAULT_OFFLINE_AFTER = 60 * 60  # 1 hour
+
+# Channel to publish per-invocation summaries on (against the current agent).
+# Backport-time hardcoded target: the upstream version drives this via
+# ProcessorConfig.inv_targets, which lives in code that doesn't exist on
+# this pin. ``$app_id`` is substituted at publish time.
+INVOCATION_SUMMARY_CHANNEL = "dv-proc-inv-$app_id"
+
+
+class SkipReason(str, Enum):
+    pre_hook_filter = "pre_hook_filter"
+
+
+class ProcessorSkipped(Exception):
+    """Raised inside ``_dispatch_invocation`` to signal a deliberate no-op.
+
+    The :class:`SkipReason` is recorded in the invocation summary's
+    ``skip_reason`` field.
+    """
+
+    def __init__(self, reason: SkipReason):
+        super().__init__(reason.value)
+        self.reason = reason
 
 
 class Application:
@@ -44,6 +68,16 @@ class Application:
 
         # set per-task
         self.agent_id: int = None
+        self.app_key: str | None = None
+        self.app_id: str | None = None
+        self.organisation_id: int | str | None = None
+        self.subscription_id: str | None = None
+        self.schedule_id: str | None = None
+        self.ingestion_id: str | None = None
+        self.event_type: str | None = None
+        self.lambda_request_id: str | None = None
+        self.lambda_function_name: str | None = None
+        self.lambda_function_version: str | None = None
         self._initial_token: str = None
         self.ui_manager: UIManager = None
         self._tag_values: dict[str, Any] = None
@@ -128,6 +162,7 @@ class Application:
 
         # Store the deployment config for later use
         self.received_deployment_config = data["deployment_config"]
+        self.app_id = self.received_deployment_config.get("APP_ID")
 
     async def _close(self):
         await self.api.close()
@@ -187,13 +222,56 @@ class Application:
 
     async def _handle_event(self, event: dict[str, Any], subscription_id: str = None):
         start_time = time.time()
+        started_at_ms = int(start_time * 1000)
+        # Set early so the summary still has them if dispatch raises before
+        # _dispatch_invocation gets a chance to populate the rest.
+        self.subscription_id = subscription_id
+        self.event_type = event.get("op")
+
         log.info("Initialising processor task")
         log.info(f"Started at {start_time}.")
 
-        # self.app_key: str = event.get("app_key", os.environ.get("APP_KEY"))
-        # self.agent_id: int = event["agent_id"]
-        self.subscription_id = subscription_id
+        status = "success"
+        skip_reason: SkipReason | None = None
+        error: dict[str, str] | None = None
 
+        try:
+            await self._dispatch_invocation(event, subscription_id)
+        except ProcessorSkipped as e:
+            status = "skipped"
+            skip_reason = e.reason
+        except Exception as e:
+            log.error("Unhandled error in invocation", exc_info=e)
+            status = "error"
+            error = {"type": type(e).__name__, "message": str(e)}
+        finally:
+            end_time = time.time()
+            log.info(
+                f"Finished at {end_time}. Process took {end_time - start_time} seconds."
+            )
+            try:
+                await self._publish_invocation_summary(
+                    started_at_ms=started_at_ms,
+                    duration_ms=int((end_time - start_time) * 1000),
+                    status=status,
+                    skip_reason=skip_reason,
+                    error=error,
+                )
+            except Exception as e:
+                log.error("Failed to publish invocation summary", exc_info=e)
+            try:
+                await self._close()
+            except Exception as e:
+                log.error("Error closing processor api client", exc_info=e)
+
+    async def _dispatch_invocation(
+        self, event: dict[str, Any], subscription_id: str | None
+    ) -> None:
+        """Run the event-handling pipeline.
+
+        Raises :class:`ProcessorSkipped` when the invocation should be
+        recorded as a deliberate no-op (filter rejection).
+        """
         try:
             self.schedule_id = event["d"]["schedule_id"]
         except KeyError:
@@ -247,11 +325,15 @@ class Application:
 
         if not await self.pre_hook_filter(payload):
             log.info("Pre-hook filter rejected event.")
-            return
+            raise ProcessorSkipped(SkipReason.pre_hook_filter)
 
         s = time.perf_counter()
         await self._setup(event)
         log.info(f"Setup took {time.perf_counter() - s} seconds.")
+
+        # Mirror app_id into the log-record filter so logs from here on
+        # carry it. Everything else summary-bound stays on ``self``.
+        update_context(app_id=self.app_id)
 
         s = time.perf_counter()
         try:
@@ -295,12 +377,51 @@ class Application:
         except Exception as e:
             log.error(f"Error attempting to close processor: {e} ", exc_info=e)
 
-        await self._close()
+    async def _publish_invocation_summary(
+        self,
+        *,
+        started_at_ms: int,
+        duration_ms: int,
+        status: str,
+        skip_reason: SkipReason | None,
+        error: dict[str, str] | None,
+    ) -> None:
+        # Without app_id we don't know which channel to fan to, so skip.
+        # This also handles the pre-setup failure case (dispatch raised
+        # before _setup ran).
+        if self.app_id is None or self.agent_id is None:
+            return
 
-        end_time = time.time()
-        log.info(
-            f"Finished at {end_time}. Process took {end_time - start_time} seconds."
-        )
+        channel = INVOCATION_SUMMARY_CHANNEL.replace("$app_id", self.app_id)
+
+        body = {
+            "app_key": self.app_key,
+            "app_id": self.app_id,
+            # Doover IDs are 64-bit; JS truncates above 2^53.
+            "agent_id": str(self.agent_id) if self.agent_id is not None else None,
+            "event_type": self.event_type,
+            "subscription_id": self.subscription_id,
+            "schedule_id": self.schedule_id,
+            "ingestion_id": self.ingestion_id,
+            "started_at": started_at_ms,
+            "duration_ms": duration_ms,
+            "status": status,
+            "skip_reason": skip_reason.value if skip_reason is not None else None,
+            "error": error,
+            "requestId": self.lambda_request_id,
+            "function_name": self.lambda_function_name,
+            "function_version": self.lambda_function_version,
+        }
+
+        try:
+            await self.api.publish_message(self.agent_id, channel, body)
+        except Exception as e:
+            log.error(
+                "Failed to post invocation summary to %s/%s",
+                self.agent_id,
+                channel,
+                exc_info=e,
+            )
 
     async def fetch_channel(self, channel_name: str) -> Channel:
         """Helper method to fetch a channel by its name.
