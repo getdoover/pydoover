@@ -11,6 +11,15 @@ from typing import Any, cast
 from .sub_section import SubSection
 
 
+# Printed on its own stdout line after every command handled in --shell mode
+# (non-interactive only). A command's result can span multiple lines — error
+# messages in particular (e.g. multi-line gRPC tracebacks) — or zero lines
+# (commands returning None, or unknown subcommands that argparse rejects). The
+# sentinel lets a machine client delimit one command's output from the next
+# regardless of how many lines it produced.
+SHELL_COMMAND_SENTINEL = "__PYDOOVER_SHELL_CMD_END__"
+
+
 _GRPC_SUBSECTIONS = {
     "platform": (
         "..docker.platform",
@@ -142,28 +151,36 @@ class CLI:
                 return
 
             line = line.strip()
-            if not line or line.startswith("#"):
-                continue
             if line in ("exit", "quit"):
                 return
 
+            # Process the line; the `finally` always emits the end-of-command
+            # sentinel (machine mode only) so a client can delimit this
+            # command's output from the next, even when it printed zero lines
+            # (None result / unknown subcommand) or many (multi-line error).
             try:
-                args_list = shlex.split(line)
-            except ValueError as e:
-                print(f"Parse error: {e}", file=sys.stderr)
-                continue
+                if not line or line.startswith("#"):
+                    continue
 
-            try:
-                args = self.parser.parse_args(args_list)
-            except SystemExit:
-                # argparse exits on --help or arg errors; stay in the shell.
-                continue
+                try:
+                    args_list = shlex.split(line)
+                except ValueError as e:
+                    print(f"Parse error: {e}", file=sys.stderr)
+                    continue
 
-            try:
-                self._dispatch(args)
-            except KeyboardInterrupt:
-                print("Interrupted.", file=sys.stderr)
+                try:
+                    args = self.parser.parse_args(args_list)
+                except SystemExit:
+                    # argparse exits on --help or arg errors; stay in the shell.
+                    continue
+
+                try:
+                    self._dispatch(args)
+                except KeyboardInterrupt:
+                    print("Interrupted.", file=sys.stderr)
             finally:
+                if not is_tty:
+                    print(SHELL_COMMAND_SENTINEL)
                 sys.stdout.flush()
                 sys.stderr.flush()
 
