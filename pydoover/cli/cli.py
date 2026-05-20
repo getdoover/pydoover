@@ -165,6 +165,9 @@ class CLI:
                 self._dispatch(args)
             except KeyboardInterrupt:
                 print("Interrupted.", file=sys.stderr)
+            finally:
+                sys.stdout.flush()
+                sys.stderr.flush()
 
     def add_grpc_subsection(self, subsection: SubSection):
         subsection.mount_sub_section(self.subparser)
