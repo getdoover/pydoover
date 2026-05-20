@@ -1,10 +1,20 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .application import Application, run_app
-    from .device_agent import DeviceAgentInterface, MockDeviceAgentInterface
-    from .modbus import ModbusInterface, ModbusConfig, ManyModbusConfig
-    from .platform import PlatformInterface, PulseCounter
+    from .application import Application as Application, run_app as run_app
+    from .device_agent import (
+        DeviceAgentInterface as DeviceAgentInterface,
+        MockDeviceAgentInterface as MockDeviceAgentInterface,
+    )
+    from .modbus import (
+        ModbusInterface as ModbusInterface,
+        ModbusConfig as ModbusConfig,
+        ManyModbusConfig as ManyModbusConfig,
+    )
+    from .platform import (
+        PlatformInterface as PlatformInterface,
+        PulseCounter as PulseCounter,
+    )
 
 _LAZY_ATTRS = {
     "Application": (".application", "Application"),

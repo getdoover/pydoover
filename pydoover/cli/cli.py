@@ -109,9 +109,7 @@ class CLI:
             if "kwargs" in sig_params:
                 passed_args = dict(vars(args))
             else:
-                passed_args = {
-                    k: v for k, v in vars(args).items() if k in sig_params
-                }
+                passed_args = {k: v for k, v in vars(args).items() if k in sig_params}
             args.callback(**passed_args)
         except Exception as e:
             if getattr(args, "enable_traceback", False) or getattr(
