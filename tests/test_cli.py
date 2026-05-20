@@ -30,6 +30,10 @@ class FakeInterface:
     def send_at(self, timestamp: datetime | None = None):
         return {"timestamp": timestamp}
 
+    @command()
+    def set_flags(self, replace_data: bool = False, only_if_changed: bool = True):
+        return {"replace_data": replace_data, "only_if_changed": only_if_changed}
+
 
 class FakeModel:
     def __init__(self, value):
@@ -79,6 +83,30 @@ def test_cli_accepts_optional_datetime_arguments(capsys):
 
     captured = capsys.readouterr()
     assert json.loads(captured.out) == {"timestamp": "2026-05-19T01:02:03+00:00"}
+
+
+def test_cli_bool_flag_default_false_is_store_true(capsys):
+    # A bare `--replace_data` (no value) must set it True, matching how callers
+    # like the cockpit transport send boolean flags.
+    _run_fake_cli(["fake", "set_flags", "--replace_data", "--json"])
+
+    captured = capsys.readouterr()
+    assert json.loads(captured.out) == {"replace_data": True, "only_if_changed": True}
+
+
+def test_cli_bool_flag_omitted_uses_default(capsys):
+    _run_fake_cli(["fake", "set_flags", "--json"])
+
+    captured = capsys.readouterr()
+    assert json.loads(captured.out) == {"replace_data": False, "only_if_changed": True}
+
+
+def test_cli_bool_flag_default_true_is_store_false(capsys):
+    # Default-True flags act as a disable switch (matches the BoolFlag design).
+    _run_fake_cli(["fake", "set_flags", "--only_if_changed", "--json"])
+
+    captured = capsys.readouterr()
+    assert json.loads(captured.out) == {"replace_data": False, "only_if_changed": False}
 
 
 def test_cli_exception_handler_does_not_require_debug_attr(monkeypatch, capsys):

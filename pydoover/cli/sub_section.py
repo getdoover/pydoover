@@ -202,9 +202,12 @@ class SubSection:
     def parse_arg_type(self, param, kwargs):
         annotation = param.annotation
 
-        if annotation is BoolFlag:
+        if annotation is BoolFlag or annotation is bool:
+            # Boolean parameters become bare flags: `--flag` (no value). argparse
+            # `type=bool` is unusable here — bool("False") is True — and callers
+            # like the cockpit transport send boolean flags without a value.
             kwargs["action"] = (
-                "store_false" if kwargs["default"] is True else "store_true"
+                "store_false" if kwargs.get("default") is True else "store_true"
             )
         elif annotation == typing.Union[int, list[int]]:
             kwargs["type"] = int_or_list
