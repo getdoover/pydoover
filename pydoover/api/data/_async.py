@@ -42,6 +42,8 @@ from ...models.data import (
     ProcessorTokenResponse,
     SubscriptionInfo,
     TimeseriesResponse,
+    ConfirmedDeviceToken,
+    RotatedDeviceToken,
     TurnCredential,
     Attachment,
 )
@@ -1289,3 +1291,38 @@ class AsyncDataClient(BaseClient):
             organisation_id=organisation_id,
         )
         return TurnCredential.from_dict(data)
+
+    # ── Device token rotation ─────────────────────────────────────────────
+
+    async def rotate_device_token(self, agent_id: int) -> RotatedDeviceToken:
+        """Trade in the current device token for a fresh one.
+
+        Authenticated with the device's *current* v1 mini-token (the one
+        already on this client). Mints a new token but does NOT advance the
+        agent's revocation floor — the old token stays valid until
+        :py:meth:`confirm_device_token` is called.
+
+        Requires the agent to be opted in to self-rotation (admin sets
+        ``token_self_rotation`` via the internal token-policy endpoint).
+        """
+        data = await self._request(
+            "POST",
+            f"/agents/{agent_id}/token/rotate",
+        )
+        return RotatedDeviceToken.from_dict(data)
+
+    async def confirm_device_token(self, agent_id: int) -> ConfirmedDeviceToken:
+        """Commit a rotation: retire every older token for this agent.
+
+        Must be called with the NEW token as the bearer — its presence
+        proves the device received and can use it. Call
+        :py:meth:`~pydoover.api.data._base.BaseClient.set_token` (or
+        whichever switch your auth layer uses) to install the new token
+        *before* invoking this. The floor bump is idempotent at the server,
+        so retrying a confirm after a transient failure is safe.
+        """
+        data = await self._request(
+            "POST",
+            f"/agents/{agent_id}/token/confirm",
+        )
+        return ConfirmedDeviceToken.from_dict(data)

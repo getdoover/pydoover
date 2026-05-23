@@ -3,6 +3,7 @@ from .alarm import Alarm, AlarmOperator, AlarmState
 from .attachment import Attachment, File
 from .batch import AgentAggregate, BatchAggregateResponse, BatchMessageResponse
 from .channel import Channel, ChannelID
+from .device_token import ConfirmedDeviceToken, RotatedDeviceToken
 from .connection import (
     ConnectionConfig,
     ConnectionDetermination,
@@ -71,6 +72,7 @@ __all__ = [
     "ConnectionStatus",
     "ConnectionSubscription",
     "ConnectionSubscriptionLog",
+    "ConfirmedDeviceToken",
     "ConnectionType",
     "DataPoint",
     "DeploymentEvent",
@@ -94,6 +96,7 @@ __all__ = [
     "NotificationType",
     "OneShotMessage",
     "ProcessorTokenResponse",
+    "RotatedDeviceToken",
     "ScheduleEvent",
     "SubscriptionInfo",
     "TimeseriesResponse",
