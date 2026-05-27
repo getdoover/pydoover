@@ -349,14 +349,14 @@ message getWakeOnVoltageRequest {}
 
 message getWakeOnVoltageResponse {
     ResponseHeader response_header = 1;
-    float voltage = 2;
+    optional float voltage = 2;
 }
 
 message setWakeOnVoltageRequest {
-    float voltage = 1;
+    optional float voltage = 1;
 }
 
 message setWakeOnVoltageResponse {
     ResponseHeader response_header = 1;
-    float voltage = 2;
+    optional float voltage = 2;
 }

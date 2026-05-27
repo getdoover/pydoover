@@ -1036,7 +1036,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def fetch_wake_on_voltage(self) -> float:
+    async def fetch_wake_on_voltage(self) -> float | None:
         """Get the input voltage threshold at which the device wakes from shutdown.
 
         Returns
@@ -1051,7 +1051,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def set_wake_on_voltage(self, voltage: float) -> float:
+    async def set_wake_on_voltage(self, voltage: float | None) -> float | None:
         """Set the input voltage threshold at which the device wakes from shutdown.
 
         Returns
