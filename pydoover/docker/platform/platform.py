@@ -1035,6 +1035,36 @@ class PlatformInterface(GRPCInterface):
             response_field="immunity_secs",
         )
 
+    @cli_command()
+    async def fetch_wake_on_voltage(self) -> float:
+        """Get the input voltage threshold at which the device wakes from shutdown.
+
+        Returns
+        -------
+        float
+            The wake-on-voltage threshold, in volts.
+        """
+        return await self.make_request(
+            "getWakeOnVoltage",
+            platform_iface_pb2.getWakeOnVoltageRequest(),
+            response_field="voltage",
+        )
+
+    @cli_command()
+    async def set_wake_on_voltage(self, voltage: float) -> float:
+        """Set the input voltage threshold at which the device wakes from shutdown.
+
+        Returns
+        -------
+        float
+            The wake-on-voltage threshold, in volts.
+        """
+        return await self.make_request(
+            "setWakeOnVoltage",
+            platform_iface_pb2.setWakeOnVoltageRequest(voltage=voltage),
+            response_field="voltage",
+        )
+
     async def schedule_startup(self, time_secs: int) -> None:
         return await self.make_request(
             "scheduleStartup",

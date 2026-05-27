@@ -486,3 +486,29 @@ class getDIEventsResponse(_message.Message):
     events: _containers.RepeatedCompositeFieldContainer[EventDetail]
     events_synced: bool
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., events: _Optional[_Iterable[_Union[EventDetail, _Mapping]]] = ..., events_synced: bool = ...) -> None: ...
+
+class getWakeOnVoltageRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class getWakeOnVoltageResponse(_message.Message):
+    __slots__ = ("response_header", "voltage")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    VOLTAGE_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    voltage: float
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., voltage: _Optional[float] = ...) -> None: ...
+
+class setWakeOnVoltageRequest(_message.Message):
+    __slots__ = ("voltage",)
+    VOLTAGE_FIELD_NUMBER: _ClassVar[int]
+    voltage: float
+    def __init__(self, voltage: _Optional[float] = ...) -> None: ...
+
+class setWakeOnVoltageResponse(_message.Message):
+    __slots__ = ("response_header", "voltage")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    VOLTAGE_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    voltage: float
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., voltage: _Optional[float] = ...) -> None: ...
