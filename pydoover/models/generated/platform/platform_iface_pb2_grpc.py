@@ -175,6 +175,16 @@ class platformIfaceStub(object):
                 request_serializer=platform_dot_platform__iface__pb2.shutdownRequest.SerializeToString,
                 response_deserializer=platform_dot_platform__iface__pb2.shutdownResponse.FromString,
                 _registered_method=True)
+        self.getWakeOnVoltage = channel.unary_unary(
+                '/platform_iface.platformIface/getWakeOnVoltage',
+                request_serializer=platform_dot_platform__iface__pb2.getWakeOnVoltageRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getWakeOnVoltageResponse.FromString,
+                _registered_method=True)
+        self.setWakeOnVoltage = channel.unary_unary(
+                '/platform_iface.platformIface/setWakeOnVoltage',
+                request_serializer=platform_dot_platform__iface__pb2.setWakeOnVoltageRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.setWakeOnVoltageResponse.FromString,
+                _registered_method=True)
         self.loadFirmware = channel.unary_unary(
                 '/platform_iface.platformIface/loadFirmware',
                 request_serializer=platform_dot_platform__iface__pb2.loadFirmwareRequest.SerializeToString,
@@ -361,6 +371,18 @@ class platformIfaceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def getWakeOnVoltage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def setWakeOnVoltage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def loadFirmware(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -516,6 +538,16 @@ def add_platformIfaceServicer_to_server(servicer, server):
                     servicer.shutdown,
                     request_deserializer=platform_dot_platform__iface__pb2.shutdownRequest.FromString,
                     response_serializer=platform_dot_platform__iface__pb2.shutdownResponse.SerializeToString,
+            ),
+            'getWakeOnVoltage': grpc.unary_unary_rpc_method_handler(
+                    servicer.getWakeOnVoltage,
+                    request_deserializer=platform_dot_platform__iface__pb2.getWakeOnVoltageRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getWakeOnVoltageResponse.SerializeToString,
+            ),
+            'setWakeOnVoltage': grpc.unary_unary_rpc_method_handler(
+                    servicer.setWakeOnVoltage,
+                    request_deserializer=platform_dot_platform__iface__pb2.setWakeOnVoltageRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.setWakeOnVoltageResponse.SerializeToString,
             ),
             'loadFirmware': grpc.unary_unary_rpc_method_handler(
                     servicer.loadFirmware,
@@ -1263,6 +1295,60 @@ class platformIface(object):
             '/platform_iface.platformIface/shutdown',
             platform_dot_platform__iface__pb2.shutdownRequest.SerializeToString,
             platform_dot_platform__iface__pb2.shutdownResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getWakeOnVoltage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getWakeOnVoltage',
+            platform_dot_platform__iface__pb2.getWakeOnVoltageRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getWakeOnVoltageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def setWakeOnVoltage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/setWakeOnVoltage',
+            platform_dot_platform__iface__pb2.setWakeOnVoltageRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.setWakeOnVoltageResponse.FromString,
             options,
             channel_credentials,
             insecure,

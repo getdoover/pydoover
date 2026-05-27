@@ -44,6 +44,9 @@ service platformIface {
     rpc reboot (rebootRequest) returns (rebootResponse) {}
     rpc shutdown (shutdownRequest) returns (shutdownResponse) {}
 
+    rpc getWakeOnVoltage (getWakeOnVoltageRequest) returns (getWakeOnVoltageResponse) {}
+    rpc setWakeOnVoltage (setWakeOnVoltageRequest) returns (setWakeOnVoltageResponse) {}
+
     rpc loadFirmware (loadFirmwareRequest) returns (loadFirmwareResponse) {}
     rpc loadBootloader (loadBootloaderRequest) returns (loadBootloaderResponse) {}
     rpc getFirmwareVersion (getFirmwareVersionRequest) returns (getFirmwareVersionResponse) {}
@@ -340,4 +343,20 @@ message getDIEventsResponse {
     ResponseHeader response_header = 1;
     repeated EventDetail events = 2;
     optional bool events_synced = 3;
+}
+
+message getWakeOnVoltageRequest {}
+
+message getWakeOnVoltageResponse {
+    ResponseHeader response_header = 1;
+    float voltage = 2;
+}
+
+message setWakeOnVoltageRequest {
+    float voltage = 1;
+}
+
+message setWakeOnVoltageResponse {
+    ResponseHeader response_header = 1;
+    float voltage = 2;
 }
