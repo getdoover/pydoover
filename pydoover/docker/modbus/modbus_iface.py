@@ -50,6 +50,7 @@ class ModbusInterface(GRPCInterface):
         super().__init__(app_key, modbus_uri, service_name, timeout)
 
         self.subscription_tasks = []
+        self._setup_task = None
 
         self.config = config
         self.config_complete = False
@@ -102,43 +103,51 @@ class ModbusInterface(GRPCInterface):
         self.config_complete = True
 
     def process_response(self, stub_call: str, response, *args, **kwargs):
-        resp = super().process_response(stub_call, response, *args, **kwargs)
+        # On a successful (or empty) response defer to the base implementation,
+        # which returns the response or raises for an empty one.
+        if response is None or response.response_header.success:
+            return super().process_response(stub_call, response, *args, **kwargs)
 
-        if response.response_header.success:
-            log.debug("Response was OK. Nothing to process...")
-            return resp
-
-        # only for some of the calls we want to ensure a bus is available (e.g. read/write registers)
-        # this will fix it for next run but not the current one...
+        # Response was not successful. For read/write register calls the bus may
+        # have been dropped (e.g. the modbus container was restarted mid-session),
+        # so try to recreate it rather than raising. This recovers the bus for the
+        # next call, not the current one.
+        #
+        # NOTE: this must run *instead of* super().process_response() for these
+        # calls — the base raises on a failed response, which would otherwise
+        # prevent us from ever reconfiguring the bus.
         try:
             configure_bus = kwargs["configure_bus"]
             bus_id = kwargs["bus_id"]
         except KeyError:
-            log.debug(
-                "Response was not OK, but no bus_id or configure_bus provided. Nothing to do..."
-            )
-            return resp
+            # not a bus-bound call (e.g. openBus, busStatus) — use the base's
+            # raising behaviour.
+            return super().process_response(stub_call, response, *args, **kwargs)
 
         self.ensure_bus_available(bus_id, response.response_header, configure_bus)
-        return resp
+        return response
 
     def ensure_bus_available(self, bus_id, response_header, configure: bool = True):
-        ## if not config_complete, wait for setup to complete
+        ## if not config_complete, a setup() is already in progress — wait for it
         if not self.config_complete:
-            log.debug("Waiting for modbus setup to complete")
+            log.debug("Modbus setup in progress, skipping reconfigure")
             return False
 
-        ## check the bus status from the response and if the bus does not exist, and configure is True, rerun the setup
+        ## if the bus is present and open there is nothing to do
         for b in response_header.bus_status:
             if b.bus_id == bus_id:
-                return b.open
+                if b.open:
+                    return True
+                break
 
-        log.warning(f"Bus {bus_id} not found in response")
-        if configure:
-            log.info("Reconfiguring modbus iface")
-            _t = asyncio.create_task(self.setup())
+        ## bus is missing or closed (e.g. the modbus container was restarted) —
+        ## recreate it. Guard against spawning overlapping setup tasks and keep a
+        ## reference so the task isn't garbage collected before it completes.
+        log.warning(f"Bus {bus_id} not available, reconfiguring modbus interface")
+        if configure and (self._setup_task is None or self._setup_task.done()):
+            self._setup_task = asyncio.create_task(self.setup())
 
-        return True
+        return False
 
     async def close(self):
         log.info("Closing modbus interface")
