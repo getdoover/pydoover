@@ -185,6 +185,36 @@ class platformIfaceStub(object):
                 request_serializer=platform_dot_platform__iface__pb2.setWakeOnVoltageRequest.SerializeToString,
                 response_deserializer=platform_dot_platform__iface__pb2.setWakeOnVoltageResponse.FromString,
                 _registered_method=True)
+        self.getWakeReason = channel.unary_unary(
+                '/platform_iface.platformIface/getWakeReason',
+                request_serializer=platform_dot_platform__iface__pb2.getWakeReasonRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getWakeReasonResponse.FromString,
+                _registered_method=True)
+        self.getSleepLog = channel.unary_unary(
+                '/platform_iface.platformIface/getSleepLog',
+                request_serializer=platform_dot_platform__iface__pb2.getSleepLogRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getSleepLogResponse.FromString,
+                _registered_method=True)
+        self.getSleepLogInterval = channel.unary_unary(
+                '/platform_iface.platformIface/getSleepLogInterval',
+                request_serializer=platform_dot_platform__iface__pb2.getSleepLogIntervalRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getSleepLogIntervalResponse.FromString,
+                _registered_method=True)
+        self.setSleepLogInterval = channel.unary_unary(
+                '/platform_iface.platformIface/setSleepLogInterval',
+                request_serializer=platform_dot_platform__iface__pb2.setSleepLogIntervalRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.setSleepLogIntervalResponse.FromString,
+                _registered_method=True)
+        self.getDIConfig = channel.unary_unary(
+                '/platform_iface.platformIface/getDIConfig',
+                request_serializer=platform_dot_platform__iface__pb2.getDIConfigRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getDIConfigResponse.FromString,
+                _registered_method=True)
+        self.setDIConfig = channel.unary_unary(
+                '/platform_iface.platformIface/setDIConfig',
+                request_serializer=platform_dot_platform__iface__pb2.setDIConfigRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.setDIConfigResponse.FromString,
+                _registered_method=True)
         self.loadFirmware = channel.unary_unary(
                 '/platform_iface.platformIface/loadFirmware',
                 request_serializer=platform_dot_platform__iface__pb2.loadFirmwareRequest.SerializeToString,
@@ -383,6 +413,42 @@ class platformIfaceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def getWakeReason(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getSleepLog(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getSleepLogInterval(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def setSleepLogInterval(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getDIConfig(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def setDIConfig(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def loadFirmware(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -548,6 +614,36 @@ def add_platformIfaceServicer_to_server(servicer, server):
                     servicer.setWakeOnVoltage,
                     request_deserializer=platform_dot_platform__iface__pb2.setWakeOnVoltageRequest.FromString,
                     response_serializer=platform_dot_platform__iface__pb2.setWakeOnVoltageResponse.SerializeToString,
+            ),
+            'getWakeReason': grpc.unary_unary_rpc_method_handler(
+                    servicer.getWakeReason,
+                    request_deserializer=platform_dot_platform__iface__pb2.getWakeReasonRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getWakeReasonResponse.SerializeToString,
+            ),
+            'getSleepLog': grpc.unary_unary_rpc_method_handler(
+                    servicer.getSleepLog,
+                    request_deserializer=platform_dot_platform__iface__pb2.getSleepLogRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getSleepLogResponse.SerializeToString,
+            ),
+            'getSleepLogInterval': grpc.unary_unary_rpc_method_handler(
+                    servicer.getSleepLogInterval,
+                    request_deserializer=platform_dot_platform__iface__pb2.getSleepLogIntervalRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getSleepLogIntervalResponse.SerializeToString,
+            ),
+            'setSleepLogInterval': grpc.unary_unary_rpc_method_handler(
+                    servicer.setSleepLogInterval,
+                    request_deserializer=platform_dot_platform__iface__pb2.setSleepLogIntervalRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.setSleepLogIntervalResponse.SerializeToString,
+            ),
+            'getDIConfig': grpc.unary_unary_rpc_method_handler(
+                    servicer.getDIConfig,
+                    request_deserializer=platform_dot_platform__iface__pb2.getDIConfigRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getDIConfigResponse.SerializeToString,
+            ),
+            'setDIConfig': grpc.unary_unary_rpc_method_handler(
+                    servicer.setDIConfig,
+                    request_deserializer=platform_dot_platform__iface__pb2.setDIConfigRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.setDIConfigResponse.SerializeToString,
             ),
             'loadFirmware': grpc.unary_unary_rpc_method_handler(
                     servicer.loadFirmware,
@@ -1349,6 +1445,168 @@ class platformIface(object):
             '/platform_iface.platformIface/setWakeOnVoltage',
             platform_dot_platform__iface__pb2.setWakeOnVoltageRequest.SerializeToString,
             platform_dot_platform__iface__pb2.setWakeOnVoltageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getWakeReason(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getWakeReason',
+            platform_dot_platform__iface__pb2.getWakeReasonRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getWakeReasonResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getSleepLog(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getSleepLog',
+            platform_dot_platform__iface__pb2.getSleepLogRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getSleepLogResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getSleepLogInterval(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getSleepLogInterval',
+            platform_dot_platform__iface__pb2.getSleepLogIntervalRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getSleepLogIntervalResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def setSleepLogInterval(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/setSleepLogInterval',
+            platform_dot_platform__iface__pb2.setSleepLogIntervalRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.setSleepLogIntervalResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getDIConfig(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getDIConfig',
+            platform_dot_platform__iface__pb2.getDIConfigRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getDIConfigResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def setDIConfig(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/setDIConfig',
+            platform_dot_platform__iface__pb2.setDIConfigRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.setDIConfigResponse.FromString,
             options,
             channel_credentials,
             insecure,
