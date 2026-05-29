@@ -393,6 +393,7 @@ message SleepLogEntry {
     repeated bool do = 5;                // digital output states (pins 0-5)
     repeated float ai = 6;               // analog input readings (pins 0-5)
     repeated float ao = 7;               // analog output values (pins 0-1)
+    optional float system_power = 8;     // system power in watts ("p")
 }
 
 message getSleepLogRequest {
