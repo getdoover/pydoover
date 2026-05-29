@@ -33,7 +33,7 @@ from ...models.data import (
     Attachment,
 )
 from ..grpc_interface import GRPCInterface
-from ...models.data.exceptions import NotFoundError
+from ...models.data.exceptions import DooverAPIError, NotFoundError
 from ...cli.decorators import command as cli_command
 
 log = logging.getLogger(__name__)
@@ -557,7 +557,12 @@ class DeviceAgentInterface(GRPCInterface):
     @cli_command()
     async def send_oneshot_message(
         self, channel_name: str, data: dict[str, Any], timestamp: datetime | None = None
-    ) -> None:
+    ) -> bool:
+        # Oneshot messages are fire-and-forget (e.g. live tags) — best-effort by
+        # nature, with no retry or delivery guarantee. A DDA that's too old to accept
+        # the request rejects it, so swallow transport/rejection errors and return
+        # False rather than crashing the caller's loop. Local payload errors (e.g. a
+        # bad ``data`` dict failing ParseDict) are caller bugs and still raise.
         d = Struct()
         json_format.ParseDict(data, d)
         req = device_agent_pb2.SendOneShotMessageRequest(
@@ -567,7 +572,17 @@ class DeviceAgentInterface(GRPCInterface):
         )
         if timestamp is not None:
             req.timestamp = int(timestamp.timestamp() * 1000)
-        await self.make_request("SendOneShotMessage", req)
+        try:
+            await self.make_request("SendOneShotMessage", req)
+        except DooverAPIError as e:
+            log.warning(
+                "Oneshot message to '%s' dropped (device agent rejected or "
+                "unreachable): %s",
+                channel_name,
+                e,
+            )
+            return False
+        return True
 
     @cli_command()
     async def update_message(
