@@ -530,7 +530,7 @@ class getWakeReasonResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., wake_reason: _Optional[str] = ...) -> None: ...
 
 class SleepLogEntry(_message.Message):
-    __slots__ = ("timestamp", "input_voltage", "system_current", "di", "do", "ai", "ao")
+    __slots__ = ("timestamp", "input_voltage", "system_current", "di", "do", "ai", "ao", "system_power")
     TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
     INPUT_VOLTAGE_FIELD_NUMBER: _ClassVar[int]
     SYSTEM_CURRENT_FIELD_NUMBER: _ClassVar[int]
@@ -538,6 +538,7 @@ class SleepLogEntry(_message.Message):
     DO_FIELD_NUMBER: _ClassVar[int]
     AI_FIELD_NUMBER: _ClassVar[int]
     AO_FIELD_NUMBER: _ClassVar[int]
+    SYSTEM_POWER_FIELD_NUMBER: _ClassVar[int]
     timestamp: int
     input_voltage: float
     system_current: float
@@ -545,7 +546,8 @@ class SleepLogEntry(_message.Message):
     do: _containers.RepeatedScalarFieldContainer[bool]
     ai: _containers.RepeatedScalarFieldContainer[float]
     ao: _containers.RepeatedScalarFieldContainer[float]
-    def __init__(self, timestamp: _Optional[int] = ..., input_voltage: _Optional[float] = ..., system_current: _Optional[float] = ..., di: _Optional[_Iterable[bool]] = ..., do: _Optional[_Iterable[bool]] = ..., ai: _Optional[_Iterable[float]] = ..., ao: _Optional[_Iterable[float]] = ...) -> None: ...
+    system_power: float
+    def __init__(self, timestamp: _Optional[int] = ..., input_voltage: _Optional[float] = ..., system_current: _Optional[float] = ..., di: _Optional[_Iterable[bool]] = ..., do: _Optional[_Iterable[bool]] = ..., ai: _Optional[_Iterable[float]] = ..., ao: _Optional[_Iterable[float]] = ..., system_power: _Optional[float] = ...) -> None: ...
 
 class getSleepLogRequest(_message.Message):
     __slots__ = ("since",)
