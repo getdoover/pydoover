@@ -224,7 +224,7 @@ class getSystemStatusRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class getSystemStatusResponse(_message.Message):
-    __slots__ = ("response_header", "input_voltage", "temperature", "rtc_time", "uptime", "system_info", "scheduled_startup_secs", "scheduled_shutdown_secs", "system_current", "system_power")
+    __slots__ = ("response_header", "input_voltage", "temperature", "rtc_time", "uptime", "system_info", "scheduled_startup_secs", "scheduled_shutdown_secs", "system_current", "system_power", "wake_reason", "wake_on_voltage")
     RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
     INPUT_VOLTAGE_FIELD_NUMBER: _ClassVar[int]
     TEMPERATURE_FIELD_NUMBER: _ClassVar[int]
@@ -235,6 +235,8 @@ class getSystemStatusResponse(_message.Message):
     SCHEDULED_SHUTDOWN_SECS_FIELD_NUMBER: _ClassVar[int]
     SYSTEM_CURRENT_FIELD_NUMBER: _ClassVar[int]
     SYSTEM_POWER_FIELD_NUMBER: _ClassVar[int]
+    WAKE_REASON_FIELD_NUMBER: _ClassVar[int]
+    WAKE_ON_VOLTAGE_FIELD_NUMBER: _ClassVar[int]
     response_header: ResponseHeader
     input_voltage: float
     temperature: float
@@ -245,7 +247,9 @@ class getSystemStatusResponse(_message.Message):
     scheduled_shutdown_secs: int
     system_current: float
     system_power: float
-    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., input_voltage: _Optional[float] = ..., temperature: _Optional[float] = ..., rtc_time: _Optional[str] = ..., uptime: _Optional[float] = ..., system_info: _Optional[str] = ..., scheduled_startup_secs: _Optional[int] = ..., scheduled_shutdown_secs: _Optional[int] = ..., system_current: _Optional[float] = ..., system_power: _Optional[float] = ...) -> None: ...
+    wake_reason: str
+    wake_on_voltage: float
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., input_voltage: _Optional[float] = ..., temperature: _Optional[float] = ..., rtc_time: _Optional[str] = ..., uptime: _Optional[float] = ..., system_info: _Optional[str] = ..., scheduled_startup_secs: _Optional[int] = ..., scheduled_shutdown_secs: _Optional[int] = ..., system_current: _Optional[float] = ..., system_power: _Optional[float] = ..., wake_reason: _Optional[str] = ..., wake_on_voltage: _Optional[float] = ...) -> None: ...
 
 class getShutdownImmunityRequest(_message.Message):
     __slots__ = ()
@@ -512,3 +516,123 @@ class setWakeOnVoltageResponse(_message.Message):
     response_header: ResponseHeader
     voltage: float
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., voltage: _Optional[float] = ...) -> None: ...
+
+class getWakeReasonRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class getWakeReasonResponse(_message.Message):
+    __slots__ = ("response_header", "wake_reason")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    WAKE_REASON_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    wake_reason: str
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., wake_reason: _Optional[str] = ...) -> None: ...
+
+class SleepLogEntry(_message.Message):
+    __slots__ = ("timestamp", "input_voltage", "system_current", "di", "do", "ai", "ao")
+    TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+    INPUT_VOLTAGE_FIELD_NUMBER: _ClassVar[int]
+    SYSTEM_CURRENT_FIELD_NUMBER: _ClassVar[int]
+    DI_FIELD_NUMBER: _ClassVar[int]
+    DO_FIELD_NUMBER: _ClassVar[int]
+    AI_FIELD_NUMBER: _ClassVar[int]
+    AO_FIELD_NUMBER: _ClassVar[int]
+    timestamp: int
+    input_voltage: float
+    system_current: float
+    di: _containers.RepeatedScalarFieldContainer[bool]
+    do: _containers.RepeatedScalarFieldContainer[bool]
+    ai: _containers.RepeatedScalarFieldContainer[float]
+    ao: _containers.RepeatedScalarFieldContainer[float]
+    def __init__(self, timestamp: _Optional[int] = ..., input_voltage: _Optional[float] = ..., system_current: _Optional[float] = ..., di: _Optional[_Iterable[bool]] = ..., do: _Optional[_Iterable[bool]] = ..., ai: _Optional[_Iterable[float]] = ..., ao: _Optional[_Iterable[float]] = ...) -> None: ...
+
+class getSleepLogRequest(_message.Message):
+    __slots__ = ("since",)
+    SINCE_FIELD_NUMBER: _ClassVar[int]
+    since: int
+    def __init__(self, since: _Optional[int] = ...) -> None: ...
+
+class getSleepLogResponse(_message.Message):
+    __slots__ = ("response_header", "entries")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    ENTRIES_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    entries: _containers.RepeatedCompositeFieldContainer[SleepLogEntry]
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., entries: _Optional[_Iterable[_Union[SleepLogEntry, _Mapping]]] = ...) -> None: ...
+
+class getSleepLogIntervalRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class getSleepLogIntervalResponse(_message.Message):
+    __slots__ = ("response_header", "interval_secs")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    INTERVAL_SECS_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    interval_secs: int
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., interval_secs: _Optional[int] = ...) -> None: ...
+
+class setSleepLogIntervalRequest(_message.Message):
+    __slots__ = ("interval_secs",)
+    INTERVAL_SECS_FIELD_NUMBER: _ClassVar[int]
+    interval_secs: int
+    def __init__(self, interval_secs: _Optional[int] = ...) -> None: ...
+
+class setSleepLogIntervalResponse(_message.Message):
+    __slots__ = ("response_header", "interval_secs")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    INTERVAL_SECS_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    interval_secs: int
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., interval_secs: _Optional[int] = ...) -> None: ...
+
+class getDIConfigRequest(_message.Message):
+    __slots__ = ("pin",)
+    PIN_FIELD_NUMBER: _ClassVar[int]
+    pin: int
+    def __init__(self, pin: _Optional[int] = ...) -> None: ...
+
+class DIConfig(_message.Message):
+    __slots__ = ("pin", "pnp_mode", "irq_edge", "debounce_ms", "wake_on_event")
+    PIN_FIELD_NUMBER: _ClassVar[int]
+    PNP_MODE_FIELD_NUMBER: _ClassVar[int]
+    IRQ_EDGE_FIELD_NUMBER: _ClassVar[int]
+    DEBOUNCE_MS_FIELD_NUMBER: _ClassVar[int]
+    WAKE_ON_EVENT_FIELD_NUMBER: _ClassVar[int]
+    pin: int
+    pnp_mode: bool
+    irq_edge: str
+    debounce_ms: int
+    wake_on_event: bool
+    def __init__(self, pin: _Optional[int] = ..., pnp_mode: bool = ..., irq_edge: _Optional[str] = ..., debounce_ms: _Optional[int] = ..., wake_on_event: bool = ...) -> None: ...
+
+class getDIConfigResponse(_message.Message):
+    __slots__ = ("response_header", "config")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    CONFIG_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    config: DIConfig
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., config: _Optional[_Union[DIConfig, _Mapping]] = ...) -> None: ...
+
+class setDIConfigRequest(_message.Message):
+    __slots__ = ("pin", "pnp_mode", "irq_edge", "debounce_ms", "wake_on_event")
+    PIN_FIELD_NUMBER: _ClassVar[int]
+    PNP_MODE_FIELD_NUMBER: _ClassVar[int]
+    IRQ_EDGE_FIELD_NUMBER: _ClassVar[int]
+    DEBOUNCE_MS_FIELD_NUMBER: _ClassVar[int]
+    WAKE_ON_EVENT_FIELD_NUMBER: _ClassVar[int]
+    pin: int
+    pnp_mode: bool
+    irq_edge: str
+    debounce_ms: int
+    wake_on_event: bool
+    def __init__(self, pin: _Optional[int] = ..., pnp_mode: bool = ..., irq_edge: _Optional[str] = ..., debounce_ms: _Optional[int] = ..., wake_on_event: bool = ...) -> None: ...
+
+class setDIConfigResponse(_message.Message):
+    __slots__ = ("response_header", "config")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    CONFIG_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    config: DIConfig
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., config: _Optional[_Union[DIConfig, _Mapping]] = ...) -> None: ...
