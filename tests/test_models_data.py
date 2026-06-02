@@ -445,6 +445,29 @@ class TestIngestionEndpointEvent:
         e = IngestionEndpointEvent.from_dict(d, parser=json.loads)
         assert e.ingestion_id == 1
         assert e.payload == {"temp": 22}
+        # invocation_url and content_type are optional and absent here
+        assert e.invocation_url is None
+        assert e.content_type is None
+
+    def test_from_dict_with_invocation_url_and_content_type(self):
+        import json
+
+        d = {
+            "ingestion_id": 1,
+            "agent_id": 2,
+            "organisation_id": 3,
+            "payload": '{"temp": 22}',
+            "invocation_url": "https://api.doover.com/api/agents/2/processors/ingestions/1/invoke?wait=true",
+            "content_type": "application/json",
+        }
+        e = IngestionEndpointEvent.from_dict(d, parser=json.loads)
+        assert (
+            e.invocation_url
+            == "https://api.doover.com/api/agents/2/processors/ingestions/1/invoke?wait=true"
+        )
+        assert e.content_type == "application/json"
+        assert e.to_dict()["invocation_url"] == e.invocation_url
+        assert e.to_dict()["content_type"] == e.content_type
 
 
 # ── ManualInvokeEvent ────────────────────────────────────────────────
