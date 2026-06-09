@@ -19,6 +19,7 @@ import httpx
 
 from datetime import datetime
 
+from .._json import loads as _json_loads
 from ._base import (
     UNSET,
     _build_user_agent,
@@ -155,7 +156,7 @@ class DataClient(BaseClient):
                 if 400 <= status < 500:
                     _raise_for_status(status, resp.text, url)
 
-                return resp.json() if resp.content else None
+                return _json_loads(resp.content) if resp.content else None
 
             except httpx.TimeoutException:
                 log.info(

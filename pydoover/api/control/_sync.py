@@ -8,6 +8,7 @@ from typing import Any, Self
 
 import httpx
 
+from .._json import loads as _json_loads
 from ..auth._base import SyncAuthClient
 from ._base import (
     BaseControlClient,
@@ -150,8 +151,8 @@ class ControlClient(ControlClientGroups, BaseControlClient):
         if response_kind == "text":
             return response.text
         if response_kind == "raw":
-            return response.json()
-        data = response.json()
+            return _json_loads(response.content)
+        data = _json_loads(response.content)
         if response_kind == "model" and response_schema is not None:
             return self._deserialize_model(response_schema, data)
         if response_kind == "page" and response_schema is not None:

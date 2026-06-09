@@ -17,6 +17,7 @@ import aiohttp
 
 from datetime import datetime
 
+from .._json import loads as _json_loads
 from ..auth._base import AsyncAuthClient
 from ._base import (
     UNSET,
@@ -181,7 +182,7 @@ class AsyncDataClient(BaseClient):
 
                     if resp.content_length == 0:
                         return None
-                    return await resp.json()
+                    return await resp.json(loads=_json_loads)
 
             except aiohttp.ClientError as e:
                 if _session_broken() or (
