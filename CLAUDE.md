@@ -112,6 +112,7 @@ pydoover modbus <method> [args]
 
 Core: `aiohttp`, `httpx`
 Optional extras:
+- `speedups`: zstandard (httpx) + backports.zstd (aiohttp, Python <3.14) — enables zstd response decoding. With these installed the API clients auto-advertise `gzip, deflate, zstd` and transparently decompress; gzip/deflate work without the extra.
 - `grpc`: grpcio, protobuf
 - `reports`: croniter
 - `test`: jsonschema, pytest, pytest-asyncio, grpcio, protobuf, grpcio-health-checking

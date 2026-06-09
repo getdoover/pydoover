@@ -8,6 +8,7 @@ from typing import Any, AsyncContextManager, Protocol, Self
 
 import aiohttp
 
+from .._json import loads as _json_loads
 from ..auth._base import AsyncAuthClient
 from ._base import (
     BaseControlClient,
@@ -184,8 +185,8 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
         if response_kind == "text":
             return text
         if response_kind == "raw":
-            return json.loads(text)
-        data = json.loads(text)
+            return _json_loads(text)
+        data = _json_loads(text)
         if response_kind == "model" and response_schema is not None:
             return self._deserialize_model(response_schema, data)
         if response_kind == "page" and response_schema is not None:
