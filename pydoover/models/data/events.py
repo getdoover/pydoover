@@ -223,11 +223,15 @@ class IngestionEndpointEvent:
         organisation_id: int,
         payload: str,
         parser: Callable[[str], Any],
+        invocation_url: str | None = None,
+        content_type: str | None = None,
     ):
         self.ingestion_id = ingestion_id
         self.agent_id = agent_id
         self.organisation_id = organisation_id
         self.payload = parser(payload)
+        self.invocation_url = invocation_url
+        self.content_type = content_type
 
     def to_dict(self):
         return {
@@ -235,6 +239,8 @@ class IngestionEndpointEvent:
             "agent_id": self.agent_id,
             "organisation_id": self.organisation_id,
             "payload": self.payload,
+            "invocation_url": self.invocation_url,
+            "content_type": self.content_type,
         }
 
     @classmethod
@@ -245,6 +251,8 @@ class IngestionEndpointEvent:
             data["organisation_id"],
             data["payload"],
             parser,
+            invocation_url=data.get("invocation_url"),
+            content_type=data.get("content_type"),
         )
 
 

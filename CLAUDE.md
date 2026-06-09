@@ -1,11 +1,12 @@
 # PyDoover
 
-Python package (v0.4.18) for developing applications on the Doover IoT/Industrial automation platform. Enables building device applications, cloud processors, and cloud API interactions.
+Python package for developing applications on the Doover IoT/Industrial automation platform. Enables building device applications, cloud processors, and cloud API interactions.
 
 ## Quick Reference
 
 - **Python**: >=3.11
 - **Package manager**: uv
+- **Version**: single source of truth is `__version__` in `pydoover/__init__.py`. Hatchling reads it at build time (`dynamic = ["version"]` + `[tool.hatch.version]` in `pyproject.toml`). Bump it there only — do **not** add a `version` back to `[project]`.
 - **Linting/Formatting**: Ruff (run `ruff check` and `ruff format`)
 - **Tests**: `pytest` (with pytest-asyncio, strict mode)
 - **Docs**: Sphinx at `/docs/source/`
@@ -20,6 +21,9 @@ pydoover/
 │   ├── device_agent/        # Device Agent gRPC interface (cloud sync)
 │   ├── platform/            # Platform gRPC interface (hardware I/O)
 │   └── modbus/              # Modbus RTU/TCP interface
+├── processor/        # Cloud processor framework (event-driven Application)
+├── api/              # Doover Cloud clients (auth/, control/, data/)
+├── models/           # Data models for API/processor payloads (control/, data/, generated/)
 ├── config/           # Configuration schema system (generates JSON Schema)
 ├── ui/               # UI element management
 │   ├── manager.py           # UIManager - orchestrates UI state
@@ -27,10 +31,10 @@ pydoover/
 │   ├── variable.py          # Variables (read-only device values)
 │   ├── interaction.py       # Actions, Sliders, Commands, Parameters
 │   └── submodule.py         # Containers, Submodules, RemoteComponent
-├── cloud/
-│   ├── api/          # REST API client for Doover Cloud
-│   └── processor/    # Cloud processor framework (ProcessorBase)
-├── reports/          # Report generation (Excel export)
+├── tags/             # TagsManager - typed key/value tag store
+├── state/            # State-machine helpers (optional `transitions` dep)
+├── reports/          # Report generation (Application base)
+├── rpc.py            # Request/response RPC over Doover channels
 └── utils/            # Utilities (Kalman filter, PID, diff/merge, etc.)
 ```
 
@@ -49,12 +53,15 @@ run_app(MyApp(config=Schema()))
 ```
 
 ### Cloud Processors
-Extend `ProcessorBase` in `pydoover/cloud/processor/base.py`:
+Extend `Application` in `pydoover/processor/application.py`. Processors are event-driven — override the `on_*` handlers for the events you care about (`on_message_create`, `on_aggregate_update`, `on_deployment`, `on_schedule`, `on_ingestion_endpoint`, `on_manual_invoke`):
 ```python
-from pydoover.cloud.processor import ProcessorBase
+from pydoover.processor import Application, run_app
 
-class MyProcessor(ProcessorBase):
-    def process(self): ...
+class MyProcessor(Application):
+    async def setup(self): ...
+    async def on_message_create(self, event): ...
+
+run_app(MyProcessor())
 ```
 
 ### Configuration Schemas
@@ -103,8 +110,9 @@ pydoover modbus <method> [args]
 
 ## Dependencies
 
-Core: `aiohttp`, `requests`
+Core: `aiohttp`, `httpx`
 Optional extras:
 - `grpc`: grpcio, protobuf
-- `reports`: pytz, tzlocal, xlsxwriter
-- `test`: jsonschema, pytest, pytest-asyncio
+- `reports`: croniter
+- `test`: jsonschema, pytest, pytest-asyncio, grpcio, protobuf, grpcio-health-checking
+- `state` (state machines): `transitions` (imported lazily; falls back gracefully if absent)

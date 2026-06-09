@@ -44,6 +44,18 @@ service platformIface {
     rpc reboot (rebootRequest) returns (rebootResponse) {}
     rpc shutdown (shutdownRequest) returns (shutdownResponse) {}
 
+    rpc getWakeOnVoltage (getWakeOnVoltageRequest) returns (getWakeOnVoltageResponse) {}
+    rpc setWakeOnVoltage (setWakeOnVoltageRequest) returns (setWakeOnVoltageResponse) {}
+
+    rpc getWakeReason (getWakeReasonRequest) returns (getWakeReasonResponse) {}
+
+    rpc getSleepLog (getSleepLogRequest) returns (getSleepLogResponse) {}
+    rpc getSleepLogInterval (getSleepLogIntervalRequest) returns (getSleepLogIntervalResponse) {}
+    rpc setSleepLogInterval (setSleepLogIntervalRequest) returns (setSleepLogIntervalResponse) {}
+
+    rpc getDIConfig (getDIConfigRequest) returns (getDIConfigResponse) {}
+    rpc setDIConfig (setDIConfigRequest) returns (setDIConfigResponse) {}
+
     rpc loadFirmware (loadFirmwareRequest) returns (loadFirmwareResponse) {}
     rpc loadBootloader (loadBootloaderRequest) returns (loadBootloaderResponse) {}
     rpc getFirmwareVersion (getFirmwareVersionRequest) returns (getFirmwareVersionResponse) {}
@@ -196,6 +208,11 @@ message getSystemStatusResponse {
     optional int32 scheduled_shutdown_secs = 8;
     optional float system_current = 9;
     optional float system_power = 10;
+    // Reason the CM4 was most recently woken: rpc, button, voltage,
+    // di_<pin>_event, scheduled, max_off, external, reboot, or unset if never woken.
+    optional string wake_reason = 11;
+    // System voltage above which the CM4 is woken early. Unset / <=0 means disabled.
+    optional float wake_on_voltage = 12;
 }
 
 message getShutdownImmunityRequest {}
@@ -340,4 +357,101 @@ message getDIEventsResponse {
     ResponseHeader response_header = 1;
     repeated EventDetail events = 2;
     optional bool events_synced = 3;
+}
+
+message getWakeOnVoltageRequest {}
+
+message getWakeOnVoltageResponse {
+    ResponseHeader response_header = 1;
+    optional float voltage = 2;
+}
+
+message setWakeOnVoltageRequest {
+    optional float voltage = 1;
+}
+
+message setWakeOnVoltageResponse {
+    ResponseHeader response_header = 1;
+    optional float voltage = 2;
+}
+
+message getWakeReasonRequest {}
+
+message getWakeReasonResponse {
+    ResponseHeader response_header = 1;
+    // rpc, button, voltage, di_<pin>_event, scheduled, max_off, external, reboot,
+    // or unset if the CM4 has never been woken.
+    optional string wake_reason = 2;
+}
+
+// A single system-status snapshot captured while the CM4 was asleep.
+message SleepLogEntry {
+    int64 timestamp = 1;                 // epoch milliseconds when the snapshot was captured
+    optional float input_voltage = 2;    // system voltage ("v")
+    optional float system_current = 3;   // system current in amps ("i")
+    repeated bool di = 4;                // digital input states (pins 0-3)
+    repeated bool do = 5;                // digital output states (pins 0-5)
+    repeated float ai = 6;               // analog input readings (pins 0-5)
+    repeated float ao = 7;               // analog output values (pins 0-1)
+    optional float system_power = 8;     // system power in watts ("p")
+}
+
+message getSleepLogRequest {
+    // epoch milliseconds; only snapshots at or after this time are returned.
+    // 0 / unset returns all stored snapshots (capped at 100).
+    optional int64 since = 1;
+}
+
+message getSleepLogResponse {
+    ResponseHeader response_header = 1;
+    repeated SleepLogEntry entries = 2;  // ascending by timestamp (oldest first)
+}
+
+message getSleepLogIntervalRequest {}
+
+message getSleepLogIntervalResponse {
+    ResponseHeader response_header = 1;
+    optional int32 interval_secs = 2;    // 0 means sleep logging is disabled
+}
+
+message setSleepLogIntervalRequest {
+    // seconds between sleep-log snapshots; 0 disables logging.
+    optional int32 interval_secs = 1;
+}
+
+message setSleepLogIntervalResponse {
+    ResponseHeader response_header = 1;
+    optional int32 interval_secs = 2;
+}
+
+message getDIConfigRequest {
+    int32 pin = 1;
+}
+
+message DIConfig {
+    int32 pin = 1;
+    bool pnp_mode = 2;
+    string irq_edge = 3;        // "rising", "falling" or "both"
+    int32 debounce_ms = 4;
+    bool wake_on_event = 5;     // wake the CM4 when an event fires on this pin
+}
+
+message getDIConfigResponse {
+    ResponseHeader response_header = 1;
+    optional DIConfig config = 2;
+}
+
+// Patch request: pin selects the input; any other field that is set is applied,
+// fields left unset keep their existing stored value.
+message setDIConfigRequest {
+    int32 pin = 1;
+    optional bool pnp_mode = 2;
+    optional string irq_edge = 3;
+    optional int32 debounce_ms = 4;
+    optional bool wake_on_event = 5;
+}
+
+message setDIConfigResponse {
+    ResponseHeader response_header = 1;
+    optional DIConfig config = 2;
 }

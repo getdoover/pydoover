@@ -580,6 +580,39 @@ class TagsManagerDocker(TagsManager):
         )
         return True
 
+    async def log_history(
+        self,
+        points: Iterable[tuple[datetime, dict[str, Any]]],
+        app_key: str | None = None,
+    ) -> int:
+        """Backfill historical logged tag values.
+
+        Each ``(timestamp, tags)`` point is written as one logged message on the
+        tag channel dated ``timestamp``, grouping all tags in that point into a
+        single message. Unlike :meth:`set_tag` with ``log=True`` this does not
+        touch current/live tag values or the pending-log buffers — it is purely
+        for backdated points captured while the app wasn't running (e.g.
+        sleep-log snapshots recorded while the compute module was off).
+
+        One message is sent per point (there is no bulk message RPC); tags
+        sharing a timestamp collapse into that single message. ``app_key``
+        defaults to this manager's own app, matching where the app's own tags
+        are stored (``{app_key: {tag_name: value}}``).
+
+        Returns the number of messages written.
+        """
+        app_key = app_key if app_key is not None else self.app_key
+        count = 0
+        for timestamp, tags in points:
+            if not tags:
+                continue
+            payload = {app_key: tags} if app_key else tags
+            await self.client.create_message(
+                TAG_CHANNEL_NAME, payload, timestamp=timestamp
+            )
+            count += 1
+        return count
+
 
 class TagsManagerProcessor(TagsManager):
     """Tag manager for cloud processor execution contexts."""

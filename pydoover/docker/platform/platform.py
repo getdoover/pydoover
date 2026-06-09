@@ -1035,6 +1035,130 @@ class PlatformInterface(GRPCInterface):
             response_field="immunity_secs",
         )
 
+    @cli_command()
+    async def fetch_wake_on_voltage(self) -> float | None:
+        """Get the input voltage threshold at which the device wakes from shutdown.
+
+        Returns
+        -------
+        float
+            The wake-on-voltage threshold, in volts.
+        """
+        return await self.make_request(
+            "getWakeOnVoltage",
+            platform_iface_pb2.getWakeOnVoltageRequest(),
+            response_field="voltage",
+        )
+
+    @cli_command()
+    async def set_wake_on_voltage(self, voltage: float | None) -> float | None:
+        """Set the input voltage threshold at which the device wakes from shutdown.
+
+        Returns
+        -------
+        float
+            The wake-on-voltage threshold, in volts.
+        """
+        return await self.make_request(
+            "setWakeOnVoltage",
+            platform_iface_pb2.setWakeOnVoltageRequest(voltage=voltage),
+            response_field="voltage",
+        )
+
+    @cli_command()
+    async def fetch_wake_reason(self) -> str | None:
+        """Get the reason the device was most recently woken from shutdown.
+
+        Examples
+        --------
+
+        Print why the device last woke::
+
+            reason = await self.platform_iface.fetch_wake_reason()
+            print(f"Last wake reason: {reason}")
+
+        Returns
+        -------
+        str
+            The wake reason: one of ``rpc``, ``button``, ``voltage``, ``di_<pin>_event``,
+            ``scheduled``, ``max_off``, ``external`` or ``reboot``. Returns None if the
+            device has never been woken or the request failed.
+        """
+        return await self.make_request(
+            "getWakeReason",
+            platform_iface_pb2.getWakeReasonRequest(),
+            response_field="wake_reason",
+        )
+
+    @cli_command()
+    async def fetch_sleep_log(
+        self, since: int = 0
+    ) -> list[platform_iface_pb2.SleepLogEntry]:
+        """Get system-status snapshots captured while the device was asleep.
+
+        While the compute module is powered off the platform periodically records a
+        snapshot of system voltage, current and IO state (see
+        :meth:`set_sleep_log_interval`). This returns those snapshots.
+
+        Parameters
+        ----------
+        since : int = 0
+            Only return snapshots captured at or after this time (epoch milliseconds).
+            0 returns all stored snapshots (capped at 100, oldest dropped first).
+
+        Returns
+        -------
+        list of :class:`SleepLogEntry`
+            Snapshots in ascending order (oldest first). Each entry has ``timestamp``
+            (epoch ms), ``input_voltage``, ``system_current`` and the ``di``/``do``/
+            ``ai``/``ao`` IO readings.
+        """
+        resp: platform_iface_pb2.getSleepLogResponse = await self.make_request(
+            "getSleepLog",
+            platform_iface_pb2.getSleepLogRequest(since=int(since)),
+        )
+        if resp is None:
+            return []
+        return list(resp.entries)
+
+    @cli_command()
+    async def fetch_sleep_log_interval(self) -> int | None:
+        """Get the interval between sleep-log snapshots, in seconds.
+
+        Returns
+        -------
+        int
+            The snapshot interval in seconds. 0 means sleep logging is disabled.
+        """
+        return await self.make_request(
+            "getSleepLogInterval",
+            platform_iface_pb2.getSleepLogIntervalRequest(),
+            response_field="interval_secs",
+        )
+
+    @cli_command()
+    async def set_sleep_log_interval(self, interval_secs: int) -> int | None:
+        """Set the interval between sleep-log snapshots, in seconds.
+
+        Parameters
+        ----------
+        interval_secs : int
+            Seconds between snapshots while the device is asleep. Pass 0 to disable
+            sleep logging.
+
+        Returns
+        -------
+        int
+            The interval that was set, in seconds.
+        """
+        return await self.make_request(
+            "setSleepLogInterval",
+            platform_iface_pb2.setSleepLogIntervalRequest(
+                interval_secs=int(interval_secs)
+            ),
+            response_field="interval_secs",
+        )
+
     async def schedule_startup(self, time_secs: int) -> None:
         return await self.make_request(
             "scheduleStartup",
@@ -1143,6 +1267,82 @@ class PlatformInterface(GRPCInterface):
         if resp:
             return resp.events_synced, resp.events
         return None, []
+
+    @cli_command()
+    async def fetch_di_config(self, pin: int) -> platform_iface_pb2.DIConfig | None:
+        """Get the stored configuration for a digital input pin.
+
+        Parameters
+        ----------
+        pin : int
+            The digital input pin number.
+
+        Returns
+        -------
+        :class:`DIConfig`
+            The pin configuration with ``pnp_mode``, ``irq_edge``, ``debounce_ms`` and
+            ``wake_on_event`` attributes. Returns None if the request failed.
+        """
+        return await self.make_request(
+            "getDIConfig",
+            platform_iface_pb2.getDIConfigRequest(pin=int(pin)),
+            response_field="config",
+        )
+
+    @cli_command()
+    async def set_di_config(
+        self,
+        pin: int,
+        pnp_mode: bool | None = None,
+        irq_edge: str | None = None,
+        debounce_ms: int | None = None,
+        wake_on_event: bool | None = None,
+    ) -> platform_iface_pb2.DIConfig | None:
+        """Update the configuration for a digital input pin.
+
+        Only the parameters you pass are changed; any left as None keep their existing
+        stored value.
+
+        Examples
+        --------
+
+        Enable waking the device when an event fires on DI 0, leaving other settings as-is::
+
+            await self.platform_iface.set_di_config(0, wake_on_event=True)
+
+        Parameters
+        ----------
+        pin : int
+            The digital input pin number to configure.
+        pnp_mode : bool, optional
+            Whether the input is in PNP (sourcing) mode.
+        irq_edge : "rising" or "falling" or "both", optional
+            The edge(s) that trigger an interrupt/event on this pin.
+        debounce_ms : int, optional
+            Debounce time in milliseconds.
+        wake_on_event : bool, optional
+            Whether an event on this pin should wake the device from shutdown.
+
+        Returns
+        -------
+        :class:`DIConfig`
+            The resulting pin configuration after the update.
+        """
+        kwargs = {"pin": int(pin)}
+        if pnp_mode is not None:
+            kwargs["pnp_mode"] = pnp_mode
+        if irq_edge is not None:
+            kwargs["irq_edge"] = irq_edge
+        if debounce_ms is not None:
+            kwargs["debounce_ms"] = int(debounce_ms)
+        if wake_on_event is not None:
+            kwargs["wake_on_event"] = wake_on_event
+
+        return await self.make_request(
+            "setDIConfig",
+            platform_iface_pb2.setDIConfigRequest(**kwargs),
+            response_field="config",
+        )
 
 
 platform_iface = PlatformInterface
