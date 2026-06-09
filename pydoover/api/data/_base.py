@@ -19,6 +19,7 @@ from ..auth._base import (
     SyncAuthClient,
     _normalise_datetime,
 )
+from .._compress import SUPPORTED_ENCODINGS
 from ... import __version__
 from ...models.data import File
 from ...utils.snowflake import generate_snowflake_id_at
@@ -95,7 +96,14 @@ class BaseClient:
         max_retries: int = 3,
         retry_delay: float = 1.0,
         timeout: float = 60.0,
+        compress: str | None = "gzip",
+        compress_level: int | None = None,
     ):
+        if compress is not None and compress not in SUPPORTED_ENCODINGS:
+            raise ValueError(
+                f"compress must be one of {SUPPORTED_ENCODINGS} or None, "
+                f"got {compress!r}."
+            )
         self.base_url = base_url.rstrip("/")
         self.auth = auth
         self.agent_id: int | None = int(agent_id) if agent_id else None
@@ -106,6 +114,8 @@ class BaseClient:
         self.retry_delay = retry_delay
         self.timeout = timeout
         self._owns_auth = owns_auth
+        self.compress = compress
+        self.compress_level = compress_level
 
     def _resolve_agent_id(self, agent_id: int | None) -> int:
         """Return the given *agent_id*, falling back to ``self.agent_id``."""
