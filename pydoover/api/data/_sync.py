@@ -19,7 +19,8 @@ import httpx
 
 from datetime import datetime
 
-from .._json import loads as _json_loads
+from .._json import dumps as _json_dumps, loads as _json_loads
+from .._compress import MIN_COMPRESS_SIZE, compress_body
 from ._base import (
     UNSET,
     _build_user_agent,
@@ -108,6 +109,19 @@ class DataClient(BaseClient):
             url += self._build_query(params)
         headers = self._auth_headers(organisation_id)
 
+        # Compress the JSON body once (not per retry). Multipart uploads are
+        # left untouched — attachments are typically already-compressed binary.
+        compressed_body: bytes | None = None
+        if self.compress and data is not None and files is None:
+            raw = _json_dumps(data)
+            if len(raw) >= MIN_COMPRESS_SIZE:
+                compressed_body = compress_body(raw, self.compress, self.compress_level)
+                headers = {
+                    **headers,
+                    "Content-Type": "application/json",
+                    "Content-Encoding": self.compress,
+                }
+
         for attempt in range(self.max_retries):
             try:
                 if files is not None:
@@ -127,6 +141,13 @@ class DataClient(BaseClient):
                         method,
                         url,
                         files=httpx_files,
+                        headers=headers,
+                    )
+                elif compressed_body is not None:
+                    resp = self._session.request(
+                        method,
+                        url,
+                        content=compressed_body,
                         headers=headers,
                     )
                 elif data is not None:

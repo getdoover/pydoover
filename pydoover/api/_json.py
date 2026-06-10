@@ -20,3 +20,10 @@ def loads(data: str | bytes) -> Any:
     if orjson is not None:
         return orjson.loads(data)
     return json.loads(data)
+
+
+def dumps(obj: Any) -> bytes:
+    """Serialise *obj* to compact JSON ``bytes``, preferring orjson."""
+    if orjson is not None:
+        return orjson.dumps(obj)
+    return json.dumps(obj, separators=(",", ":")).encode()
