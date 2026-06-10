@@ -6,9 +6,7 @@ from .attachment import Attachment
 from .channel import ChannelID
 
 try:
-    from google.protobuf import json_format
-    from google.protobuf.json_format import MessageToDict
-    from google.protobuf.struct_pb2 import Struct
+    from ._proto_json import decode_data_fields, encode_data_fields
     from ..generated.device_agent.device_agent_pb2 import (
         Message as ProtoMessage,
     )
@@ -69,20 +67,17 @@ class Message:
             response.message_id,
             response.author_id,
             ChannelID.from_proto(response.channel),
-            MessageToDict(response.data),
+            decode_data_fields(response),
             [Attachment.from_proto(a) for a in response.attachments],
         )
 
     def to_proto(self):
         if not _HAS_PROTO:
             raise RuntimeError("Proto stubs not available")
-        data = Struct()
-        json_format.ParseDict(self.data, data)
-
         return ProtoMessage(
             message_id=self.id,
             author_id=self.author_id,
             channel=self.channel.to_proto(),
-            data=data,
             attachments=[a.to_proto() for a in self.attachments],
+            **encode_data_fields(self.data),
         )

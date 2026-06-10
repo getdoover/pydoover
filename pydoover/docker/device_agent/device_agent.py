@@ -13,11 +13,7 @@ from ...utils.snowflake import generate_snowflake_id_at
 
 import grpc
 
-from google.protobuf import json_format
-from google.protobuf.struct_pb2 import Struct
-from google.protobuf.json_format import MessageToDict
-
-
+from ...models.data._proto_json import decode_data_fields, encode_data_fields
 from ...models.generated.device_agent import device_agent_pb2, device_agent_pb2_grpc
 from ...models.data import (
     Aggregate,
@@ -330,19 +326,19 @@ class DeviceAgentInterface(GRPCInterface):
                             match response.event_name:
                                 case "MessageCreate":
                                     yield MessageCreateEvent.from_dict(
-                                        MessageToDict(response.data)
+                                        decode_data_fields(response)
                                     )
                                 case "MessageUpdate":
                                     yield MessageUpdateEvent.from_dict(
-                                        MessageToDict(response.data)
+                                        decode_data_fields(response)
                                     )
                                 case "AggregateUpdate":
                                     yield AggregateUpdateEvent.from_dict(
-                                        MessageToDict(response.data)
+                                        decode_data_fields(response)
                                     )
                                 case "OneShotMessage":
                                     yield OneShotMessage.from_dict(
-                                        MessageToDict(response.data)
+                                        decode_data_fields(response)
                                     )
 
                         except StopAsyncIteration:
@@ -539,17 +535,15 @@ class DeviceAgentInterface(GRPCInterface):
         timestamp: datetime = None,
     ) -> int:
         validate_payload(data)
-        d = Struct()
-        json_format.ParseDict(data, d)
 
         files = files or []
         timestamp = (timestamp or datetime.now(tz=timezone.utc)).timestamp() * 1000
         req = device_agent_pb2.CreateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
-            data=d,
             files=[file.to_proto() for file in files],
             timestamp=int(timestamp),
+            **encode_data_fields(data),
         )
         resp = await self.make_request("CreateMessage", req)
         return resp.message_id
@@ -562,13 +556,11 @@ class DeviceAgentInterface(GRPCInterface):
         # nature, with no retry or delivery guarantee. A DDA that's too old to accept
         # the request rejects it, so swallow transport/rejection errors and return
         # False rather than crashing the caller's loop. Local payload errors (e.g. a
-        # bad ``data`` dict failing ParseDict) are caller bugs and still raise.
-        d = Struct()
-        json_format.ParseDict(data, d)
+        # bad ``data`` dict failing to encode) are caller bugs and still raise.
         req = device_agent_pb2.SendOneShotMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
-            data=d,
+            **encode_data_fields(data),
         )
         if timestamp is not None:
             req.timestamp = int(timestamp.timestamp() * 1000)
@@ -595,18 +587,16 @@ class DeviceAgentInterface(GRPCInterface):
         clear_attachments: bool = False,
     ) -> Message:
         validate_payload(data)
-        d = Struct()
-        json_format.ParseDict(data, d)
 
         files = files or []
         req = device_agent_pb2.UpdateMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
             message_id=str(message_id),
-            data=d,
             files=[file.to_proto() for file in files],
             clear_attachments=clear_attachments,
             replace_data=replace_data,
+            **encode_data_fields(data),
         )
         resp = await self.make_request("UpdateMessage", req)
         return Message.from_proto(resp.message)
@@ -622,17 +612,15 @@ class DeviceAgentInterface(GRPCInterface):
         max_age_secs: float = None,
     ):
         validate_payload(data)
-        d = Struct()
-        json_format.ParseDict(data, d)
 
         files = files or []
         req = device_agent_pb2.UpdateAggregateRequest(
             channel_name=channel_name,
-            data=d,
             files=[file.to_proto() for file in files],
             clear_attachments=clear_attachments,
             replace_data=replace_data,
             max_age_secs=max_age_secs,
+            **encode_data_fields(data),
         )
         resp = await self.make_request("UpdateAggregate", req)
         return Aggregate.from_proto(resp.aggregate)
