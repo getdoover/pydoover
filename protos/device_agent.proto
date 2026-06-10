@@ -190,12 +190,22 @@ message ChannelID {
   string name = 2;
 }
 
+// Payloads ride in two fields during the Struct -> JSON migration.
+// `data` (google.protobuf.Struct) stores every number as a double, so
+// integers lose their type (42 -> 42.0) and values above 2^53 silently
+// lose precision — fatal for snowflake IDs embedded in payloads.
+// `data_json` carries the same payload as a JSON string, which round-trips
+// integers exactly and is faster to encode/decode. Readers prefer
+// `data_json` when set; writers populate both until the fleet is upgraded,
+// after which `data` can be dropped.
+
 message Message {
   uint64 message_id = 1;
   uint64 author_id = 2;
   ChannelID channel = 3;
   google.protobuf.Struct data = 4;
   repeated Attachment attachments = 5;
+  string data_json = 6;
 }
 
 message GetMessageRequest {
@@ -230,6 +240,7 @@ message CreateMessageRequest {
   google.protobuf.Struct data = 3;
   repeated File files = 4;
   uint64 timestamp = 5;
+  string data_json = 6;
 }
 
 message CreateMessageResponse {
@@ -246,6 +257,7 @@ message UpdateMessageRequest {
   repeated File files = 5;
   optional bool clear_attachments = 6;
   optional bool replace_data = 7;
+  string data_json = 8;
 }
 
 message UpdateMessageResponse {
@@ -257,6 +269,7 @@ message Aggregate {
   google.protobuf.Struct data = 1;
   repeated Attachment attachments = 2;
   optional uint64 last_updated = 3;
+  string data_json = 4;
 }
 
 message UpdateAggregateRequest {
@@ -270,6 +283,7 @@ message UpdateAggregateRequest {
 
   float max_age_secs = 8;
   bool save_log = 9;
+  string data_json = 10;
 }
 
 message UpdateAggregateResponse {
@@ -288,6 +302,7 @@ message ChannelEventSubscriptionResponse {
   string event_name = 2;
   string channel_name = 3;
   google.protobuf.Struct data = 4;
+  string data_json = 5;
 }
 
 message GetAggregateRequest {
@@ -315,6 +330,7 @@ message SendOneShotMessageRequest {
   string channel_name = 2;
   google.protobuf.Struct data = 3;
   optional uint64 timestamp = 4;
+  string data_json = 5;
 }
 
 message SendOneShotMessageResponse {

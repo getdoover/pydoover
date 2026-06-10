@@ -4,9 +4,7 @@ from typing import Any
 from .attachment import Attachment
 
 try:
-    from google.protobuf import json_format
-    from google.protobuf.json_format import MessageToDict
-    from google.protobuf.struct_pb2 import Struct
+    from ._proto_json import decode_data_fields, encode_data_fields
     from ..generated.device_agent.device_agent_pb2 import (
         Aggregate as ProtoAggregate,
     )
@@ -45,7 +43,7 @@ class Aggregate:
     @classmethod
     def from_proto(cls, response):
         return cls(
-            MessageToDict(response.data),
+            decode_data_fields(response),
             [Attachment.from_proto(a) for a in response.attachments],
             response.last_updated
             and datetime.fromtimestamp(response.last_updated / 1000.0, tz=timezone.utc),
@@ -54,14 +52,11 @@ class Aggregate:
     def to_proto(self):
         if not _HAS_PROTO:
             raise RuntimeError("Proto stubs not available")
-        data = Struct()
-        json_format.ParseDict(self.data, data)
-
         return ProtoAggregate(
-            data=data,
             attachments=[a.to_proto() for a in self.attachments],
             last_updated=self.last_updated
             and int(self.last_updated.timestamp() * 1000.0),
+            **encode_data_fields(self.data),
         )
 
     def to_dict(self):
