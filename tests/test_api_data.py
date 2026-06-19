@@ -1,0 +1,114 @@
+import pytest
+
+from pydoover.api import AsyncDataClient, DataClient
+from pydoover.models.data import MessageLogEntry
+from pydoover.processor.data_client import ProcessorDataClient
+
+
+LOG_ENTRIES = [
+    {
+        "timestamp": 1777511327615,
+        "type": "platform.start",
+        "record": {"requestId": "31048238-a0fe-402c-a510-cdfa768d13a9"},
+    },
+    {
+        "timestamp": 1777511327616,
+        "type": "user.log",
+        "level": "INFO",
+        "logger": "pydoover.processor.application",
+        "message": "Initialising processor task",
+        "requestId": "31048238-a0fe-402c-a510-cdfa768d13a9",
+    },
+]
+
+
+def test_sync_client_fetches_message_logs():
+    client = DataClient(base_url="https://data.example", token="test-token")
+    calls = []
+
+    def fake_request(method, path, **kwargs):
+        calls.append((method, path, kwargs))
+        return LOG_ENTRIES
+
+    client._request = fake_request
+
+    try:
+        logs = client.fetch_message_logs(
+            123,
+            "processor-events",
+            456,
+            organisation_id=789,
+        )
+    finally:
+        client.close()
+
+    assert calls == [
+        (
+            "GET",
+            "/agents/123/channels/processor-events/messages/456/logs",
+            {"organisation_id": 789},
+        )
+    ]
+    assert all(isinstance(entry, MessageLogEntry) for entry in logs)
+    assert logs[0].type == "platform.start"
+    assert logs[1].message == "Initialising processor task"
+
+
+@pytest.mark.asyncio
+async def test_async_client_fetches_message_logs():
+    client = AsyncDataClient(base_url="https://data.example", token="test-token")
+    calls = []
+
+    async def fake_request(method, path, **kwargs):
+        calls.append((method, path, kwargs))
+        return LOG_ENTRIES
+
+    client._request = fake_request
+
+    logs = await client.fetch_message_logs(
+        123,
+        "processor-events",
+        456,
+        organisation_id=789,
+    )
+    await client.close()
+
+    assert calls == [
+        (
+            "GET",
+            "/agents/123/channels/processor-events/messages/456/logs",
+            {"organisation_id": 789},
+        )
+    ]
+    assert all(isinstance(entry, MessageLogEntry) for entry in logs)
+    assert logs[0].record == {"requestId": "31048238-a0fe-402c-a510-cdfa768d13a9"}
+    assert logs[1].request_id == "31048238-a0fe-402c-a510-cdfa768d13a9"
+
+
+@pytest.mark.asyncio
+async def test_processor_client_fetches_message_logs_with_agent_fallback():
+    client = ProcessorDataClient("https://data.example")
+    client.agent_id = 123
+    calls = []
+
+    async def fake_request(method, path, **kwargs):
+        calls.append((method, path, kwargs))
+        return LOG_ENTRIES
+
+    client._request = fake_request
+
+    logs = await client.fetch_message_logs(
+        "processor-events",
+        456,
+        organisation_id=789,
+    )
+    await client.close()
+
+    assert calls == [
+        (
+            "GET",
+            "/agents/123/channels/processor-events/messages/456/logs",
+            {"organisation_id": 789},
+        )
+    ]
+    assert logs[1].type == "user.log"

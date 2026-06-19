@@ -33,6 +33,7 @@ from .events import (
     ScheduleEvent,
 )
 from .message import Message
+from .message_log import MessageLogEntry
 from .notification import (
     Notification,
     NotificationEndpoint,
@@ -86,6 +87,7 @@ __all__ = [
     "ManualInvokeEvent",
     "Message",
     "MessageCreateEvent",
+    "MessageLogEntry",
     "MessageUpdateEvent",
     "NotFoundError",
     "Notification",
