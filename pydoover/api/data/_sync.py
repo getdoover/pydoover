@@ -42,6 +42,7 @@ from ...models.data import (
     Channel,
     File,
     Message,
+    MessageLogEntry,
     ProcessorTokenResponse,
     SubscriptionInfo,
     TimeseriesResponse,
@@ -363,6 +364,20 @@ class DataClient(BaseClient):
             organisation_id=organisation_id,
         )
         return Message.from_dict(data)
+
+    def fetch_message_logs(
+        self,
+        agent_id: int,
+        channel_name: str,
+        message_id: int,
+        organisation_id: int | None = None,
+    ) -> list[MessageLogEntry]:
+        data = self._request(
+            "GET",
+            f"/agents/{agent_id}/channels/{channel_name}/messages/{message_id}/logs",
+            organisation_id=organisation_id,
+        )
+        return [MessageLogEntry.from_dict(entry) for entry in data]
 
     def create_message(
         self,

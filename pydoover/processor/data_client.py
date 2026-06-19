@@ -10,6 +10,7 @@ from ..models.data import (
     Channel,
     File,
     Message,
+    MessageLogEntry,
     ConnectionConfig,
     ConnectionDetermination,
     ConnectionStatus,
@@ -192,6 +193,20 @@ class ProcessorDataClient(AsyncDataClient):
         organisation_id: int | None = None,
     ) -> Message:
         return await super().fetch_message(
+            agent_id=self._resolve_agent_id(agent_id),
+            channel_name=channel_name,
+            message_id=message_id,
+            organisation_id=organisation_id,
+        )
+
+    async def fetch_message_logs(
+        self,
+        channel_name: str,
+        message_id: int,
+        agent_id: int | None = None,
+        organisation_id: int | None = None,
+    ) -> list[MessageLogEntry]:
+        return await super().fetch_message_logs(
             agent_id=self._resolve_agent_id(agent_id),
             channel_name=channel_name,
             message_id=message_id,

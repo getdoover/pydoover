@@ -20,6 +20,7 @@ from pydoover.models.data import (
     ManualInvokeEvent,
     Message,
     MessageCreateEvent,
+    MessageLogEntry,
     MessageUpdateEvent,
     OneShotMessage,
     ScheduleEvent,
@@ -45,6 +46,16 @@ MESSAGE_DICT = {
     "channel": CHANNEL_ID_DICT,
     "data": {"temperature": 22.5},
     "attachments": [ATTACHMENT_DICT],
+}
+
+MESSAGE_LOG_DICT = {
+    "timestamp": 1777511327616,
+    "type": "user.log",
+    "level": "INFO",
+    "logger": "pydoover.processor.application",
+    "message": "Initialising processor task",
+    "requestId": "31048238-a0fe-402c-a510-cdfa768d13a9",
+    "extra": {"attempt": 1},
 }
 
 AGGREGATE_DICT = {
@@ -189,6 +200,36 @@ class TestMessage:
         del d["attachments"]
         m = Message.from_dict(d)
         assert m.attachments == []
+
+
+# ── MessageLogEntry ──────────────────────────────────────────────────────
+
+
+class TestMessageLogEntry:
+    def test_from_dict(self):
+        entry = MessageLogEntry.from_dict(MESSAGE_LOG_DICT)
+        assert entry.timestamp == 1777511327616
+        assert entry.type == "user.log"
+        assert entry.level == "INFO"
+        assert entry.logger == "pydoover.processor.application"
+        assert entry.message == "Initialising processor task"
+        assert entry.request_id == "31048238-a0fe-402c-a510-cdfa768d13a9"
+        assert entry["extra"] == {"attempt": 1}
+
+    def test_roundtrip_dict_preserves_extra_fields(self):
+        entry = MessageLogEntry.from_dict(MESSAGE_LOG_DICT)
+        assert entry.to_dict() == MESSAGE_LOG_DICT
+
+    def test_platform_record(self):
+        entry = MessageLogEntry.from_dict(
+            {
+                "timestamp": 1777511327615,
+                "type": "platform.start",
+                "record": {"requestId": "rid"},
+            }
+        )
+        assert entry.record == {"requestId": "rid"}
+        assert entry.get("record") == {"requestId": "rid"}
 
 
 # ── Aggregate ─────────────────────────────────────────────────────────
