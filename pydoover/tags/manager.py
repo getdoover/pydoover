@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pydoover.models import EventSubscription, AggregateUpdateEvent, ChannelSyncEvent
 
 import asyncio
+import enum
 import logging
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterable
 
@@ -37,6 +38,36 @@ UI_SUB_CHANNEL_NAME = "dv-ui-sub"
 UI_SUB_FRESH_MS = 120_000
 
 logger = logging.getLogger(__name__)
+
+
+class LogMode(enum.Enum):
+    """How a tag manager decides what to write to logged history on commit.
+
+    Governs the *logged message* only — the live aggregate always tracks the
+    current value regardless of mode. ``NEVER`` is the one mode that also
+    suppresses logging that would otherwise be forced by ``record_tag_update``
+    or a per-set ``log=True``.
+
+    Members
+    -------
+    ALWAYS:
+        Log the full app aggregate on every commit that has changes — every
+        tag, changed or not. Dense history; the historical default.
+    NEVER:
+        Never write logged history. The live aggregate still updates.
+    ONLY_CHANGED:
+        Log only tags whose value differs from the stored value. A tag re-set
+        to the same value is not logged (no double-up in history).
+    ONLY_SET:
+        Log every tag that was ``set()`` this invocation, even when re-set to
+        the same value — captures "the app asserted this" rather than only
+        "the value moved".
+    """
+
+    ALWAYS = "always"
+    NEVER = "never"
+    ONLY_CHANGED = "only_changed"
+    ONLY_SET = "only_set"
 
 
 class KeyPath:
@@ -633,6 +664,10 @@ class TagsManagerProcessor(TagsManager):
         self._record_tag_update = record_tag_update
         self._update_external_tags: bool = False
 
+        self.log_mode: LogMode = LogMode.ALWAYS
+        self._dirty: dict[str, dict[str, Any]] = {}
+        self._touched: dict[str, dict[str, Any]] = {}
+
     def get_tag(
         self,
         key: str,
@@ -670,7 +705,15 @@ class TagsManagerProcessor(TagsManager):
         except (KeyError, TypeError):
             current = None
 
+        self._touched.setdefault(app_key, {})[key] = value
+
         if current == value:
+            if log or self.log_mode is LogMode.ONLY_SET:
+                self._update_tags = True
+                if log:
+                    self._record_tag_update = True
+                if app_key != self.app_key:
+                    self._update_external_tags = True
             return
 
         try:
@@ -678,11 +721,23 @@ class TagsManagerProcessor(TagsManager):
         except KeyError:
             self._tag_values[app_key] = {key: value}
 
+        self._dirty.setdefault(app_key, {})[key] = value
         self._update_tags = True
         if log:
             self._record_tag_update = True
         if app_key != self.app_key:
             self._update_external_tags = True
+
+    def _scope_payload(self, source: dict[str, Any]) -> dict[str, Any] | None:
+        """Trim a ``{app_key: {tag: value}}`` buffer to what this commit publishes.
+
+        Mirrors how ``update`` is scoped in :meth:`commit_tags`: external app
+        keys are only included when external writes were explicitly requested.
+        """
+        if self._update_external_tags:
+            return source or None
+        own = source.get(self.app_key)
+        return {self.app_key: own} if own else None
 
     async def commit_tags(
         self, *, record_log: bool = False, timestamp: datetime | None = None
@@ -701,14 +756,30 @@ class TagsManagerProcessor(TagsManager):
         else:
             update = update and {self.app_key: update}
 
-        # only publish if there are tags to publish.
-        # Only publish external tags if requested explicitly (can cause recursion issues)
-        if update:
+        # The aggregate carries the full current state (merge-semantics,
+        # idempotent), but only push it when a value actually moved — a commit
+        # driven solely by ONLY_SET re-assertions has nothing new to store.
+        if update and self._dirty:
             await self.client.update_channel_aggregate(TAG_CHANNEL_NAME, update)
 
-            if self._record_tag_update or record_log:
+        # ``log_mode`` decides what (if anything) gets written to history.
+        # ``record_tag_update``/``record_log`` still gate whether logging
+        # happens at all; NEVER overrides them to suppress it entirely.
+        if (
+            self._record_tag_update or record_log
+        ) and self.log_mode is not LogMode.NEVER:
+            if self.log_mode is LogMode.ALWAYS:
+                log_payload = update
+            elif self.log_mode is LogMode.ONLY_CHANGED:
+                log_payload = self._scope_payload(self._dirty)
+            else:  # LogMode.ONLY_SET
+                log_payload = self._scope_payload(self._touched)
+
+            if log_payload:
                 await self.client.create_message(
-                    TAG_CHANNEL_NAME, update, timestamp=timestamp
+                    TAG_CHANNEL_NAME, log_payload, timestamp=timestamp
                 )
 
         self._update_tags = False
+        self._dirty = {}
+        self._touched = {}
