@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from typing import Any
+from typing import Any, Literal
 
 from .declarative import _value_is_live, is_tag_reference, normalize_ui_value
 from .element import Element
@@ -247,15 +247,34 @@ class DateTimeVariable(Variable):
 class Timestamp(Variable):
     type = "uiTimestamp"
 
-    def __init__(self, display_name: str, value: datetime, **kwargs):
-        # this might do some weird stuff where people think they can have ranges and what not, but yeah...
-        # this will do for now...
+    def __init__(
+        self,
+        display_name: str,
+        value: datetime | int | float | Any = NotSet,
+        precision: Literal["second", "minute"] | Any = NotSet,
+        absolute_format: str | Any = NotSet,
+        **kwargs,
+    ):
+        # ``precision`` controls how often the frontend refreshes the relative
+        # label. Second precision supports countdown-style timestamps backed by
+        # one fixed ms-since-epoch value instead of per-second app updates.
         super().__init__(display_name, value=value, var_type="timestamp", **kwargs)
+        self.precision = precision
+        self.absolute_format = absolute_format
 
     def to_dict(self):
         result = super().to_dict()
         if is_tag_reference(self.value):
             result["currentValue"] = self.value
-        else:
-            result["currentValue"] = self.value and int(self.value.timestamp() * 1000)
+        elif isinstance(self.value, datetime):
+            result["currentValue"] = int(self.value.timestamp() * 1000)
+        elif self.value is not NotSet:
+            result["currentValue"] = self.value
+
+        if self.precision is not NotSet:
+            result["precision"] = self.precision
+
+        if self.absolute_format is not NotSet:
+            result["absoluteFormat"] = self.absolute_format
+
         return normalize_ui_value(result)

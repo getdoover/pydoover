@@ -192,6 +192,33 @@ class TestCanonicalUiTypes:
         assert data["series"]["temperature"]["colour"] == "red"
         assert data["series"]["temperature"]["units"] == "C"
 
+    def test_timestamp_serializes_ms_epoch_precision_and_absolute_format(self):
+        timestamp = ui.Timestamp(
+            "Turns off at",
+            name="turns_off_at",
+            value=1_777_511_327_616,
+            precision="second",
+            absolute_format="HH:mm:ss",
+        )
+
+        data = timestamp.to_dict()
+
+        assert data["type"] == "uiTimestamp"
+        assert data["currentValue"] == 1_777_511_327_616
+        assert data["precision"] == "second"
+        assert data["absoluteFormat"] == "HH:mm:ss"
+
+    def test_timestamp_still_serializes_datetime_values_as_ms_since_epoch(self):
+        from datetime import datetime, timezone
+
+        timestamp = ui.Timestamp(
+            "Started",
+            name="started",
+            value=datetime(2026, 6, 24, 12, 0, tzinfo=timezone.utc),
+        )
+
+        assert timestamp.to_dict()["currentValue"] == 1_782_302_400_000
+
 
 class TestLiveTagPropagation:
     """The customer-site gates Live Mode on a UI element's ``live`` field;
