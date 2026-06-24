@@ -1,0 +1,9 @@
+{
+  "fixture_processor": {
+    "name": "fixture_processor",
+    "display_name": "Fixture Processor",
+    "type": "processor",
+    "app_key": "fixture_processor",
+    "entrypoint": "fixture_processor:FixtureProcessor"
+  }
+}
