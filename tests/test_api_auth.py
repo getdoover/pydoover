@@ -578,3 +578,74 @@ def test_data_client_org_header_behavior_is_unchanged():
         }
     finally:
         client.close()
+
+
+def test_trusted_publisher_exchanges_oidc_token(monkeypatch):
+    from pydoover.api.auth import TrustedPublisherAuthClient
+
+    minted = future_token(15)
+    calls = []
+
+    def fake_post(url, json=None, timeout=None):
+        calls.append((url, json))
+        return SyncResponse(payload={"token": minted, "expiry": "2099-01-01T00:00:00Z"})
+
+    monkeypatch.setattr("httpx.post", fake_post)
+    auth = TrustedPublisherAuthClient(
+        provider="GH",
+        oidc_token="gh-oidc",
+        control_base_url="https://control.example",
+    )
+
+    auth.ensure_token()
+
+    assert auth.token == minted
+    url, body = calls[0]
+    assert url == "https://control.example/publishers/mint-token/"
+    assert body == {"provider": "GH", "token": "gh-oidc"}
+
+
+def test_trusted_publisher_raises_on_error(monkeypatch):
+    from pydoover.api.auth import TrustedPublisherAuthClient
+
+    def fake_post(url, json=None, timeout=None):
+        return SyncResponse(payload={}, status_code=403, text="denied")
+
+    monkeypatch.setattr("httpx.post", fake_post)
+    auth = TrustedPublisherAuthClient(
+        oidc_token="x", control_base_url="https://control.example"
+    )
+
+    with pytest.raises(TokenRefreshError):
+        auth.ensure_token()
+
+
+def test_fetch_github_actions_oidc_token(monkeypatch):
+    from pydoover.api.auth import fetch_github_actions_oidc_token
+
+    monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://gh/token")
+    monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "rt")
+    captured = {}
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        captured.update(url=url, params=params, headers=headers)
+        return SyncResponse(payload={"value": "gh-oidc-jwt"})
+
+    monkeypatch.setattr("httpx.get", fake_get)
+
+    token = fetch_github_actions_oidc_token("https://control.doover.com")
+
+    assert token == "gh-oidc-jwt"
+    assert captured["url"] == "https://gh/token"
+    assert captured["params"] == {"audience": "https://control.doover.com"}
+    assert captured["headers"]["Authorization"] == "Bearer rt"
+
+
+def test_fetch_github_actions_oidc_token_requires_runtime(monkeypatch):
+    from pydoover.api.auth import fetch_github_actions_oidc_token
+
+    monkeypatch.delenv("ACTIONS_ID_TOKEN_REQUEST_URL", raising=False)
+    monkeypatch.delenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", raising=False)
+
+    with pytest.raises(TokenRefreshError):
+        fetch_github_actions_oidc_token()
