@@ -1043,6 +1043,123 @@ class TestProcessorImmediateLog:
         assert client.messages == []
         assert client.aggregate_updates  # at least one aggregate update
 
+    def _processor_manager(self, client, tag_values):
+        from pydoover.tags.manager import TagsManagerProcessor
+
+        return TagsManagerProcessor(
+            app_key="test_app",
+            client=client,
+            agent_id=1,
+            tag_values=tag_values,
+        )
+
+    @pytest.mark.asyncio
+    async def test_default_mode_is_always_logs_full_aggregate(self):
+        from pydoover.tags.manager import LogMode
+
+        client = FakeTagClient()
+        manager = self._processor_manager(
+            client, {"test_app": {"voltage": 12.0, "current": 5.0}}
+        )
+        assert manager.log_mode is LogMode.ALWAYS
+
+        await manager.set_tag("voltage", 13.2)
+        await manager.commit_tags()
+
+        # ALWAYS (the historical default) logs the whole aggregate.
+        assert client.messages == [
+            (TAG_CHANNEL_NAME, {"test_app": {"voltage": 13.2, "current": 5.0}})
+        ]
+
+    @pytest.mark.asyncio
+    async def test_only_changed_logs_dirty_subset(self):
+        from pydoover.tags.manager import LogMode
+
+        client = FakeTagClient()
+        manager = self._processor_manager(
+            client, {"test_app": {"voltage": 12.0, "current": 5.0}}
+        )
+        manager.log_mode = LogMode.ONLY_CHANGED
+
+        # voltage moves; current is re-set to the same value.
+        await manager.set_tag("voltage", 13.2)
+        await manager.set_tag("current", 5.0)
+        await manager.commit_tags()
+
+        # Aggregate carries full current state...
+        assert client.aggregate_updates[-1][1] == {
+            "test_app": {"voltage": 13.2, "current": 5.0}
+        }
+        # ...but only the changed tag is logged.
+        assert client.messages == [(TAG_CHANNEL_NAME, {"test_app": {"voltage": 13.2}})]
+
+    @pytest.mark.asyncio
+    async def test_only_changed_skips_everything_when_nothing_changed(self):
+        from pydoover.tags.manager import LogMode
+
+        client = FakeTagClient()
+        manager = self._processor_manager(client, {"test_app": {"voltage": 12.0}})
+        manager.log_mode = LogMode.ONLY_CHANGED
+
+        await manager.set_tag("voltage", 12.0)  # same value
+        await manager.commit_tags()
+
+        assert client.messages == []
+        assert client.aggregate_updates == []  # nothing to store either
+
+    @pytest.mark.asyncio
+    async def test_only_set_logs_reasserted_values(self):
+        from pydoover.tags.manager import LogMode
+
+        client = FakeTagClient()
+        manager = self._processor_manager(
+            client, {"test_app": {"voltage": 12.0, "current": 5.0}}
+        )
+        manager.log_mode = LogMode.ONLY_SET
+
+        await manager.set_tag("voltage", 13.2)  # changed
+        await manager.set_tag("current", 5.0)  # re-asserted, unchanged
+        await manager.commit_tags()
+
+        # Both the changed and the re-asserted tag are logged...
+        assert client.messages == [
+            (TAG_CHANNEL_NAME, {"test_app": {"voltage": 13.2, "current": 5.0}})
+        ]
+        # ...but only the genuinely changed value is pushed to the aggregate.
+        assert client.aggregate_updates[-1][1] == {
+            "test_app": {"voltage": 13.2, "current": 5.0}
+        }
+
+    @pytest.mark.asyncio
+    async def test_only_set_logs_even_with_no_change(self):
+        from pydoover.tags.manager import LogMode
+
+        client = FakeTagClient()
+        manager = self._processor_manager(client, {"test_app": {"voltage": 12.0}})
+        manager.log_mode = LogMode.ONLY_SET
+
+        await manager.set_tag("voltage", 12.0)  # same value, still "set"
+        await manager.commit_tags()
+
+        assert client.messages == [(TAG_CHANNEL_NAME, {"test_app": {"voltage": 12.0}})]
+        # Nothing moved, so no aggregate write.
+        assert client.aggregate_updates == []
+
+    @pytest.mark.asyncio
+    async def test_never_suppresses_log_but_updates_aggregate(self):
+        from pydoover.tags.manager import LogMode
+
+        client = FakeTagClient()
+        manager = self._processor_manager(client, {"test_app": {"voltage": 12.0}})
+        manager.log_mode = LogMode.NEVER
+
+        # Even an explicit log=True is suppressed by NEVER.
+        await manager.set_tag("voltage", 13.2, log=True)
+        await manager.commit_tags()
+
+        assert client.messages == []
+        assert client.aggregate_updates[-1][1] == {"test_app": {"voltage": 13.2}}
+
 
 class TestConcreteTagClasses:
     def test_number_subclass_sets_type_and_no_triggers_by_default(self):

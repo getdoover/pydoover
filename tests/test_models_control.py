@@ -110,7 +110,9 @@ def test_application_request_serializes_required_nullable_resource_fields_as_nul
         container_registry_profile=None,
     )
 
-    assert application.to_version("ApplicationSerializerDetailRequest", method="POST") == {
+    assert application.to_version(
+        "ApplicationSerializerDetailRequest", method="POST"
+    ) == {
         "name": "processor-app",
         "display_name": "Processor App",
         "description": "Processor app",
@@ -131,7 +133,9 @@ def test_required_non_nullable_fields_still_raise_when_missing_from_version_payl
         assert "Missing required field" in str(exc)
         assert "DeviceSerializerDetailRequest" in str(exc)
     else:
-        raise AssertionError("Expected TypeError for missing required non-nullable field")
+        raise AssertionError(
+            "Expected TypeError for missing required non-nullable field"
+        )
 
 
 def test_control_models_expose_field_annotations_for_type_checkers():

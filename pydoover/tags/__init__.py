@@ -1,5 +1,6 @@
 from typing import Any, Iterator, NoReturn, overload
 
+from .manager import LogMode as LogMode
 from .manager import TagsManager
 from ..config import Schema
 

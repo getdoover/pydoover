@@ -34,8 +34,11 @@ class ControlClientGroups:
     def _execute(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError
 
+
 class AgentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def retrieve(self, include_archived: bool | None = None, organisation_id: int | None = None) -> control_models.Agents:
+    def retrieve(
+        self, include_archived: bool | None = None, organisation_id: int | None = None
+    ) -> control_models.Agents:
         path = "/agents/"
         params = {
             "include-archived": include_archived,
@@ -50,12 +53,15 @@ class AgentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AgentsSerializerDetail',
+            response_schema="AgentsSerializerDetail",
             item_schema=None,
         )
 
+
 class AnalyticsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def summary(self, organisation_id: int | None = None) -> control_models.AnalyticsSummary:
+    def summary(
+        self, organisation_id: int | None = None
+    ) -> control_models.AnalyticsSummary:
         path = "/analytics/summary/"
         params = None
         return self._root._execute(
@@ -68,11 +74,13 @@ class AnalyticsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AnalyticsSummarySerializerDetail',
+            response_schema="AnalyticsSummarySerializerDetail",
             item_schema=None,
         )
 
-    def summary_retrieve_2(self, days: int, organisation_id: int | None = None) -> control_models.AnalyticsSummary:
+    def summary_retrieve_2(
+        self, days: int, organisation_id: int | None = None
+    ) -> control_models.AnalyticsSummary:
         path = f"/analytics/summary/{days}/"
         params = None
         return self._root._execute(
@@ -85,9 +93,10 @@ class AnalyticsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AnalyticsSummarySerializerDetail',
+            response_schema="AnalyticsSummarySerializerDetail",
             item_schema=None,
         )
+
 
 class AppDeploymentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def create(self, organisation_id: int | None = None) -> Any:
@@ -107,7 +116,14 @@ class AppDeploymentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ApplicationDeployment]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ApplicationDeployment]:
         path = "/app_deployments/"
         params = {
             "ordering": ordering,
@@ -125,11 +141,13 @@ class AppDeploymentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationDeploymentSerializerListList',
+            response_schema="PaginatedApplicationDeploymentSerializerListList",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.ApplicationDeployment:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ApplicationDeployment:
         path = f"/app_deployments/{id}/"
         params = None
         return self._root._execute(
@@ -142,12 +160,15 @@ class AppDeploymentsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationDeploymentSerializerDetail',
+            response_schema="ApplicationDeploymentSerializerDetail",
             item_schema=None,
         )
 
+
 class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ApplicationInstallation:
         path = f"/app_installs/{id}/archive/"
         params = None
         return self._root._execute(
@@ -160,11 +181,13 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.ApplicationInstallation:
         path = "/app_installs/"
         params = None
         return self._root._execute(
@@ -172,12 +195,12 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_schema="ApplicationInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
@@ -198,7 +221,9 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def deployments_create(self, parent_lookup_app_install: str, organisation_id: int | None = None) -> Any:
+    def deployments_create(
+        self, parent_lookup_app_install: str, organisation_id: int | None = None
+    ) -> Any:
         path = f"/app_installs/{parent_lookup_app_install}/deployments/"
         params = None
         return self._root._execute(
@@ -215,7 +240,12 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def deployments_retrieve(self, id: str, parent_lookup_app_install: str, organisation_id: int | None = None) -> control_models.ApplicationDeployment:
+    def deployments_retrieve(
+        self,
+        id: str,
+        parent_lookup_app_install: str,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationDeployment:
         path = f"/app_installs/{parent_lookup_app_install}/deployments/{id}/"
         params = None
         return self._root._execute(
@@ -228,11 +258,19 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationDeploymentSerializerDetail',
+            response_schema="ApplicationDeploymentSerializerDetail",
             item_schema=None,
         )
 
-    def deployments_list(self, parent_lookup_app_install: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ApplicationDeployment]:
+    def deployments_list(
+        self,
+        parent_lookup_app_install: str,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ApplicationDeployment]:
         path = f"/app_installs/{parent_lookup_app_install}/deployments/"
         params = {
             "ordering": ordering,
@@ -250,11 +288,36 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationDeploymentSerializerListList',
+            response_schema="PaginatedApplicationDeploymentSerializerListList",
             item_schema=None,
         )
 
-    def list(self, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ApplicationInstallation]:
+    def list(
+        self,
+        application: str | None = None,
+        archived: bool | None = None,
+        device: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        solution: str | None = None,
+        status: str | None = None,
+        template: str | None = None,
+        version: str | None = None,
+        version__contains: str | None = None,
+        version__icontains: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ApplicationInstallation]:
         path = "/app_installs/"
         params = {
             "application": application,
@@ -290,11 +353,13 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationInstallationSerializerListList',
+            response_schema="PaginatedApplicationInstallationSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.ApplicationInstallation:
         path = f"/app_installs/{id}/"
         params = None
         return self._root._execute(
@@ -302,16 +367,18 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedApplicationInstallationSerializerDetailRequest',
+            body_schema="PatchedApplicationInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ApplicationInstallation:
         path = f"/app_installs/{id}/"
         params = None
         return self._root._execute(
@@ -324,11 +391,13 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def sync_config_profiles(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
+    def sync_config_profiles(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.ApplicationInstallation:
         path = f"/app_installs/{id}/sync_config_profiles/"
         params = None
         return self._root._execute(
@@ -336,16 +405,18 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_schema="ApplicationInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ApplicationInstallation:
         path = f"/app_installs/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -358,11 +429,13 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.ApplicationInstallation:
         path = f"/app_installs/{id}/"
         params = None
         return self._root._execute(
@@ -370,17 +443,20 @@ class AppInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_schema="ApplicationInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
+
 class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.Application:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Application:
         path = f"/applications/{id}/archive/"
         params = None
         return self._root._execute(
@@ -393,11 +469,16 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_schema="ApplicationSerializerDetail",
             item_schema=None,
         )
 
-    def config_profiles_create(self, parent_lookup_application: str, body: Any, organisation_id: int | None = None) -> control_models.ApplicationConfigProfile:
+    def config_profiles_create(
+        self,
+        parent_lookup_application: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationConfigProfile:
         path = f"/applications/{parent_lookup_application}/config_profiles/"
         params = None
         return self._root._execute(
@@ -405,16 +486,21 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationConfigProfileSerializerDetailRequest',
+            body_schema="ApplicationConfigProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationConfigProfileSerializerDetail',
+            response_schema="ApplicationConfigProfileSerializerDetail",
             item_schema=None,
         )
 
-    def config_profiles_retrieve(self, id: str, parent_lookup_application: str, organisation_id: int | None = None) -> control_models.ApplicationConfigProfile:
+    def config_profiles_retrieve(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationConfigProfile:
         path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -427,11 +513,17 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationConfigProfileSerializerDetail',
+            response_schema="ApplicationConfigProfileSerializerDetail",
             item_schema=None,
         )
 
-    def config_profiles_update(self, id: str, parent_lookup_application: str, body: Any, organisation_id: int | None = None) -> control_models.ApplicationConfigProfile:
+    def config_profiles_update(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationConfigProfile:
         path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -439,16 +531,24 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationConfigProfileSerializerDetailRequest',
+            body_schema="ApplicationConfigProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationConfigProfileSerializerDetail',
+            response_schema="ApplicationConfigProfileSerializerDetail",
             item_schema=None,
         )
 
-    def config_profiles_list(self, parent_lookup_application: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ApplicationConfigProfile]:
+    def config_profiles_list(
+        self,
+        parent_lookup_application: str,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ApplicationConfigProfile]:
         path = f"/applications/{parent_lookup_application}/config_profiles/"
         params = {
             "ordering": ordering,
@@ -466,11 +566,17 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationConfigProfileSerializerListList',
+            response_schema="PaginatedApplicationConfigProfileSerializerListList",
             item_schema=None,
         )
 
-    def config_profiles_partial(self, id: str, parent_lookup_application: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.ApplicationConfigProfile:
+    def config_profiles_partial(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        body: Any | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationConfigProfile:
         path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -478,16 +584,18 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedApplicationConfigProfileSerializerDetailRequest',
+            body_schema="PatchedApplicationConfigProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationConfigProfileSerializerDetail',
+            response_schema="ApplicationConfigProfileSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.Application:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.Application:
         path = "/applications/"
         params = None
         return self._root._execute(
@@ -495,16 +603,21 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationSerializerDetailRequest',
+            body_schema="ApplicationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_schema="ApplicationSerializerDetail",
             item_schema=None,
         )
 
-    def config_profiles_delete(self, id: str, parent_lookup_application: str, organisation_id: int | None = None) -> None:
+    def config_profiles_delete(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        organisation_id: int | None = None,
+    ) -> None:
         path = f"/applications/{parent_lookup_application}/config_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -521,7 +634,12 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def organisation_access_delete(self, id: str, parent_lookup_application: str, organisation_id: int | None = None) -> None:
+    def organisation_access_delete(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        organisation_id: int | None = None,
+    ) -> None:
         path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -538,7 +656,33 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def installs_list(self, parent_lookup_application: str, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ApplicationInstallation]:
+    def installs_list(
+        self,
+        parent_lookup_application: str,
+        application: str | None = None,
+        archived: bool | None = None,
+        device: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        solution: str | None = None,
+        status: str | None = None,
+        template: str | None = None,
+        version: str | None = None,
+        version__contains: str | None = None,
+        version__icontains: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ApplicationInstallation]:
         path = f"/applications/{parent_lookup_application}/installs/"
         params = {
             "application": application,
@@ -574,11 +718,17 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationInstallationSerializerListList',
+            response_schema="PaginatedApplicationInstallationSerializerListList",
             item_schema=None,
         )
 
-    def installs_sync_config_profiles(self, id: str, parent_lookup_application: str, body: Any, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
+    def installs_sync_config_profiles(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationInstallation:
         path = f"/applications/{parent_lookup_application}/installs/{id}/sync_config_profiles/"
         params = None
         return self._root._execute(
@@ -586,16 +736,50 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_schema="ApplicationInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def list(self, allow_many: bool | None = None, approx_installs: int | None = None, approx_installs__gt: int | None = None, approx_installs__gte: int | None = None, approx_installs__lt: int | None = None, approx_installs__lte: int | None = None, archived: bool | None = None, container_registry_profile: str | None = None, description: str | None = None, description__contains: str | None = None, description__icontains: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, stars: int | None = None, stars__gt: int | None = None, stars__gte: int | None = None, stars__lt: int | None = None, stars__lte: int | None = None, type: str | None = None, visibility: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Application]:
+    def list(
+        self,
+        allow_many: bool | None = None,
+        approx_installs: int | None = None,
+        approx_installs__gt: int | None = None,
+        approx_installs__gte: int | None = None,
+        approx_installs__lt: int | None = None,
+        approx_installs__lte: int | None = None,
+        archived: bool | None = None,
+        container_registry_profile: str | None = None,
+        description: str | None = None,
+        description__contains: str | None = None,
+        description__icontains: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        stars: int | None = None,
+        stars__gt: int | None = None,
+        stars__gte: int | None = None,
+        stars__lt: int | None = None,
+        stars__lte: int | None = None,
+        type: str | None = None,
+        visibility: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Application]:
         path = "/applications/"
         params = {
             "allow_many": allow_many,
@@ -640,11 +824,16 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationSerializerListList',
+            response_schema="PaginatedApplicationSerializerListList",
             item_schema=None,
         )
 
-    def organisation_access_create(self, parent_lookup_application: str, body: Any, organisation_id: int | None = None) -> Any:
+    def organisation_access_create(
+        self,
+        parent_lookup_application: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/applications/{parent_lookup_application}/organisation_access/"
         params = None
         return self._root._execute(
@@ -652,16 +841,21 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationOrganisationAccessSerializerDetailRequest',
+            body_schema="ApplicationOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationOrganisationAccessSerializerDetail',
+            response_schema="ApplicationOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def organisation_access_retrieve(self, id: str, parent_lookup_application: str, organisation_id: int | None = None) -> Any:
+    def organisation_access_retrieve(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -674,11 +868,17 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationOrganisationAccessSerializerDetail',
+            response_schema="ApplicationOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def organisation_access_update(self, id: str, parent_lookup_application: str, body: Any, organisation_id: int | None = None) -> Any:
+    def organisation_access_update(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -686,16 +886,28 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationOrganisationAccessSerializerDetailRequest',
+            body_schema="ApplicationOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationOrganisationAccessSerializerDetail',
+            response_schema="ApplicationOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def organisation_access_list(self, parent_lookup_application: str, access: str | None = None, application: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[Any]:
+    def organisation_access_list(
+        self,
+        parent_lookup_application: str,
+        access: str | None = None,
+        application: str | None = None,
+        id: int | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[Any]:
         path = f"/applications/{parent_lookup_application}/organisation_access/"
         params = {
             "access": access,
@@ -717,11 +929,17 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationOrganisationAccessSerializerListList',
+            response_schema="PaginatedApplicationOrganisationAccessSerializerListList",
             item_schema=None,
         )
 
-    def organisation_access_partial(self, id: str, parent_lookup_application: str, body: Any | None = None, organisation_id: int | None = None) -> Any:
+    def organisation_access_partial(
+        self,
+        id: str,
+        parent_lookup_application: str,
+        body: Any | None = None,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -729,16 +947,18 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedApplicationOrganisationAccessSerializerDetailRequest',
+            body_schema="PatchedApplicationOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationOrganisationAccessSerializerDetail',
+            response_schema="ApplicationOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Application:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.Application:
         path = f"/applications/{id}/"
         params = None
         return self._root._execute(
@@ -746,16 +966,18 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedApplicationSerializerDetailRequest',
+            body_schema="PatchedApplicationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_schema="ApplicationSerializerDetail",
             item_schema=None,
         )
 
-    def processor_source(self, id: str, body: Any, organisation_id: int | None = None) -> None:
+    def processor_source(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> None:
         path = f"/applications/{id}/processor_source/"
         params = None
         return self._root._execute(
@@ -763,16 +985,18 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ProcessorSourceUploadRequestDetailRequest',
+            body_schema="ProcessorSourceUploadRequestDetailRequest",
             body_mode="multipart",
-            binary_fields=['file'],
+            binary_fields=["file"],
             organisation_id=organisation_id,
             response_kind="none",
             response_schema=None,
             item_schema=None,
         )
 
-    def processor_version(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Application:
+    def processor_version(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Application:
         path = f"/applications/{id}/processor_version/"
         params = None
         return self._root._execute(
@@ -780,16 +1004,18 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationSerializerDetailRequest',
+            body_schema="ApplicationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_schema="ApplicationSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.Application:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Application:
         path = f"/applications/{id}/"
         params = None
         return self._root._execute(
@@ -802,11 +1028,13 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_schema="ApplicationSerializerDetail",
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.Application:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Application:
         path = f"/applications/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -819,11 +1047,13 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_schema="ApplicationSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Application:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Application:
         path = f"/applications/{id}/"
         params = None
         return self._root._execute(
@@ -831,12 +1061,12 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationSerializerDetailRequest',
+            body_schema="ApplicationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationSerializerDetail',
+            response_schema="ApplicationSerializerDetail",
             item_schema=None,
         )
 
@@ -848,17 +1078,20 @@ class ApplicationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationWidgetUploadRequestDetailRequest',
+            body_schema="ApplicationWidgetUploadRequestDetailRequest",
             body_mode="multipart",
-            binary_fields=['file'],
+            binary_fields=["file"],
             organisation_id=organisation_id,
             response_kind="none",
             response_schema=None,
             item_schema=None,
         )
 
+
 class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def message(self, body: Any, organisation_id: int | None = None) -> control_models.AIAssistantResponse:
+    def message(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.AIAssistantResponse:
         path = "/assistant/message/"
         params = None
         return self._root._execute(
@@ -866,16 +1099,18 @@ class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='AIAssistantRequestSerializerDetailRequest',
+            body_schema="AIAssistantRequestSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AIAssistantResponseSerializerDetail',
+            response_schema="AIAssistantResponseSerializerDetail",
             item_schema=None,
         )
 
-    def messages(self, id: str, organisation_id: int | None = None) -> control_models.AIChatMessage:
+    def messages(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.AIChatMessage:
         path = f"/assistant/messages/{id}/"
         params = None
         return self._root._execute(
@@ -888,11 +1123,18 @@ class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AIChatMessageSerializerDetail',
+            response_schema="AIChatMessageSerializerDetail",
             item_schema=None,
         )
 
-    def messages_list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.AIChatMessage]:
+    def messages_list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.AIChatMessage]:
         path = "/assistant/messages/"
         params = {
             "ordering": ordering,
@@ -910,11 +1152,13 @@ class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedAIChatMessageSerializerListList',
+            response_schema="PaginatedAIChatMessageSerializerListList",
             item_schema=None,
         )
 
-    def sessions(self, id: str, organisation_id: int | None = None) -> control_models.AIChatSession:
+    def sessions(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.AIChatSession:
         path = f"/assistant/sessions/{id}/"
         params = None
         return self._root._execute(
@@ -927,11 +1171,18 @@ class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AIChatSessionDetailSerializerDetail',
+            response_schema="AIChatSessionDetailSerializerDetail",
             item_schema=None,
         )
 
-    def sessions_list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.AIChatSession]:
+    def sessions_list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.AIChatSession]:
         path = "/assistant/sessions/"
         params = {
             "ordering": ordering,
@@ -949,9 +1200,10 @@ class AssistantSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedAIChatSessionSerializerListList',
+            response_schema="PaginatedAIChatSessionSerializerListList",
             item_schema=None,
         )
+
 
 class BillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def billing_block_status_create(self, organisation_id: int | None = None) -> None:
@@ -988,11 +1240,15 @@ class BillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
+
 class ContainerSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     registry: ContainerRegistrySyncGroup
 
+
 class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.ContainerRegistryProfile:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ContainerRegistryProfile:
         path = f"/container/registry/{id}/archive/"
         params = None
         return self._root._execute(
@@ -1005,11 +1261,13 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ContainerRegistryProfileSeraliserDetail',
+            response_schema="ContainerRegistryProfileSeraliserDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.ContainerRegistryProfile:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.ContainerRegistryProfile:
         path = "/container/registry/"
         params = None
         return self._root._execute(
@@ -1017,16 +1275,39 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ContainerRegistryProfileSeraliserDetailRequest',
+            body_schema="ContainerRegistryProfileSeraliserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ContainerRegistryProfileSeraliserDetail',
+            response_schema="ContainerRegistryProfileSeraliserDetail",
             item_schema=None,
         )
 
-    def list(self, archived: bool | None = None, description: str | None = None, description__contains: str | None = None, description__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, url: str | None = None, url__contains: str | None = None, url__icontains: str | None = None, username: str | None = None, username__contains: str | None = None, username__icontains: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ContainerRegistryProfile]:
+    def list(
+        self,
+        archived: bool | None = None,
+        description: str | None = None,
+        description__contains: str | None = None,
+        description__icontains: str | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        url: str | None = None,
+        url__contains: str | None = None,
+        url__icontains: str | None = None,
+        username: str | None = None,
+        username__contains: str | None = None,
+        username__icontains: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ContainerRegistryProfile]:
         path = "/container/registry/"
         params = {
             "archived": archived,
@@ -1060,11 +1341,13 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedContainerRegistryProfileSeraliserListList',
+            response_schema="PaginatedContainerRegistryProfileSeraliserListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.ContainerRegistryProfile:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.ContainerRegistryProfile:
         path = f"/container/registry/{id}/"
         params = None
         return self._root._execute(
@@ -1072,16 +1355,18 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedContainerRegistryProfileSeraliserDetailRequest',
+            body_schema="PatchedContainerRegistryProfileSeraliserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ContainerRegistryProfileSeraliserDetail',
+            response_schema="ContainerRegistryProfileSeraliserDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.ContainerRegistryProfile:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ContainerRegistryProfile:
         path = f"/container/registry/{id}/"
         params = None
         return self._root._execute(
@@ -1094,11 +1379,13 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ContainerRegistryProfileSeraliserDetail',
+            response_schema="ContainerRegistryProfileSeraliserDetail",
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.ContainerRegistryProfile:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ContainerRegistryProfile:
         path = f"/container/registry/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -1111,11 +1398,13 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ContainerRegistryProfileSeraliserDetail',
+            response_schema="ContainerRegistryProfileSeraliserDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.ContainerRegistryProfile:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.ContainerRegistryProfile:
         path = f"/container/registry/{id}/"
         params = None
         return self._root._execute(
@@ -1123,17 +1412,44 @@ class ContainerRegistrySyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ContainerRegistryProfileSeraliserDetailRequest',
+            body_schema="ContainerRegistryProfileSeraliserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ContainerRegistryProfileSeraliserDetail',
+            response_schema="ContainerRegistryProfileSeraliserDetail",
             item_schema=None,
         )
 
+
 class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def app_installs_list(self, parent_lookup_device: str, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ApplicationInstallation]:
+    def app_installs_list(
+        self,
+        parent_lookup_device: str,
+        application: str | None = None,
+        archived: bool | None = None,
+        device: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        solution: str | None = None,
+        status: str | None = None,
+        template: str | None = None,
+        version: str | None = None,
+        version__contains: str | None = None,
+        version__icontains: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ApplicationInstallation]:
         path = f"/devices/{parent_lookup_device}/app_installs/"
         params = {
             "application": application,
@@ -1169,28 +1485,38 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationInstallationSerializerListList',
+            response_schema="PaginatedApplicationInstallationSerializerListList",
             item_schema=None,
         )
 
-    def app_installs_sync_config_profiles(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None) -> control_models.ApplicationInstallation:
-        path = f"/devices/{parent_lookup_device}/app_installs/{id}/sync_config_profiles/"
+    def app_installs_sync_config_profiles(
+        self,
+        id: str,
+        parent_lookup_device: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationInstallation:
+        path = (
+            f"/devices/{parent_lookup_device}/app_installs/{id}/sync_config_profiles/"
+        )
         params = None
         return self._root._execute(
             "POST",
             path,
             params=params,
             body=body,
-            body_schema='ApplicationInstallationSerializerDetailRequest',
+            body_schema="ApplicationInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationInstallationSerializerDetail',
+            response_schema="ApplicationInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.Device:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Device:
         path = f"/devices/{id}/archive/"
         params = None
         return self._root._execute(
@@ -1203,11 +1529,13 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceSerializerDetail',
+            response_schema="DeviceSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.Device:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.Device:
         path = "/devices/"
         params = None
         return self._root._execute(
@@ -1215,16 +1543,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='DeviceSerializerDetailRequest',
+            body_schema="DeviceSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceSerializerDetail',
+            response_schema="DeviceSerializerDetail",
             item_schema=None,
         )
 
-    def tunnels_delete(self, id: str, parent_lookup_device: str, organisation_id: int | None = None) -> None:
+    def tunnels_delete(
+        self, id: str, parent_lookup_device: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
         params = None
         return self._root._execute(
@@ -1241,7 +1571,12 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def types_organisation_access_delete(self, id: str, parent_lookup_device_type: str, organisation_id: int | None = None) -> None:
+    def types_organisation_access_delete(
+        self,
+        id: str,
+        parent_lookup_device_type: str,
+        organisation_id: int | None = None,
+    ) -> None:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -1292,7 +1627,9 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def installer_info(self, id: str, organisation_id: int | None = None) -> control_models.DeviceInstallerInfoResponse:
+    def installer_info(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.DeviceInstallerInfoResponse:
         path = f"/devices/{id}/installer/info/"
         params = None
         return self._root._execute(
@@ -1305,7 +1642,7 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceInstallerInfoResponseDetail',
+            response_schema="DeviceInstallerInfoResponseDetail",
             item_schema=None,
         )
 
@@ -1343,7 +1680,27 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, application: str | None = None, archived: bool | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, group: str | None = None, group_tree: str | None = None, id: Sequence[Any] | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, type: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Device]:
+    def list(
+        self,
+        application: str | None = None,
+        archived: bool | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        group: str | None = None,
+        group_tree: str | None = None,
+        id: Sequence[Any] | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        type: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Device]:
         path = "/devices/"
         params = {
             "application": application,
@@ -1374,11 +1731,13 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedDeviceSerializerListList',
+            response_schema="PaginatedDeviceSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Device:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.Device:
         path = f"/devices/{id}/"
         params = None
         return self._root._execute(
@@ -1386,16 +1745,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedDeviceSerializerDetailRequest',
+            body_schema="PatchedDeviceSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceSerializerDetail',
+            response_schema="DeviceSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.Device:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Device:
         path = f"/devices/{id}/"
         params = None
         return self._root._execute(
@@ -1408,11 +1769,17 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceSerializerDetail',
+            response_schema="DeviceSerializerDetail",
             item_schema=None,
         )
 
-    def solution_installs_deploy(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def solution_installs_deploy(
+        self,
+        id: str,
+        parent_lookup_device: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.SolutionInstallation:
         path = f"/devices/{parent_lookup_device}/solution_installs/{id}/deploy/"
         params = None
         return self._root._execute(
@@ -1420,16 +1787,33 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_schema="SolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def solution_installs_list(self, parent_lookup_device: str, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.SolutionInstallation]:
+    def solution_installs_list(
+        self,
+        parent_lookup_device: str,
+        device: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        solution: str | None = None,
+        status: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.SolutionInstallation]:
         path = f"/devices/{parent_lookup_device}/solution_installs/"
         params = {
             "device": device,
@@ -1456,11 +1840,17 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedSolutionInstallationSerializerListList',
+            response_schema="PaginatedSolutionInstallationSerializerListList",
             item_schema=None,
         )
 
-    def solution_installs_sync(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def solution_installs_sync(
+        self,
+        id: str,
+        parent_lookup_device: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.SolutionInstallation:
         path = f"/devices/{parent_lookup_device}/solution_installs/{id}/sync/"
         params = None
         return self._root._execute(
@@ -1468,16 +1858,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_schema="SolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def tunnels_create(self, parent_lookup_device: str, body: Any, organisation_id: int | None = None) -> control_models.Tunnel:
+    def tunnels_create(
+        self, parent_lookup_device: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Tunnel:
         path = f"/devices/{parent_lookup_device}/tunnels/"
         params = None
         return self._root._execute(
@@ -1485,16 +1877,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='TunnelSerializerDetailRequest',
+            body_schema="TunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def tunnels_retrieve(self, id: str, parent_lookup_device: str, organisation_id: int | None = None) -> control_models.Tunnel:
+    def tunnels_retrieve(
+        self, id: str, parent_lookup_device: str, organisation_id: int | None = None
+    ) -> control_models.Tunnel:
         path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
         params = None
         return self._root._execute(
@@ -1507,11 +1901,17 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def tunnels_update(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None) -> control_models.Tunnel:
+    def tunnels_update(
+        self,
+        id: str,
+        parent_lookup_device: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.Tunnel:
         path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
         params = None
         return self._root._execute(
@@ -1519,16 +1919,22 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='TunnelSerializerDetailRequest',
+            body_schema="TunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def tunnels_activate(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None) -> control_models.Tunnel:
+    def tunnels_activate(
+        self,
+        id: str,
+        parent_lookup_device: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.Tunnel:
         path = f"/devices/{parent_lookup_device}/tunnels/{id}/activate/"
         params = None
         return self._root._execute(
@@ -1536,16 +1942,22 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='TunnelSerializerDetailRequest',
+            body_schema="TunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def tunnels_deactivate(self, id: str, parent_lookup_device: str, body: Any, organisation_id: int | None = None) -> control_models.Tunnel:
+    def tunnels_deactivate(
+        self,
+        id: str,
+        parent_lookup_device: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.Tunnel:
         path = f"/devices/{parent_lookup_device}/tunnels/{id}/deactivate/"
         params = None
         return self._root._execute(
@@ -1553,16 +1965,24 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='TunnelSerializerDetailRequest',
+            body_schema="TunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def tunnels_list(self, parent_lookup_device: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Tunnel]:
+    def tunnels_list(
+        self,
+        parent_lookup_device: str,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Tunnel]:
         path = f"/devices/{parent_lookup_device}/tunnels/"
         params = {
             "ordering": ordering,
@@ -1580,11 +2000,17 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedTunnelSerializerListList',
+            response_schema="PaginatedTunnelSerializerListList",
             item_schema=None,
         )
 
-    def tunnels_partial(self, id: str, parent_lookup_device: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Tunnel:
+    def tunnels_partial(
+        self,
+        id: str,
+        parent_lookup_device: str,
+        body: Any | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.Tunnel:
         path = f"/devices/{parent_lookup_device}/tunnels/{id}/"
         params = None
         return self._root._execute(
@@ -1592,16 +2018,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedTunnelSerializerDetailRequest',
+            body_schema="PatchedTunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def types_create(self, body: Any, organisation_id: int | None = None) -> control_models.DeviceType:
+    def types_create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.DeviceType:
         path = "/devices/types/"
         params = None
         return self._root._execute(
@@ -1609,16 +2037,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='DeviceTypeSerializerDetailRequest',
+            body_schema="DeviceTypeSerializerDetailRequest",
             body_mode="multipart",
-            binary_fields=['installer'],
+            binary_fields=["installer"],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeSerializerDetail',
+            response_schema="DeviceTypeSerializerDetail",
             item_schema=None,
         )
 
-    def types_retrieve(self, id: str, organisation_id: int | None = None) -> control_models.DeviceType:
+    def types_retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.DeviceType:
         path = f"/devices/types/{id}/"
         params = None
         return self._root._execute(
@@ -1631,11 +2061,13 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeSerializerDetail',
+            response_schema="DeviceTypeSerializerDetail",
             item_schema=None,
         )
 
-    def types_update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.DeviceType:
+    def types_update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.DeviceType:
         path = f"/devices/types/{id}/"
         params = None
         return self._root._execute(
@@ -1643,16 +2075,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='DeviceTypeSerializerDetailRequest',
+            body_schema="DeviceTypeSerializerDetailRequest",
             body_mode="multipart",
-            binary_fields=['installer'],
+            binary_fields=["installer"],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeSerializerDetail',
+            response_schema="DeviceTypeSerializerDetail",
             item_schema=None,
         )
 
-    def types_archive(self, id: str, organisation_id: int | None = None) -> control_models.DeviceType:
+    def types_archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.DeviceType:
         path = f"/devices/types/{id}/archive/"
         params = None
         return self._root._execute(
@@ -1665,11 +2099,30 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeSerializerDetail',
+            response_schema="DeviceTypeSerializerDetail",
             item_schema=None,
         )
 
-    def types_list(self, archived: bool | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, stars: int | None = None, stars__gt: int | None = None, stars__gte: int | None = None, stars__lt: int | None = None, stars__lte: int | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.DeviceType]:
+    def types_list(
+        self,
+        archived: bool | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        stars: int | None = None,
+        stars__gt: int | None = None,
+        stars__gte: int | None = None,
+        stars__lt: int | None = None,
+        stars__lte: int | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.DeviceType]:
         path = "/devices/types/"
         params = {
             "archived": archived,
@@ -1699,11 +2152,16 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedDeviceTypeSerializerListList',
+            response_schema="PaginatedDeviceTypeSerializerListList",
             item_schema=None,
         )
 
-    def types_organisation_access_create(self, parent_lookup_device_type: str, body: Any, organisation_id: int | None = None) -> Any:
+    def types_organisation_access_create(
+        self,
+        parent_lookup_device_type: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/"
         params = None
         return self._root._execute(
@@ -1711,16 +2169,21 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='DeviceTypeOrganisationAccessSerializerDetailRequest',
+            body_schema="DeviceTypeOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeOrganisationAccessSerializerDetail',
+            response_schema="DeviceTypeOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def types_organisation_access_retrieve(self, id: str, parent_lookup_device_type: str, organisation_id: int | None = None) -> Any:
+    def types_organisation_access_retrieve(
+        self,
+        id: str,
+        parent_lookup_device_type: str,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -1733,11 +2196,17 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeOrganisationAccessSerializerDetail',
+            response_schema="DeviceTypeOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def types_organisation_access_update(self, id: str, parent_lookup_device_type: str, body: Any, organisation_id: int | None = None) -> Any:
+    def types_organisation_access_update(
+        self,
+        id: str,
+        parent_lookup_device_type: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -1745,16 +2214,28 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='DeviceTypeOrganisationAccessSerializerDetailRequest',
+            body_schema="DeviceTypeOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeOrganisationAccessSerializerDetail',
+            response_schema="DeviceTypeOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def types_organisation_access_list(self, parent_lookup_device_type: str, access: str | None = None, device_type: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[Any]:
+    def types_organisation_access_list(
+        self,
+        parent_lookup_device_type: str,
+        access: str | None = None,
+        device_type: str | None = None,
+        id: int | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[Any]:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/"
         params = {
             "access": access,
@@ -1776,11 +2257,17 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedDeviceTypeOrganisationAccessSerializerListList',
+            response_schema="PaginatedDeviceTypeOrganisationAccessSerializerListList",
             item_schema=None,
         )
 
-    def types_organisation_access_partial(self, id: str, parent_lookup_device_type: str, body: Any | None = None, organisation_id: int | None = None) -> Any:
+    def types_organisation_access_partial(
+        self,
+        id: str,
+        parent_lookup_device_type: str,
+        body: Any | None = None,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -1788,16 +2275,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedDeviceTypeOrganisationAccessSerializerDetailRequest',
+            body_schema="PatchedDeviceTypeOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeOrganisationAccessSerializerDetail',
+            response_schema="DeviceTypeOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def types_partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.DeviceType:
+    def types_partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.DeviceType:
         path = f"/devices/types/{id}/"
         params = None
         return self._root._execute(
@@ -1805,16 +2294,18 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedDeviceTypeSerializerDetailRequest',
+            body_schema="PatchedDeviceTypeSerializerDetailRequest",
             body_mode="multipart",
-            binary_fields=['installer'],
+            binary_fields=["installer"],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeSerializerDetail',
+            response_schema="DeviceTypeSerializerDetail",
             item_schema=None,
         )
 
-    def types_unarchive(self, id: str, organisation_id: int | None = None) -> control_models.DeviceType:
+    def types_unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.DeviceType:
         path = f"/devices/types/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -1827,11 +2318,13 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeSerializerDetail',
+            response_schema="DeviceTypeSerializerDetail",
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.Device:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Device:
         path = f"/devices/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -1844,11 +2337,13 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceSerializerDetail',
+            response_schema="DeviceSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Device:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Device:
         path = f"/devices/{id}/"
         params = None
         return self._root._execute(
@@ -1856,17 +2351,20 @@ class DevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='DeviceSerializerDetailRequest',
+            body_schema="DeviceSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceSerializerDetail',
+            response_schema="DeviceSerializerDetail",
             item_schema=None,
         )
 
+
 class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.Group:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Group:
         path = f"/groups/{id}/archive/"
         params = None
         return self._root._execute(
@@ -1879,11 +2377,13 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupSerializerDetail',
+            response_schema="GroupSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.Group:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.Group:
         path = "/groups/"
         params = None
         return self._root._execute(
@@ -1891,12 +2391,12 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='GroupSerializerDetailRequest',
+            body_schema="GroupSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupSerializerDetail',
+            response_schema="GroupSerializerDetail",
             item_schema=None,
         )
 
@@ -1934,7 +2434,9 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def users_delete(self, parent_lookup_group: str, user: str, organisation_id: int | None = None) -> None:
+    def users_delete(
+        self, parent_lookup_group: str, user: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/groups/{parent_lookup_group}/users/{user}/"
         params = None
         return self._root._execute(
@@ -1951,7 +2453,21 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, archived: bool | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, permission: str | None = None, root_group: bool | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Group]:
+    def list(
+        self,
+        archived: bool | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        permission: str | None = None,
+        root_group: bool | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Group]:
         path = "/groups/"
         params = {
             "archived": archived,
@@ -1976,11 +2492,13 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedGroupSerializerListList',
+            response_schema="PaginatedGroupSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Group:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.Group:
         path = f"/groups/{id}/"
         params = None
         return self._root._execute(
@@ -1988,16 +2506,18 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedGroupSerializerDetailRequest',
+            body_schema="PatchedGroupSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupSerializerDetail',
+            response_schema="GroupSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.Group:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Group:
         path = f"/groups/{id}/"
         params = None
         return self._root._execute(
@@ -2010,11 +2530,13 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupSerializerDetail',
+            response_schema="GroupSerializerDetail",
             item_schema=None,
         )
 
-    def roles_create(self, body: Any, organisation_id: int | None = None) -> control_models.GroupRole:
+    def roles_create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.GroupRole:
         path = "/groups/roles/"
         params = None
         return self._root._execute(
@@ -2022,16 +2544,18 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='GroupRoleSerializerDetailRequest',
+            body_schema="GroupRoleSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupRoleSerializerDetail',
+            response_schema="GroupRoleSerializerDetail",
             item_schema=None,
         )
 
-    def roles_retrieve(self, id: str, organisation_id: int | None = None) -> control_models.GroupRole:
+    def roles_retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.GroupRole:
         path = f"/groups/roles/{id}/"
         params = None
         return self._root._execute(
@@ -2044,11 +2568,13 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupRoleSerializerDetail',
+            response_schema="GroupRoleSerializerDetail",
             item_schema=None,
         )
 
-    def roles_update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.GroupRole:
+    def roles_update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.GroupRole:
         path = f"/groups/roles/{id}/"
         params = None
         return self._root._execute(
@@ -2056,16 +2582,18 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='GroupRoleSerializerDetailRequest',
+            body_schema="GroupRoleSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupRoleSerializerDetail',
+            response_schema="GroupRoleSerializerDetail",
             item_schema=None,
         )
 
-    def roles_archive(self, id: str, organisation_id: int | None = None) -> control_models.GroupRole:
+    def roles_archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.GroupRole:
         path = f"/groups/roles/{id}/archive/"
         params = None
         return self._root._execute(
@@ -2078,11 +2606,25 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupRoleSerializerDetail',
+            response_schema="GroupRoleSerializerDetail",
             item_schema=None,
         )
 
-    def roles_list(self, archived: bool | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.GroupRole]:
+    def roles_list(
+        self,
+        archived: bool | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.GroupRole]:
         path = "/groups/roles/"
         params = {
             "archived": archived,
@@ -2107,11 +2649,13 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedGroupRoleSerializerListList',
+            response_schema="PaginatedGroupRoleSerializerListList",
             item_schema=None,
         )
 
-    def roles_partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.GroupRole:
+    def roles_partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.GroupRole:
         path = f"/groups/roles/{id}/"
         params = None
         return self._root._execute(
@@ -2119,16 +2663,18 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedGroupRoleSerializerDetailRequest',
+            body_schema="PatchedGroupRoleSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupRoleSerializerDetail',
+            response_schema="GroupRoleSerializerDetail",
             item_schema=None,
         )
 
-    def roles_unarchive(self, id: str, organisation_id: int | None = None) -> control_models.GroupRole:
+    def roles_unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.GroupRole:
         path = f"/groups/roles/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -2141,11 +2687,13 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupRoleSerializerDetail',
+            response_schema="GroupRoleSerializerDetail",
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.Group:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Group:
         path = f"/groups/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -2158,11 +2706,13 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupSerializerDetail',
+            response_schema="GroupSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Group:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Group:
         path = f"/groups/{id}/"
         params = None
         return self._root._execute(
@@ -2170,16 +2720,18 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='GroupSerializerDetailRequest',
+            body_schema="GroupSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupSerializerDetail',
+            response_schema="GroupSerializerDetail",
             item_schema=None,
         )
 
-    def users_create(self, parent_lookup_group: str, body: Any, organisation_id: int | None = None) -> control_models.GroupPermission:
+    def users_create(
+        self, parent_lookup_group: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.GroupPermission:
         path = f"/groups/{parent_lookup_group}/users/"
         params = None
         return self._root._execute(
@@ -2187,16 +2739,18 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='GroupPermissionSerializerDetailRequest',
+            body_schema="GroupPermissionSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupPermissionSerializerDetail',
+            response_schema="GroupPermissionSerializerDetail",
             item_schema=None,
         )
 
-    def users_retrieve(self, parent_lookup_group: str, user: str, organisation_id: int | None = None) -> control_models.GroupPermission:
+    def users_retrieve(
+        self, parent_lookup_group: str, user: str, organisation_id: int | None = None
+    ) -> control_models.GroupPermission:
         path = f"/groups/{parent_lookup_group}/users/{user}/"
         params = None
         return self._root._execute(
@@ -2209,11 +2763,17 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupPermissionSerializerDetail',
+            response_schema="GroupPermissionSerializerDetail",
             item_schema=None,
         )
 
-    def users_update(self, parent_lookup_group: str, user: str, body: Any, organisation_id: int | None = None) -> control_models.GroupPermission:
+    def users_update(
+        self,
+        parent_lookup_group: str,
+        user: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.GroupPermission:
         path = f"/groups/{parent_lookup_group}/users/{user}/"
         params = None
         return self._root._execute(
@@ -2221,16 +2781,24 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='GroupPermissionSerializerDetailRequest',
+            body_schema="GroupPermissionSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupPermissionSerializerDetail',
+            response_schema="GroupPermissionSerializerDetail",
             item_schema=None,
         )
 
-    def users_list(self, parent_lookup_group: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.GroupPermission]:
+    def users_list(
+        self,
+        parent_lookup_group: str,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.GroupPermission]:
         path = f"/groups/{parent_lookup_group}/users/"
         params = {
             "ordering": ordering,
@@ -2248,11 +2816,17 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedGroupPermissionSerializerListList',
+            response_schema="PaginatedGroupPermissionSerializerListList",
             item_schema=None,
         )
 
-    def users_partial(self, parent_lookup_group: str, user: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.GroupPermission:
+    def users_partial(
+        self,
+        parent_lookup_group: str,
+        user: str,
+        body: Any | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.GroupPermission:
         path = f"/groups/{parent_lookup_group}/users/{user}/"
         params = None
         return self._root._execute(
@@ -2260,17 +2834,20 @@ class GroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedGroupPermissionSerializerDetailRequest',
+            body_schema="PatchedGroupPermissionSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='GroupPermissionSerializerDetail',
+            response_schema="GroupPermissionSerializerDetail",
             item_schema=None,
         )
 
+
 class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.Integration:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Integration:
         path = f"/integrations/{id}/archive/"
         params = None
         return self._root._execute(
@@ -2283,11 +2860,13 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='IntegrationSerializerDetail',
+            response_schema="IntegrationSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.Integration:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.Integration:
         path = "/integrations/"
         params = None
         return self._root._execute(
@@ -2295,12 +2874,12 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='IntegrationSerializerDetailRequest',
+            body_schema="IntegrationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='IntegrationSerializerDetail',
+            response_schema="IntegrationSerializerDetail",
             item_schema=None,
         )
 
@@ -2321,7 +2900,32 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, application: str | None = None, archived: bool | None = None, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, template: str | None = None, version: str | None = None, version__contains: str | None = None, version__icontains: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Integration]:
+    def list(
+        self,
+        application: str | None = None,
+        archived: bool | None = None,
+        device: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        solution: str | None = None,
+        status: str | None = None,
+        template: str | None = None,
+        version: str | None = None,
+        version__contains: str | None = None,
+        version__icontains: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Integration]:
         path = "/integrations/"
         params = {
             "application": application,
@@ -2357,11 +2961,13 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedIntegrationSerializerListList',
+            response_schema="PaginatedIntegrationSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Integration:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.Integration:
         path = f"/integrations/{id}/"
         params = None
         return self._root._execute(
@@ -2369,16 +2975,18 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedIntegrationSerializerDetailRequest',
+            body_schema="PatchedIntegrationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='IntegrationSerializerDetail',
+            response_schema="IntegrationSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.Integration:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Integration:
         path = f"/integrations/{id}/"
         params = None
         return self._root._execute(
@@ -2391,11 +2999,13 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='IntegrationSerializerDetail',
+            response_schema="IntegrationSerializerDetail",
             item_schema=None,
         )
 
-    def sync_config_profiles(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Integration:
+    def sync_config_profiles(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Integration:
         path = f"/integrations/{id}/sync_config_profiles/"
         params = None
         return self._root._execute(
@@ -2403,16 +3013,18 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='IntegrationSerializerDetailRequest',
+            body_schema="IntegrationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='IntegrationSerializerDetail',
+            response_schema="IntegrationSerializerDetail",
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.Integration:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Integration:
         path = f"/integrations/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -2425,11 +3037,13 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='IntegrationSerializerDetail',
+            response_schema="IntegrationSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Integration:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Integration:
         path = f"/integrations/{id}/"
         params = None
         return self._root._execute(
@@ -2437,14 +3051,15 @@ class IntegrationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='IntegrationSerializerDetailRequest',
+            body_schema="IntegrationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='IntegrationSerializerDetail',
+            response_schema="IntegrationSerializerDetail",
             item_schema=None,
         )
+
 
 class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     billing: OrganisationsBillingSyncGroup
@@ -2455,7 +3070,9 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     sharing_profiles: OrganisationsSharingProfilesSyncGroup
     users: OrganisationsUsersSyncGroup
 
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.Organisation:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Organisation:
         path = f"/organisations/{id}/archive/"
         params = None
         return self._root._execute(
@@ -2468,11 +3085,13 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSerializerDetail',
+            response_schema="OrganisationSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.Organisation:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.Organisation:
         path = "/organisations/"
         params = None
         return self._root._execute(
@@ -2480,12 +3099,12 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSerializerDetailRequest',
+            body_schema="OrganisationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSerializerDetail',
+            response_schema="OrganisationSerializerDetail",
             item_schema=None,
         )
 
@@ -2506,7 +3125,29 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, archived: bool | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, page: int | None = None, per_page: int | None = None, retention_period: int | None = None, retention_period__gt: int | None = None, retention_period__gte: int | None = None, retention_period__lt: int | None = None, retention_period__lte: int | None = None, search: str | None = None, test_field_A: int | None = None, test_field_A__gt: int | None = None, test_field_A__gte: int | None = None, test_field_A__lt: int | None = None, test_field_A__lte: int | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Organisation]:
+    def list(
+        self,
+        archived: bool | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        retention_period: int | None = None,
+        retention_period__gt: int | None = None,
+        retention_period__gte: int | None = None,
+        retention_period__lt: int | None = None,
+        retention_period__lte: int | None = None,
+        search: str | None = None,
+        test_field_A: int | None = None,
+        test_field_A__gt: int | None = None,
+        test_field_A__gte: int | None = None,
+        test_field_A__lt: int | None = None,
+        test_field_A__lte: int | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Organisation]:
         path = "/organisations/"
         params = {
             "archived": archived,
@@ -2539,11 +3180,13 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedOrganisationSerializerListList',
+            response_schema="PaginatedOrganisationSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Organisation:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.Organisation:
         path = f"/organisations/{id}/"
         params = None
         return self._root._execute(
@@ -2551,16 +3194,18 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedOrganisationSerializerDetailRequest',
+            body_schema="PatchedOrganisationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSerializerDetail',
+            response_schema="OrganisationSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.Organisation:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Organisation:
         path = f"/organisations/{id}/"
         params = None
         return self._root._execute(
@@ -2573,7 +3218,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSerializerDetail',
+            response_schema="OrganisationSerializerDetail",
             item_schema=None,
         )
 
@@ -2585,7 +3230,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSerializerDetailRequest',
+            body_schema="OrganisationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
@@ -2594,7 +3239,9 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def sync_data_create_2(self, id: str, body: Any, organisation_id: int | None = None) -> None:
+    def sync_data_create_2(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> None:
         path = f"/organisations/{id}/sync_data/"
         params = None
         return self._root._execute(
@@ -2602,7 +3249,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSerializerDetailRequest',
+            body_schema="OrganisationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
@@ -2619,7 +3266,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSerializerDetailRequest',
+            body_schema="OrganisationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
@@ -2628,7 +3275,9 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def sync_fusion_create_2(self, id: str, body: Any, organisation_id: int | None = None) -> None:
+    def sync_fusion_create_2(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> None:
         path = f"/organisations/{id}/sync_fusion/"
         params = None
         return self._root._execute(
@@ -2636,7 +3285,7 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSerializerDetailRequest',
+            body_schema="OrganisationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
@@ -2645,7 +3294,9 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.Organisation:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Organisation:
         path = f"/organisations/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -2658,11 +3309,13 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSerializerDetail',
+            response_schema="OrganisationSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Organisation:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Organisation:
         path = f"/organisations/{id}/"
         params = None
         return self._root._execute(
@@ -2670,14 +3323,15 @@ class OrganisationsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSerializerDetailRequest',
+            body_schema="OrganisationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSerializerDetail',
+            response_schema="OrganisationSerializerDetail",
             item_schema=None,
         )
+
 
 class OrganisationsBillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     account: OrganisationsBillingAccountSyncGroup
@@ -2746,8 +3400,16 @@ class OrganisationsBillingSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
+
 class OrganisationsBillingAccountSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> Any:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = "/organisations/billing/account/"
         params = {
             "ordering": ordering,
@@ -2769,7 +3431,9 @@ class OrganisationsBillingAccountSyncGroup(_ControlGroupBase[_SyncControlExecuto
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.BillingAccount:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.BillingAccount:
         path = f"/organisations/billing/account/{id}/"
         params = None
         return self._root._execute(
@@ -2777,16 +3441,18 @@ class OrganisationsBillingAccountSyncGroup(_ControlGroupBase[_SyncControlExecuto
             path,
             params=params,
             body=body,
-            body_schema='PatchedBillingAccountSerializerDetailRequest',
+            body_schema="PatchedBillingAccountSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='BillingAccountSerializerDetail',
+            response_schema="BillingAccountSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.BillingAccount:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.BillingAccount:
         path = f"/organisations/billing/account/{id}/"
         params = None
         return self._root._execute(
@@ -2799,11 +3465,13 @@ class OrganisationsBillingAccountSyncGroup(_ControlGroupBase[_SyncControlExecuto
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='BillingAccountSerializerDetail',
+            response_schema="BillingAccountSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.BillingAccount:
+    def update(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.BillingAccount:
         path = f"/organisations/billing/account/{id}/"
         params = None
         return self._root._execute(
@@ -2811,18 +3479,23 @@ class OrganisationsBillingAccountSyncGroup(_ControlGroupBase[_SyncControlExecuto
             path,
             params=params,
             body=body,
-            body_schema='BillingAccountSerializerDetailRequest',
+            body_schema="BillingAccountSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='BillingAccountSerializerDetail',
+            response_schema="BillingAccountSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def group_seller_customer_overview_create(self, group_id: int, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
+    def group_seller_customer_overview_create(
+        self, group_id: int, organisation_id: int | None = None
+    ) -> None:
+        path = (
+            f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
+        )
         params = None
         return self._root._execute(
             "POST",
@@ -2838,8 +3511,12 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def group_seller_customer_overview_retrieve(self, group_id: int, organisation_id: int | None = None) -> None:
-        path = f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
+    def group_seller_customer_overview_retrieve(
+        self, group_id: int, organisation_id: int | None = None
+    ) -> None:
+        path = (
+            f"/organisations/billing/admin/group/{group_id}/seller-customer-overview/"
+        )
         params = None
         return self._root._execute(
             "GET",
@@ -2872,7 +3549,9 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def org_invoices_pdf(self, id: str, invoice_id: str, organisation_id: int | None = None) -> bytes:
+    def org_invoices_pdf(
+        self, id: str, invoice_id: str, organisation_id: int | None = None
+    ) -> bytes:
         path = f"/organisations/billing/admin/org/{id}/invoices/{invoice_id}/pdf/"
         params = None
         return self._root._execute(
@@ -2889,7 +3568,9 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def org_invoices_upcoming_pdf(self, id: str, organisation_id: int | None = None) -> bytes:
+    def org_invoices_upcoming_pdf(
+        self, id: str, organisation_id: int | None = None
+    ) -> bytes:
         path = f"/organisations/billing/admin/org/{id}/invoices/upcoming/pdf/"
         params = None
         return self._root._execute(
@@ -2906,7 +3587,9 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def org_meter(self, id: str, organisation_id: int | None = None) -> control_models.UsageMeteringRun:
+    def org_meter(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.UsageMeteringRun:
         path = f"/organisations/billing/admin/org/{id}/meter/"
         params = None
         return self._root._execute(
@@ -2919,11 +3602,13 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='UsageMeteringRunSerializerDetail',
+            response_schema="UsageMeteringRunSerializerDetail",
             item_schema=None,
         )
 
-    def org_metering_mode_partial(self, id: str, organisation_id: int | None = None) -> None:
+    def org_metering_mode_partial(
+        self, id: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/organisations/billing/admin/org/{id}/metering-mode/"
         params = None
         return self._root._execute(
@@ -2974,7 +3659,9 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def org_seller_account_link(self, id: str, organisation_id: int | None = None) -> None:
+    def org_seller_account_link(
+        self, id: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/organisations/billing/admin/org/{id}/seller-account-link/"
         params = None
         return self._root._execute(
@@ -2991,7 +3678,9 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def org_seller_customer_overview(self, id: str, organisation_id: int | None = None) -> None:
+    def org_seller_customer_overview(
+        self, id: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/organisations/billing/admin/org/{id}/seller-customer-overview/"
         params = None
         return self._root._execute(
@@ -3008,7 +3697,9 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def org_seller_customer_portal(self, id: str, sc_id: str, organisation_id: int | None = None) -> None:
+    def org_seller_customer_portal(
+        self, id: str, sc_id: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/organisations/billing/admin/org/{id}/seller-customer-portal/{sc_id}/"
         params = None
         return self._root._execute(
@@ -3076,7 +3767,9 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def org_setup_seller_customer(self, id: str, sc_id: str, organisation_id: int | None = None) -> None:
+    def org_setup_seller_customer(
+        self, id: str, sc_id: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/organisations/billing/admin/org/{id}/setup-seller-customer/{sc_id}/"
         params = None
         return self._root._execute(
@@ -3093,8 +3786,11 @@ class OrganisationsBillingAdminSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
+
 class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.AgentBillingItem:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.AgentBillingItem:
         path = "/organisations/billing/agent_items/"
         params = None
         return self._root._execute(
@@ -3102,12 +3798,12 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExec
             path,
             params=params,
             body=body,
-            body_schema='AgentBillingItemSerializerDetailRequest',
+            body_schema="AgentBillingItemSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AgentBillingItemSerializerDetail',
+            response_schema="AgentBillingItemSerializerDetail",
             item_schema=None,
         )
 
@@ -3128,7 +3824,24 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExec
             item_schema=None,
         )
 
-    def list(self, billing_product: str | None = None, device: str | None = None, effective_from: str | None = None, effective_from__gte: str | None = None, effective_from__lte: str | None = None, effective_until: str | None = None, effective_until__gte: str | None = None, effective_until__isnull: bool | None = None, effective_until__lte: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.AgentBillingItem]:
+    def list(
+        self,
+        billing_product: str | None = None,
+        device: str | None = None,
+        effective_from: str | None = None,
+        effective_from__gte: str | None = None,
+        effective_from__lte: str | None = None,
+        effective_until: str | None = None,
+        effective_until__gte: str | None = None,
+        effective_until__isnull: bool | None = None,
+        effective_until__lte: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.AgentBillingItem]:
         path = "/organisations/billing/agent_items/"
         params = {
             "billing_product": billing_product,
@@ -3156,11 +3869,13 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExec
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedAgentBillingItemSerializerListList',
+            response_schema="PaginatedAgentBillingItemSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.AgentBillingItem:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.AgentBillingItem:
         path = f"/organisations/billing/agent_items/{id}/"
         params = None
         return self._root._execute(
@@ -3168,16 +3883,18 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExec
             path,
             params=params,
             body=body,
-            body_schema='PatchedAgentBillingItemSerializerDetailRequest',
+            body_schema="PatchedAgentBillingItemSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AgentBillingItemSerializerDetail',
+            response_schema="AgentBillingItemSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.AgentBillingItem:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.AgentBillingItem:
         path = f"/organisations/billing/agent_items/{id}/"
         params = None
         return self._root._execute(
@@ -3190,11 +3907,13 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExec
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AgentBillingItemSerializerDetail',
+            response_schema="AgentBillingItemSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.AgentBillingItem:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.AgentBillingItem:
         path = f"/organisations/billing/agent_items/{id}/"
         params = None
         return self._root._execute(
@@ -3202,17 +3921,20 @@ class OrganisationsBillingAgentItemsSyncGroup(_ControlGroupBase[_SyncControlExec
             path,
             params=params,
             body=body,
-            body_schema='AgentBillingItemSerializerDetailRequest',
+            body_schema="AgentBillingItemSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AgentBillingItemSerializerDetail',
+            response_schema="AgentBillingItemSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.AppBillingConfig:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.AppBillingConfig:
         path = "/organisations/billing/app_configs/"
         params = None
         return self._root._execute(
@@ -3220,12 +3942,12 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExec
             path,
             params=params,
             body=body,
-            body_schema='AppBillingConfigSerializerDetailRequest',
+            body_schema="AppBillingConfigSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AppBillingConfigSerializerDetail',
+            response_schema="AppBillingConfigSerializerDetail",
             item_schema=None,
         )
 
@@ -3246,7 +3968,18 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExec
             item_schema=None,
         )
 
-    def list(self, application: str | None = None, billable: bool | None = None, ordering: str | None = None, owner_organisation: str | None = None, owner_organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.AppBillingConfig]:
+    def list(
+        self,
+        application: str | None = None,
+        billable: bool | None = None,
+        ordering: str | None = None,
+        owner_organisation: str | None = None,
+        owner_organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.AppBillingConfig]:
         path = "/organisations/billing/app_configs/"
         params = {
             "application": application,
@@ -3268,11 +4001,13 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExec
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedAppBillingConfigSerializerListList',
+            response_schema="PaginatedAppBillingConfigSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.AppBillingConfig:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.AppBillingConfig:
         path = f"/organisations/billing/app_configs/{id}/"
         params = None
         return self._root._execute(
@@ -3280,16 +4015,18 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExec
             path,
             params=params,
             body=body,
-            body_schema='PatchedAppBillingConfigSerializerDetailRequest',
+            body_schema="PatchedAppBillingConfigSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AppBillingConfigSerializerDetail',
+            response_schema="AppBillingConfigSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.AppBillingConfig:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.AppBillingConfig:
         path = f"/organisations/billing/app_configs/{id}/"
         params = None
         return self._root._execute(
@@ -3302,11 +4039,13 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExec
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AppBillingConfigSerializerDetail',
+            response_schema="AppBillingConfigSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.AppBillingConfig:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.AppBillingConfig:
         path = f"/organisations/billing/app_configs/{id}/"
         params = None
         return self._root._execute(
@@ -3314,17 +4053,22 @@ class OrganisationsBillingAppConfigsSyncGroup(_ControlGroupBase[_SyncControlExec
             path,
             params=params,
             body=body,
-            body_schema='AppBillingConfigSerializerDetailRequest',
+            body_schema="AppBillingConfigSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='AppBillingConfigSerializerDetail',
+            response_schema="AppBillingConfigSerializerDetail",
             item_schema=None,
         )
 
-class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.DeviceTypeBillingConfig:
+
+class OrganisationsBillingDeviceTypeConfigsSyncGroup(
+    _ControlGroupBase[_SyncControlExecutor]
+):
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.DeviceTypeBillingConfig:
         path = "/organisations/billing/device_type_configs/"
         params = None
         return self._root._execute(
@@ -3332,12 +4076,12 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase[_SyncCont
             path,
             params=params,
             body=body,
-            body_schema='DeviceTypeBillingConfigSerializerDetailRequest',
+            body_schema="DeviceTypeBillingConfigSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeBillingConfigSerializerDetail',
+            response_schema="DeviceTypeBillingConfigSerializerDetail",
             item_schema=None,
         )
 
@@ -3358,7 +4102,18 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase[_SyncCont
             item_schema=None,
         )
 
-    def list(self, billing_product: str | None = None, device_type: str | None = None, ordering: str | None = None, owner_organisation: str | None = None, owner_organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.DeviceTypeBillingConfig]:
+    def list(
+        self,
+        billing_product: str | None = None,
+        device_type: str | None = None,
+        ordering: str | None = None,
+        owner_organisation: str | None = None,
+        owner_organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.DeviceTypeBillingConfig]:
         path = "/organisations/billing/device_type_configs/"
         params = {
             "billing_product": billing_product,
@@ -3380,11 +4135,13 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase[_SyncCont
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedDeviceTypeBillingConfigSerializerListList',
+            response_schema="PaginatedDeviceTypeBillingConfigSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.DeviceTypeBillingConfig:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.DeviceTypeBillingConfig:
         path = f"/organisations/billing/device_type_configs/{id}/"
         params = None
         return self._root._execute(
@@ -3392,16 +4149,18 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase[_SyncCont
             path,
             params=params,
             body=body,
-            body_schema='PatchedDeviceTypeBillingConfigSerializerDetailRequest',
+            body_schema="PatchedDeviceTypeBillingConfigSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeBillingConfigSerializerDetail',
+            response_schema="DeviceTypeBillingConfigSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.DeviceTypeBillingConfig:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.DeviceTypeBillingConfig:
         path = f"/organisations/billing/device_type_configs/{id}/"
         params = None
         return self._root._execute(
@@ -3414,11 +4173,13 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase[_SyncCont
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeBillingConfigSerializerDetail',
+            response_schema="DeviceTypeBillingConfigSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.DeviceTypeBillingConfig:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.DeviceTypeBillingConfig:
         path = f"/organisations/billing/device_type_configs/{id}/"
         params = None
         return self._root._execute(
@@ -3426,17 +4187,25 @@ class OrganisationsBillingDeviceTypeConfigsSyncGroup(_ControlGroupBase[_SyncCont
             path,
             params=params,
             body=body,
-            body_schema='DeviceTypeBillingConfigSerializerDetailRequest',
+            body_schema="DeviceTypeBillingConfigSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceTypeBillingConfigSerializerDetail',
+            response_schema="DeviceTypeBillingConfigSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsBillingDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.DeviceBillingConfig]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.DeviceBillingConfig]:
         path = "/organisations/billing/devices/"
         params = {
             "ordering": ordering,
@@ -3454,11 +4223,13 @@ class OrganisationsBillingDevicesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedDeviceBillingConfigSerializerListList',
+            response_schema="PaginatedDeviceBillingConfigSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.DeviceBillingConfig:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.DeviceBillingConfig:
         path = f"/organisations/billing/devices/{id}/"
         params = None
         return self._root._execute(
@@ -3466,16 +4237,18 @@ class OrganisationsBillingDevicesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             path,
             params=params,
             body=body,
-            body_schema='PatchedDeviceBillingConfigSerializerDetailRequest',
+            body_schema="PatchedDeviceBillingConfigSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceBillingConfigSerializerDetail',
+            response_schema="DeviceBillingConfigSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.DeviceBillingConfig:
+    def update(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.DeviceBillingConfig:
         path = f"/organisations/billing/devices/{id}/"
         params = None
         return self._root._execute(
@@ -3483,14 +4256,15 @@ class OrganisationsBillingDevicesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             path,
             params=params,
             body=body,
-            body_schema='DeviceBillingConfigSerializerDetailRequest',
+            body_schema="DeviceBillingConfigSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='DeviceBillingConfigSerializerDetail',
+            response_schema="DeviceBillingConfigSerializerDetail",
             item_schema=None,
         )
+
 
 class OrganisationsBillingGroupSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def billing_create(self, group_id: int, organisation_id: int | None = None) -> None:
@@ -3510,7 +4284,9 @@ class OrganisationsBillingGroupSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def billing_retrieve(self, group_id: int, organisation_id: int | None = None) -> None:
+    def billing_retrieve(
+        self, group_id: int, organisation_id: int | None = None
+    ) -> None:
         path = f"/organisations/billing/group/{group_id}/billing/"
         params = None
         return self._root._execute(
@@ -3526,6 +4302,7 @@ class OrganisationsBillingGroupSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             response_schema=None,
             item_schema=None,
         )
+
 
 class OrganisationsBillingInvoicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def pdf(self, id: str, organisation_id: int | None = None) -> bytes:
@@ -3596,7 +4373,10 @@ class OrganisationsBillingInvoicesSyncGroup(_ControlGroupBase[_SyncControlExecut
             item_schema=None,
         )
 
-class OrganisationsBillingMeteringRunsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
+
+class OrganisationsBillingMeteringRunsSyncGroup(
+    _ControlGroupBase[_SyncControlExecutor]
+):
     def create(self, organisation_id: int | None = None) -> Any:
         path = "/organisations/billing/metering_runs/"
         params = None
@@ -3614,7 +4394,19 @@ class OrganisationsBillingMeteringRunsSyncGroup(_ControlGroupBase[_SyncControlEx
             item_schema=None,
         )
 
-    def list(self, date: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, started_at__gte: str | None = None, started_at__lte: str | None = None, status: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.UsageMeteringRun]:
+    def list(
+        self,
+        date: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        started_at__gte: str | None = None,
+        started_at__lte: str | None = None,
+        status: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.UsageMeteringRun]:
         path = "/organisations/billing/metering_runs/"
         params = {
             "date": date,
@@ -3637,11 +4429,13 @@ class OrganisationsBillingMeteringRunsSyncGroup(_ControlGroupBase[_SyncControlEx
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedUsageMeteringRunSerializerListList',
+            response_schema="PaginatedUsageMeteringRunSerializerListList",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.UsageMeteringRun:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.UsageMeteringRun:
         path = f"/organisations/billing/metering_runs/{id}/"
         params = None
         return self._root._execute(
@@ -3654,12 +4448,15 @@ class OrganisationsBillingMeteringRunsSyncGroup(_ControlGroupBase[_SyncControlEx
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='UsageMeteringRunSerializerDetail',
+            response_schema="UsageMeteringRunSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.BillingProduct:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.BillingProduct:
         path = "/organisations/billing/products/"
         params = None
         return self._root._execute(
@@ -3667,12 +4464,12 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecut
             path,
             params=params,
             body=body,
-            body_schema='BillingProductSerializerDetailRequest',
+            body_schema="BillingProductSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='BillingProductSerializerDetail',
+            response_schema="BillingProductSerializerDetail",
             item_schema=None,
         )
 
@@ -3693,7 +4490,21 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecut
             item_schema=None,
         )
 
-    def list(self, active: bool | None = None, default_product_role: str | None = None, ordering: str | None = None, owner_organisation: str | None = None, owner_organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, product_type: str | None = None, search: str | None = None, stripe_account: str | None = None, stripe_account__isnull: bool | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.BillingProduct]:
+    def list(
+        self,
+        active: bool | None = None,
+        default_product_role: str | None = None,
+        ordering: str | None = None,
+        owner_organisation: str | None = None,
+        owner_organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        product_type: str | None = None,
+        search: str | None = None,
+        stripe_account: str | None = None,
+        stripe_account__isnull: bool | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.BillingProduct]:
         path = "/organisations/billing/products/"
         params = {
             "active": active,
@@ -3718,11 +4529,13 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecut
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedBillingProductSerializerListList',
+            response_schema="PaginatedBillingProductSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.BillingProduct:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.BillingProduct:
         path = f"/organisations/billing/products/{id}/"
         params = None
         return self._root._execute(
@@ -3730,16 +4543,18 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecut
             path,
             params=params,
             body=body,
-            body_schema='PatchedBillingProductSerializerDetailRequest',
+            body_schema="PatchedBillingProductSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='BillingProductSerializerDetail',
+            response_schema="BillingProductSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.BillingProduct:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.BillingProduct:
         path = f"/organisations/billing/products/{id}/"
         params = None
         return self._root._execute(
@@ -3752,11 +4567,13 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecut
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='BillingProductSerializerDetail',
+            response_schema="BillingProductSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.BillingProduct:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.BillingProduct:
         path = f"/organisations/billing/products/{id}/"
         params = None
         return self._root._execute(
@@ -3764,17 +4581,22 @@ class OrganisationsBillingProductsSyncGroup(_ControlGroupBase[_SyncControlExecut
             path,
             params=params,
             body=body,
-            body_schema='BillingProductSerializerDetailRequest',
+            body_schema="BillingProductSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='BillingProductSerializerDetail',
+            response_schema="BillingProductSerializerDetail",
             item_schema=None,
         )
 
-class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.SellerCustomer:
+
+class OrganisationsBillingSellerCustomersSyncGroup(
+    _ControlGroupBase[_SyncControlExecutor]
+):
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.SellerCustomer:
         path = "/organisations/billing/seller_customers/"
         params = None
         return self._root._execute(
@@ -3782,12 +4604,12 @@ class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase[_SyncContro
             path,
             params=params,
             body=body,
-            body_schema='SellerCustomerSerializerDetailRequest',
+            body_schema="SellerCustomerSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SellerCustomerSerializerDetail',
+            response_schema="SellerCustomerSerializerDetail",
             item_schema=None,
         )
 
@@ -3808,7 +4630,18 @@ class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase[_SyncContro
             item_schema=None,
         )
 
-    def list(self, group: str | None = None, group__organisation: str | None = None, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, stripe_customer_id: str | None = None, stripe_customer_id__isnull: bool | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.SellerCustomer]:
+    def list(
+        self,
+        group: str | None = None,
+        group__organisation: str | None = None,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        stripe_customer_id: str | None = None,
+        stripe_customer_id__isnull: bool | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.SellerCustomer]:
         path = "/organisations/billing/seller_customers/"
         params = {
             "group": group,
@@ -3830,11 +4663,13 @@ class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase[_SyncContro
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedSellerCustomerSerializerListList',
+            response_schema="PaginatedSellerCustomerSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.SellerCustomer:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.SellerCustomer:
         path = f"/organisations/billing/seller_customers/{id}/"
         params = None
         return self._root._execute(
@@ -3842,16 +4677,18 @@ class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase[_SyncContro
             path,
             params=params,
             body=body,
-            body_schema='PatchedSellerCustomerSerializerDetailRequest',
+            body_schema="PatchedSellerCustomerSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SellerCustomerSerializerDetail',
+            response_schema="SellerCustomerSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.SellerCustomer:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.SellerCustomer:
         path = f"/organisations/billing/seller_customers/{id}/"
         params = None
         return self._root._execute(
@@ -3864,11 +4701,13 @@ class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase[_SyncContro
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SellerCustomerSerializerDetail',
+            response_schema="SellerCustomerSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.SellerCustomer:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.SellerCustomer:
         path = f"/organisations/billing/seller_customers/{id}/"
         params = None
         return self._root._execute(
@@ -3876,14 +4715,15 @@ class OrganisationsBillingSellerCustomersSyncGroup(_ControlGroupBase[_SyncContro
             path,
             params=params,
             body=body,
-            body_schema='SellerCustomerSerializerDetailRequest',
+            body_schema="SellerCustomerSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SellerCustomerSerializerDetail',
+            response_schema="SellerCustomerSerializerDetail",
             item_schema=None,
         )
+
 
 class OrganisationsBillingStripeSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def accounts(self, organisation_id: int | None = None) -> None:
@@ -3937,8 +4777,18 @@ class OrganisationsBillingStripeSyncGroup(_ControlGroupBase[_SyncControlExecutor
             item_schema=None,
         )
 
-class OrganisationsBillingSubscriptionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.BillingSubscription]:
+
+class OrganisationsBillingSubscriptionsSyncGroup(
+    _ControlGroupBase[_SyncControlExecutor]
+):
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.BillingSubscription]:
         path = "/organisations/billing/subscriptions/"
         params = {
             "ordering": ordering,
@@ -3956,11 +4806,13 @@ class OrganisationsBillingSubscriptionsSyncGroup(_ControlGroupBase[_SyncControlE
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedBillingSubscriptionSerializerListList',
+            response_schema="PaginatedBillingSubscriptionSerializerListList",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.BillingSubscription:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.BillingSubscription:
         path = f"/organisations/billing/subscriptions/{id}/"
         params = None
         return self._root._execute(
@@ -3973,12 +4825,31 @@ class OrganisationsBillingSubscriptionsSyncGroup(_ControlGroupBase[_SyncControlE
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='BillingSubscriptionSerializerDetail',
+            response_schema="BillingSubscriptionSerializerDetail",
             item_schema=None,
         )
 
-class OrganisationsBillingUsageRecordsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def list(self, agent_billing_item: str | None = None, billing_product: str | None = None, device_online: bool | None = None, metering_run: str | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, record_type: str | None = None, revenue_target: str | None = None, search: str | None = None, seller_customer: str | None = None, seller_customer__isnull: bool | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.UsageRecord]:
+
+class OrganisationsBillingUsageRecordsSyncGroup(
+    _ControlGroupBase[_SyncControlExecutor]
+):
+    def list(
+        self,
+        agent_billing_item: str | None = None,
+        billing_product: str | None = None,
+        device_online: bool | None = None,
+        metering_run: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        record_type: str | None = None,
+        revenue_target: str | None = None,
+        search: str | None = None,
+        seller_customer: str | None = None,
+        seller_customer__isnull: bool | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.UsageRecord]:
         path = "/organisations/billing/usage_records/"
         params = {
             "agent_billing_item": agent_billing_item,
@@ -4005,11 +4876,13 @@ class OrganisationsBillingUsageRecordsSyncGroup(_ControlGroupBase[_SyncControlEx
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedUsageRecordSerializerListList',
+            response_schema="PaginatedUsageRecordSerializerListList",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.UsageRecord:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.UsageRecord:
         path = f"/organisations/billing/usage_records/{id}/"
         params = None
         return self._root._execute(
@@ -4022,12 +4895,15 @@ class OrganisationsBillingUsageRecordsSyncGroup(_ControlGroupBase[_SyncControlEx
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='UsageRecordSerializerDetail',
+            response_schema="UsageRecordSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsDomainsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Organisation:
+    def create(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Organisation:
         path = f"/organisations/{id}/domains/"
         params = None
         return self._root._execute(
@@ -4035,12 +4911,12 @@ class OrganisationsDomainsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSerializerDetailRequest',
+            body_schema="OrganisationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSerializerDetail',
+            response_schema="OrganisationSerializerDetail",
             item_schema=None,
         )
 
@@ -4061,7 +4937,14 @@ class OrganisationsDomainsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.OrganisationDomain]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.OrganisationDomain]:
         path = "/organisations/domains/"
         params = {
             "ordering": ordering,
@@ -4079,11 +4962,13 @@ class OrganisationsDomainsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedOrganisationDomainSerializerListList',
+            response_schema="PaginatedOrganisationDomainSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: int, body: Any | None = None, organisation_id: int | None = None) -> control_models.OrganisationDomain:
+    def partial(
+        self, id: int, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.OrganisationDomain:
         path = f"/organisations/domains/{id}/"
         params = None
         return self._root._execute(
@@ -4091,16 +4976,18 @@ class OrganisationsDomainsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedOrganisationDomainSerializerDetailRequest',
+            body_schema="PatchedOrganisationDomainSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationDomainSerializerDetail',
+            response_schema="OrganisationDomainSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: int, organisation_id: int | None = None) -> control_models.OrganisationDomain:
+    def retrieve(
+        self, id: int, organisation_id: int | None = None
+    ) -> control_models.OrganisationDomain:
         path = f"/organisations/domains/{id}/"
         params = None
         return self._root._execute(
@@ -4113,12 +5000,15 @@ class OrganisationsDomainsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationDomainSerializerDetail',
+            response_schema="OrganisationDomainSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def approve(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.PendingUser:
+    def approve(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.PendingUser:
         path = f"/organisations/pending_users/{id}/approve/"
         params = None
         return self._root._execute(
@@ -4126,16 +5016,18 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             path,
             params=params,
             body=body,
-            body_schema='PendingUserSerializerDetailRequest',
+            body_schema="PendingUserSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='PendingUserSerializerDetail',
+            response_schema="PendingUserSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.PendingUser:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.PendingUser:
         path = "/organisations/pending_users/"
         params = None
         return self._root._execute(
@@ -4143,12 +5035,12 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             path,
             params=params,
             body=body,
-            body_schema='PendingUserSerializerDetailRequest',
+            body_schema="PendingUserSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='PendingUserSerializerDetail',
+            response_schema="PendingUserSerializerDetail",
             item_schema=None,
         )
 
@@ -4169,7 +5061,14 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.PendingUser]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.PendingUser]:
         path = "/organisations/pending_users/"
         params = {
             "ordering": ordering,
@@ -4187,11 +5086,13 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedPendingUserSerializerListList',
+            response_schema="PaginatedPendingUserSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.PendingUser:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.PendingUser:
         path = f"/organisations/pending_users/{id}/"
         params = None
         return self._root._execute(
@@ -4199,16 +5100,18 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             path,
             params=params,
             body=body,
-            body_schema='PatchedPendingUserSerializerDetailRequest',
+            body_schema="PatchedPendingUserSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='PendingUserSerializerDetail',
+            response_schema="PendingUserSerializerDetail",
             item_schema=None,
         )
 
-    def reject(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.PendingUser:
+    def reject(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.PendingUser:
         path = f"/organisations/pending_users/{id}/reject/"
         params = None
         return self._root._execute(
@@ -4216,16 +5119,18 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             path,
             params=params,
             body=body,
-            body_schema='PendingUserSerializerDetailRequest',
+            body_schema="PendingUserSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='PendingUserSerializerDetail',
+            response_schema="PendingUserSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.PendingUser:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.PendingUser:
         path = f"/organisations/pending_users/{id}/"
         params = None
         return self._root._execute(
@@ -4238,11 +5143,13 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='PendingUserSerializerDetail',
+            response_schema="PendingUserSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.PendingUser:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.PendingUser:
         path = f"/organisations/pending_users/{id}/"
         params = None
         return self._root._execute(
@@ -4250,17 +5157,20 @@ class OrganisationsPendingUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]
             path,
             params=params,
             body=body,
-            body_schema='PendingUserSerializerDetailRequest',
+            body_schema="PendingUserSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='PendingUserSerializerDetail',
+            response_schema="PendingUserSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.OrganisationRole:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.OrganisationRole:
         path = f"/organisations/roles/{id}/archive/"
         params = None
         return self._root._execute(
@@ -4273,11 +5183,13 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationRoleSerializerDetail',
+            response_schema="OrganisationRoleSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.OrganisationRole:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.OrganisationRole:
         path = "/organisations/roles/"
         params = None
         return self._root._execute(
@@ -4285,12 +5197,12 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationRoleSerializerDetailRequest',
+            body_schema="OrganisationRoleSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationRoleSerializerDetail',
+            response_schema="OrganisationRoleSerializerDetail",
             item_schema=None,
         )
 
@@ -4311,7 +5223,21 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, archived: bool | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.OrganisationRole]:
+    def list(
+        self,
+        archived: bool | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.OrganisationRole]:
         path = "/organisations/roles/"
         params = {
             "archived": archived,
@@ -4336,11 +5262,13 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedOrganisationRoleSerializerListList',
+            response_schema="PaginatedOrganisationRoleSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.OrganisationRole:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.OrganisationRole:
         path = f"/organisations/roles/{id}/"
         params = None
         return self._root._execute(
@@ -4348,16 +5276,18 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedOrganisationRoleSerializerDetailRequest',
+            body_schema="PatchedOrganisationRoleSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationRoleSerializerDetail',
+            response_schema="OrganisationRoleSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.OrganisationRole:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.OrganisationRole:
         path = f"/organisations/roles/{id}/"
         params = None
         return self._root._execute(
@@ -4370,11 +5300,13 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationRoleSerializerDetail',
+            response_schema="OrganisationRoleSerializerDetail",
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.OrganisationRole:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.OrganisationRole:
         path = f"/organisations/roles/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -4387,11 +5319,13 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationRoleSerializerDetail',
+            response_schema="OrganisationRoleSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.OrganisationRole:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.OrganisationRole:
         path = f"/organisations/roles/{id}/"
         params = None
         return self._root._execute(
@@ -4399,17 +5333,20 @@ class OrganisationsRolesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationRoleSerializerDetailRequest',
+            body_schema="OrganisationRoleSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationRoleSerializerDetail',
+            response_schema="OrganisationRoleSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.OrganisationSharedReceiveProfile:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharedReceiveProfile:
         path = "/organisations/shared_profiles/"
         params = None
         return self._root._execute(
@@ -4417,12 +5354,12 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSharedReceiveProfileSerializerDetailRequest',
+            body_schema="OrganisationSharedReceiveProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            response_schema="OrganisationSharedReceiveProfileSerializerDetail",
             item_schema=None,
         )
 
@@ -4443,7 +5380,14 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.OrganisationSharedReceiveProfile]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.OrganisationSharedReceiveProfile]:
         path = "/organisations/shared_profiles/"
         params = {
             "ordering": ordering,
@@ -4461,11 +5405,13 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedOrganisationSharedReceiveProfileSerializerListList',
+            response_schema="PaginatedOrganisationSharedReceiveProfileSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.OrganisationSharedReceiveProfile:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharedReceiveProfile:
         path = f"/organisations/shared_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -4473,16 +5419,18 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             path,
             params=params,
             body=body,
-            body_schema='PatchedOrganisationSharedReceiveProfileSerializerDetailRequest',
+            body_schema="PatchedOrganisationSharedReceiveProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            response_schema="OrganisationSharedReceiveProfileSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.OrganisationSharedReceiveProfile:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharedReceiveProfile:
         path = f"/organisations/shared_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -4495,11 +5443,13 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            response_schema="OrganisationSharedReceiveProfileSerializerDetail",
             item_schema=None,
         )
 
-    def sharing_profile(self, id: str, organisation_id: int | None = None) -> control_models.OrganisationSharedReceiveProfile:
+    def sharing_profile(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharedReceiveProfile:
         path = f"/organisations/shared_profiles/{id}/sharing_profile/"
         params = None
         return self._root._execute(
@@ -4512,11 +5462,13 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            response_schema="OrganisationSharedReceiveProfileSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.OrganisationSharedReceiveProfile:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharedReceiveProfile:
         path = f"/organisations/shared_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -4524,17 +5476,20 @@ class OrganisationsSharedProfilesSyncGroup(_ControlGroupBase[_SyncControlExecuto
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSharedReceiveProfileSerializerDetailRequest',
+            body_schema="OrganisationSharedReceiveProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharedReceiveProfileSerializerDetail',
+            response_schema="OrganisationSharedReceiveProfileSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.OrganisationSharingProfile:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharingProfile:
         path = "/organisations/sharing_profiles/"
         params = None
         return self._root._execute(
@@ -4542,12 +5497,12 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecut
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSharingProfileSerializerDetailRequest',
+            body_schema="OrganisationSharingProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharingProfileSerializerDetail',
+            response_schema="OrganisationSharingProfileSerializerDetail",
             item_schema=None,
         )
 
@@ -4568,7 +5523,14 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecut
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.OrganisationSharingProfile]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.OrganisationSharingProfile]:
         path = "/organisations/sharing_profiles/"
         params = {
             "ordering": ordering,
@@ -4586,11 +5548,13 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecut
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedOrganisationSharingProfileSerializerListList',
+            response_schema="PaginatedOrganisationSharingProfileSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.OrganisationSharingProfile:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharingProfile:
         path = f"/organisations/sharing_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -4598,16 +5562,18 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecut
             path,
             params=params,
             body=body,
-            body_schema='PatchedOrganisationSharingProfileSerializerDetailRequest',
+            body_schema="PatchedOrganisationSharingProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharingProfileSerializerDetail',
+            response_schema="OrganisationSharingProfileSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.OrganisationSharingProfile:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharingProfile:
         path = f"/organisations/sharing_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -4620,11 +5586,13 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecut
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharingProfileSerializerDetail',
+            response_schema="OrganisationSharingProfileSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.OrganisationSharingProfile:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.OrganisationSharingProfile:
         path = f"/organisations/sharing_profiles/{id}/"
         params = None
         return self._root._execute(
@@ -4632,17 +5600,20 @@ class OrganisationsSharingProfilesSyncGroup(_ControlGroupBase[_SyncControlExecut
             path,
             params=params,
             body=body,
-            body_schema='OrganisationSharingProfileSerializerDetailRequest',
+            body_schema="OrganisationSharingProfileSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationSharingProfileSerializerDetail',
+            response_schema="OrganisationSharingProfileSerializerDetail",
             item_schema=None,
         )
 
+
 class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.OrganisationUser:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.OrganisationUser:
         path = "/organisations/users/"
         params = None
         return self._root._execute(
@@ -4650,12 +5621,12 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationUserSerializerDetailRequest',
+            body_schema="OrganisationUserSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationUserSerializerDetail',
+            response_schema="OrganisationUserSerializerDetail",
             item_schema=None,
         )
 
@@ -4676,7 +5647,15 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def groups_list(self, parent_lookup_user: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.GroupPermission]:
+    def groups_list(
+        self,
+        parent_lookup_user: str,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.GroupPermission]:
         path = f"/organisations/users/{parent_lookup_user}/groups/"
         params = {
             "ordering": ordering,
@@ -4694,11 +5673,18 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedGroupPermissionSerializerListList',
+            response_schema="PaginatedGroupPermissionSerializerListList",
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.OrganisationUser]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.OrganisationUser]:
         path = "/organisations/users/"
         params = {
             "ordering": ordering,
@@ -4716,11 +5702,13 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedOrganisationUserSerializerListList',
+            response_schema="PaginatedOrganisationUserSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, user: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.OrganisationUser:
+    def partial(
+        self, user: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.OrganisationUser:
         path = f"/organisations/users/{user}/"
         params = None
         return self._root._execute(
@@ -4728,16 +5716,18 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedOrganisationUserSerializerDetailRequest',
+            body_schema="PatchedOrganisationUserSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationUserSerializerDetail',
+            response_schema="OrganisationUserSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, user: str, organisation_id: int | None = None) -> control_models.OrganisationUser:
+    def retrieve(
+        self, user: str, organisation_id: int | None = None
+    ) -> control_models.OrganisationUser:
         path = f"/organisations/users/{user}/"
         params = None
         return self._root._execute(
@@ -4750,11 +5740,13 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationUserSerializerDetail',
+            response_schema="OrganisationUserSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, user: str, body: Any, organisation_id: int | None = None) -> control_models.OrganisationUser:
+    def update(
+        self, user: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.OrganisationUser:
         path = f"/organisations/users/{user}/"
         params = None
         return self._root._execute(
@@ -4762,14 +5754,15 @@ class OrganisationsUsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='OrganisationUserSerializerDetailRequest',
+            body_schema="OrganisationUserSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='OrganisationUserSerializerDetail',
+            response_schema="OrganisationUserSerializerDetail",
             item_schema=None,
         )
+
 
 class PermissionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
     def sync(self, organisation_id: int | None = None) -> None:
@@ -4789,8 +5782,11 @@ class PermissionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
+
 class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.CreateReportResponseOverride:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.CreateReportResponseOverride:
         path = "/reports/"
         params = None
         return self._root._execute(
@@ -4798,12 +5794,12 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ReportCreateSerialiserDetailRequest',
+            body_schema="ReportCreateSerialiserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='CreateReportResponseSerializerOverrideDetail',
+            response_schema="CreateReportResponseSerializerOverrideDetail",
             item_schema=None,
         )
 
@@ -4858,7 +5854,9 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.Report:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Report:
         path = f"/reports/{id}/"
         params = None
         return self._root._execute(
@@ -4871,11 +5869,13 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ReportSerialiserDetail',
+            response_schema="ReportSerialiserDetail",
             item_schema=None,
         )
 
-    def schedules_create(self, body: Any, organisation_id: int | None = None) -> control_models.ReportSchedule:
+    def schedules_create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.ReportSchedule:
         path = "/reports/schedules/"
         params = None
         return self._root._execute(
@@ -4883,16 +5883,18 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ReportScheduleSerialiserDetailRequest',
+            body_schema="ReportScheduleSerialiserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ReportScheduleSerialiserDetail',
+            response_schema="ReportScheduleSerialiserDetail",
             item_schema=None,
         )
 
-    def schedules_retrieve(self, id: str, organisation_id: int | None = None) -> control_models.ReportSchedule:
+    def schedules_retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ReportSchedule:
         path = f"/reports/schedules/{id}/"
         params = None
         return self._root._execute(
@@ -4905,11 +5907,13 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ReportScheduleSerialiserDetail',
+            response_schema="ReportScheduleSerialiserDetail",
             item_schema=None,
         )
 
-    def schedules_update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.ReportSchedule:
+    def schedules_update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.ReportSchedule:
         path = f"/reports/schedules/{id}/"
         params = None
         return self._root._execute(
@@ -4917,16 +5921,18 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ReportScheduleSerialiserDetailRequest',
+            body_schema="ReportScheduleSerialiserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ReportScheduleSerialiserDetail',
+            response_schema="ReportScheduleSerialiserDetail",
             item_schema=None,
         )
 
-    def schedules_archive(self, id: str, organisation_id: int | None = None) -> control_models.ReportSchedule:
+    def schedules_archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ReportSchedule:
         path = f"/reports/schedules/{id}/archive/"
         params = None
         return self._root._execute(
@@ -4939,11 +5945,30 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ReportScheduleSerialiserDetail',
+            response_schema="ReportScheduleSerialiserDetail",
             item_schema=None,
         )
 
-    def schedules_list(self, application: str | None = None, archived: bool | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, name: str | None = None, name__contains: str | None = None, name__icontains: str | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, status: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ReportSchedule]:
+    def schedules_list(
+        self,
+        application: str | None = None,
+        archived: bool | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        name: str | None = None,
+        name__contains: str | None = None,
+        name__icontains: str | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        status: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ReportSchedule]:
         path = "/reports/schedules/"
         params = {
             "application": application,
@@ -4973,11 +5998,13 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedReportScheduleSerialiserListList',
+            response_schema="PaginatedReportScheduleSerialiserListList",
             item_schema=None,
         )
 
-    def schedules_partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.ReportSchedule:
+    def schedules_partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.ReportSchedule:
         path = f"/reports/schedules/{id}/"
         params = None
         return self._root._execute(
@@ -4985,16 +6012,18 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedReportScheduleSerialiserDetailRequest',
+            body_schema="PatchedReportScheduleSerialiserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ReportScheduleSerialiserDetail',
+            response_schema="ReportScheduleSerialiserDetail",
             item_schema=None,
         )
 
-    def schedules_unarchive(self, id: str, organisation_id: int | None = None) -> control_models.ReportSchedule:
+    def schedules_unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.ReportSchedule:
         path = f"/reports/schedules/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -5007,12 +6036,15 @@ class ReportsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ReportScheduleSerialiserDetail',
+            response_schema="ReportScheduleSerialiserDetail",
             item_schema=None,
         )
+
 
 class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.SharedDevice:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.SharedDevice:
         path = "/shared_devices/"
         params = None
         return self._root._execute(
@@ -5020,12 +6052,12 @@ class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SharedDeviceSerializerDetailRequest',
+            body_schema="SharedDeviceSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SharedDeviceSerializerDetail',
+            response_schema="SharedDeviceSerializerDetail",
             item_schema=None,
         )
 
@@ -5046,7 +6078,14 @@ class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.SharedDevice]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.SharedDevice]:
         path = "/shared_devices/"
         params = {
             "ordering": ordering,
@@ -5064,11 +6103,13 @@ class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedSharedDeviceSerializerListList',
+            response_schema="PaginatedSharedDeviceSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.SharedDevice:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.SharedDevice:
         path = f"/shared_devices/{id}/"
         params = None
         return self._root._execute(
@@ -5076,16 +6117,18 @@ class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedSharedDeviceSerializerDetailRequest',
+            body_schema="PatchedSharedDeviceSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SharedDeviceSerializerDetail',
+            response_schema="SharedDeviceSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.SharedDevice:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.SharedDevice:
         path = f"/shared_devices/{id}/"
         params = None
         return self._root._execute(
@@ -5098,11 +6141,13 @@ class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SharedDeviceSerializerDetail',
+            response_schema="SharedDeviceSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.SharedDevice:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.SharedDevice:
         path = f"/shared_devices/{id}/"
         params = None
         return self._root._execute(
@@ -5110,17 +6155,20 @@ class SharedDevicesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SharedDeviceSerializerDetailRequest',
+            body_schema="SharedDeviceSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SharedDeviceSerializerDetail',
+            response_schema="SharedDeviceSerializerDetail",
             item_schema=None,
         )
+
 
 class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.SharedGroup:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.SharedGroup:
         path = "/shared_groups/"
         params = None
         return self._root._execute(
@@ -5128,12 +6176,12 @@ class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SharedGroupSerializerDetailRequest',
+            body_schema="SharedGroupSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SharedGroupSerializerDetail',
+            response_schema="SharedGroupSerializerDetail",
             item_schema=None,
         )
 
@@ -5154,7 +6202,14 @@ class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.SharedGroup]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.SharedGroup]:
         path = "/shared_groups/"
         params = {
             "ordering": ordering,
@@ -5172,11 +6227,13 @@ class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedSharedGroupSerializerListList',
+            response_schema="PaginatedSharedGroupSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.SharedGroup:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.SharedGroup:
         path = f"/shared_groups/{id}/"
         params = None
         return self._root._execute(
@@ -5184,16 +6241,18 @@ class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedSharedGroupSerializerDetailRequest',
+            body_schema="PatchedSharedGroupSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SharedGroupSerializerDetail',
+            response_schema="SharedGroupSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.SharedGroup:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.SharedGroup:
         path = f"/shared_groups/{id}/"
         params = None
         return self._root._execute(
@@ -5206,11 +6265,13 @@ class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SharedGroupSerializerDetail',
+            response_schema="SharedGroupSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.SharedGroup:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.SharedGroup:
         path = f"/shared_groups/{id}/"
         params = None
         return self._root._execute(
@@ -5218,17 +6279,20 @@ class SharedGroupsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SharedGroupSerializerDetailRequest',
+            body_schema="SharedGroupSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SharedGroupSerializerDetail',
+            response_schema="SharedGroupSerializerDetail",
             item_schema=None,
         )
 
+
 class SiteSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def retrieve(self, hostname: str | None = None, organisation_id: int | None = None) -> control_models.CustomerSite:
+    def retrieve(
+        self, hostname: str | None = None, organisation_id: int | None = None
+    ) -> control_models.CustomerSite:
         path = "/site/"
         params = {
             "hostname": hostname,
@@ -5243,12 +6307,15 @@ class SiteSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='CustomerSiteSerializerDetail',
+            response_schema="CustomerSiteSerializerDetail",
             item_schema=None,
         )
 
+
 class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.SolutionInstallation:
         path = "/solution_installs/"
         params = None
         return self._root._execute(
@@ -5256,12 +6323,12 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_schema="SolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
@@ -5282,7 +6349,9 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def deploy(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def deploy(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.SolutionInstallation:
         path = f"/solution_installs/{id}/deploy/"
         params = None
         return self._root._execute(
@@ -5290,16 +6359,32 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_schema="SolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def list(self, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.SolutionInstallation]:
+    def list(
+        self,
+        device: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        solution: str | None = None,
+        status: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.SolutionInstallation]:
         path = "/solution_installs/"
         params = {
             "device": device,
@@ -5326,11 +6411,13 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedSolutionInstallationSerializerListList',
+            response_schema="PaginatedSolutionInstallationSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.SolutionInstallation:
         path = f"/solution_installs/{id}/"
         params = None
         return self._root._execute(
@@ -5338,16 +6425,18 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedSolutionInstallationSerializerDetailRequest',
+            body_schema="PatchedSolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.SolutionInstallation:
         path = f"/solution_installs/{id}/"
         params = None
         return self._root._execute(
@@ -5360,11 +6449,13 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def sync(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def sync(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.SolutionInstallation:
         path = f"/solution_installs/{id}/sync/"
         params = None
         return self._root._execute(
@@ -5372,16 +6463,18 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_schema="SolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.SolutionInstallation:
         path = f"/solution_installs/{id}/"
         params = None
         return self._root._execute(
@@ -5389,17 +6482,20 @@ class SolutionInstallsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_schema="SolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
+
 class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def application_templates_create(self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None) -> control_models.ApplicationTemplate:
+    def application_templates_create(
+        self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.ApplicationTemplate:
         path = f"/solutions/{parent_lookup_solution}/application_templates/"
         params = None
         return self._root._execute(
@@ -5407,16 +6503,18 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationTemplateSerializerDetailRequest',
+            body_schema="ApplicationTemplateSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationTemplateSerializerDetail',
+            response_schema="ApplicationTemplateSerializerDetail",
             item_schema=None,
         )
 
-    def application_templates_retrieve(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None) -> control_models.ApplicationTemplate:
+    def application_templates_retrieve(
+        self, id: str, parent_lookup_solution: str, organisation_id: int | None = None
+    ) -> control_models.ApplicationTemplate:
         path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
         params = None
         return self._root._execute(
@@ -5429,11 +6527,17 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationTemplateSerializerDetail',
+            response_schema="ApplicationTemplateSerializerDetail",
             item_schema=None,
         )
 
-    def application_templates_update(self, id: str, parent_lookup_solution: str, body: Any, organisation_id: int | None = None) -> control_models.ApplicationTemplate:
+    def application_templates_update(
+        self,
+        id: str,
+        parent_lookup_solution: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationTemplate:
         path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
         params = None
         return self._root._execute(
@@ -5441,16 +6545,24 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ApplicationTemplateSerializerDetailRequest',
+            body_schema="ApplicationTemplateSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationTemplateSerializerDetail',
+            response_schema="ApplicationTemplateSerializerDetail",
             item_schema=None,
         )
 
-    def application_templates_list(self, parent_lookup_solution: str, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.ApplicationTemplate]:
+    def application_templates_list(
+        self,
+        parent_lookup_solution: str,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.ApplicationTemplate]:
         path = f"/solutions/{parent_lookup_solution}/application_templates/"
         params = {
             "ordering": ordering,
@@ -5468,11 +6580,17 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedApplicationTemplateSerializerListList',
+            response_schema="PaginatedApplicationTemplateSerializerListList",
             item_schema=None,
         )
 
-    def application_templates_partial(self, id: str, parent_lookup_solution: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.ApplicationTemplate:
+    def application_templates_partial(
+        self,
+        id: str,
+        parent_lookup_solution: str,
+        body: Any | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ApplicationTemplate:
         path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
         params = None
         return self._root._execute(
@@ -5480,16 +6598,18 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedApplicationTemplateSerializerDetailRequest',
+            body_schema="PatchedApplicationTemplateSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ApplicationTemplateSerializerDetail',
+            response_schema="ApplicationTemplateSerializerDetail",
             item_schema=None,
         )
 
-    def archive(self, id: str, organisation_id: int | None = None) -> control_models.Solution:
+    def archive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Solution:
         path = f"/solutions/{id}/archive/"
         params = None
         return self._root._execute(
@@ -5502,11 +6622,13 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionSerializerDetail',
+            response_schema="SolutionSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.Solution:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.Solution:
         path = "/solutions/"
         params = None
         return self._root._execute(
@@ -5514,16 +6636,18 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionSerializerDetailRequest',
+            body_schema="SolutionSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionSerializerDetail',
+            response_schema="SolutionSerializerDetail",
             item_schema=None,
         )
 
-    def application_templates_delete(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None) -> None:
+    def application_templates_delete(
+        self, id: str, parent_lookup_solution: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/solutions/{parent_lookup_solution}/application_templates/{id}/"
         params = None
         return self._root._execute(
@@ -5540,7 +6664,9 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def organisation_access_delete(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None) -> None:
+    def organisation_access_delete(
+        self, id: str, parent_lookup_solution: str, organisation_id: int | None = None
+    ) -> None:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -5557,7 +6683,13 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def installs_deploy(self, id: str, parent_lookup_solution: str, body: Any, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def installs_deploy(
+        self,
+        id: str,
+        parent_lookup_solution: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.SolutionInstallation:
         path = f"/solutions/{parent_lookup_solution}/installs/{id}/deploy/"
         params = None
         return self._root._execute(
@@ -5565,16 +6697,33 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_schema="SolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def installs_list(self, parent_lookup_solution: str, device: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, status: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.SolutionInstallation]:
+    def installs_list(
+        self,
+        parent_lookup_solution: str,
+        device: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        solution: str | None = None,
+        status: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.SolutionInstallation]:
         path = f"/solutions/{parent_lookup_solution}/installs/"
         params = {
             "device": device,
@@ -5601,11 +6750,17 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedSolutionInstallationSerializerListList',
+            response_schema="PaginatedSolutionInstallationSerializerListList",
             item_schema=None,
         )
 
-    def installs_sync(self, id: str, parent_lookup_solution: str, body: Any, organisation_id: int | None = None) -> control_models.SolutionInstallation:
+    def installs_sync(
+        self,
+        id: str,
+        parent_lookup_solution: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> control_models.SolutionInstallation:
         path = f"/solutions/{parent_lookup_solution}/installs/{id}/sync/"
         params = None
         return self._root._execute(
@@ -5613,16 +6768,33 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionInstallationSerializerDetailRequest',
+            body_schema="SolutionInstallationSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionInstallationSerializerDetail',
+            response_schema="SolutionInstallationSerializerDetail",
             item_schema=None,
         )
 
-    def list(self, archived: bool | None = None, description: str | None = None, description__contains: str | None = None, description__icontains: str | None = None, display_name: str | None = None, display_name__contains: str | None = None, display_name__icontains: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, organisation__isnull: bool | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Solution]:
+    def list(
+        self,
+        archived: bool | None = None,
+        description: str | None = None,
+        description__contains: str | None = None,
+        description__icontains: str | None = None,
+        display_name: str | None = None,
+        display_name__contains: str | None = None,
+        display_name__icontains: str | None = None,
+        id: int | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        organisation__isnull: bool | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Solution]:
         path = "/solutions/"
         params = {
             "archived": archived,
@@ -5650,11 +6822,13 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedSolutionSerializerListList',
+            response_schema="PaginatedSolutionSerializerListList",
             item_schema=None,
         )
 
-    def organisation_access_create(self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None) -> Any:
+    def organisation_access_create(
+        self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None
+    ) -> Any:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/"
         params = None
         return self._root._execute(
@@ -5662,16 +6836,18 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionOrganisationAccessSerializerDetailRequest',
+            body_schema="SolutionOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionOrganisationAccessSerializerDetail',
+            response_schema="SolutionOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def organisation_access_retrieve(self, id: str, parent_lookup_solution: str, organisation_id: int | None = None) -> Any:
+    def organisation_access_retrieve(
+        self, id: str, parent_lookup_solution: str, organisation_id: int | None = None
+    ) -> Any:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -5684,11 +6860,17 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionOrganisationAccessSerializerDetail',
+            response_schema="SolutionOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def organisation_access_update(self, id: str, parent_lookup_solution: str, body: Any, organisation_id: int | None = None) -> Any:
+    def organisation_access_update(
+        self,
+        id: str,
+        parent_lookup_solution: str,
+        body: Any,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -5696,16 +6878,28 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionOrganisationAccessSerializerDetailRequest',
+            body_schema="SolutionOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionOrganisationAccessSerializerDetail',
+            response_schema="SolutionOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def organisation_access_list(self, parent_lookup_solution: str, access: str | None = None, id: int | None = None, ordering: str | None = None, organisation: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, solution: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[Any]:
+    def organisation_access_list(
+        self,
+        parent_lookup_solution: str,
+        access: str | None = None,
+        id: int | None = None,
+        ordering: str | None = None,
+        organisation: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        solution: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[Any]:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/"
         params = {
             "access": access,
@@ -5727,11 +6921,17 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedSolutionOrganisationAccessSerializerListList',
+            response_schema="PaginatedSolutionOrganisationAccessSerializerListList",
             item_schema=None,
         )
 
-    def organisation_access_partial(self, id: str, parent_lookup_solution: str, body: Any | None = None, organisation_id: int | None = None) -> Any:
+    def organisation_access_partial(
+        self,
+        id: str,
+        parent_lookup_solution: str,
+        body: Any | None = None,
+        organisation_id: int | None = None,
+    ) -> Any:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
         params = None
         return self._root._execute(
@@ -5739,16 +6939,18 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedSolutionOrganisationAccessSerializerDetailRequest',
+            body_schema="PatchedSolutionOrganisationAccessSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionOrganisationAccessSerializerDetail',
+            response_schema="SolutionOrganisationAccessSerializerDetail",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Solution:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.Solution:
         path = f"/solutions/{id}/"
         params = None
         return self._root._execute(
@@ -5756,16 +6958,18 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedSolutionSerializerDetailRequest',
+            body_schema="PatchedSolutionSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionSerializerDetail',
+            response_schema="SolutionSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.Solution:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Solution:
         path = f"/solutions/{id}/"
         params = None
         return self._root._execute(
@@ -5778,11 +6982,13 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionSerializerDetail',
+            response_schema="SolutionSerializerDetail",
             item_schema=None,
         )
 
-    def unarchive(self, id: str, organisation_id: int | None = None) -> control_models.Solution:
+    def unarchive(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Solution:
         path = f"/solutions/{id}/unarchive/"
         params = None
         return self._root._execute(
@@ -5795,11 +7001,13 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionSerializerDetail',
+            response_schema="SolutionSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Solution:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Solution:
         path = f"/solutions/{id}/"
         params = None
         return self._root._execute(
@@ -5807,17 +7015,25 @@ class SolutionsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='SolutionSerializerDetailRequest',
+            body_schema="SolutionSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='SolutionSerializerDetail',
+            response_schema="SolutionSerializerDetail",
             item_schema=None,
         )
 
+
 class ThemesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Theme]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Theme]:
         path = "/themes/"
         params = {
             "ordering": ordering,
@@ -5835,11 +7051,16 @@ class ThemesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedThemeSerializerWithIdListList',
+            response_schema="PaginatedThemeSerializerWithIdListList",
             item_schema=None,
         )
 
-    def partial(self, organisation: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Theme:
+    def partial(
+        self,
+        organisation: str,
+        body: Any | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.Theme:
         path = f"/themes/{organisation}/"
         params = None
         return self._root._execute(
@@ -5847,16 +7068,23 @@ class ThemesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedThemeSerializerWithIdDetailRequest',
+            body_schema="PatchedThemeSerializerWithIdDetailRequest",
             body_mode="multipart",
-            binary_fields=['banner_image', 'login_banner', 'sidebar_banner_image', 'site_logo'],
+            binary_fields=[
+                "banner_image",
+                "login_banner",
+                "sidebar_banner_image",
+                "site_logo",
+            ],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ThemeSerializerWithIdDetail',
+            response_schema="ThemeSerializerWithIdDetail",
             item_schema=None,
         )
 
-    def retrieve(self, organisation: str, organisation_id: int | None = None) -> control_models.Theme:
+    def retrieve(
+        self, organisation: str, organisation_id: int | None = None
+    ) -> control_models.Theme:
         path = f"/themes/{organisation}/"
         params = None
         return self._root._execute(
@@ -5869,11 +7097,13 @@ class ThemesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ThemeSerializerWithIdDetail',
+            response_schema="ThemeSerializerWithIdDetail",
             item_schema=None,
         )
 
-    def update(self, organisation: str, body: Any, organisation_id: int | None = None) -> control_models.Theme:
+    def update(
+        self, organisation: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Theme:
         path = f"/themes/{organisation}/"
         params = None
         return self._root._execute(
@@ -5881,17 +7111,25 @@ class ThemesSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='ThemeSerializerWithIdDetailRequest',
+            body_schema="ThemeSerializerWithIdDetailRequest",
             body_mode="multipart",
-            binary_fields=['banner_image', 'login_banner', 'sidebar_banner_image', 'site_logo'],
+            binary_fields=[
+                "banner_image",
+                "login_banner",
+                "sidebar_banner_image",
+                "site_logo",
+            ],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='ThemeSerializerWithIdDetail',
+            response_schema="ThemeSerializerWithIdDetail",
             item_schema=None,
         )
 
+
 class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def activate(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Tunnel:
+    def activate(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Tunnel:
         path = f"/tunnels/{id}/activate/"
         params = None
         return self._root._execute(
@@ -5899,16 +7137,18 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='TunnelSerializerDetailRequest',
+            body_schema="TunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def create(self, body: Any, organisation_id: int | None = None) -> control_models.Tunnel:
+    def create(
+        self, body: Any, organisation_id: int | None = None
+    ) -> control_models.Tunnel:
         path = "/tunnels/"
         params = None
         return self._root._execute(
@@ -5916,16 +7156,18 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='TunnelSerializerDetailRequest',
+            body_schema="TunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def deactivate(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Tunnel:
+    def deactivate(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Tunnel:
         path = f"/tunnels/{id}/deactivate/"
         params = None
         return self._root._execute(
@@ -5933,12 +7175,12 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='TunnelSerializerDetailRequest',
+            body_schema="TunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
@@ -5959,7 +7201,14 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.Tunnel]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.Tunnel]:
         path = "/tunnels/"
         params = {
             "ordering": ordering,
@@ -5977,11 +7226,13 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedTunnelSerializerListList',
+            response_schema="PaginatedTunnelSerializerListList",
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.Tunnel:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.Tunnel:
         path = f"/tunnels/{id}/"
         params = None
         return self._root._execute(
@@ -5989,16 +7240,18 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedTunnelSerializerDetailRequest',
+            body_schema="PatchedTunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.Tunnel:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.Tunnel:
         path = f"/tunnels/{id}/"
         params = None
         return self._root._execute(
@@ -6011,11 +7264,13 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any, organisation_id: int | None = None) -> control_models.Tunnel:
+    def update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> control_models.Tunnel:
         path = f"/tunnels/{id}/"
         params = None
         return self._root._execute(
@@ -6023,17 +7278,25 @@ class TunnelsSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='TunnelSerializerDetailRequest',
+            body_schema="TunnelSerializerDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='TunnelSerializerDetail',
+            response_schema="TunnelSerializerDetail",
             item_schema=None,
         )
 
+
 class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
-    def list(self, ordering: str | None = None, page: int | None = None, per_page: int | None = None, search: str | None = None, organisation_id: int | None = None) -> control_models.ControlPage[control_models.User]:
+    def list(
+        self,
+        ordering: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        search: str | None = None,
+        organisation_id: int | None = None,
+    ) -> control_models.ControlPage[control_models.User]:
         path = "/users/"
         params = {
             "ordering": ordering,
@@ -6051,7 +7314,7 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="page",
-            response_schema='PaginatedUserSerialiserListList',
+            response_schema="PaginatedUserSerialiserListList",
             item_schema=None,
         )
 
@@ -6072,7 +7335,9 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             item_schema=None,
         )
 
-    def partial(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.User:
+    def partial(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.User:
         path = f"/users/{id}/"
         params = None
         return self._root._execute(
@@ -6080,16 +7345,18 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='PatchedUserSerialiserDetailRequest',
+            body_schema="PatchedUserSerialiserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='UserSerialiserDetail',
+            response_schema="UserSerialiserDetail",
             item_schema=None,
         )
 
-    def retrieve(self, id: str, organisation_id: int | None = None) -> control_models.User:
+    def retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> control_models.User:
         path = f"/users/{id}/"
         params = None
         return self._root._execute(
@@ -6102,11 +7369,13 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             binary_fields=None,
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='UserSerialiserDetail',
+            response_schema="UserSerialiserDetail",
             item_schema=None,
         )
 
-    def sync(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.User:
+    def sync(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.User:
         path = f"/users/{id}/sync/"
         params = None
         return self._root._execute(
@@ -6114,16 +7383,18 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='UserSerialiserDetailRequest',
+            body_schema="UserSerialiserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='UserSerialiserDetail',
+            response_schema="UserSerialiserDetail",
             item_schema=None,
         )
 
-    def update(self, id: str, body: Any | None = None, organisation_id: int | None = None) -> control_models.User:
+    def update(
+        self, id: str, body: Any | None = None, organisation_id: int | None = None
+    ) -> control_models.User:
         path = f"/users/{id}/"
         params = None
         return self._root._execute(
@@ -6131,14 +7402,15 @@ class UsersSyncGroup(_ControlGroupBase[_SyncControlExecutor]):
             path,
             params=params,
             body=body,
-            body_schema='UserSerialiserDetailRequest',
+            body_schema="UserSerialiserDetailRequest",
             body_mode="json",
             binary_fields=[],
             organisation_id=organisation_id,
             response_kind="model",
-            response_schema='UserSerialiserDetail',
+            response_schema="UserSerialiserDetail",
             item_schema=None,
         )
+
 
 def _attach_sync_groups(root: ControlClientGroups):
     root.agents = AgentsSyncGroup(root)
@@ -6157,18 +7429,32 @@ def _attach_sync_groups(root: ControlClientGroups):
     root.organisations.billing = OrganisationsBillingSyncGroup(root)
     root.organisations.billing.account = OrganisationsBillingAccountSyncGroup(root)
     root.organisations.billing.admin = OrganisationsBillingAdminSyncGroup(root)
-    root.organisations.billing.agent_items = OrganisationsBillingAgentItemsSyncGroup(root)
-    root.organisations.billing.app_configs = OrganisationsBillingAppConfigsSyncGroup(root)
-    root.organisations.billing.device_type_configs = OrganisationsBillingDeviceTypeConfigsSyncGroup(root)
+    root.organisations.billing.agent_items = OrganisationsBillingAgentItemsSyncGroup(
+        root
+    )
+    root.organisations.billing.app_configs = OrganisationsBillingAppConfigsSyncGroup(
+        root
+    )
+    root.organisations.billing.device_type_configs = (
+        OrganisationsBillingDeviceTypeConfigsSyncGroup(root)
+    )
     root.organisations.billing.devices = OrganisationsBillingDevicesSyncGroup(root)
     root.organisations.billing.group = OrganisationsBillingGroupSyncGroup(root)
     root.organisations.billing.invoices = OrganisationsBillingInvoicesSyncGroup(root)
-    root.organisations.billing.metering_runs = OrganisationsBillingMeteringRunsSyncGroup(root)
+    root.organisations.billing.metering_runs = (
+        OrganisationsBillingMeteringRunsSyncGroup(root)
+    )
     root.organisations.billing.products = OrganisationsBillingProductsSyncGroup(root)
-    root.organisations.billing.seller_customers = OrganisationsBillingSellerCustomersSyncGroup(root)
+    root.organisations.billing.seller_customers = (
+        OrganisationsBillingSellerCustomersSyncGroup(root)
+    )
     root.organisations.billing.stripe = OrganisationsBillingStripeSyncGroup(root)
-    root.organisations.billing.subscriptions = OrganisationsBillingSubscriptionsSyncGroup(root)
-    root.organisations.billing.usage_records = OrganisationsBillingUsageRecordsSyncGroup(root)
+    root.organisations.billing.subscriptions = (
+        OrganisationsBillingSubscriptionsSyncGroup(root)
+    )
+    root.organisations.billing.usage_records = (
+        OrganisationsBillingUsageRecordsSyncGroup(root)
+    )
     root.organisations.domains = OrganisationsDomainsSyncGroup(root)
     root.organisations.pending_users = OrganisationsPendingUsersSyncGroup(root)
     root.organisations.roles = OrganisationsRolesSyncGroup(root)
@@ -6185,6 +7471,7 @@ def _attach_sync_groups(root: ControlClientGroups):
     root.themes = ThemesSyncGroup(root)
     root.tunnels = TunnelsSyncGroup(root)
     root.users = UsersSyncGroup(root)
+
 
 OPERATION_COUNT = 324
 
