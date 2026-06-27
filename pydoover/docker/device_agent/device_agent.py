@@ -638,6 +638,7 @@ class DeviceAgentInterface(GRPCInterface):
             task.cancel()
         self._stream_tasks.clear()
         logging.info("Closing device agent interface...")
+        await super().close()
 
     @cli_command()
     async def listen_channel(self, channel_name: str) -> None:

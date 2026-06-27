@@ -252,6 +252,7 @@ class PlatformInterface(GRPCInterface):
         log.info("Closing platform interface...")
         for listener in self.pulse_counter_listeners:
             listener.cancel()
+        await super().close()
 
     def process_response(self, stub_call: str, response, **kwargs):
         response = super().process_response(stub_call, response, **kwargs)

@@ -17,9 +17,36 @@ class GRPCInterface:
 
     This class is designed to be subclassed for specific gRPC services, providing
     a common interface for making asynchronous requests.
+
+    Unary requests share one persistent channel rather than paying a TCP +
+    HTTP/2 handshake per call (~3x per-call latency on loopback, more on
+    constrained devices). If the channel has gone stale — most commonly the
+    server restarting under us — the call fails fast with ``UNAVAILABLE`` and
+    is retried once on a freshly built channel, which is exactly the old
+    channel-per-request behaviour. Every call carries a deadline, so a
+    half-dead connection costs at most one timeout before the channel is
+    rebuilt; a wedged channel can never permanently wedge the client.
     """
 
     stub = NotImplemented
+
+    # Keepalive only pings while calls are in flight
+    # (grpc.keepalive_permit_without_calls stays 0): gRPC servers GOAWAY
+    # clients that ping an idle connection more than once per 5 minutes by
+    # default, so idle-channel health is handled by the retry-on-fresh-channel
+    # path instead of pings.
+    _CHANNEL_OPTIONS = [
+        ("grpc.keepalive_time_ms", 10_000),
+        ("grpc.keepalive_timeout_ms", 5_000),
+        ("grpc.initial_reconnect_backoff_ms", 100),
+        ("grpc.max_reconnect_backoff_ms", 2_000),
+        # Without this, channels share subchannels from a process-global pool,
+        # so a "fresh" channel built after a failure inherits the old broken
+        # subchannel — still in reconnect backoff with a cached refusal — and
+        # the heal-after-restart retry fails too. A local pool makes a rebuilt
+        # channel genuinely reconnect.
+        ("grpc.use_local_subchannel_pool", 1),
+    ]
 
     def __init__(self, app_key: str, uri: str, service_name: str, timeout: int = 7):
         self.app_key = app_key
@@ -27,12 +54,54 @@ class GRPCInterface:
         self.timeout = timeout
         self.service_name = service_name
 
+        self._channel: grpc.aio.Channel | None = None
+        self._channel_stub = None
+        self._channel_lock = asyncio.Lock()
+
+    async def _get_stub(self):
+        async with self._channel_lock:
+            if self._channel is None:
+                self._channel = grpc.aio.insecure_channel(
+                    self.uri, options=self._CHANNEL_OPTIONS
+                )
+                self._channel_stub = self.stub(self._channel)
+            return self._channel_stub
+
+    async def _discard_channel(self):
+        """Drop the shared channel so the next call builds a fresh one.
+
+        The old channel is closed in the background with a grace period so
+        any concurrent in-flight calls on it can finish rather than being
+        cancelled out from under their callers.
+        """
+        async with self._channel_lock:
+            channel, self._channel, self._channel_stub = self._channel, None, None
+        if channel is not None:
+            close_task = asyncio.ensure_future(channel.close(grace=self.timeout))
+            close_task.add_done_callback(lambda t: t.exception())
+
     async def make_request(self, stub_call, request, *args, **kwargs):
         try:
-            async with grpc.aio.insecure_channel(self.uri) as channel:
-                stub = self.stub(channel)
+            try:
+                stub = await self._get_stub()
                 response = await getattr(stub, stub_call)(request, timeout=self.timeout)
-                return self.process_response(stub_call, response, *args, **kwargs)
+            except grpc.aio.AioRpcError as e:
+                # The channel itself is suspect (server restarted under us, or
+                # the connection went half-dead and the deadline fired) — not
+                # an application error. Rebuild; retry only the fail-fast case
+                # so a genuinely slow server doesn't double its worst-case
+                # latency.
+                if e.code() not in (
+                    grpc.StatusCode.UNAVAILABLE,
+                    grpc.StatusCode.DEADLINE_EXCEEDED,
+                ):
+                    raise
+                await self._discard_channel()
+                if e.code() is not grpc.StatusCode.UNAVAILABLE:
+                    raise
+                stub = await self._get_stub()
+                response = await getattr(stub, stub_call)(request, timeout=self.timeout)
+            return self.process_response(stub_call, response, *args, **kwargs)
         except (DooverAPIError, HTTPError):
             raise
         except Exception as e:
@@ -40,6 +109,9 @@ class GRPCInterface:
             raise DooverAPIError(
                 f"gRPC request failed ({self.__class__.__name__}.{stub_call}): {e}"
             ) from e
+
+    async def close(self):
+        await self._discard_channel()
 
     def process_response(self, stub_call: str, response, *args, **kwargs):
         if response is None:

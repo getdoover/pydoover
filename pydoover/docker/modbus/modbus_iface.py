@@ -153,6 +153,7 @@ class ModbusInterface(GRPCInterface):
         log.info("Closing modbus interface")
         for task in self.subscription_tasks:
             task.cancel()
+        await super().close()
 
     @staticmethod
     def _get_bus_request(
