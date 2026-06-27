@@ -98,12 +98,14 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
         *,
         digest: str | None = None,
         tag: str = "",
+        commit: str = "",
         notes: str = "",
         organisation_id: int | None = None,
     ) -> Any:
         """Create an immutable ApplicationVersion (release). For container apps
-        pass the pushed image `digest` (sha256:…); processors ignore it."""
-        body: dict[str, Any] = {"tag": tag, "notes": notes}
+        pass the pushed image `digest` (sha256:…); processors ignore it. `commit`
+        is the source git SHA (for browsing the code at that version)."""
+        body: dict[str, Any] = {"tag": tag, "commit": commit, "notes": notes}
         if digest:
             body["digest"] = digest
         return await self._execute(

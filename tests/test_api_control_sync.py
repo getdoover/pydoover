@@ -251,14 +251,19 @@ def test_create_application_version_posts_digest_and_body():
     client, session = make_client(DummyResponse(201, json_body={"id": "9"}))
 
     result = client.create_application_version(
-        123, digest="sha256:abc", tag="v1", notes="note"
+        123, digest="sha256:abc", tag="v1", commit="abc123", notes="note"
     )
 
     assert result == {"id": "9"}
     method, url, kwargs = session.calls[-1]
     assert method == "POST"
     assert url == "https://control.example/applications/123/versions/"
-    assert kwargs["json"] == {"tag": "v1", "notes": "note", "digest": "sha256:abc"}
+    assert kwargs["json"] == {
+        "tag": "v1",
+        "commit": "abc123",
+        "notes": "note",
+        "digest": "sha256:abc",
+    }
     client.close()
 
 
@@ -269,5 +274,5 @@ def test_create_application_version_omits_digest_for_processors():
 
     _, _, kwargs = session.calls[-1]
     assert "digest" not in kwargs["json"]
-    assert kwargs["json"] == {"tag": "v2", "notes": ""}
+    assert kwargs["json"] == {"tag": "v2", "commit": "", "notes": ""}
     client.close()
