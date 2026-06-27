@@ -633,11 +633,11 @@ def test_fetch_github_actions_oidc_token(monkeypatch):
 
     monkeypatch.setattr("httpx.get", fake_get)
 
-    token = fetch_github_actions_oidc_token("https://control.doover.com")
+    token = fetch_github_actions_oidc_token("https://api.doover.com")
 
     assert token == "gh-oidc-jwt"
     assert captured["url"] == "https://gh/token"
-    assert captured["params"] == {"audience": "https://control.doover.com"}
+    assert captured["params"] == {"audience": "https://api.doover.com"}
     assert captured["headers"]["Authorization"] == "Bearer rt"
 
 
