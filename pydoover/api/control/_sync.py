@@ -64,6 +64,41 @@ class ControlClient(ControlClientGroups, BaseControlClient):
     def __exit__(self, *exc: object) -> None:
         self.close()
 
+    # Hand-written until the control OpenAPI spec is regenerated (the committed
+    # spec predates this endpoint). Once regenerated this is superseded by the
+    # generated `applications.versions_*` group methods.
+    def create_application_version(
+        self,
+        application_id: int | str,
+        *,
+        digest: str | None = None,
+        tag: str = "",
+        notes: str = "",
+        organisation_id: int | None = None,
+    ) -> Any:
+        """Create an immutable ApplicationVersion (release). For container apps
+        pass the pushed image `digest` (sha256:…); processors ignore it."""
+        body: dict[str, Any] = {"tag": tag, "notes": notes}
+        if digest:
+            body["digest"] = digest
+        return self._execute(
+            "POST",
+            f"/applications/{application_id}/versions/",
+            body=body,
+            organisation_id=organisation_id,
+            response_kind="raw",
+        )
+
+    def list_application_versions(
+        self, application_id: int | str, *, organisation_id: int | None = None
+    ) -> Any:
+        return self._execute(
+            "GET",
+            f"/applications/{application_id}/versions/",
+            organisation_id=organisation_id,
+            response_kind="raw",
+        )
+
     def _execute(
         self,
         method: str,

@@ -245,3 +245,29 @@ def test_sync_client_combines_text_and_binary_multipart_fields(tmp_path: Path):
     )
 
     client.close()
+
+
+def test_create_application_version_posts_digest_and_body():
+    client, session = make_client(DummyResponse(201, json_body={"id": "9"}))
+
+    result = client.create_application_version(
+        123, digest="sha256:abc", tag="v1", notes="note"
+    )
+
+    assert result == {"id": "9"}
+    method, url, kwargs = session.calls[-1]
+    assert method == "POST"
+    assert url == "https://control.example/applications/123/versions/"
+    assert kwargs["json"] == {"tag": "v1", "notes": "note", "digest": "sha256:abc"}
+    client.close()
+
+
+def test_create_application_version_omits_digest_for_processors():
+    client, session = make_client(DummyResponse(201, json_body={"id": "9"}))
+
+    client.create_application_version(123, tag="v2")
+
+    _, _, kwargs = session.calls[-1]
+    assert "digest" not in kwargs["json"]
+    assert kwargs["json"] == {"tag": "v2", "notes": ""}
+    client.close()

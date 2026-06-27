@@ -91,6 +91,39 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
                 "Session not initialised. Call `await client.setup()` or use `async with`."
             )
 
+    # Hand-written until the control OpenAPI spec is regenerated (see sync client).
+    async def create_application_version(
+        self,
+        application_id: int | str,
+        *,
+        digest: str | None = None,
+        tag: str = "",
+        notes: str = "",
+        organisation_id: int | None = None,
+    ) -> Any:
+        """Create an immutable ApplicationVersion (release). For container apps
+        pass the pushed image `digest` (sha256:…); processors ignore it."""
+        body: dict[str, Any] = {"tag": tag, "notes": notes}
+        if digest:
+            body["digest"] = digest
+        return await self._execute(
+            "POST",
+            f"/applications/{application_id}/versions/",
+            body=body,
+            organisation_id=organisation_id,
+            response_kind="raw",
+        )
+
+    async def list_application_versions(
+        self, application_id: int | str, *, organisation_id: int | None = None
+    ) -> Any:
+        return await self._execute(
+            "GET",
+            f"/applications/{application_id}/versions/",
+            organisation_id=organisation_id,
+            response_kind="raw",
+        )
+
     async def _execute(
         self,
         method: str,
