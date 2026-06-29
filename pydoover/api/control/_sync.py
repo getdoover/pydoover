@@ -75,12 +75,20 @@ class ControlClient(ControlClientGroups, BaseControlClient):
         tag: str = "",
         commit: str = "",
         notes: str = "",
+        alpha: bool = False,
         organisation_id: int | None = None,
     ) -> Any:
         """Create an immutable ApplicationVersion (release). For container apps
         pass the pushed image `digest` (sha256:…); processors ignore it. `commit`
-        is the source git SHA (for browsing the code at that version)."""
-        body: dict[str, Any] = {"tag": tag, "commit": commit, "notes": notes}
+        is the source git SHA (for browsing the code at that version). Set
+        `alpha` to publish a prerelease that is not auto-selected as "Latest"
+        (it can only be reached by pinning the version explicitly)."""
+        body: dict[str, Any] = {
+            "tag": tag,
+            "commit": commit,
+            "notes": notes,
+            "alpha": alpha,
+        }
         if digest:
             body["digest"] = digest
         return self._execute(
