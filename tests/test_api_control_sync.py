@@ -262,6 +262,7 @@ def test_create_application_version_posts_digest_and_body():
         "tag": "v1",
         "commit": "abc123",
         "notes": "note",
+        "alpha": False,
         "digest": "sha256:abc",
     }
     client.close()
@@ -274,5 +275,15 @@ def test_create_application_version_omits_digest_for_processors():
 
     _, _, kwargs = session.calls[-1]
     assert "digest" not in kwargs["json"]
-    assert kwargs["json"] == {"tag": "v2", "commit": "", "notes": ""}
+    assert kwargs["json"] == {"tag": "v2", "commit": "", "notes": "", "alpha": False}
+    client.close()
+
+
+def test_create_application_version_sends_alpha_flag():
+    client, session = make_client(DummyResponse(201, json_body={"id": "9"}))
+
+    client.create_application_version(123, tag="v3", alpha=True)
+
+    _, _, kwargs = session.calls[-1]
+    assert kwargs["json"]["alpha"] is True
     client.close()
