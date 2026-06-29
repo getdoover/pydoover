@@ -10,6 +10,7 @@ class ModbusType(enum.Enum):
 
 class ModbusConfig(Object):
     type = Enum("Bus Type", choices=["serial", "tcp"], default="serial")
+    # fixme: remove once all apps have been upgraded past pydoover 1.7.3
     name = String("Name", default="default")
 
     # TODO: only show these when serial type is selected.

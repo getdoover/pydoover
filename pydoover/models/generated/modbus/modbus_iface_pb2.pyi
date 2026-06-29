@@ -142,18 +142,24 @@ class closeBusResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[responseHeader, _Mapping]] = ..., bus_id: _Optional[str] = ...) -> None: ...
 
 class readRegisterRequest(_message.Message):
-    __slots__ = ("bus_id", "modbus_id", "register_type", "address", "count")
+    __slots__ = ("bus_id", "modbus_id", "register_type", "address", "count", "serial_settings", "ethernet_settings", "retries")
     BUS_ID_FIELD_NUMBER: _ClassVar[int]
     MODBUS_ID_FIELD_NUMBER: _ClassVar[int]
     REGISTER_TYPE_FIELD_NUMBER: _ClassVar[int]
     ADDRESS_FIELD_NUMBER: _ClassVar[int]
     COUNT_FIELD_NUMBER: _ClassVar[int]
+    SERIAL_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    ETHERNET_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    RETRIES_FIELD_NUMBER: _ClassVar[int]
     bus_id: str
     modbus_id: int
     register_type: int
     address: int
     count: int
-    def __init__(self, bus_id: _Optional[str] = ..., modbus_id: _Optional[int] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., count: _Optional[int] = ...) -> None: ...
+    serial_settings: serialBusSettings
+    ethernet_settings: ethernetBusSettings
+    retries: int
+    def __init__(self, bus_id: _Optional[str] = ..., modbus_id: _Optional[int] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., count: _Optional[int] = ..., serial_settings: _Optional[_Union[serialBusSettings, _Mapping]] = ..., ethernet_settings: _Optional[_Union[ethernetBusSettings, _Mapping]] = ..., retries: _Optional[int] = ...) -> None: ...
 
 class readRegisterResponse(_message.Message):
     __slots__ = ("response_header", "response_code", "values")
@@ -166,18 +172,24 @@ class readRegisterResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[responseHeader, _Mapping]] = ..., response_code: _Optional[int] = ..., values: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class writeRegisterRequest(_message.Message):
-    __slots__ = ("bus_id", "modbus_id", "register_type", "address", "values")
+    __slots__ = ("bus_id", "modbus_id", "register_type", "address", "values", "serial_settings", "ethernet_settings", "retries")
     BUS_ID_FIELD_NUMBER: _ClassVar[int]
     MODBUS_ID_FIELD_NUMBER: _ClassVar[int]
     REGISTER_TYPE_FIELD_NUMBER: _ClassVar[int]
     ADDRESS_FIELD_NUMBER: _ClassVar[int]
     VALUES_FIELD_NUMBER: _ClassVar[int]
+    SERIAL_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    ETHERNET_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    RETRIES_FIELD_NUMBER: _ClassVar[int]
     bus_id: str
     modbus_id: int
     register_type: int
     address: int
     values: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, bus_id: _Optional[str] = ..., modbus_id: _Optional[int] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., values: _Optional[_Iterable[int]] = ...) -> None: ...
+    serial_settings: serialBusSettings
+    ethernet_settings: ethernetBusSettings
+    retries: int
+    def __init__(self, bus_id: _Optional[str] = ..., modbus_id: _Optional[int] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., values: _Optional[_Iterable[int]] = ..., serial_settings: _Optional[_Union[serialBusSettings, _Mapping]] = ..., ethernet_settings: _Optional[_Union[ethernetBusSettings, _Mapping]] = ..., retries: _Optional[int] = ...) -> None: ...
 
 class writeRegisterResponse(_message.Message):
     __slots__ = ("response_header", "response_code")
@@ -188,18 +200,22 @@ class writeRegisterResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[responseHeader, _Mapping]] = ..., response_code: _Optional[int] = ...) -> None: ...
 
 class scheduleWriteRegisterRequest(_message.Message):
-    __slots__ = ("bus_id", "register_type", "address", "values", "delay_secs")
+    __slots__ = ("bus_id", "register_type", "address", "values", "delay_secs", "serial_settings", "ethernet_settings")
     BUS_ID_FIELD_NUMBER: _ClassVar[int]
     REGISTER_TYPE_FIELD_NUMBER: _ClassVar[int]
     ADDRESS_FIELD_NUMBER: _ClassVar[int]
     VALUES_FIELD_NUMBER: _ClassVar[int]
     DELAY_SECS_FIELD_NUMBER: _ClassVar[int]
+    SERIAL_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    ETHERNET_SETTINGS_FIELD_NUMBER: _ClassVar[int]
     bus_id: str
     register_type: int
     address: int
     values: _containers.RepeatedScalarFieldContainer[int]
     delay_secs: int
-    def __init__(self, bus_id: _Optional[str] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., values: _Optional[_Iterable[int]] = ..., delay_secs: _Optional[int] = ...) -> None: ...
+    serial_settings: serialBusSettings
+    ethernet_settings: ethernetBusSettings
+    def __init__(self, bus_id: _Optional[str] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., values: _Optional[_Iterable[int]] = ..., delay_secs: _Optional[int] = ..., serial_settings: _Optional[_Union[serialBusSettings, _Mapping]] = ..., ethernet_settings: _Optional[_Union[ethernetBusSettings, _Mapping]] = ...) -> None: ...
 
 class scheduleWriteRegisterResponse(_message.Message):
     __slots__ = ("response_header", "bus_id", "delay_secs")
@@ -212,20 +228,24 @@ class scheduleWriteRegisterResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[responseHeader, _Mapping]] = ..., bus_id: _Optional[str] = ..., delay_secs: _Optional[int] = ...) -> None: ...
 
 class readRegisterSubscriptionRequest(_message.Message):
-    __slots__ = ("bus_id", "modbus_id", "register_type", "address", "count", "poll_secs")
+    __slots__ = ("bus_id", "modbus_id", "register_type", "address", "count", "poll_secs", "serial_settings", "ethernet_settings")
     BUS_ID_FIELD_NUMBER: _ClassVar[int]
     MODBUS_ID_FIELD_NUMBER: _ClassVar[int]
     REGISTER_TYPE_FIELD_NUMBER: _ClassVar[int]
     ADDRESS_FIELD_NUMBER: _ClassVar[int]
     COUNT_FIELD_NUMBER: _ClassVar[int]
     POLL_SECS_FIELD_NUMBER: _ClassVar[int]
+    SERIAL_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    ETHERNET_SETTINGS_FIELD_NUMBER: _ClassVar[int]
     bus_id: str
     modbus_id: int
     register_type: int
     address: int
     count: int
     poll_secs: int
-    def __init__(self, bus_id: _Optional[str] = ..., modbus_id: _Optional[int] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., count: _Optional[int] = ..., poll_secs: _Optional[int] = ...) -> None: ...
+    serial_settings: serialBusSettings
+    ethernet_settings: ethernetBusSettings
+    def __init__(self, bus_id: _Optional[str] = ..., modbus_id: _Optional[int] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., count: _Optional[int] = ..., poll_secs: _Optional[int] = ..., serial_settings: _Optional[_Union[serialBusSettings, _Mapping]] = ..., ethernet_settings: _Optional[_Union[ethernetBusSettings, _Mapping]] = ...) -> None: ...
 
 class readRegisterSubscriptionResponse(_message.Message):
     __slots__ = ("response_header", "bus_id", "response_code", "values")

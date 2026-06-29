@@ -118,6 +118,15 @@ message readRegisterRequest {
     int32 register_type = 3;
     int32 address = 4;
     int32 count = 5;
+    // Optional connection settings. When provided the bus is opened on demand,
+    // so callers no longer need a prior openBus. bus_id remains a label.
+    oneof bus_settings {
+        serialBusSettings serial_settings = 6;
+        ethernetBusSettings ethernet_settings = 7;
+    }
+    // How many times to retry on failure (0 = fail fast, no retry). When unset
+    // the interface applies its default.
+    optional int32 retries = 8;
 }
 
 message readRegisterResponse {
@@ -132,6 +141,13 @@ message writeRegisterRequest {
     int32 register_type = 3;
     int32 address = 4;
     repeated int32 values = 5;
+    // Optional connection settings; bus opened on demand when provided.
+    oneof bus_settings {
+        serialBusSettings serial_settings = 6;
+        ethernetBusSettings ethernet_settings = 7;
+    }
+    // How many times to retry on failure (0 = fail fast). Unset -> default.
+    optional int32 retries = 8;
 }
 
 message writeRegisterResponse {
@@ -145,6 +161,11 @@ message scheduleWriteRegisterRequest {
     int32 address = 3;
     repeated int32 values = 4;
     int32 delay_secs = 5;
+    // Optional connection settings; bus opened on demand when provided.
+    oneof bus_settings {
+        serialBusSettings serial_settings = 6;
+        ethernetBusSettings ethernet_settings = 7;
+    }
 }
 
 message scheduleWriteRegisterResponse {
@@ -160,6 +181,11 @@ message readRegisterSubscriptionRequest {
     int32 address = 4;
     int32 count = 5;
     int32 poll_secs = 6;
+    // Optional connection settings; bus opened on demand when provided.
+    oneof bus_settings {
+        serialBusSettings serial_settings = 7;
+        ethernetBusSettings ethernet_settings = 8;
+    }
 }
 
 message readRegisterSubscriptionResponse {

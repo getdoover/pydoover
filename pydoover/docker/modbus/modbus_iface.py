@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import warnings
 from collections.abc import Coroutine, Callable
 
 import grpc
@@ -56,98 +57,26 @@ class ModbusInterface(GRPCInterface):
         self.config_complete = False
 
     async def setup(self):
-        self.config_complete = False
-        try:
-            config = self.config.modbus_config
-        except AttributeError:
-            log.info("No modbus interfaces defined in config")
-            self.config_complete = True
-            return
-
-        if isinstance(config, ModbusConfig):
-            elems: list[ModbusConfig] = [config]
-        elif isinstance(config, ManyModbusConfig):
-            elems = list(config.elements)
-        else:
-            log.warning(f"Unsupported modbus config type: {type(config)}")
-            self.config_complete = True
-            return
-
-        for elem in elems:
-            log.info(f"Setting up modbus bus: {elem}")
-            match ModbusType(elem.type.value):
-                case ModbusType.SERIAL:
-                    await self.open_bus(
-                        elem.type.value,
-                        elem.name.value,
-                        elem.serial_port.value,
-                        elem.serial_baud.value,
-                        elem.serial_method.value,
-                        elem.serial_bits.value,
-                        elem.serial_parity.value,
-                        elem.serial_stop.value,
-                        elem.serial_timeout.value,
-                    )
-                case ModbusType.TCP:
-                    await self.open_bus(
-                        elem.type.value,
-                        elem.name.value,
-                        tcp_uri=elem.tcp_uri.value,
-                        tcp_timeout=elem.tcp_timeout.value,
-                    )
-                case default:
-                    log.warning(
-                        f"Invalid bus type: {default}. Expected 'serial' or 'tcp'."
-                    )
-
+        # Buses are no longer pre-opened here. read_registers/write_registers
+        # carry their bus's connection settings (resolved from config by bus name,
+        # or passed explicitly), so the modbus interface opens them on demand. This
+        # removes the need for openBus; see _resolve_bus_settings.
         self.config_complete = True
+        config = (
+            getattr(self.config, "modbus_config", None)
+            if self.config is not None
+            else None
+        )
+        if config is None:
+            log.info("No modbus interfaces defined in config")
 
     def process_response(self, stub_call: str, response, *args, **kwargs):
-        # On a successful (or empty) response defer to the base implementation,
-        # which returns the response or raises for an empty one.
-        if response is None or response.response_header.success:
-            return super().process_response(stub_call, response, *args, **kwargs)
-
-        # Response was not successful. For read/write register calls the bus may
-        # have been dropped (e.g. the modbus container was restarted mid-session),
-        # so try to recreate it rather than raising. This recovers the bus for the
-        # next call, not the current one.
-        #
-        # NOTE: this must run *instead of* super().process_response() for these
-        # calls — the base raises on a failed response, which would otherwise
-        # prevent us from ever reconfiguring the bus.
-        try:
-            configure_bus = kwargs["configure_bus"]
-            bus_id = kwargs["bus_id"]
-        except KeyError:
-            # not a bus-bound call (e.g. openBus, busStatus) — use the base's
-            # raising behaviour.
-            return super().process_response(stub_call, response, *args, **kwargs)
-
-        self.ensure_bus_available(bus_id, response.response_header, configure_bus)
-        return response
-
-    def ensure_bus_available(self, bus_id, response_header, configure: bool = True):
-        ## if not config_complete, a setup() is already in progress — wait for it
-        if not self.config_complete:
-            log.debug("Modbus setup in progress, skipping reconfigure")
-            return False
-
-        ## if the bus is present and open there is nothing to do
-        for b in response_header.bus_status:
-            if b.bus_id == bus_id:
-                if b.open:
-                    return True
-                break
-
-        ## bus is missing or closed (e.g. the modbus container was restarted) —
-        ## recreate it. Guard against spawning overlapping setup tasks and keep a
-        ## reference so the task isn't garbage collected before it completes.
-        log.warning(f"Bus {bus_id} not available, reconfiguring modbus interface")
-        if configure and (self._setup_task is None or self._setup_task.done()):
-            self._setup_task = asyncio.create_task(self.setup())
-
-        return False
+        # Hand a failed response back to the caller — read/write check success
+        # themselves, and the bus opens on demand from the settings each request
+        # carries, so there's nothing to reconfigure. Defer to the base otherwise.
+        if response is not None and not response.response_header.success:
+            return response
+        return super().process_response(stub_call, response, *args, **kwargs)
 
     async def close(self):
         log.info("Closing modbus interface")
@@ -196,6 +125,58 @@ class ModbusInterface(GRPCInterface):
 
         return modbus_iface_pb2.openBusRequest(**kwargs)
 
+    @staticmethod
+    def _settings_from_elem(elem) -> dict:
+        """Build a request's bus_settings sub-message from a ModbusConfig element."""
+        try:
+            bus_type = ModbusType(elem.type.value)
+        except ValueError:
+            return {}
+        if bus_type is ModbusType.SERIAL:
+            return {
+                "serial_settings": modbus_iface_pb2.serialBusSettings(
+                    port=elem.serial_port.value,
+                    baud=elem.serial_baud.value,
+                    modbus_method=elem.serial_method.value,
+                    data_bits=elem.serial_bits.value,
+                    parity=elem.serial_parity.value,
+                    stop_bits=elem.serial_stop.value,
+                    timeout=elem.serial_timeout.value,
+                )
+            }
+        if bus_type is ModbusType.TCP:
+            ip, port = elem.tcp_uri.value.split(":")
+            return {
+                "ethernet_settings": modbus_iface_pb2.ethernetBusSettings(
+                    ip=ip, port=int(port), timeout=elem.tcp_timeout.value
+                )
+            }
+        return {}
+
+    def _resolve_bus_settings(self, bus=None) -> dict:
+        """Connection settings attached to every read/write so the bus opens on
+        demand. There is no bus id: an explicit ``bus`` (a ModbusConfig element)
+        is used if given, otherwise the bus configured in the application config.
+        With several configured buses, pass ``bus`` to select one.
+        """
+        if bus is not None:
+            return self._settings_from_elem(bus)
+
+        config = (
+            getattr(self.config, "modbus_config", None)
+            if self.config is not None
+            else None
+        )
+        if isinstance(config, ModbusConfig):
+            return self._settings_from_elem(config)
+        if isinstance(config, ManyModbusConfig):
+            elems = list(config.elements)
+            if len(elems) == 1:
+                return self._settings_from_elem(elems[0])
+            if len(elems) > 1:
+                log.warning("Multiple modbus buses configured; pass bus= to select one")
+        return {}
+
     @cli_command()
     async def open_bus(
         self,
@@ -211,6 +192,19 @@ class ModbusInterface(GRPCInterface):
         tcp_uri="127.0.0.1:5000",
         tcp_timeout=2,
     ) -> bool:
+        """Open a modbus bus.
+
+        .. deprecated::
+            Buses now open on demand: pass connection settings to
+            :meth:`read_registers` / :meth:`write_registers` (via ``bus`` or the
+            application config) instead of pre-opening.
+        """
+        warnings.warn(
+            "open_bus is deprecated; pass bus settings to read_registers/"
+            "write_registers (buses open on demand).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         req = self._get_bus_request(
             bus_type,
             name,
@@ -232,16 +226,26 @@ class ModbusInterface(GRPCInterface):
 
     @cli_command()
     async def close_bus(self, bus_id: str = "default") -> bool:
+        """Close a modbus bus.
+
+        .. deprecated::
+            Buses are pooled by the modbus interface and no longer need explicit
+            closing; see :meth:`read_registers`.
+        """
+        warnings.warn(
+            "close_bus is deprecated; buses are managed by the modbus interface.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         req = modbus_iface_pb2.closeBusRequest(bus_id=str(bus_id))
         resp = await self.make_request("closeBus", req)
         return resp.response_header.success and resp.bus_status.open
 
-    def _validate_read_register_resp(self, resp, bus_id, configure_bus):
+    def _validate_read_register_resp(self, resp):
         try:
             if not resp.response_header.success:
-                log.error("Error reading registers from bus " + str(bus_id))
+                log.error("Error reading/writing registers")
                 return False
-            # return self.ensure_bus_availabe(bus_id, resp.response_header, configure_bus)
             return True
         except Exception as e:
             log.error("Error validating read register response: " + str(e))
@@ -282,6 +286,8 @@ class ModbusInterface(GRPCInterface):
         num_registers: int = 1,
         register_type: int = 4,
         configure_bus: bool = True,
+        bus=None,
+        retries: int | None = None,
     ) -> int | list[int] | None:
         """Read registers from a modbus bus.
 
@@ -293,7 +299,8 @@ class ModbusInterface(GRPCInterface):
         Parameters
         ----------
         bus_id : str, optional
-            The bus ID to read registers from (default is "default")
+            Deprecated and ignored — kept for backwards compatibility. The bus is
+            identified by its configured connection settings, not an id.
         modbus_id : int, optional
             The modbus ID of the device to read registers from (default is 1)
         start_address : int, optional
@@ -303,7 +310,14 @@ class ModbusInterface(GRPCInterface):
         register_type : int, optional
             The type of registers to read (default is 4, which is typically holding registers)
         configure_bus : bool, optional
-            Whether to configure the bus if it is not available (default is True)
+            Deprecated and ignored — the bus opens on demand from the request settings.
+        bus : ModbusConfig, optional
+            The bus to read from. If omitted, the bus configured in the application
+            config is used; pass this to select one when several are configured.
+        retries : int, optional
+            How many times the interface retries on failure. ``0`` fails fast (no
+            retry) — useful when a failure is expected/normal. Left unset, the
+            interface applies its default.
 
         Returns
         -------
@@ -314,15 +328,14 @@ class ModbusInterface(GRPCInterface):
             If the response failed, returns None.
         """
         req = modbus_iface_pb2.readRegisterRequest(
-            bus_id=str(bus_id),
             modbus_id=modbus_id,
             register_type=register_type,
             address=start_address,
             count=num_registers,
+            **self._resolve_bus_settings(bus),
+            **({} if retries is None else {"retries": retries}),
         )
-        resp = await self.make_request(
-            "readRegisters", req, bus_id=bus_id, configure_bus=configure_bus
-        )
+        resp = await self.make_request("readRegisters", req)
         return resp and self._parse_register_output(resp.values)
 
     @cli_command()
@@ -334,6 +347,8 @@ class ModbusInterface(GRPCInterface):
         values: list[int] = None,
         register_type: int = 4,
         configure_bus: bool = True,
+        bus=None,
+        retries: int | None = None,
     ) -> bool:
         """Write values to registers on a modbus bus.
 
@@ -351,7 +366,7 @@ class ModbusInterface(GRPCInterface):
         Parameters
         ----------
         bus_id: str
-            The bus ID to write registers to (default is "default")
+            Deprecated and ignored — kept for backwards compatibility.
         modbus_id: int
             The modbus ID of the device to write registers to (default is 1)
         start_address: int
@@ -361,7 +376,13 @@ class ModbusInterface(GRPCInterface):
         register_type: int
             The type of registers to write (default is 4, which is typically holding registers)
         configure_bus: bool
-            Whether to configure the bus if it is not available (default is True)
+            Deprecated and ignored — the bus opens on demand from the request settings.
+        bus : ModbusConfig, optional
+            The bus to write to. If omitted, the bus configured in the application
+            config is used; pass this to select one when several are configured.
+        retries : int, optional
+            How many times the interface retries on failure. ``0`` fails fast.
+            Left unset, the interface applies its default.
 
         Returns
         -------
@@ -370,16 +391,15 @@ class ModbusInterface(GRPCInterface):
         """
         values = values or []
         req = modbus_iface_pb2.writeRegisterRequest(
-            bus_id=str(bus_id),
             modbus_id=modbus_id,
             register_type=register_type,
             address=start_address,
             values=values,
+            **self._resolve_bus_settings(bus),
+            **({} if retries is None else {"retries": retries}),
         )
-        resp = await self.make_request(
-            "writeRegisters", req, bus_id=bus_id, configure_bus=configure_bus
-        )
-        return resp and self._validate_read_register_resp(resp, bus_id, configure_bus)
+        resp = await self.make_request("writeRegisters", req)
+        return resp and self._validate_read_register_resp(resp)
 
     def add_read_register_subscription(
         self,
@@ -390,6 +410,7 @@ class ModbusInterface(GRPCInterface):
         register_type: int = 4,
         poll_secs: int = 3,
         callback: ReadRegisterSubscriptionCallback = None,
+        bus=None,
     ):
         """Add a subscription to read registers from a modbus bus.
 
@@ -448,6 +469,7 @@ class ModbusInterface(GRPCInterface):
                     register_type=register_type,
                     poll_secs=poll_secs,
                     callback=callback,
+                    bus=bus,
                 )
             )
 
@@ -469,14 +491,15 @@ class ModbusInterface(GRPCInterface):
         poll_secs: int,
         callback: ReadRegisterSubscriptionCallback,
         configure_bus: bool = True,
+        bus=None,
     ):
         try:
             async with grpc.aio.insecure_channel(self.uri) as channel:
                 stub = modbus_iface_pb2_grpc.modbusIfaceStub(channel)
                 request = modbus_iface_pb2.readRegisterSubscriptionRequest(
-                    bus_id=str(bus_id),
                     modbus_id=modbus_id,
                     register_type=register_type,
+                    **self._resolve_bus_settings(bus),
                     address=start_address,
                     count=num_registers,
                     poll_secs=poll_secs,
@@ -485,9 +508,7 @@ class ModbusInterface(GRPCInterface):
                 try:
                     async for response in stub.readRegisterSubscription(request):
                         success = response.response_header.success
-                        if not self._validate_read_register_resp(
-                            response, bus_id, configure_bus
-                        ):
+                        if not self._validate_read_register_resp(response):
                             values = None
                         elif len(response.values) == 1:
                             values = response.values[0]
