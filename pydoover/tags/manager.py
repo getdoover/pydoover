@@ -482,6 +482,7 @@ class TagsManagerDocker(TagsManager):
                 TAG_CHANNEL_NAME,
                 self._pending_tag_aggregate,
                 max_age_secs=self.max_age_secs,
+                return_aggregate=False,
             )
             apply_diff(self._tag_values, self._pending_tag_aggregate, clone=False)
             self._tags_dirty = False
@@ -517,7 +518,10 @@ class TagsManagerDocker(TagsManager):
         self._tags_dirty = False
 
         await self.client.update_channel_aggregate(
-            TAG_CHANNEL_NAME, data, max_age_secs=self.max_age_secs
+            TAG_CHANNEL_NAME,
+            data,
+            max_age_secs=self.max_age_secs,
+            return_aggregate=False,
         )
         apply_diff(self._tag_values, data, clone=False)
 
@@ -760,7 +764,9 @@ class TagsManagerProcessor(TagsManager):
         # idempotent), but only push it when a value actually moved — a commit
         # driven solely by ONLY_SET re-assertions has nothing new to store.
         if update and self._dirty:
-            await self.client.update_channel_aggregate(TAG_CHANNEL_NAME, update)
+            await self.client.update_channel_aggregate(
+                TAG_CHANNEL_NAME, update, return_aggregate=False
+            )
 
         # ``log_mode`` decides what (if anything) gets written to history.
         # ``record_tag_update``/``record_log`` still gate whether logging

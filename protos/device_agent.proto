@@ -4,6 +4,15 @@ import "google/protobuf/struct.proto";
 
 package device_agent;
 
+// Wire format a channel-event subscriber wants its payload delivered in.
+// The protobuf `Struct` build (json_format.ParseDict) is ~90% of per-event
+// encode cost; clients that read `data_json` can opt out of it with JSON_ONLY.
+enum WireFormat {
+  WIRE_FORMAT_BOTH = 0;         // default: populate both `data` (Struct) and `data_json` (backward compatible)
+  WIRE_FORMAT_JSON_ONLY = 1;    // populate only `data_json`; skip the Struct build
+  WIRE_FORMAT_STRUCT_ONLY = 2;  // populate only `data` (Struct)
+}
+
 // The doover device agent service definition.
 service deviceAgent {
   rpc TestComms (TestCommsRequest) returns (TestCommsResponse) {}
@@ -284,6 +293,10 @@ message UpdateAggregateRequest {
   float max_age_secs = 8;
   bool save_log = 9;
   string data_json = 10;
+  // When unset, the response echoes the full updated aggregate (legacy
+  // behaviour). Set false to skip that full-aggregate to_proto encode on the
+  // response — most callers discard it.
+  optional bool return_aggregate = 11;
 }
 
 message UpdateAggregateResponse {
@@ -294,7 +307,7 @@ message UpdateAggregateResponse {
 message ChannelEventSubscriptionRequest {
   RequestHeader header = 2;
   string channel_name = 1;
-
+  WireFormat wire_format = 3;  // default WIRE_FORMAT_BOTH keeps legacy behaviour
 }
 
 message ChannelEventSubscriptionResponse {

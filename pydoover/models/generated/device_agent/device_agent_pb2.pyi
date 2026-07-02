@@ -1,10 +1,20 @@
 from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class WireFormat(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    WIRE_FORMAT_BOTH: _ClassVar[WireFormat]
+    WIRE_FORMAT_JSON_ONLY: _ClassVar[WireFormat]
+    WIRE_FORMAT_STRUCT_ONLY: _ClassVar[WireFormat]
+WIRE_FORMAT_BOTH: WireFormat
+WIRE_FORMAT_JSON_ONLY: WireFormat
+WIRE_FORMAT_STRUCT_ONLY: WireFormat
 
 class RequestHeader(_message.Message):
     __slots__ = ("app_id",)
@@ -401,7 +411,7 @@ class Aggregate(_message.Message):
     def __init__(self, data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[_Union[Attachment, _Mapping]]] = ..., last_updated: _Optional[int] = ..., data_json: _Optional[str] = ...) -> None: ...
 
 class UpdateAggregateRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "data", "files", "clear_attachments", "replace_data", "max_age_secs", "save_log", "data_json")
+    __slots__ = ("header", "channel_name", "data", "files", "clear_attachments", "replace_data", "max_age_secs", "save_log", "data_json", "return_aggregate")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
@@ -411,6 +421,7 @@ class UpdateAggregateRequest(_message.Message):
     MAX_AGE_SECS_FIELD_NUMBER: _ClassVar[int]
     SAVE_LOG_FIELD_NUMBER: _ClassVar[int]
     DATA_JSON_FIELD_NUMBER: _ClassVar[int]
+    RETURN_AGGREGATE_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     data: _struct_pb2.Struct
@@ -420,7 +431,8 @@ class UpdateAggregateRequest(_message.Message):
     max_age_secs: float
     save_log: bool
     data_json: str
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ..., replace_data: bool = ..., max_age_secs: _Optional[float] = ..., save_log: bool = ..., data_json: _Optional[str] = ...) -> None: ...
+    return_aggregate: bool
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ..., replace_data: bool = ..., max_age_secs: _Optional[float] = ..., save_log: bool = ..., data_json: _Optional[str] = ..., return_aggregate: bool = ...) -> None: ...
 
 class UpdateAggregateResponse(_message.Message):
     __slots__ = ("response_header", "aggregate")
@@ -431,12 +443,14 @@ class UpdateAggregateResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., aggregate: _Optional[_Union[Aggregate, _Mapping]] = ...) -> None: ...
 
 class ChannelEventSubscriptionRequest(_message.Message):
-    __slots__ = ("header", "channel_name")
+    __slots__ = ("header", "channel_name", "wire_format")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    WIRE_FORMAT_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ...) -> None: ...
+    wire_format: WireFormat
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., wire_format: _Optional[_Union[WireFormat, str]] = ...) -> None: ...
 
 class ChannelEventSubscriptionResponse(_message.Message):
     __slots__ = ("response_header", "event_name", "channel_name", "data", "data_json")

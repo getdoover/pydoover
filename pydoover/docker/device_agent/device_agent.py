@@ -610,6 +610,7 @@ class DeviceAgentInterface(GRPCInterface):
         clear_attachments: bool = False,
         replace_data: bool = False,
         max_age_secs: float = None,
+        return_aggregate: bool = True,
     ):
         validate_payload(data)
 
@@ -620,9 +621,12 @@ class DeviceAgentInterface(GRPCInterface):
             clear_attachments=clear_attachments,
             replace_data=replace_data,
             max_age_secs=max_age_secs,
+            return_aggregate=return_aggregate,
             **encode_data_fields(data),
         )
         resp = await self.make_request("UpdateAggregate", req)
+        if not return_aggregate:
+            return None
         return Aggregate.from_proto(resp.aggregate)
 
     @cli_command()
