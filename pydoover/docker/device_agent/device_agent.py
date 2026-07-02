@@ -27,6 +27,7 @@ from ...models.data import (
     OneShotMessage,
     TurnCredential,
     Attachment,
+    WireFormat,
 )
 from ..grpc_interface import GRPCInterface
 from ...models.data.exceptions import DooverAPIError, NotFoundError
@@ -169,11 +170,13 @@ class DeviceAgentInterface(GRPCInterface):
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, 1)
 
-    def _ensure_stream(self, channel_name: str) -> None:
+    def _ensure_stream(
+        self, channel_name: str, wire_format: WireFormat = WireFormat.json_only
+    ) -> None:
         """Ensure a single event stream is running for this channel."""
         if channel_name not in self._stream_tasks:
             self._stream_tasks[channel_name] = asyncio.create_task(
-                self._run_channel_stream(channel_name)
+                self._run_channel_stream(channel_name, wire_format)
             )
 
     def add_event_callback(
@@ -181,6 +184,7 @@ class DeviceAgentInterface(GRPCInterface):
         channel_name: str,
         callback: Callable,
         events: EventSubscription = EventSubscription.all,
+        wire_format: WireFormat = WireFormat.json_only,
     ) -> None:
         """Register a callback for events on a channel.
 
@@ -200,6 +204,11 @@ class DeviceAgentInterface(GRPCInterface):
             An async callback ``(event) -> None``.
         events : EventSubscription, optional
             Which event types to deliver. Defaults to ``EventSubscription.all``.
+        wire_format : WireFormat, optional
+            Delivery format requested from the device agent. Defaults to
+            ``WireFormat.json_only`` (events are decoded from ``data_json``, so
+            the agent can skip the protobuf ``Struct`` build). Only the first
+            subscriber to a channel establishes the stream's format.
         """
         entry = (callback, events)
         try:
@@ -207,7 +216,7 @@ class DeviceAgentInterface(GRPCInterface):
         except KeyError:
             self._event_callbacks[channel_name] = [entry]
 
-        self._ensure_stream(channel_name)
+        self._ensure_stream(channel_name, wire_format)
 
     @staticmethod
     def _event_type_to_flag(event) -> EventSubscription | None:
@@ -223,7 +232,9 @@ class DeviceAgentInterface(GRPCInterface):
             return EventSubscription.channel_sync
         return None
 
-    async def _run_channel_stream(self, channel_name: str):
+    async def _run_channel_stream(
+        self, channel_name: str, wire_format: WireFormat = WireFormat.json_only
+    ):
         """Single event stream per channel. Seeds aggregate cache, then distributes events."""
         await self.wait_until_healthy()
 
@@ -267,7 +278,9 @@ class DeviceAgentInterface(GRPCInterface):
         # subscriptions to stop firing until the process restarts.
         while True:
             try:
-                async for event in self.stream_channel_events(channel_name):
+                async for event in self.stream_channel_events(
+                    channel_name, wire_format
+                ):
                     # Update internal aggregate state on AggregateUpdate
                     if isinstance(event, AggregateUpdateEvent):
                         self._aggregates[channel_name] = event.aggregate
@@ -299,13 +312,16 @@ class DeviceAgentInterface(GRPCInterface):
                 await asyncio.sleep(1)
                 continue
 
-    async def stream_channel_events(self, channel_name: str):
+    async def stream_channel_events(
+        self, channel_name: str, wire_format: WireFormat = WireFormat.json_only
+    ):
         backoff = 1
         while True:
             try:
                 async with grpc.aio.insecure_channel(self.uri) as channel:
                     pl = device_agent_pb2.ChannelEventSubscriptionRequest(
-                        channel_name=channel_name
+                        channel_name=channel_name,
+                        wire_format=int(wire_format),
                     )
                     channel_stream = device_agent_pb2_grpc.deviceAgentStub(
                         channel
@@ -684,7 +700,9 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
             self._synced_channels[channel] = True
         return True
 
-    async def _run_channel_stream(self, channel_name: str):
+    async def _run_channel_stream(
+        self, channel_name: str, wire_format: WireFormat = WireFormat.json_only
+    ):
         # No-op in mock — no real event stream to listen to
         return
 
