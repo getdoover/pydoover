@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from enum import Flag, auto
+from enum import Flag, IntEnum, auto
 from typing import Any
 
 from .aggregate import Aggregate
@@ -20,6 +20,21 @@ class EventSubscription(Flag):
         | oneshot_message
         | channel_sync
     )
+
+
+class WireFormat(IntEnum):
+    """Requested delivery format for channel-event payloads.
+
+    Values mirror the ``WireFormat`` proto enum. The SDK decodes events via
+    ``data_json`` (see ``decode_data_fields``), so ``json_only`` is the safe
+    default — it lets the device agent skip the costly protobuf ``Struct`` build.
+    A device agent that predates the field ignores it and returns both formats,
+    so requesting ``json_only`` is always safe against any agent version.
+    """
+
+    both = 0
+    json_only = 1
+    struct_only = 2
 
 
 class MessageCreateEvent:
