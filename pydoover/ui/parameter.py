@@ -2,7 +2,7 @@ import warnings
 
 from .declarative import normalize_ui_value
 from .interaction import Interaction
-from .misc import NotSet
+from .misc import NotSet, duration_ms
 
 
 def _warn_legacy_ui_alias(old_name: str, new_name: str) -> None:
@@ -111,7 +111,7 @@ class BooleanParameter(Parameter):
 class DatetimeInput(Parameter):
     """A datetime input that can be used to request date and time values from a user.
 
-    Internally, all datetime values are stored as epoch seconds in UTC
+    Values are integer epoch milliseconds in UTC.
 
     Attributes
     ----------
@@ -119,15 +119,40 @@ class DatetimeInput(Parameter):
         The name of the parameter.
     display_name: str
         The display name of the parameter.
-    include_time: bool
-        Whether to include time in the datetime picker. Defaults to False.
+    pickers: list[str], optional
+        Which pickers the input offers: "date" and/or "time".
+        Defaults to both.
+    direction: str, optional
+        Constrain values relative to now: "past" or "future". Also restricts
+        the selectable calendar dates.
+    max_past: timedelta | float, optional
+        How far in the past values may be. A timedelta, or seconds.
+    max_future: timedelta | float, optional
+        How far in the future values may be. A timedelta, or seconds.
     """
 
     type = "uiDatetimeInput"
 
-    def __init__(self, display_name: str, include_time: bool = False, **kwargs):
+    def __init__(
+        self,
+        display_name: str,
+        include_time: bool = NotSet,
+        *,
+        pickers: list[str] = NotSet,
+        direction: str = NotSet,
+        max_past=NotSet,
+        max_future=NotSet,
+        **kwargs,
+    ):
         super().__init__(display_name, **kwargs)
-        self.include_time = include_time
+        if include_time is not NotSet:
+            _warn_legacy_ui_alias("include_time", "pickers")
+            if pickers is NotSet:
+                pickers = ["date", "time"] if include_time else ["date"]
+        self.pickers = pickers
+        self.direction = direction
+        self.max_past = max_past
+        self.max_future = max_future
 
     # @property
     # def current_value(self) -> datetime | None:
@@ -144,14 +169,18 @@ class DatetimeInput(Parameter):
 
     def to_dict(self):
         result = super().to_dict()
-        result["includeTime"] = self.include_time
+        if self.pickers is not NotSet:
+            result["pickers"] = self.pickers
+        if self.direction is not NotSet:
+            result["direction"] = self.direction
+        if self.max_past is not NotSet:
+            result["maxPast"] = duration_ms(self.max_past)
+        if self.max_future is not NotSet:
+            result["maxFuture"] = duration_ms(self.max_future)
         return normalize_ui_value(result)
 
 
 class TimeInput(DatetimeInput):
-    """A time-only input."""
+    """A time-of-day input. Values are seconds into the local day."""
 
     type = "uiTimeInput"
-
-    def __init__(self, display_name: str, **kwargs):
-        super().__init__(display_name, include_time=True, **kwargs)

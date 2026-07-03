@@ -1,7 +1,16 @@
+from datetime import timedelta
 from typing import Any, ClassVar
 
 from .declarative import _value_is_live, normalize_ui_value
 from ..utils.utils import sanitize_display_name
+
+
+def duration_ms(value: "timedelta | int | float") -> int:
+    """Convert a duration (timedelta, or seconds) to the platform wire format
+    of integer milliseconds."""
+    if isinstance(value, timedelta):
+        return int(value.total_seconds() * 1000)
+    return int(value * 1000)
 
 
 class NotSet:

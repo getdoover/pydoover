@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from .declarative import normalize_ui_value
 from .element import Element
-from .misc import ConfirmDialog, Option, NotSet
+from .misc import ConfirmDialog, Option, NotSet, duration_ms
 
 if TYPE_CHECKING:
     from .manager import UICommandsManager
@@ -42,6 +42,15 @@ class Interaction(Element):
         A function to transform and check the new value before setting it. Defaults to None.
     show_activity: bool, optional
         Whether to show this interaction in the activity log. Defaults to None which uses the site default.
+    command_timeout: timedelta | float, optional
+        How long the site waits for the device to acknowledge a command from this
+        interaction before marking it as failed. A timedelta, or seconds.
+        Defaults to waiting forever.
+    direct: bool, optional
+        If True, commands from this interaction are written straight into the
+        ui_cmds aggregate by the site (what a device would do on accept) instead
+        of going through the RPC transaction flow. No acknowledgement is
+        expected. Defaults to False.
     """
 
     type = "uiInteraction"
@@ -54,6 +63,8 @@ class Interaction(Element):
         show_activity: bool = NotSet,
         requires_confirm: bool | ConfirmDialog = NotSet,
         global_interaction: bool = NotSet,
+        command_timeout=NotSet,
+        direct: bool = NotSet,
         **kwargs,
     ):
         super().__init__(display_name, **kwargs)
@@ -73,6 +84,8 @@ class Interaction(Element):
         self.requires_confirm = requires_confirm
 
         self.global_interaction = global_interaction
+        self.command_timeout = command_timeout
+        self.direct = direct
 
     @property
     def value(self):
@@ -102,6 +115,10 @@ class Interaction(Element):
                 res["requiresConfirm"] = self.requires_confirm
         if self.global_interaction is not NotSet:
             res["global"] = self.global_interaction
+        if self.command_timeout is not NotSet:
+            res["commandTimeout"] = duration_ms(self.command_timeout)
+        if self.direct is not NotSet:
+            res["direct"] = self.direct
         if self.show_activity is not NotSet:
             res["showActivity"] = self.show_activity
         if self.default is not NotSet:
