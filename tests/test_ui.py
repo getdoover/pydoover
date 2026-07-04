@@ -1,5 +1,6 @@
 import asyncio
 import copy
+from datetime import timedelta
 
 import pytest
 
@@ -390,3 +391,71 @@ class TestApplicationUIResolution:
             )
 
         asyncio.run(run_test())
+
+
+class TestUiCommandOptions:
+    def test_command_timeout_and_direct_serialize(self):
+        button = ui.Button(
+            "Restart",
+            name="restart",
+            command_timeout=timedelta(seconds=5),
+            direct=True,
+        )
+
+        data = button.to_dict()
+
+        assert data["commandTimeout"] == 5000
+        assert data["direct"] is True
+
+    def test_command_timeout_accepts_seconds(self):
+        button = ui.Button("Restart", name="restart", command_timeout=2.5)
+
+        assert button.to_dict()["commandTimeout"] == 2500
+
+    def test_options_omitted_by_default(self):
+        data = ui.Button("Restart", name="restart").to_dict()
+
+        assert "commandTimeout" not in data
+        assert "direct" not in data
+
+
+class TestDatetimeInputOptions:
+    def test_datetime_options_serialize(self):
+        dt = ui.DatetimeInput(
+            "Start",
+            name="start",
+            pickers=["date"],
+            direction="future",
+            max_future=timedelta(days=7),
+            max_past=3600,
+        )
+
+        data = dt.to_dict()
+
+        assert data["pickers"] == ["date"]
+        assert data["direction"] == "future"
+        assert data["maxFuture"] == 7 * 24 * 60 * 60 * 1000
+        assert data["maxPast"] == 3600 * 1000
+        assert "includeTime" not in data
+
+    def test_include_time_is_deprecated_alias(self):
+        with pytest.warns(DeprecationWarning):
+            dt = ui.DatetimeInput("Start", name="start", include_time=True)
+
+        assert dt.to_dict()["pickers"] == ["date", "time"]
+
+    def test_time_input_no_deprecation(self):
+        data = ui.TimeInput("Start Time", name="start_time").to_dict()
+
+        assert data["type"] == "uiTimeInput"
+        assert "pickers" not in data
+
+
+class TestTabContainerOptions:
+    def test_default_page_serializes(self):
+        tabs = ui.TabContainer("Tabs", name="tabs", default_page=1)
+
+        assert tabs.to_dict()["defaultPage"] == 1
+
+    def test_default_page_omitted_by_default(self):
+        assert "defaultPage" not in ui.TabContainer("Tabs", name="tabs").to_dict()

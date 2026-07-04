@@ -238,4 +238,29 @@ class RemoteComponent(Container):
 
 
 class TabContainer(Container):
+    """A container that renders its children as tabs.
+
+    Parameters
+    ----------
+    default_page: int, optional
+        0-based index of the tab open by default, in position-sorted order of
+        the visible children. Defaults to the first tab.
+    """
+
     type = "uiTabs"
+
+    def __init__(
+        self,
+        display_name: str,
+        children: list[Element] = None,
+        default_page: int = NotSet,
+        **kwargs,
+    ):
+        super().__init__(display_name, children, **kwargs)
+        self.default_page = default_page
+
+    def to_dict(self):
+        result = super().to_dict()
+        if self.default_page is not NotSet:
+            result["defaultPage"] = self.default_page
+        return normalize_ui_value(result)
