@@ -1,7 +1,7 @@
 import inspect
 import logging
 import re
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, TypeVar, Any
 
 from pydoover.models import (
     EventSubscription,
@@ -155,3 +155,14 @@ class UICommandsManager(RPCManager):
         if ctx.auto_update:
             log.debug(f"Auto-updating {ctx.element} with {payload}")
             await ctx.set_value(payload)
+
+    async def call(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+        channel: str = UI_CMDS_CHANNEL,
+        app_key: str | None = None,
+        timeout: float = 30.0,
+    ) -> dict:
+        # change the default channel to ui_cmds
+        return await super().call(method, params, channel, app_key, timeout)
