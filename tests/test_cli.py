@@ -34,6 +34,10 @@ class FakeInterface:
     def set_flags(self, replace_data: bool = False, only_if_changed: bool = True):
         return {"replace_data": replace_data, "only_if_changed": only_if_changed}
 
+    @command()
+    def fail(self):
+        raise RuntimeError("boom")
+
 
 class FakeModel:
     def __init__(self, value):
@@ -107,6 +111,14 @@ def test_cli_bool_flag_default_true_is_store_false(capsys):
 
     captured = capsys.readouterr()
     assert json.loads(captured.out) == {"replace_data": False, "only_if_changed": False}
+
+
+def test_cli_command_errors_are_written_to_stderr(capsys):
+    _run_fake_cli(["fake", "fail"])
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "An error occurred while running fail: boom\n"
 
 
 def test_cli_exception_handler_does_not_require_debug_attr(monkeypatch, capsys):

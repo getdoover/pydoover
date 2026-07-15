@@ -3,6 +3,7 @@ import asyncio
 from datetime import datetime
 import inspect
 import json
+import sys
 import typing
 from typing import Any, Protocol, cast
 
@@ -91,7 +92,8 @@ class SubSection:
                         result = asyncio.run(result)
                 except Exception as e:
                     print(
-                        f"An error occurred while running {func_to_run.__name__}: {e}"
+                        f"An error occurred while running {func_to_run.__name__}: {e}",
+                        file=sys.stderr,
                     )
                     return
 

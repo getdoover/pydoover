@@ -1,4 +1,5 @@
 import asyncio
+import base64 as base64_module
 import copy
 import logging
 import re
@@ -7,6 +8,7 @@ import json
 
 from collections.abc import Callable
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from ...utils.snowflake import generate_snowflake_id_at
@@ -645,13 +647,102 @@ class DeviceAgentInterface(GRPCInterface):
             return None
         return Aggregate.from_proto(resp.aggregate)
 
-    @cli_command()
     async def fetch_message_attachment(self, attachment: Attachment) -> File:
         req = device_agent_pb2.FetchAttachmentRequest(
             attachment=attachment.to_proto(),
         )
         resp = await self.make_request("FetchAttachment", req)
         return File.from_proto(resp.file)
+
+    @cli_command(name="fetch_message_attachment")
+    async def _cli_fetch_message_attachment(
+        self,
+        url: str,
+        output: str | None = None,
+        force: bool = False,
+        base64: bool = False,
+    ) -> dict[str, Any] | None:
+        """Download an attachment from its URL.
+
+        When no output path is supplied, ASCII attachments are written as text.
+        Attachments containing non-ASCII bytes are written as raw bytes when
+        stdout is redirected or piped. Binary output to an interactive terminal
+        is refused unless base64 output is requested. Status and error messages
+        are not written to stdout in these modes.
+
+        Parameters
+        ----------
+        url : str
+            Attachment URL returned by a message or aggregate.
+        output : str, optional
+            File path at which to save the downloaded attachment.
+        force : bool, optional
+            Overwrite the output file if it already exists.
+        base64 : bool, optional
+            Write the attachment to stdout as Base64-encoded ASCII text.
+        """
+        if output is not None and base64:
+            raise ValueError("--output and --base64 cannot be used together")
+
+        output_path = Path(output) if output is not None else None
+        if output_path is not None and output_path.exists() and not force:
+            raise FileExistsError(
+                f"{output_path} already exists; use --force to overwrite it"
+            )
+
+        # FetchAttachment currently only uses the URL. Populate the remaining
+        # protobuf fields with harmless placeholders so callers do not need to
+        # reproduce metadata they already received alongside the URL.
+        attachment = Attachment(
+            filename="attachment",
+            content_type="application/octet-stream",
+            size=0,
+            url=url,
+        )
+
+        try:
+            downloaded = await self.fetch_message_attachment(attachment)
+        finally:
+            await self.close()
+
+        if base64:
+            encoded = base64_module.b64encode(downloaded.data).decode("ascii")
+            sys.stdout.write(encoded + "\n")
+            sys.stdout.flush()
+            return None
+
+        if output is None:
+            try:
+                text = downloaded.data.decode("ascii")
+            except UnicodeDecodeError:
+                pass
+            else:
+                sys.stdout.write(text)
+                sys.stdout.flush()
+                return None
+
+            if sys.stdout.isatty():
+                raise RuntimeError(
+                    "Binary attachment cannot be written to an interactive terminal; "
+                    "use --output PATH, --base64, or redirect stdout"
+                )
+
+            binary_stdout = getattr(sys.stdout, "buffer", None)
+            if binary_stdout is None:
+                raise RuntimeError(
+                    "Binary stdout is unavailable; specify an output path with --output"
+                )
+            binary_stdout.write(downloaded.data)
+            binary_stdout.flush()
+            return None
+
+        assert output_path is not None
+        output_path.write_bytes(downloaded.data)
+        return {
+            "path": str(output_path),
+            "content_type": downloaded.content_type,
+            "size": len(downloaded.data),
+        }
 
     async def close(self):
         for task in self._stream_tasks.values():
