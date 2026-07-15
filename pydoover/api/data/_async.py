@@ -546,8 +546,15 @@ class AsyncDataClient(BaseClient):
         clear_attachments: bool = False,
         log_update: bool = False,
         replace_keys: list[str] | None = None,
+        return_aggregate: bool = True,
         organisation_id: int | None = None,
     ) -> Aggregate | None:
+        # ``return_aggregate`` mirrors the device-agent client's kwarg so the
+        # shared TagsManager can call this over either transport. When False,
+        # skip returning the updated aggregate — over REST that is exactly the
+        # ``suppress_response`` path (the server does not echo the aggregate).
+        if not return_aggregate:
+            suppress_response = True
         method = "PUT" if replace_data else "PATCH"
         result = await self._request(
             method,

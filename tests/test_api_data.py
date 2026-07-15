@@ -112,3 +112,32 @@ async def test_processor_client_fetches_message_logs_with_agent_fallback():
         )
     ]
     assert logs[1].type == "user.log"
+
+
+@pytest.mark.asyncio
+async def test_update_aggregate_return_aggregate_maps_to_suppress_response():
+    # Regression: the shared TagsManager commits tags via
+    # update_channel_aggregate(..., return_aggregate=False). Before the fix the
+    # REST clients (AsyncDataClient / ProcessorDataClient) rejected that kwarg
+    # with TypeError, crashing every processor that writes a tag. It must be
+    # accepted and map to the suppress_response (no-echo) path.
+    client = ProcessorDataClient("https://data.example")
+    client.agent_id = 123
+    params_seen = []
+
+    async def fake_request(method, path, **kwargs):
+        params_seen.append(kwargs.get("params"))
+        return {}
+
+    client._request = fake_request
+
+    result = await client.update_channel_aggregate(
+        "tag_values", {"app": {"tag": 1}}, return_aggregate=False
+    )
+    assert result is None
+    assert params_seen[-1]["suppress_response"] is True
+
+    # Default return_aggregate=True leaves the response un-suppressed.
+    await client.update_channel_aggregate("tag_values", {"app": {"tag": 2}})
+    await client.close()
+    assert params_seen[-1]["suppress_response"] is None
