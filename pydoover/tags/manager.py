@@ -765,7 +765,7 @@ class TagsManagerProcessor(TagsManager):
         # driven solely by ONLY_SET re-assertions has nothing new to store.
         if update and self._dirty:
             await self.client.update_channel_aggregate(
-                TAG_CHANNEL_NAME, update, return_aggregate=False
+                TAG_CHANNEL_NAME, update, suppress_response=True
             )
 
         # ``log_mode`` decides what (if anything) gets written to history.

@@ -106,6 +106,14 @@ class FakeTagClient:
         self.oneshot_messages.append((channel_name, data))
 
 
+class FakeProcessorTagClient(FakeTagClient):
+    async def update_channel_aggregate(
+        self, channel_name, data, suppress_response=False
+    ):
+        self.aggregate_updates.append((channel_name, data, suppress_response))
+        self.aggregates[channel_name] = data
+
+
 class FakeRuntimeDeviceAgent(FakeTagClient):
     def __init__(self, app_key: str = "test_app"):
         super().__init__(
@@ -1005,6 +1013,26 @@ class TestDelete:
 
 
 class TestProcessorImmediateLog:
+    @pytest.mark.asyncio
+    async def test_commit_uses_processor_client_suppress_response_parameter(self):
+        from pydoover.tags.manager import TagsManagerProcessor
+
+        client = FakeProcessorTagClient()
+        manager = TagsManagerProcessor(
+            app_key="test_app",
+            client=client,
+            agent_id=1,
+            tag_values={},
+            record_tag_update=False,
+        )
+
+        await manager.set_tag("voltage", 13.2)
+        await manager.commit_tags()
+
+        assert client.aggregate_updates == [
+            (TAG_CHANNEL_NAME, {"test_app": {"voltage": 13.2}}, True)
+        ]
+
     @pytest.mark.asyncio
     async def test_log_true_forces_message_when_record_disabled(self):
         from pydoover.tags.manager import TagsManagerProcessor
