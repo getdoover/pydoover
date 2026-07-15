@@ -7,6 +7,7 @@ These tests mock the gRPC layer (make_request / process_response) to verify that
 """
 
 import asyncio
+from io import BytesIO, StringIO
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -14,7 +15,7 @@ import pytest
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from pydoover.models.data import Aggregate
+from pydoover.models.data import Aggregate, Attachment, File
 from pydoover.models.generated.device_agent import device_agent_pb2
 from pydoover.models.data.exceptions import DooverAPIError, HTTPError, NotFoundError
 from pydoover.docker.device_agent import DeviceAgentInterface, MockDeviceAgentInterface
@@ -229,6 +230,160 @@ class TestUpdateAggregate:
 
         with pytest.raises(NotFoundError):
             await self.dda.update_channel_aggregate("nonexistent", {"data": 1})
+
+
+# ── fetch_message_attachment CLI adapter ─────────────────────────────────────────────
+
+
+class _BinaryStdout:
+    def __init__(self, isatty=False):
+        self.buffer = BytesIO()
+        self.text = StringIO()
+        self._isatty = isatty
+
+    def write(self, value):
+        return self.text.write(value)
+
+    def flush(self):
+        return None
+
+    def isatty(self):
+        return self._isatty
+
+
+class TestFetchMessageAttachmentCLI:
+    def setup_method(self):
+        self.dda = DeviceAgentInterface(app_key="test", dda_uri="localhost:50051")
+        self.dda.fetch_message_attachment = AsyncMock(
+            return_value=File(
+                filename="ignored.bin",
+                content_type="application/octet-stream",
+                size=4,
+                data=b"\x00\x01\xff\n",
+            )
+        )
+        self.dda.close = AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_only_url_is_used_and_non_ascii_bytes_are_written_to_binary_stdout(
+        self, monkeypatch
+    ):
+        stdout = _BinaryStdout()
+        monkeypatch.setattr("sys.stdout", stdout)
+
+        result = await self.dda._cli_fetch_message_attachment(
+            "https://example.com/attachments/123"
+        )
+
+        assert result is None
+        assert stdout.text.getvalue() == ""
+        assert stdout.buffer.getvalue() == b"\x00\x01\xff\n"
+        attachment = self.dda.fetch_message_attachment.await_args.args[0]
+        assert isinstance(attachment, Attachment)
+        assert attachment.url == "https://example.com/attachments/123"
+        assert attachment.filename == "attachment"
+        assert attachment.content_type == "application/octet-stream"
+        assert attachment.size == 0
+        self.dda.close.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_ascii_content_is_written_as_text(self, monkeypatch):
+        self.dda.fetch_message_attachment.return_value = File(
+            filename="example.txt",
+            content_type="text/plain",
+            size=12,
+            data=b"hello world\n",
+        )
+        stdout = _BinaryStdout()
+        monkeypatch.setattr("sys.stdout", stdout)
+
+        result = await self.dda._cli_fetch_message_attachment(
+            "https://example.com/attachments/123"
+        )
+
+        assert result is None
+        assert stdout.text.getvalue() == "hello world\n"
+        assert stdout.buffer.getvalue() == b""
+
+    @pytest.mark.asyncio
+    async def test_binary_content_is_refused_on_interactive_terminal(self, monkeypatch):
+        stdout = _BinaryStdout(isatty=True)
+        monkeypatch.setattr("sys.stdout", stdout)
+
+        with pytest.raises(RuntimeError, match="--output PATH, --base64"):
+            await self.dda._cli_fetch_message_attachment(
+                "https://example.com/attachments/123"
+            )
+
+        assert stdout.text.getvalue() == ""
+        assert stdout.buffer.getvalue() == b""
+
+    @pytest.mark.asyncio
+    async def test_base64_outputs_text_safe_encoding(self, monkeypatch):
+        stdout = _BinaryStdout(isatty=True)
+        monkeypatch.setattr("sys.stdout", stdout)
+
+        result = await self.dda._cli_fetch_message_attachment(
+            "https://example.com/attachments/123", base64=True
+        )
+
+        assert result is None
+        assert stdout.text.getvalue() == "AAH/Cg==\n"
+        assert stdout.buffer.getvalue() == b""
+
+    @pytest.mark.asyncio
+    async def test_base64_and_output_are_mutually_exclusive(self, tmp_path):
+        with pytest.raises(ValueError, match="cannot be used together"):
+            await self.dda._cli_fetch_message_attachment(
+                "https://example.com/attachments/123",
+                output=str(tmp_path / "download.bin"),
+                base64=True,
+            )
+
+        self.dda.fetch_message_attachment.assert_not_awaited()
+        self.dda.close.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_output_writes_file_and_returns_metadata(self, tmp_path):
+        output = tmp_path / "download.bin"
+
+        result = await self.dda._cli_fetch_message_attachment(
+            "https://example.com/attachments/123", output=str(output)
+        )
+
+        assert output.read_bytes() == b"\x00\x01\xff\n"
+        assert result == {
+            "path": str(output),
+            "content_type": "application/octet-stream",
+            "size": 4,
+        }
+
+    @pytest.mark.asyncio
+    async def test_existing_output_requires_force(self, tmp_path):
+        output = tmp_path / "download.bin"
+        output.write_bytes(b"existing")
+
+        with pytest.raises(FileExistsError, match="--force"):
+            await self.dda._cli_fetch_message_attachment(
+                "https://example.com/attachments/123", output=str(output)
+            )
+
+        assert output.read_bytes() == b"existing"
+        self.dda.fetch_message_attachment.assert_not_awaited()
+        self.dda.close.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_force_overwrites_existing_output(self, tmp_path):
+        output = tmp_path / "download.bin"
+        output.write_bytes(b"existing")
+
+        await self.dda._cli_fetch_message_attachment(
+            "https://example.com/attachments/123",
+            output=str(output),
+            force=True,
+        )
+
+        assert output.read_bytes() == b"\x00\x01\xff\n"
 
 
 # ── MockDeviceAgentInterface ─────────────────────────────────────────────────────
