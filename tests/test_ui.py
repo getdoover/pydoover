@@ -412,11 +412,65 @@ class TestUiCommandOptions:
 
         assert button.to_dict()["commandTimeout"] == 2500
 
+    def test_command_retry_timeout_serialize(self):
+        button = ui.Button(
+            "Restart",
+            name="restart",
+            command_timeout=timedelta(seconds=5),
+            command_retry_timeout=timedelta(seconds=15),
+        )
+
+        data = button.to_dict()
+
+        assert data["commandTimeout"] == 5000
+        assert data["commandRetryTimeout"] == 15000
+
+    def test_command_retry_timeout_accepts_seconds(self):
+        button = ui.Button("Restart", name="restart", command_retry_timeout=3)
+
+        assert button.to_dict()["commandRetryTimeout"] == 3000
+
     def test_options_omitted_by_default(self):
         data = ui.Button("Restart", name="restart").to_dict()
 
         assert "commandTimeout" not in data
+        assert "commandRetryTimeout" not in data
         assert "direct" not in data
+
+    def test_confirm_dialog_audit_bool_serialize(self):
+        button = ui.Button(
+            "Restart",
+            name="restart",
+            requires_confirm=ui.ConfirmDialog(title="Sure?", audit=True),
+        )
+
+        data = button.to_dict()
+
+        assert data["requiresConfirm"]["audit"] is True
+
+    def test_confirm_dialog_audit_config_serialize(self):
+        button = ui.Button(
+            "Restart",
+            name="restart",
+            requires_confirm=ui.ConfirmDialog(
+                audit=ui.AuditConfig(required=True, label="Reason", placeholder="Why?")
+            ),
+        )
+
+        audit = button.to_dict()["requiresConfirm"]["audit"]
+
+        assert audit == {
+            "required": True,
+            "label": "Reason",
+            "placeholder": "Why?",
+        }
+
+    def test_confirm_dialog_audit_omitted_by_default(self):
+        button = ui.Button(
+            "Restart", name="restart", requires_confirm=ui.ConfirmDialog(title="Sure?")
+        )
+
+        assert "audit" not in button.to_dict()["requiresConfirm"]
 
 
 class TestDatetimeInputOptions:

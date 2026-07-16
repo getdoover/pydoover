@@ -315,6 +315,44 @@ class Option:
         return cls(data["display_str"])
 
 
+class AuditConfig:
+    """Configuration for the audit-reason field shown in a confirmation dialog.
+
+    Pass an instance of this class (or ``True``) to ``audit`` on :class:`ConfirmDialog`
+    to prompt the user for a reason, which is recorded alongside the command.
+
+    Parameters
+    ----------
+    required: bool, optional
+        If True, the user must enter a non-empty reason before confirming.
+        Defaults to False.
+    label: str, optional
+        The label shown above the audit-reason field.
+    placeholder: str, optional
+        Placeholder text shown inside the empty audit-reason field.
+    """
+
+    def __init__(
+        self,
+        required: bool = NotSet,
+        label: str = NotSet,
+        placeholder: str = NotSet,
+    ):
+        self.required = required
+        self.label = label
+        self.placeholder = placeholder
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        if self.required is not NotSet:
+            result["required"] = self.required
+        if self.label is not NotSet:
+            result["label"] = self.label
+        if self.placeholder is not NotSet:
+            result["placeholder"] = self.placeholder
+        return normalize_ui_value(result)
+
+
 class ConfirmDialog:
     """Configuration for the confirmation dialog shown when an interaction requires confirmation.
 
@@ -336,6 +374,10 @@ class ConfirmDialog:
         An optional help text explaining what the confirmation does.
     icon: str, optional
         An optional icon for the dialog. Defaults to the interaction's icon.
+    audit: bool | AuditConfig, optional
+        Show an audit-reason field the user fills in before confirming. Pass ``True``
+        for the default field, or an :class:`AuditConfig` to customise it (e.g. make
+        the reason required). The reason is recorded alongside the issued command.
     """
 
     def __init__(
@@ -346,6 +388,7 @@ class ConfirmDialog:
         colour: str = NotSet,
         help_text: str = NotSet,
         icon: str = NotSet,
+        audit: "bool | AuditConfig" = NotSet,
     ):
         self.title = title
         self.subtitle = subtitle
@@ -353,6 +396,7 @@ class ConfirmDialog:
         self.colour = colour
         self.help_text = help_text
         self.icon = icon
+        self.audit = audit
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -368,6 +412,11 @@ class ConfirmDialog:
             result["helpText"] = self.help_text
         if self.icon is not NotSet:
             result["icon"] = self.icon
+        if self.audit is not NotSet:
+            if isinstance(self.audit, AuditConfig):
+                result["audit"] = self.audit.to_dict()
+            else:
+                result["audit"] = self.audit
         return normalize_ui_value(result)
 
 
