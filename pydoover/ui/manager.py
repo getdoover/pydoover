@@ -163,6 +163,7 @@ class UICommandsManager(RPCManager):
         channel: str = UI_CMDS_CHANNEL,
         app_key: str | None = None,
         timeout: float = 30.0,
+        **kwargs: Any,
     ) -> dict:
         # change the default channel to ui_cmds
-        return await super().call(method, params, channel, app_key, timeout)
+        return await super().call(method, params, channel, app_key, timeout, **kwargs)

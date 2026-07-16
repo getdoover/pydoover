@@ -30,6 +30,16 @@ RPC_KEY = "dv-rpc"
 DEFAULT_CHANNEL = "dv-rpc"
 
 
+class _NotGiven:
+    """Sentinel for optional args where ``None`` is a meaningful value."""
+
+    def __repr__(self):
+        return "NOT_GIVEN"
+
+
+NOT_GIVEN = _NotGiven()
+
+
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
@@ -85,6 +95,26 @@ def handler(
 # ---------------------------------------------------------------------------
 
 
+def command_expires_at(message: Message) -> datetime | None:
+    """The absolute time an RPC command expires, or ``None`` if it never does.
+
+    The expiry is derived from the message's creation timestamp plus the
+    ``expires_after`` field (milliseconds) set by the caller.
+    """
+    expires_after = message.data.get("expires_after")
+    if expires_after is None:
+        return None
+    return message.timestamp + timedelta(milliseconds=expires_after)
+
+
+def command_is_expired(message: Message) -> bool:
+    """Whether an RPC command's expiry (message create time + expiry) has passed."""
+    expires_at = command_expires_at(message)
+    if expires_at is None:
+        return False
+    return datetime.now(tz=timezone.utc) >= expires_at
+
+
 class RPCContext:
     def __init__(
         self, method: str, message: Message, _update_fn: Callable, _handler: Callable
@@ -97,6 +127,41 @@ class RPCContext:
     @property
     def channel(self):
         return self.message.channel
+
+    @property
+    def actor(self) -> dict | None:
+        """Audit info (``{"id", "name", "email"}``) of who issued the command, if any."""
+        return self.message.data.get("actor")
+
+    @property
+    def reason(self) -> str | None:
+        """The audit reason supplied with this command, if any."""
+        return self.message.data.get("reason")
+
+    @property
+    def old_value(self) -> Any:
+        """The value observed before this command was issued, if provided."""
+        return self.message.data.get("old_value")
+
+    @property
+    def retry_of(self) -> str | None:
+        """Message id of the shorter-lived command this retry replaces, if any."""
+        return self.message.data.get("retry_of")
+
+    @property
+    def expires_after(self) -> int | None:
+        """Command lifetime in milliseconds from its creation timestamp, if set."""
+        return self.message.data.get("expires_after")
+
+    @property
+    def expires_at(self) -> datetime | None:
+        """The absolute time this command expires, or ``None`` if it never expires."""
+        return command_expires_at(self.message)
+
+    @property
+    def is_expired(self) -> bool:
+        """Whether this command's expiry (message create time + expiry) has passed."""
+        return command_is_expired(self.message)
 
     async def acknowledge(self):
         # fixme: maybe these should be objects...
@@ -217,6 +282,11 @@ class RPCManager:
         channel: str = DEFAULT_CHANNEL,
         app_key: str | None = None,
         timeout: float = 30.0,
+        actor: dict[str, Any] | None = None,
+        reason: str | None = None,
+        old_value: Any = NOT_GIVEN,
+        expires_after: "int | float | timedelta | None" = None,
+        retry_of: str | None = None,
     ) -> dict:
         """Make an RPC call and wait for the response.
 
@@ -230,6 +300,18 @@ class RPCManager:
             Channel to send the request on. Defaults to ``"tag_values"``.
         timeout : float
             Seconds to wait for a response before raising :class:`RPCTimeoutError`.
+        actor : dict, optional
+            Audit info (``{"id", "name", "email"}``) of who issued the command.
+        reason : str, optional
+            An audit reason recorded alongside the command.
+        old_value : Any, optional
+            The value observed before this command was issued.
+        expires_after : int | float | timedelta, optional
+            Command lifetime from its creation timestamp. Given as milliseconds
+            (int/float) or a :class:`~datetime.timedelta`. A receiver will refuse
+            to act on the command once ``create time + expires_after`` has passed.
+        retry_of : str, optional
+            Message id of the shorter-lived command this retry replaces.
 
         Returns
         -------
@@ -254,6 +336,18 @@ class RPCManager:
         }
         if app_key:
             data["app_key"] = app_key
+        if actor is not None:
+            data["actor"] = actor
+        if reason is not None:
+            data["reason"] = reason
+        if old_value is not NOT_GIVEN:
+            data["old_value"] = old_value
+        if expires_after is not None:
+            if isinstance(expires_after, timedelta):
+                expires_after = int(expires_after.total_seconds() * 1000)
+            data["expires_after"] = int(expires_after)
+        if retry_of is not None:
+            data["retry_of"] = retry_of
         message_id = await self.api.create_message(channel, data)
 
         loop = asyncio.get_running_loop()
@@ -335,6 +429,15 @@ class RPCManager:
             payload = event.message.data["request"]
         except KeyError:
             log.info(f"Received malformed RPC request: {event.message.data}")
+            return
+
+        # Drop expired commands: if the message was created longer ago than its
+        # `expires_after` lifetime, it's stale and must not be acted upon.
+        if command_is_expired(event.message):
+            log.info(
+                f"Skipping expired RPC command '{method}' "
+                f"(message {event.message.id}, expired at {command_expires_at(event.message)})"
+            )
             return
 
         channel_name = event.channel.name

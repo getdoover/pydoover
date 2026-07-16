@@ -21,6 +21,7 @@ from .misc import (
     NotSet as NotSet,
     Colour as Colour,
     ConfirmDialog as ConfirmDialog,
+    AuditConfig as AuditConfig,
     Series as Series,
     Range as Range,
     RangeView as RangeView,

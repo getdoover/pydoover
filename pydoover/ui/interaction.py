@@ -46,6 +46,9 @@ class Interaction(Element):
         How long the site waits for the device to acknowledge a command from this
         interaction before marking it as failed. A timedelta, or seconds.
         Defaults to waiting forever.
+    command_retry_timeout: timedelta | float, optional
+        The maximum additional time the site waits after the user accepts a retry
+        of a timed-out command. A timedelta, or seconds. Defaults to the command timeout.
     direct: bool, optional
         If True, commands from this interaction are written straight into the
         ui_cmds aggregate by the site (what a device would do on accept) instead
@@ -64,6 +67,7 @@ class Interaction(Element):
         requires_confirm: bool | ConfirmDialog = NotSet,
         global_interaction: bool = NotSet,
         command_timeout=NotSet,
+        command_retry_timeout=NotSet,
         direct: bool = NotSet,
         **kwargs,
     ):
@@ -85,6 +89,7 @@ class Interaction(Element):
 
         self.global_interaction = global_interaction
         self.command_timeout = command_timeout
+        self.command_retry_timeout = command_retry_timeout
         self.direct = direct
 
     @property
@@ -117,6 +122,8 @@ class Interaction(Element):
             res["global"] = self.global_interaction
         if self.command_timeout is not NotSet:
             res["commandTimeout"] = duration_ms(self.command_timeout)
+        if self.command_retry_timeout is not NotSet:
+            res["commandRetryTimeout"] = duration_ms(self.command_retry_timeout)
         if self.direct is not NotSet:
             res["direct"] = self.direct
         if self.show_activity is not NotSet:

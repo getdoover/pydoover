@@ -1,5 +1,6 @@
 import asyncio
 import re
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -10,6 +11,11 @@ from pydoover.models.data import (
     MessageUpdateEvent,
 )
 from pydoover.rpc import RPCContext, RPCError, RPCManager, RPCTimeoutError, handler
+from pydoover.utils.snowflake import SnowflakeType, generate_snowflake_id_at
+
+
+def _snowflake_at(dt: datetime) -> int:
+    return generate_snowflake_id_at(dt, type_id=SnowflakeType.Message)
 
 
 def _make_channel(name: str = "test_channel") -> ChannelID:
@@ -21,6 +27,7 @@ def _make_request_event(
     payload: dict | None = None,
     message_id: int = 100,
     channel_name: str = "test_channel",
+    extra_data: dict | None = None,
 ) -> MessageCreateEvent:
     channel = _make_channel(channel_name)
     message = Message(
@@ -33,6 +40,7 @@ def _make_request_event(
             "request": payload or {},
             "status": {"code": "sent"},
             "response": {},
+            **(extra_data or {}),
         },
         attachments=[],
     )
@@ -387,3 +395,160 @@ class TestRPCManagerIntegration:
         await app.fire_event("other", _make_request_event("ping", channel_name="other"))
 
         assert calls == ["control"]
+
+
+class TestCommandExpiry:
+    @pytest.mark.asyncio
+    async def test_expired_command_is_not_processed(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+        calls = []
+
+        class HandlerSet:
+            @handler("do_thing", channel="test_channel")
+            async def do_thing(self, ctx, payload):
+                calls.append(payload)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+
+        # message created 60s ago with a 30s lifetime -> already expired
+        created_at = datetime.now(tz=timezone.utc) - timedelta(seconds=60)
+        event = _make_request_event(
+            "do_thing",
+            {"x": 1},
+            message_id=_snowflake_at(created_at),
+            extra_data={"expires_after": 30_000},
+        )
+        await app.fire_event("test_channel", event)
+
+        assert calls == []
+        # the handler never ran, so no response status was written
+        assert event.message.id not in app.messages
+
+    @pytest.mark.asyncio
+    async def test_unexpired_command_is_processed(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+        calls = []
+
+        class HandlerSet:
+            @handler("do_thing", channel="test_channel")
+            async def do_thing(self, ctx, payload):
+                calls.append(payload)
+                return {"ok": True}
+
+        manager.register_handlers(HandlerSet())
+
+        # message created just now with a generous lifetime -> still valid
+        created_at = datetime.now(tz=timezone.utc)
+        event = _make_request_event(
+            "do_thing",
+            {"x": 1},
+            message_id=_snowflake_at(created_at),
+            extra_data={"expires_after": 60_000},
+        )
+        await app.fire_event("test_channel", event)
+
+        assert calls == [{"x": 1}]
+        assert app.messages[event.message.id]["data"]["status"]["code"] == "success"
+
+    @pytest.mark.asyncio
+    async def test_command_without_expiry_is_processed(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+        calls = []
+
+        class HandlerSet:
+            @handler("do_thing", channel="test_channel")
+            async def do_thing(self, ctx, payload):
+                calls.append(payload)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+
+        created_at = datetime.now(tz=timezone.utc) - timedelta(days=1)
+        event = _make_request_event(
+            "do_thing", {"x": 1}, message_id=_snowflake_at(created_at)
+        )
+        await app.fire_event("test_channel", event)
+
+        assert calls == [{"x": 1}]
+
+
+class TestCommandAuditFields:
+    @pytest.mark.asyncio
+    async def test_context_exposes_actor_reason_and_old_value(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+        seen = {}
+
+        actor = {"id": "u1", "name": "Ada", "email": "ada@example.com"}
+
+        class HandlerSet:
+            @handler("do_thing", channel="test_channel")
+            async def do_thing(self, ctx, payload):
+                seen["actor"] = ctx.actor
+                seen["reason"] = ctx.reason
+                seen["old_value"] = ctx.old_value
+                seen["retry_of"] = ctx.retry_of
+                seen["expires_after"] = ctx.expires_after
+                seen["is_expired"] = ctx.is_expired
+                return {}
+
+        manager.register_handlers(HandlerSet())
+
+        event = _make_request_event(
+            "do_thing",
+            {"x": 1},
+            message_id=_snowflake_at(datetime.now(tz=timezone.utc)),
+            extra_data={
+                "actor": actor,
+                "reason": "maintenance",
+                "old_value": "off",
+                "retry_of": "42",
+                "expires_after": 60_000,
+            },
+        )
+        await app.fire_event("test_channel", event)
+
+        assert seen["actor"] == actor
+        assert seen["reason"] == "maintenance"
+        assert seen["old_value"] == "off"
+        assert seen["retry_of"] == "42"
+        assert seen["expires_after"] == 60_000
+        assert seen["is_expired"] is False
+
+    @pytest.mark.asyncio
+    async def test_call_sends_audit_and_expiry_fields(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+        actor = {"id": "u1", "name": "Ada", "email": "ada@example.com"}
+
+        task = asyncio.create_task(
+            manager.call(
+                "do_thing",
+                params={"x": 1},
+                channel="test_channel",
+                actor=actor,
+                reason="maintenance",
+                old_value=None,
+                expires_after=timedelta(seconds=30),
+                retry_of="7",
+                timeout=1.0,
+            )
+        )
+        await asyncio.sleep(0)
+
+        data = app.messages[1000]["data"]
+        assert data["actor"] == actor
+        assert data["reason"] == "maintenance"
+        assert data["old_value"] is None
+        assert data["expires_after"] == 30_000
+        assert data["retry_of"] == "7"
+
+        await app.fire_event(
+            "test_channel",
+            _make_response_event({"code": "success"}, {}, message_id=1000),
+        )
+        await task
