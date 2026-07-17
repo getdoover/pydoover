@@ -62,9 +62,6 @@ dev = [
 [project.urls]
 Homepage = "https://doover.com"
 
-[project.scripts]
-pydoover = "pydoover.cli:entrypoint"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "strict"
