@@ -118,7 +118,8 @@ class UI:
     def __init_subclass__(
         cls,
         display_name: str = "$config.app().APP_DISPLAY_NAME",
-        hidden: bool | str = "$config.app().hidden:boolean:false",
+        hidden: bool | str | None = None,
+        interpreter_visible: bool | None = None,
         position: int | str = "$config.app().dv_app_position:number:100",
         default_open: bool
         | str = "$config.app().dv_app_default_open:boolean",  # default to None
@@ -143,6 +144,15 @@ class UI:
             setattr(cls, attr_name, declaration)
 
         cls.__ui_declarations__ = declarations
+
+        if hidden is not None and interpreter_visible is not None:
+            raise ValueError(
+                "Set either `hidden` or `interpreter_visible` on a UI, not both."
+            )
+        if interpreter_visible is not None:
+            hidden = not interpreter_visible
+        elif hidden is None:
+            hidden = "$config.app().hidden:boolean:false"
 
         if isinstance(hidden, str):
             if not hidden.startswith("$"):

@@ -1149,6 +1149,44 @@ class ApplicationDefaultOpen(Boolean):
         )
 
 
+class ApplicationInterpreterVisible(Boolean):
+    def __init__(
+        self,
+        display_name: str = "Interpreter Visible",
+        *,
+        description: str = "Whether the application is visible in the interpreter.",
+        default: bool = True,
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            default=default,
+            name="interpreter_visible",
+            hidden=True,
+            **kwargs,
+        )
+
+
+class ApplicationCockpitVisible(Boolean):
+    def __init__(
+        self,
+        display_name: str = "Cockpit Visible",
+        *,
+        description: str = "Whether the application's custom widgets are visible in a Cockpit tab.",
+        default: bool = False,
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            default=default,
+            name="cockpit_visible",
+            hidden=True,
+            **kwargs,
+        )
+
+
 class TagRef(Object):
     """Represents a reference to a tag exposed by another application (or, in
     future, another agent).

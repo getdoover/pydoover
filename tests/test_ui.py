@@ -330,6 +330,26 @@ class TestConfigRefResolution:
 
         assert MyUI(schema, None, "app_key").to_schema()["position"] == 100
 
+    @pytest.mark.parametrize(
+        ("interpreter_visible", "expected_hidden"),
+        [(True, False), (False, True)],
+    )
+    def test_interpreter_visibility_is_inverted_for_ui_hidden(
+        self, interpreter_visible, expected_hidden
+    ):
+        class MyUI(ui.UI, interpreter_visible=interpreter_visible):
+            pass
+
+        assert MyUI(None, None, "app_key").to_schema()["hidden"] is expected_hidden
+
+    def test_interpreter_visibility_and_hidden_are_mutually_exclusive(self):
+        with pytest.raises(
+            ValueError, match="either `hidden` or `interpreter_visible`"
+        ):
+
+            class MyUI(ui.UI, hidden=False, interpreter_visible=True):
+                pass
+
 
 class TestApplicationUIResolution:
     def test_async_docker_startup_binds_dynamic_ui_to_runtime_tags(self, monkeypatch):
