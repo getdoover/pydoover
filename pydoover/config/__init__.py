@@ -1149,20 +1149,20 @@ class ApplicationDefaultOpen(Boolean):
         )
 
 
-class ApplicationInterpreterVisible(Boolean):
+class ApplicationInterpreterHidden(Boolean):
     def __init__(
         self,
-        display_name: str = "Interpreter Visible",
+        display_name: str = "Interpreter Hidden",
         *,
-        description: str = "Whether the application is visible in the interpreter.",
-        default: bool = True,
+        description: str = "Whether the application is hidden in the interpreter.",
+        default: bool = False,
         **kwargs,
     ):
         super().__init__(
             display_name,
             description=description,
             default=default,
-            name="interpreter_visible",
+            name="interpreter_hidden",
             advanced=True,
             **kwargs,
         )

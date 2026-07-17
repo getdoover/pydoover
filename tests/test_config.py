@@ -36,7 +36,7 @@ SAMPLE_CONFIG_A = {
 
 
 class ApplicationVisibilityConfig(config.Schema):
-    interpreter_visible = config.ApplicationInterpreterVisible()
+    interpreter_hidden = config.ApplicationInterpreterHidden()
     cockpit_visible = config.ApplicationCockpitVisible()
 
 
@@ -44,11 +44,11 @@ class TestApplicationVisibilityConfig:
     def test_visibility_elements_have_expected_schema_defaults(self):
         schema = ApplicationVisibilityConfig.to_schema()
 
-        interpreter = schema["properties"]["interpreter_visible"]
+        interpreter = schema["properties"]["interpreter_hidden"]
         cockpit = schema["properties"]["cockpit_visible"]
 
         assert interpreter["type"] == ["boolean", "null"]
-        assert interpreter["default"] is True
+        assert interpreter["default"] is False
         assert interpreter["x-hidden"] is False
         assert interpreter["x-advanced"] is True
         assert cockpit["type"] == ["boolean", "null"]
@@ -61,16 +61,16 @@ class TestApplicationVisibilityConfig:
         schema = ApplicationVisibilityConfig()
         schema._inject_deployment_config({})
 
-        assert schema.interpreter_visible.value is True
+        assert schema.interpreter_hidden.value is False
         assert schema.cockpit_visible.value is False
 
     def test_visibility_elements_accept_explicit_overrides(self):
         schema = ApplicationVisibilityConfig()
         schema._inject_deployment_config(
-            {"interpreter_visible": False, "cockpit_visible": True}
+            {"interpreter_hidden": True, "cockpit_visible": True}
         )
 
-        assert schema.interpreter_visible.value is False
+        assert schema.interpreter_hidden.value is True
         assert schema.cockpit_visible.value is True
 
 

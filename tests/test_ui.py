@@ -330,34 +330,38 @@ class TestConfigRefResolution:
 
         assert MyUI(schema, None, "app_key").to_schema()["position"] == 100
 
-    @pytest.mark.parametrize(
-        ("interpreter_visible", "expected_hidden"),
-        [(True, False), (False, True)],
-    )
-    def test_interpreter_visibility_is_inverted_for_ui_hidden(
-        self, interpreter_visible, expected_hidden
-    ):
-        class MyUI(ui.UI, interpreter_visible=interpreter_visible):
+    def test_resolves_interpreter_hidden_from_explicit_deployment_value(self):
+        class S(config.Schema):
+            interpreter_hidden = config.ApplicationInterpreterHidden()
+
+        schema = S()
+        schema._inject_deployment_config({"interpreter_hidden": True})
+
+        class MyUI(ui.UI):
             pass
 
-        assert MyUI(None, None, "app_key").to_schema()["hidden"] is expected_hidden
+        assert MyUI(schema, None, "app_key").to_schema()["hidden"] is True
 
-    def test_interpreter_visibility_and_hidden_are_mutually_exclusive(self):
-        with pytest.raises(
-            ValueError, match="either `hidden` or `interpreter_visible`"
-        ):
+    def test_resolves_interpreter_hidden_from_config_default(self):
+        class S(config.Schema):
+            interpreter_hidden = config.ApplicationInterpreterHidden()
 
-            class MyUI(ui.UI, hidden=False, interpreter_visible=True):
-                pass
+        schema = S()
+        schema._inject_deployment_config({})
 
-    def test_interpreter_visibility_rejects_config_reference_strings(self):
-        with pytest.raises(TypeError, match="must be a boolean"):
+        class MyUI(ui.UI):
+            pass
 
-            class MyUI(
-                ui.UI,
-                interpreter_visible="$config.app().interpreter_visible",
-            ):
-                pass
+        assert MyUI(schema, None, "app_key").to_schema()["hidden"] is False
+
+    def test_exports_interpreter_hidden_config_reference(self):
+        class MyUI(ui.UI):
+            pass
+
+        assert (
+            MyUI(None, None, "app_key").to_schema(resolve_config=False)["hidden"]
+            == "$config.app().interpreter_hidden:boolean:false"
+        )
 
 
 class TestApplicationUIResolution:
