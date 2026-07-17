@@ -150,6 +150,8 @@ class UI:
                 "Set either `hidden` or `interpreter_visible` on a UI, not both."
             )
         if interpreter_visible is not None:
+            if not isinstance(interpreter_visible, bool):
+                raise TypeError("`interpreter_visible` must be a boolean.")
             hidden = not interpreter_visible
         elif hidden is None:
             hidden = "$config.app().hidden:boolean:false"

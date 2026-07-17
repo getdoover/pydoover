@@ -49,10 +49,12 @@ class TestApplicationVisibilityConfig:
 
         assert interpreter["type"] == ["boolean", "null"]
         assert interpreter["default"] is True
-        assert interpreter["x-hidden"] is True
+        assert interpreter["x-hidden"] is False
+        assert interpreter["x-advanced"] is True
         assert cockpit["type"] == ["boolean", "null"]
         assert cockpit["default"] is False
-        assert cockpit["x-hidden"] is True
+        assert cockpit["x-hidden"] is False
+        assert cockpit["x-advanced"] is True
         assert schema["required"] == []
 
     def test_visibility_elements_load_defaults_when_omitted(self):

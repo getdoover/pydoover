@@ -1163,7 +1163,7 @@ class ApplicationInterpreterVisible(Boolean):
             description=description,
             default=default,
             name="interpreter_visible",
-            hidden=True,
+            advanced=True,
             **kwargs,
         )
 
@@ -1182,7 +1182,7 @@ class ApplicationCockpitVisible(Boolean):
             description=description,
             default=default,
             name="cockpit_visible",
-            hidden=True,
+            advanced=True,
             **kwargs,
         )
 

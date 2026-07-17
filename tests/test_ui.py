@@ -350,6 +350,15 @@ class TestConfigRefResolution:
             class MyUI(ui.UI, hidden=False, interpreter_visible=True):
                 pass
 
+    def test_interpreter_visibility_rejects_config_reference_strings(self):
+        with pytest.raises(TypeError, match="must be a boolean"):
+
+            class MyUI(
+                ui.UI,
+                interpreter_visible="$config.app().interpreter_visible",
+            ):
+                pass
+
 
 class TestApplicationUIResolution:
     def test_async_docker_startup_binds_dynamic_ui_to_runtime_tags(self, monkeypatch):
