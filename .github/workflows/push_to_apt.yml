@@ -56,6 +56,7 @@ jobs:
           gbp buildpackage \
             --git-ignore-branch \
             --git-ignore-new \
+            --git-export=WC \
             --git-upstream-tree=${GITHUB_SHA} \
             --git-builder="debuild -b -us -uc" \
             --git-export-dir=debian/build/
