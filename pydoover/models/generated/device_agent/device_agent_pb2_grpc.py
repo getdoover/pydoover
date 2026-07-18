@@ -100,6 +100,11 @@ class deviceAgentStub(object):
                 request_serializer=device__agent_dot_device__agent__pb2.GetMessagesRequest.SerializeToString,
                 response_deserializer=device__agent_dot_device__agent__pb2.GetMessagesResponse.FromString,
                 _registered_method=True)
+        self.ListChannels = channel.unary_unary(
+                '/device_agent.deviceAgent/ListChannels',
+                request_serializer=device__agent_dot_device__agent__pb2.ListChannelsRequest.SerializeToString,
+                response_deserializer=device__agent_dot_device__agent__pb2.ListChannelsResponse.FromString,
+                _registered_method=True)
         self.FetchAttachment = channel.unary_unary(
                 '/device_agent.deviceAgent/FetchAttachment',
                 request_serializer=device__agent_dot_device__agent__pb2.FetchAttachmentRequest.SerializeToString,
@@ -191,6 +196,12 @@ class deviceAgentServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListChannels(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def FetchAttachment(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -265,6 +276,11 @@ def add_deviceAgentServicer_to_server(servicer, server):
                     servicer.GetMessages,
                     request_deserializer=device__agent_dot_device__agent__pb2.GetMessagesRequest.FromString,
                     response_serializer=device__agent_dot_device__agent__pb2.GetMessagesResponse.SerializeToString,
+            ),
+            'ListChannels': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListChannels,
+                    request_deserializer=device__agent_dot_device__agent__pb2.ListChannelsRequest.FromString,
+                    response_serializer=device__agent_dot_device__agent__pb2.ListChannelsResponse.SerializeToString,
             ),
             'FetchAttachment': grpc.unary_unary_rpc_method_handler(
                     servicer.FetchAttachment,
@@ -602,6 +618,33 @@ class deviceAgent(object):
             '/device_agent.deviceAgent/GetMessages',
             device__agent_dot_device__agent__pb2.GetMessagesRequest.SerializeToString,
             device__agent_dot_device__agent__pb2.GetMessagesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListChannels(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/device_agent.deviceAgent/ListChannels',
+            device__agent_dot_device__agent__pb2.ListChannelsRequest.SerializeToString,
+            device__agent_dot_device__agent__pb2.ListChannelsResponse.FromString,
             options,
             channel_credentials,
             insecure,

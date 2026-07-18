@@ -2,7 +2,7 @@ from .aggregate import Aggregate
 from .alarm import Alarm, AlarmOperator, AlarmState
 from .attachment import Attachment, File
 from .batch import AgentAggregate, BatchAggregateResponse, BatchMessageResponse
-from .channel import Channel, ChannelID
+from .channel import Channel, ChannelID, ChannelList, ChannelListing
 from .device_token import ConfirmedDeviceToken, RotatedDeviceToken
 from .connection import (
     ConnectionConfig,
@@ -66,6 +66,8 @@ __all__ = [
     "BatchAggregateResponse",
     "BatchMessageResponse",
     "Channel",
+    "ChannelList",
+    "ChannelListing",
     "ChannelID",
     "ChannelSyncEvent",
     "ConnectionConfig",
