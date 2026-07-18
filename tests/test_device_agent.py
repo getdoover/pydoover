@@ -389,6 +389,97 @@ class TestFetchMessageAttachmentCLI:
 # ── MockDeviceAgentInterface ─────────────────────────────────────────────────────
 
 
+class TestListChannels:
+    def setup_method(self):
+        self.dda = DeviceAgentInterface(app_key="test", dda_uri="localhost:50051")
+
+    def _response(self, channels, from_cloud=True):
+        return device_agent_pb2.ListChannelsResponse(
+            response_header=_make_response_header(),
+            channels=channels,
+            from_cloud=from_cloud,
+        )
+
+    @pytest.mark.asyncio
+    async def test_returns_names_without_aggregates(self):
+        resp = self._response(
+            [
+                device_agent_pb2.ChannelDetails(channel_name="ui_state"),
+                device_agent_pb2.ChannelDetails(channel_name="tag_values"),
+            ]
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        result = await self.dda.list_channels()
+
+        assert result.from_cloud is True
+        assert [c.name for c in result] == ["ui_state", "tag_values"]
+        assert all(c.aggregate is None for c in result)
+        # include_aggregate defaults off, so the agent isn't asked for bodies.
+        assert self.dda.make_request.call_args[0][1].include_aggregate is False
+
+    @pytest.mark.asyncio
+    async def test_decodes_aggregates_when_requested(self):
+        resp = self._response(
+            [
+                device_agent_pb2.ChannelDetails(
+                    channel_name="ui_state", aggregate='{"level": 42}'
+                )
+            ]
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        result = await self.dda.list_channels(include_aggregate=True)
+
+        assert result.channels[0].aggregate == {"level": 42}
+        assert self.dda.make_request.call_args[0][1].include_aggregate is True
+
+    @pytest.mark.asyncio
+    async def test_from_cloud_false_when_agent_answered_locally(self):
+        resp = self._response(
+            [device_agent_pb2.ChannelDetails(channel_name="local_only")],
+            from_cloud=False,
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        result = await self.dda.list_channels()
+
+        # The listing may be a subset; callers check this before trusting it.
+        assert result.from_cloud is False
+        assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_errors_propagate(self):
+        self.dda.make_request = AsyncMock(side_effect=HTTPError(500, "Internal error"))
+        with pytest.raises(DooverAPIError):
+            await self.dda.list_channels()
+
+
+class TestReplayMissedMessages:
+    def setup_method(self):
+        self.dda = DeviceAgentInterface(app_key="test", dda_uri="localhost:50051")
+
+    def test_defaults_to_replaying(self):
+        captured = {}
+
+        def fake_ensure(channel_name, wire_format, replay_missed_messages=True):
+            captured["replay"] = replay_missed_messages
+
+        self.dda._ensure_stream = fake_ensure
+        self.dda.add_event_callback("ch", AsyncMock())
+        assert captured["replay"] is True
+
+    def test_opting_out_reaches_the_stream(self):
+        captured = {}
+
+        def fake_ensure(channel_name, wire_format, replay_missed_messages=True):
+            captured["replay"] = replay_missed_messages
+
+        self.dda._ensure_stream = fake_ensure
+        self.dda.add_event_callback("ch", AsyncMock(), replay_missed_messages=False)
+        assert captured["replay"] is False
+
+
 class TestMockDeviceAgentInterface:
     def setup_method(self):
         self.mock = MockDeviceAgentInterface(app_key="test", dda_uri="localhost:50051")

@@ -443,14 +443,16 @@ class UpdateAggregateResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., aggregate: _Optional[_Union[Aggregate, _Mapping]] = ...) -> None: ...
 
 class ChannelEventSubscriptionRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "wire_format")
+    __slots__ = ("header", "channel_name", "wire_format", "replay_missed_messages")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     WIRE_FORMAT_FIELD_NUMBER: _ClassVar[int]
+    REPLAY_MISSED_MESSAGES_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     wire_format: WireFormat
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., wire_format: _Optional[_Union[WireFormat, str]] = ...) -> None: ...
+    replay_missed_messages: bool
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., wire_format: _Optional[_Union[WireFormat, str]] = ..., replay_missed_messages: bool = ...) -> None: ...
 
 class ChannelEventSubscriptionResponse(_message.Message):
     __slots__ = ("response_header", "event_name", "channel_name", "data", "data_json")
@@ -481,6 +483,24 @@ class GetAggregateResponse(_message.Message):
     response_header: ResponseHeader
     aggregate: Aggregate
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., aggregate: _Optional[_Union[Aggregate, _Mapping]] = ...) -> None: ...
+
+class ListChannelsRequest(_message.Message):
+    __slots__ = ("header", "include_aggregate")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    INCLUDE_AGGREGATE_FIELD_NUMBER: _ClassVar[int]
+    header: RequestHeader
+    include_aggregate: bool
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., include_aggregate: bool = ...) -> None: ...
+
+class ListChannelsResponse(_message.Message):
+    __slots__ = ("response_header", "channels", "from_cloud")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    CHANNELS_FIELD_NUMBER: _ClassVar[int]
+    FROM_CLOUD_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    channels: _containers.RepeatedCompositeFieldContainer[ChannelDetails]
+    from_cloud: bool
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., channels: _Optional[_Iterable[_Union[ChannelDetails, _Mapping]]] = ..., from_cloud: bool = ...) -> None: ...
 
 class FetchAttachmentRequest(_message.Message):
     __slots__ = ("header", "attachment")

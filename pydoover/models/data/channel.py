@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from .aggregate import Aggregate
@@ -44,6 +45,62 @@ class ChannelID:
             agent_id=self.agent_id,
             name=self.name,
         )
+
+
+class ChannelListing:
+    """One channel in a :meth:`DeviceAgentInterface.list_channels` result."""
+
+    def __init__(self, name: str, aggregate: dict[str, Any] | None = None):
+        self.name = name
+        #: The channel's aggregate data, when the listing was asked to include
+        #: it and the agent had one to give.
+        self.aggregate = aggregate
+
+    @classmethod
+    def from_proto(cls, response):
+        # The agent sends the aggregate as a JSON string, as it does for every
+        # other payload, so large integers survive the trip.
+        aggregate = (
+            json.loads(response.aggregate) if response.HasField("aggregate") else None
+        )
+        return cls(response.channel_name, aggregate)
+
+    def to_dict(self):
+        return {"channel_name": self.name, "aggregate": self.aggregate}
+
+
+class ChannelList:
+    """The result of :meth:`DeviceAgentInterface.list_channels`.
+
+    Iterating yields the :class:`ChannelListing` entries, so the common case
+    reads as ``for channel in await dda.list_channels():``.
+    """
+
+    def __init__(self, channels: list[ChannelListing], from_cloud: bool):
+        self.channels = channels
+        #: Whether the agent answered from the cloud. ``False`` means it could
+        #: not reach the cloud and listed the channels it tracks locally
+        #: instead — only those it has touched, so possibly a subset.
+        self.from_cloud = from_cloud
+
+    @classmethod
+    def from_proto(cls, response):
+        return cls(
+            [ChannelListing.from_proto(c) for c in response.channels],
+            response.from_cloud,
+        )
+
+    def __iter__(self):
+        return iter(self.channels)
+
+    def __len__(self):
+        return len(self.channels)
+
+    def to_dict(self):
+        return {
+            "channels": [c.to_dict() for c in self.channels],
+            "from_cloud": self.from_cloud,
+        }
 
 
 class Channel:

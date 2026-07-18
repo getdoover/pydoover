@@ -20,6 +20,8 @@ from ...models.generated.device_agent import device_agent_pb2, device_agent_pb2_
 from ...models.data import (
     Aggregate,
     AggregateUpdateEvent,
+    ChannelList,
+    ChannelListing,
     ChannelSyncEvent,
     EventSubscription,
     File,
@@ -173,12 +175,17 @@ class DeviceAgentInterface(GRPCInterface):
             backoff = min(backoff * 2, 1)
 
     def _ensure_stream(
-        self, channel_name: str, wire_format: WireFormat = WireFormat.json_only
+        self,
+        channel_name: str,
+        wire_format: WireFormat = WireFormat.json_only,
+        replay_missed_messages: bool = True,
     ) -> None:
         """Ensure a single event stream is running for this channel."""
         if channel_name not in self._stream_tasks:
             self._stream_tasks[channel_name] = asyncio.create_task(
-                self._run_channel_stream(channel_name, wire_format)
+                self._run_channel_stream(
+                    channel_name, wire_format, replay_missed_messages
+                )
             )
 
     def add_event_callback(
@@ -187,6 +194,7 @@ class DeviceAgentInterface(GRPCInterface):
         callback: Callable,
         events: EventSubscription = EventSubscription.all,
         wire_format: WireFormat = WireFormat.json_only,
+        replay_missed_messages: bool = True,
     ) -> None:
         """Register a callback for events on a channel.
 
@@ -211,6 +219,13 @@ class DeviceAgentInterface(GRPCInterface):
             ``WireFormat.json_only`` (events are decoded from ``data_json``, so
             the agent can skip the protobuf ``Struct`` build). Only the first
             subscriber to a channel establishes the stream's format.
+        replay_missed_messages : bool, optional
+            Whether to receive messages the agent replays after a reconnect —
+            ones created while it was offline. Defaults to ``True``. Pass
+            ``False`` for live-only delivery, e.g. a control loop that should
+            act on current state rather than re-run a backlog of stale
+            commands. Like ``wire_format``, only the first subscriber to a
+            channel establishes this.
         """
         entry = (callback, events)
         try:
@@ -218,7 +233,7 @@ class DeviceAgentInterface(GRPCInterface):
         except KeyError:
             self._event_callbacks[channel_name] = [entry]
 
-        self._ensure_stream(channel_name, wire_format)
+        self._ensure_stream(channel_name, wire_format, replay_missed_messages)
 
     @staticmethod
     def _event_type_to_flag(event) -> EventSubscription | None:
@@ -235,7 +250,10 @@ class DeviceAgentInterface(GRPCInterface):
         return None
 
     async def _run_channel_stream(
-        self, channel_name: str, wire_format: WireFormat = WireFormat.json_only
+        self,
+        channel_name: str,
+        wire_format: WireFormat = WireFormat.json_only,
+        replay_missed_messages: bool = True,
     ):
         """Single event stream per channel. Seeds aggregate cache, then distributes events."""
         await self.wait_until_healthy()
@@ -281,7 +299,7 @@ class DeviceAgentInterface(GRPCInterface):
         while True:
             try:
                 async for event in self.stream_channel_events(
-                    channel_name, wire_format
+                    channel_name, wire_format, replay_missed_messages
                 ):
                     # Update internal aggregate state on AggregateUpdate
                     if isinstance(event, AggregateUpdateEvent):
@@ -315,7 +333,10 @@ class DeviceAgentInterface(GRPCInterface):
                 continue
 
     async def stream_channel_events(
-        self, channel_name: str, wire_format: WireFormat = WireFormat.json_only
+        self,
+        channel_name: str,
+        wire_format: WireFormat = WireFormat.json_only,
+        replay_missed_messages: bool = True,
     ):
         backoff = 1
         while True:
@@ -324,6 +345,7 @@ class DeviceAgentInterface(GRPCInterface):
                     pl = device_agent_pb2.ChannelEventSubscriptionRequest(
                         channel_name=channel_name,
                         wire_format=int(wire_format),
+                        replay_missed_messages=replay_missed_messages,
                     )
                     channel_stream = device_agent_pb2_grpc.deviceAgentStub(
                         channel
@@ -443,6 +465,46 @@ class DeviceAgentInterface(GRPCInterface):
                 return False
             await asyncio.sleep(inter_wait)
         return True
+
+    @cli_command()
+    async def list_channels(self, include_aggregate: bool = False) -> ChannelList:
+        """List the agent's channels.
+
+        The device agent answers from the cloud when it can reach it, and from
+        the channels it tracks locally when it can't — see
+        :attr:`ChannelList.from_cloud`, since a local answer covers only the
+        channels this agent has touched and may be a subset.
+
+        Examples
+        --------
+        >>> listing = await self.device_agent.list_channels()
+        >>> [c.name for c in listing]
+        ['ui_state', 'tag_values']
+
+        Parameters
+        ----------
+        include_aggregate : bool, optional
+            Populate each channel's ``aggregate``. Defaults to False, so a
+            name-only listing doesn't pull every aggregate body over.
+
+        Returns
+        -------
+        ChannelList
+            The channels, and whether the cloud answered.
+
+        Raises
+        ------
+        DooverAPIError
+            If the request fails.
+        """
+        resp = await self.make_request(
+            "ListChannels",
+            device_agent_pb2.ListChannelsRequest(
+                header=device_agent_pb2.RequestHeader(app_id=self.app_key),
+                include_aggregate=include_aggregate,
+            ),
+        )
+        return ChannelList.from_proto(resp)
 
     @cli_command()
     async def fetch_channel_aggregate(self, channel_name: str) -> Aggregate:
@@ -792,7 +854,10 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         return True
 
     async def _run_channel_stream(
-        self, channel_name: str, wire_format: WireFormat = WireFormat.json_only
+        self,
+        channel_name: str,
+        wire_format: WireFormat = WireFormat.json_only,
+        replay_missed_messages: bool = True,
     ):
         # No-op in mock — no real event stream to listen to
         return
@@ -803,6 +868,19 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
                 channel_name,
                 Aggregate(data={}, attachments=[], last_updated=None),
             )
+        )
+
+    async def list_channels(self, include_aggregate: bool = False) -> ChannelList:
+        # There is no cloud in the mock, so the channels it knows of are the
+        # ones it has been given — reported as a local answer.
+        return ChannelList(
+            [
+                ChannelListing(
+                    name, copy.deepcopy(agg.data) if include_aggregate else None
+                )
+                for name, agg in self._aggregates.items()
+            ],
+            from_cloud=False,
         )
 
     async def wait_until_healthy(self, timeout: float = 10):
