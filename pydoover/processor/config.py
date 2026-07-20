@@ -245,11 +245,13 @@ class ExtendedPermissionsConfig(Object):
         self,
         default_device_group: bool = NotSet,
         extra_fields: list[str] | None = None,
+        **kwargs,
     ):
         super().__init__(
             "Devices",
             description="Give Permission to access devices.",
             name="dv_proc_extended_permissions",
+            **kwargs,
         )
 
         self.default_device_group = default_device_group

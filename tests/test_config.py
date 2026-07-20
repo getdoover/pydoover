@@ -560,3 +560,36 @@ class TestDataPermissions:
             }
         )
         assert elem.dd_permissions.value == "1099511627774"
+
+    def test_declared_via_child_override(self):
+        """An app should be able to declare 'I need no permissions' in code,
+        rather than relying on whoever fills in the deployment config."""
+        from pydoover.processor.config import ExtendedPermissionsConfig
+
+        schema = ExtendedPermissionsConfig(dd_permissions__default="0").to_dict()
+        assert schema["properties"]["dd_permissions"]["default"] == "0"
+
+    def test_declared_zero_is_not_confused_with_unset(self):
+        from pydoover.processor.config import ExtendedPermissionsConfig
+
+        unset = ExtendedPermissionsConfig().to_dict()
+        zero = ExtendedPermissionsConfig(dd_permissions__default="0").to_dict()
+
+        assert unset["properties"]["dd_permissions"]["default"] is None
+        assert zero["properties"]["dd_permissions"]["default"] == "0"
+
+    def test_child_override_composes_with_extra_fields(self):
+        from pydoover.processor.config import ExtendedPermissionsConfig
+
+        schema = ExtendedPermissionsConfig(
+            extra_fields=["id", "extra_config"], dd_permissions__default="0"
+        ).to_dict()
+
+        assert schema["x-extraDeviceFields"] == ["id", "extra_config"]
+        assert schema["properties"]["dd_permissions"]["default"] == "0"
+
+    def test_picker_can_be_unhidden_per_app(self):
+        from pydoover.processor.config import ExtendedPermissionsConfig
+
+        schema = ExtendedPermissionsConfig(dd_permissions__hidden=False).to_dict()
+        assert schema["properties"]["dd_permissions"]["x-hidden"] is False
