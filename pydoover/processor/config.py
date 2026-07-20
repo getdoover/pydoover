@@ -128,6 +128,49 @@ class IngestionEndpointConfig(Object):
         )
 
 
+class DataPermissions(String):
+    """The permission mask granted on each device in an extended-permissions set.
+
+    Rendered as a permission picker in the dashboard via ``format``. The value is
+    a decimal bitmask string, matching how doover-control stores grants
+    (``{"permission_id": "ag:123", "permission": "1099511627774"}``).
+
+    Leave unset to grant every permission — that is what every app did before
+    this field existed, so omitting it has to stay backwards compatible. ``"0"``
+    grants nothing, for an app that wants ``DEVICE_MAP`` without any access to
+    the devices in it.
+
+    Note this governs only the devices resolved from ``devices`` / ``groups`` /
+    ``apps_installed`` / ``all_devices``. An app's grants on its *own* agent are
+    what let it function at all, and are unaffected.
+    """
+
+    def __init__(
+        self,
+        display_name: str = "Data Permissions",
+        *,
+        description: str = (
+            "Permissions granted on each device this app has access to. Leave "
+            "empty to grant all permissions. Set to 0 to grant none — for an app "
+            "that only needs the device map, not access to the devices."
+        ),
+        name: str = "dd_permissions",
+        **kwargs,
+    ):
+        # Both pinned rather than inferred: the runtime key is derived from the
+        # *display name* unless `name` is given, so this would otherwise land as
+        # `data_permissions` and doover-control would read the wrong key. And
+        # ConfigElement assigns `self.format = format`, so a class attribute
+        # would be shadowed by None.
+        super().__init__(
+            display_name,
+            description=description,
+            name=name,
+            format="dd_permissions",
+            **kwargs,
+        )
+
+
 # Optional fields apps may request alongside name/display_name in DEVICE_MAP via
 # `extra_fields=` on ExtendedPermissionsConfig. Each entry is a Django ORM
 # lookup path on the Device model — doover-control passes them straight to
@@ -183,6 +226,8 @@ class ExtendedPermissionsConfig(Object):
         description="Permission will be given for all devices in this organisation. This is a very far-reaching permission to grant!",
         default=False,
     )
+    dd_permissions = DataPermissions(hidden=True, default=None)
+
     """
     If `default_device_group` is True, the permissions will default to the group that the device is in. Useful to mimic doover 1.0 behaviour.
 
