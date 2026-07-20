@@ -486,3 +486,77 @@ class TestExplicitRequiredFlag:
         # The flag flows through Object.__init__ via **kwargs to ConfigElement.
         ref = config.TagRef("Ref", default=None, required=True)
         assert ref.required is True
+
+
+class TestDataPermissions:
+    """The permission mask granted on devices in an extended-permissions set."""
+
+    def test_runtime_key_is_pinned(self):
+        # Keys derive from the *display name* unless pinned, which would land
+        # this as `data_permissions` and have doover-control read the wrong key.
+        from pydoover.processor.config import DataPermissions
+
+        assert DataPermissions().to_dict()["x-name"] == "dd_permissions"
+
+    def test_format_is_set(self):
+        # `format` must go through __init__: ConfigElement assigns
+        # `self.format = format`, so a class attribute would be shadowed by None.
+        from pydoover.processor.config import DataPermissions
+
+        assert DataPermissions().to_dict()["format"] == "dd_permissions"
+
+    def test_constructible_without_a_display_name(self):
+        from pydoover.processor.config import DataPermissions
+
+        assert DataPermissions(hidden=True, default=None).to_dict()["x-hidden"] is True
+
+    def test_present_on_extended_permissions(self):
+        from pydoover.processor.config import ExtendedPermissionsConfig
+
+        schema = ExtendedPermissionsConfig().to_dict()
+        assert "dd_permissions" in schema["properties"]
+        # Optional, so existing apps that omit it keep working.
+        assert "dd_permissions" not in schema["required"]
+
+    def test_unset_means_grant_all(self):
+        """Backwards compatibility: every app predating this field granted
+        everything, so an absent value must keep meaning that."""
+        from pydoover.processor.config import ExtendedPermissionsConfig
+
+        elem = ExtendedPermissionsConfig()
+        elem.load_data(
+            {"devices": ["1"], "groups": [], "apps_installed": [], "all_devices": False}
+        )
+        assert elem.dd_permissions.value is None
+
+    def test_zero_is_distinct_from_unset(self):
+        """'0' (grant nothing) must not collapse to None (grant everything)."""
+        from pydoover.processor.config import ExtendedPermissionsConfig
+
+        elem = ExtendedPermissionsConfig()
+        elem.load_data(
+            {
+                "devices": ["1"],
+                "groups": [],
+                "apps_installed": [],
+                "all_devices": False,
+                "dd_permissions": "0",
+            }
+        )
+        assert elem.dd_permissions.value == "0"
+        assert elem.dd_permissions.value is not None
+
+    def test_explicit_mask_round_trips(self):
+        from pydoover.processor.config import ExtendedPermissionsConfig
+
+        elem = ExtendedPermissionsConfig()
+        elem.load_data(
+            {
+                "devices": ["1"],
+                "groups": [],
+                "apps_installed": [],
+                "all_devices": False,
+                "dd_permissions": "1099511627774",
+            }
+        )
+        assert elem.dd_permissions.value == "1099511627774"
