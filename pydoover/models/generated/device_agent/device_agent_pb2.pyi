@@ -411,7 +411,7 @@ class Aggregate(_message.Message):
     def __init__(self, data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[_Union[Attachment, _Mapping]]] = ..., last_updated: _Optional[int] = ..., data_json: _Optional[str] = ...) -> None: ...
 
 class UpdateAggregateRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "data", "files", "clear_attachments", "replace_data", "max_age_secs", "save_log", "data_json", "return_aggregate")
+    __slots__ = ("header", "channel_name", "data", "files", "clear_attachments", "replace_data", "max_age_secs", "save_log", "data_json", "return_aggregate", "replace_keys")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
@@ -422,6 +422,7 @@ class UpdateAggregateRequest(_message.Message):
     SAVE_LOG_FIELD_NUMBER: _ClassVar[int]
     DATA_JSON_FIELD_NUMBER: _ClassVar[int]
     RETURN_AGGREGATE_FIELD_NUMBER: _ClassVar[int]
+    REPLACE_KEYS_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     data: _struct_pb2.Struct
@@ -432,7 +433,8 @@ class UpdateAggregateRequest(_message.Message):
     save_log: bool
     data_json: str
     return_aggregate: bool
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ..., replace_data: bool = ..., max_age_secs: _Optional[float] = ..., save_log: bool = ..., data_json: _Optional[str] = ..., return_aggregate: bool = ...) -> None: ...
+    replace_keys: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., files: _Optional[_Iterable[_Union[File, _Mapping]]] = ..., clear_attachments: bool = ..., replace_data: bool = ..., max_age_secs: _Optional[float] = ..., save_log: bool = ..., data_json: _Optional[str] = ..., return_aggregate: bool = ..., replace_keys: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class UpdateAggregateResponse(_message.Message):
     __slots__ = ("response_header", "aggregate")

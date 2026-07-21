@@ -697,6 +697,7 @@ class Application:
         clear_attachments: bool = False,
         replace_data: bool = False,
         max_age_secs: float = None,
+        replace_keys: list[str] = None,
     ) -> Aggregate:
         """Update the aggregate data on a channel.
 
@@ -714,6 +715,12 @@ class Application:
             If True, replace the aggregate data entirely instead of merging. Defaults to False.
         max_age_secs : float, optional
             Maximum age in seconds before the aggregate is published to the cloud.
+        replace_keys : list[str], optional
+            Dotted subtree paths (e.g. ``state.children.<app_key>``) that are
+            REPLACED wholesale rather than deep-merged, both in the local device
+            aggregate and on the cloud. Use this to atomically swap a subtree in a
+            single write instead of a clear(None)+set pair, which can be reordered
+            on the wire and leave the cloud aggregate cleared.
 
         Returns
         -------
@@ -727,6 +734,7 @@ class Application:
             clear_attachments=clear_attachments,
             replace_data=replace_data,
             max_age_secs=max_age_secs,
+            replace_keys=replace_keys,
         )
 
     async def send_notification(
@@ -1161,6 +1169,8 @@ class Application:
 
             # bit of a cheeky double publish to ensure the old schema is cleared before we set it.
             # ideally I'd like to have a `clear_set_keys` parameter or something to PUT to the `self.app_key` key.
+            # update - that's just been added to DDA but give it a few months
+            # to make sure all devices have the latest and greatest DDA...
             if not self.ui.is_static:
                 log.info("Updating ui_state with runtime-generated schema.")
                 schema = self.ui.to_schema()
