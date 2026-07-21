@@ -691,6 +691,7 @@ class DeviceAgentInterface(GRPCInterface):
         replace_data: bool = False,
         max_age_secs: float = None,
         return_aggregate: bool = True,
+        replace_keys: list[str] = None,
     ):
         validate_payload(data)
 
@@ -702,6 +703,7 @@ class DeviceAgentInterface(GRPCInterface):
             replace_data=replace_data,
             max_age_secs=max_age_secs,
             return_aggregate=return_aggregate,
+            replace_keys=replace_keys or [],
             **encode_data_fields(data),
         )
         resp = await self.make_request("UpdateAggregate", req)

@@ -298,6 +298,13 @@ message UpdateAggregateRequest {
   // behaviour). Set false to skip that full-aggregate to_proto encode on the
   // response — most callers discard it.
   optional bool return_aggregate = 11;
+
+  // Merge-patch keys whose subtree is REPLACED wholesale rather than deep-merged
+  // (pydoover's `replace_keys` -> the `?replace=` param on the cloud HTTP write).
+  // Dotted paths, e.g. "state.children.<app_key>". Lets an app atomically swap a
+  // subtree in one write instead of a clear(null)+set pair, which can be
+  // reordered on the wire and leave the cloud aggregate cleared.
+  repeated string replace_keys = 12;
 }
 
 message UpdateAggregateResponse {
