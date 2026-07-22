@@ -294,6 +294,27 @@ class TestRPCManagerIntegration:
         assert 1000 not in manager._pending_calls
 
     @pytest.mark.asyncio
+    async def test_call_fire_and_forget(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        result = await manager.call(
+            "notify",
+            params={"x": 1},
+            channel="test_channel",
+            app_key="target_app",
+            wait_for_response=False,
+        )
+
+        # Returns the sent message id immediately, registers no pending future,
+        # and doesn't subscribe for a response it will never read.
+        assert result == 1000
+        assert manager._pending_calls == {}
+        assert "test_channel" not in app.callbacks
+        assert app.messages[1000]["data"]["method"] == "notify"
+        assert app.messages[1000]["data"]["app_key"] == "target_app"
+
+    @pytest.mark.asyncio
     async def test_call_timeout(self):
         manager = RPCManager(FakeApp())
 
