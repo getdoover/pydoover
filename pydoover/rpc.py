@@ -230,11 +230,28 @@ class RPCManager:
         return inspect.ismethod(func) and getattr(func, "_is_rpc_handler", False)
 
     def register_handlers(self, obj: object) -> None:
-        """Scan *obj* for methods decorated with :func:`handler` and register them."""
-        for _name, func in inspect.getmembers(
-            obj,
-            predicate=lambda f: self.check_handler(f),
-        ):
+        """Scan *obj* for methods decorated with :func:`handler` and register them.
+
+        Discovery resolves each attribute statically first (via
+        :func:`inspect.getattr_static`) and only binds it when the static form
+        is a plain function. This never invokes ``@property`` getters (or other
+        descriptors) on *obj* — a property whose getter has side effects, or
+        raises (e.g. one that reads UI state before the interactions are
+        registered), must not be able to break handler registration just by
+        living on the same class. ``inspect.getmembers`` would call every getter.
+        """
+        for _name in dir(obj):
+            try:
+                static_attr = inspect.getattr_static(obj, _name)
+            except AttributeError:
+                continue
+            # Only plain functions can be handlers; skipping everything else
+            # avoids triggering property/descriptor getters when we bind below.
+            if not inspect.isfunction(static_attr):
+                continue
+            func = getattr(obj, _name)
+            if not self.check_handler(func):
+                continue
             method_name = func._rpc_method
             channel = func._rpc_channel
             request_parser = func._rpc_parser
