@@ -287,8 +287,16 @@ class RPCManager:
         old_value: Any = NOT_GIVEN,
         expires_after: "int | float | timedelta | None" = None,
         retry_of: str | None = None,
-    ) -> dict:
-        """Make an RPC call and wait for the response.
+        wait_for_response: bool = True,
+    ) -> dict | int:
+        """Make an RPC call.
+
+        By default this waits for the remote handler's response and returns its
+        result. Set ``wait_for_response=False`` for fire-and-forget: the request
+        is sent (a normal request the handler still processes and replies to),
+        but this call does not register or await the reply — it returns the sent
+        message id immediately. Use it when the caller doesn't care about the
+        outcome and must not block on it (e.g. best-effort notifications).
 
         Parameters
         ----------
@@ -300,6 +308,7 @@ class RPCManager:
             Channel to send the request on. Defaults to ``"tag_values"``.
         timeout : float
             Seconds to wait for a response before raising :class:`RPCTimeoutError`.
+            Ignored when ``wait_for_response`` is ``False``.
         actor : dict, optional
             Audit info (``{"id", "name", "email"}``) of who issued the command.
         reason : str, optional
@@ -312,11 +321,15 @@ class RPCManager:
             to act on the command once ``create time + expires_after`` has passed.
         retry_of : str, optional
             Message id of the shorter-lived command this retry replaces.
+        wait_for_response : bool
+            If ``False``, send the request and return its message id without
+            waiting for a response. Defaults to ``True``.
 
         Returns
         -------
-        dict
-            The result payload from the remote handler.
+        dict | int
+            The result payload from the remote handler, or — when
+            ``wait_for_response`` is ``False`` — the sent message id.
 
         Raises
         ------
@@ -325,7 +338,9 @@ class RPCManager:
         RPCError
             If the remote handler returned an error.
         """
-        self._ensure_subscribed(channel)
+        # Only need the response subscription when we're going to wait for one.
+        if wait_for_response:
+            self._ensure_subscribed(channel)
 
         data = {
             "type": "rpc",
@@ -349,6 +364,9 @@ class RPCManager:
         if retry_of is not None:
             data["retry_of"] = retry_of
         message_id = await self.api.create_message(channel, data)
+
+        if not wait_for_response:
+            return message_id
 
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
