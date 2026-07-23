@@ -940,7 +940,7 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def fetch_location(self) -> Location:
+    async def fetch_location(self) -> "Location | None":
         """Get the device location.
 
         Doovits with 4G cards generally implement this using the ModemManager (mmcli).
@@ -951,20 +951,23 @@ class PlatformInterface(GRPCInterface):
         Print the current location::
 
             location = await self.platform_iface.fetch_location()
-            print(f"Latitude: {location.latitude}, Longitude: {location.longitude}, Altitude: {location.altitude}")
+            print(f"Latitude: {location.latitude}, Longitude: {location.longitude}, Altitude: {location.altitude_m}")
 
 
         Returns
         -------
-        :class:`pydoover.docker.platform.Location`
+        :class:`pydoover.docker.platform.Location` | None
             The location of the device.
-            Returns None if the request failed.
+            Returns None if the device has no location fix.
         """
-        return await self.make_request(
+        # getLocationResponse carries the fix as flat optional fields
+        # (latitude, longitude, ...) rather than a nested `location` message,
+        # so extract them into a Location instead of using response_field.
+        response = await self.make_request(
             "getLocation",
             platform_iface_pb2.getLocationRequest(),
-            response_field="location",
         )
+        return Location.from_response(response)
 
     @cli_command()
     async def reboot(self):
