@@ -10,6 +10,7 @@ import asyncio
 from io import BytesIO, StringIO
 from unittest.mock import AsyncMock, MagicMock
 
+import grpc
 import pytest
 
 from google.protobuf import json_format
@@ -636,3 +637,33 @@ async def _empty_async_gen():
     if False:
         yield
     raise asyncio.CancelledError
+
+
+class TestStreamChannelKeepalive:
+    def setup_method(self):
+        self.dda = DeviceAgentInterface(app_key="test", dda_uri="localhost:50051")
+
+    @pytest.mark.asyncio
+    async def test_stream_channel_opens_with_keepalive_options(self, monkeypatch):
+        """A half-open connection surfaces nothing to the stream read(), so
+        keepalive pings are the only way the reconnect loop can ever detect a
+        dead peer. Guard the stream options against regressing to a bare
+        channel."""
+        captured = {}
+
+        def fake_insecure_channel(uri, options=None):
+            captured["uri"] = uri
+            captured["options"] = options
+            raise asyncio.CancelledError
+
+        monkeypatch.setattr(grpc.aio, "insecure_channel", fake_insecure_channel)
+
+        gen = self.dda.stream_channel_events("ui_cmds")
+        with pytest.raises(asyncio.CancelledError):
+            await gen.__anext__()
+
+        assert captured["uri"] == "localhost:50051"
+        opts = dict(captured["options"])
+        assert opts["grpc.keepalive_time_ms"] > 0
+        assert opts["grpc.keepalive_timeout_ms"] > 0
+        assert opts["grpc.http2.max_pings_without_data"] == 0

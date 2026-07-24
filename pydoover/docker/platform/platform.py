@@ -395,8 +395,13 @@ class PlatformInterface(GRPCInterface):
 
         while True:
             try:
-                # Setup the connection to the platform interface
-                async with grpc.aio.insecure_channel(self.uri) as channel:
+                # Setup the connection to the platform interface. Keepalive
+                # options are required on this long-lived stream: a half-open
+                # connection surfaces nothing to read(), and without pings
+                # this loop can never detect it (see _STREAM_CHANNEL_OPTIONS).
+                async with grpc.aio.insecure_channel(
+                    self.uri, options=self._STREAM_CHANNEL_OPTIONS
+                ) as channel:
                     channel_stream = platform_iface_pb2_grpc.platformIfaceStub(
                         channel
                     ).startPulseCounter(
