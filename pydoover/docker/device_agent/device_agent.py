@@ -341,7 +341,9 @@ class DeviceAgentInterface(GRPCInterface):
         backoff = 1
         while True:
             try:
-                async with grpc.aio.insecure_channel(self.uri) as channel:
+                async with grpc.aio.insecure_channel(
+                    self.uri, options=self._STREAM_CHANNEL_OPTIONS
+                ) as channel:
                     pl = device_agent_pb2.ChannelEventSubscriptionRequest(
                         channel_name=channel_name,
                         wire_format=int(wire_format),

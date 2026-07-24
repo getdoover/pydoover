@@ -494,7 +494,13 @@ class ModbusInterface(GRPCInterface):
         bus=None,
     ):
         try:
-            async with grpc.aio.insecure_channel(self.uri) as channel:
+            # Keepalive options are required on this long-lived stream: a
+            # half-open connection surfaces nothing to the read loop, and
+            # without pings the death is undetectable (see
+            # _STREAM_CHANNEL_OPTIONS).
+            async with grpc.aio.insecure_channel(
+                self.uri, options=self._STREAM_CHANNEL_OPTIONS
+            ) as channel:
                 stub = modbus_iface_pb2_grpc.modbusIfaceStub(channel)
                 request = modbus_iface_pb2.readRegisterSubscriptionRequest(
                     modbus_id=modbus_id,

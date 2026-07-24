@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import ClassVar
 
 import grpc
 
@@ -45,6 +46,35 @@ class GRPCInterface:
         # subchannel — still in reconnect backoff with a cached refusal — and
         # the heal-after-restart retry fails too. A local pool makes a rebuilt
         # channel genuinely reconnect.
+        ("grpc.use_local_subchannel_pool", 1),
+    ]
+
+    # Options for long-lived server-streaming subscription calls (channel
+    # event streams, pulse counters, register subscriptions). Unlike the
+    # unary channel above, a subscription stream is a single call that stays
+    # in flight for its entire lifetime, and its blocking read() surfaces
+    # nothing when the peer silently disappears — without keepalive pings
+    # the reconnect loops around these streams can never fire, and the
+    # subscription goes permanently deaf while the process looks healthy.
+    # (Seen in the field: apps stopped receiving ui_cmds RPCs until their
+    # container was recreated.)
+    #
+    # The stream is receive-only, so pings never accompany outgoing data:
+    # max_pings_without_data=0 is required, or the transport stops pinging
+    # after two quiet intervals and the wedge becomes undetectable again.
+    # The 60s cadence is tuned for our Rust device agent, which does not
+    # police ping frequency. A strict C-core/Go server (default: no more
+    # than one no-data ping per 5 minutes) would GOAWAY this cadence on a
+    # quiet stream — that surfaces as an error and the reconnect loop
+    # recovers, i.e. periodic churn rather than silent deafness — but
+    # revisit the cadence if these options are ever pointed at such a
+    # server.
+    _STREAM_CHANNEL_OPTIONS: ClassVar[list[tuple[str, int]]] = [
+        ("grpc.keepalive_time_ms", 60_000),
+        ("grpc.keepalive_timeout_ms", 5_000),
+        ("grpc.http2.max_pings_without_data", 0),
+        ("grpc.initial_reconnect_backoff_ms", 100),
+        ("grpc.max_reconnect_backoff_ms", 2_000),
         ("grpc.use_local_subchannel_pool", 1),
     ]
 
