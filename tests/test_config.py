@@ -37,6 +37,7 @@ SAMPLE_CONFIG_A = {
 
 class ApplicationVisibilityConfig(config.Schema):
     interpreter_hidden = config.ApplicationInterpreterHidden()
+    interpreter_full_width = config.ApplicationFullWidth()
     cockpit_visible = config.ApplicationCockpitVisible()
 
 
@@ -45,12 +46,17 @@ class TestApplicationVisibilityConfig:
         schema = ApplicationVisibilityConfig.to_schema()
 
         interpreter = schema["properties"]["interpreter_hidden"]
+        full_width = schema["properties"]["interpreter_full_width"]
         cockpit = schema["properties"]["cockpit_visible"]
 
         assert interpreter["type"] == ["boolean", "null"]
         assert interpreter["default"] is False
         assert interpreter["x-hidden"] is False
         assert interpreter["x-advanced"] is True
+        assert full_width["type"] == ["boolean", "null"]
+        assert full_width["default"] is False
+        assert full_width["x-hidden"] is False
+        assert full_width["x-advanced"] is True
         assert cockpit["type"] == ["boolean", "null"]
         assert cockpit["default"] is False
         assert cockpit["x-hidden"] is False
@@ -62,15 +68,21 @@ class TestApplicationVisibilityConfig:
         schema._inject_deployment_config({})
 
         assert schema.interpreter_hidden.value is False
+        assert schema.interpreter_full_width.value is False
         assert schema.cockpit_visible.value is False
 
     def test_visibility_elements_accept_explicit_overrides(self):
         schema = ApplicationVisibilityConfig()
         schema._inject_deployment_config(
-            {"interpreter_hidden": True, "cockpit_visible": True}
+            {
+                "interpreter_hidden": True,
+                "interpreter_full_width": True,
+                "cockpit_visible": True,
+            }
         )
 
         assert schema.interpreter_hidden.value is True
+        assert schema.interpreter_full_width.value is True
         assert schema.cockpit_visible.value is True
 
 

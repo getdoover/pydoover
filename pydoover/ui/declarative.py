@@ -119,6 +119,7 @@ class UI:
         cls,
         display_name: str = "$config.app().APP_DISPLAY_NAME",
         hidden: bool | str = "$config.app().interpreter_hidden",
+        full_width: bool | str = "$config.app().interpreter_full_width",
         position: int | str = "$config.app().dv_app_position:number:100",
         default_open: bool
         | str = "$config.app().dv_app_default_open:boolean",  # default to None
@@ -150,6 +151,12 @@ class UI:
                     "If `hidden` is a `str` it must start with `$` to represent a variable."
                 )
             hidden = f"{hidden}:boolean:false"
+        if isinstance(full_width, str):
+            if not full_width.startswith("$"):
+                raise ValueError(
+                    "If `full_width` is a `str` it must start with `$` to represent a variable."
+                )
+            full_width = f"{full_width}:boolean:false"
         if isinstance(position, str) and not position.startswith("$"):
             if not position.startswith("$"):
                 raise ValueError(
@@ -159,6 +166,7 @@ class UI:
 
         cls._display_name = display_name
         cls._hidden = hidden
+        cls._full_width = full_width
         cls._position = position
         cls._default_open = default_open
         cls._icon = icon
@@ -186,6 +194,7 @@ class UI:
         schema = {
             "displayString": self._display_name,
             "hidden": self._hidden,
+            "fullWidth": self._full_width,
             "position": self._position,
             "icon": self._icon,
             "colour": self._colour,
