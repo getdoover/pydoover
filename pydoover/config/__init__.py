@@ -1168,6 +1168,25 @@ class ApplicationInterpreterHidden(Boolean):
         )
 
 
+class ApplicationFullWidth(Boolean):
+    def __init__(
+        self,
+        display_name: str = "Full Width",
+        *,
+        description: str = "Whether the application spans the full width of the interpreter.",
+        default: bool = False,
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            default=default,
+            name="interpreter_full_width",
+            advanced=True,
+            **kwargs,
+        )
+
+
 class ApplicationCockpitVisible(Boolean):
     def __init__(
         self,
