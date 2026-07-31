@@ -2,6 +2,7 @@ import inspect
 import json
 import logging
 import platform
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
@@ -21,7 +22,7 @@ from ..auth._base import (
 )
 from .._compress import SUPPORTED_ENCODINGS
 from ... import __version__
-from ...models.data import File
+from ...models.data import File, MAX_BATCH_MUTATIONS, BatchMutationItem
 from ...utils.snowflake import generate_snowflake_id_at
 from ...models.data.exceptions import (
     BadRequestError,
@@ -62,6 +63,21 @@ def _to_snowflake(value: int | datetime | None) -> int | None:
     if isinstance(value, datetime):
         return generate_snowflake_id_at(value)
     return int(value)
+
+
+def _build_batch_payload(items: Sequence[BatchMutationItem]) -> dict[str, Any]:
+    """Serialise batch mutation items, enforcing the server's size limits.
+
+    The endpoints reject an empty or oversized batch before executing any of
+    it, so fail here rather than spend a round trip finding out.
+    """
+    if not items:
+        raise ValueError("batch must contain at least one item")
+    if len(items) > MAX_BATCH_MUTATIONS:
+        raise ValueError(
+            f"batch cannot contain more than {MAX_BATCH_MUTATIONS} items, got {len(items)}"
+        )
+    return {"items": [item.to_dict() for item in items]}
 
 
 def _raise_for_status(status: int, text: str, url: str):

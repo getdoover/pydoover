@@ -124,6 +124,23 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
             response_kind="raw",
         )
 
+    async def mint_registry_token(
+        self, application_id: int | str, *, organisation_id: int | None = None
+    ) -> Any:
+        """Mint a registry credential scoped to this application's image only.
+
+        Returns ``{registry, repository, username, password}`` for a
+        ``docker login``. The credential is short-lived and cannot touch any
+        other repository, so it is safe to hand to CI -- but it is still a bearer
+        credential: do not log or persist it.
+        """
+        return await self._execute(
+            "POST",
+            f"/applications/{application_id}/registry_token/",
+            organisation_id=organisation_id,
+            response_kind="raw",
+        )
+
     async def list_application_versions(
         self, application_id: int | str, *, organisation_id: int | None = None
     ) -> Any:

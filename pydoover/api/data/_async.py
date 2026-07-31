@@ -23,6 +23,7 @@ from ..auth._base import AsyncAuthClient
 from ._base import (
     UNSET,
     BaseClient,
+    _build_batch_payload,
     _build_user_agent,
     _consume_auth_kwargs,
     _raise_for_status,
@@ -38,6 +39,8 @@ from ...models.data import (
     Alarm,
     BatchAggregateResponse,
     BatchMessageResponse,
+    BatchMutationItem,
+    BatchMutationResponse,
     Channel,
     File,
     Message,
@@ -666,6 +669,80 @@ class AsyncDataClient(BaseClient):
             organisation_id=organisation_id,
         )
         return BatchAggregateResponse.from_dict(data)
+
+    # ── Batch mutations ────────────────────────────────────────────────────
+    #
+    # Each item carries its own agent and channel, so one request can span
+    # both.  Batches are data-only: attachments are not supported, and a batch
+    # may partially succeed, so callers should inspect ``response.failures``
+    # and retry just those items rather than the whole batch.
+
+    async def batch_create_messages(
+        self,
+        items: list[BatchMutationItem],
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        """Create up to ``MAX_BATCH_MUTATIONS`` messages in one request.
+
+        Give an item a ``message_id`` to make its creation idempotent - without
+        one the server generates an id, so a retry after a lost response
+        creates a duplicate message.
+        """
+        return await self._batch_mutate_messages("POST", items, organisation_id)
+
+    async def batch_update_messages(
+        self,
+        items: list[BatchMutationItem],
+        replace_data: bool = False,
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        """Merge (or, with ``replace_data``, replace) up to 50 messages.
+
+        Every item must carry a ``message_id``.
+        """
+        method = "PUT" if replace_data else "PATCH"
+        return await self._batch_mutate_messages(method, items, organisation_id)
+
+    async def batch_delete_messages(
+        self,
+        items: list[BatchMutationItem],
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        """Delete up to ``MAX_BATCH_MUTATIONS`` messages in one request."""
+        return await self._batch_mutate_messages("DELETE", items, organisation_id)
+
+    async def _batch_mutate_messages(
+        self,
+        method: str,
+        items: list[BatchMutationItem],
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        data = await self._request(
+            method,
+            "/agents/messages",
+            data=_build_batch_payload(items),
+            organisation_id=organisation_id,
+        )
+        return BatchMutationResponse.from_dict(data)
+
+    async def batch_update_aggregates(
+        self,
+        items: list[BatchMutationItem],
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        """Apply up to ``MAX_BATCH_MUTATIONS`` aggregate merge patches.
+
+        Each item's ``replace`` lists any paths to overwrite outright rather
+        than merge.  Unlike the single-aggregate endpoint this cannot log the
+        update as a message or carry attachments.
+        """
+        data = await self._request(
+            "PATCH",
+            "/agents/aggregates",
+            data=_build_batch_payload(items),
+            organisation_id=organisation_id,
+        )
+        return BatchMutationResponse.from_dict(data)
 
     # ── Alarms ─────────────────────────────────────────────────────────────
 

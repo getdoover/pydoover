@@ -23,6 +23,7 @@ from .._json import dumps as _json_dumps, loads as _json_loads
 from .._compress import MIN_COMPRESS_SIZE, compress_body
 from ._base import (
     UNSET,
+    _build_batch_payload,
     _build_user_agent,
     BaseClient,
     _consume_auth_kwargs,
@@ -39,6 +40,8 @@ from ...models.data import (
     Alarm,
     BatchAggregateResponse,
     BatchMessageResponse,
+    BatchMutationItem,
+    BatchMutationResponse,
     Channel,
     File,
     Message,
@@ -631,6 +634,80 @@ class DataClient(BaseClient):
             organisation_id=organisation_id,
         )
         return BatchAggregateResponse.from_dict(data)
+
+    # ── Batch mutations ────────────────────────────────────────────────────
+    #
+    # Each item carries its own agent and channel, so one request can span
+    # both.  Batches are data-only: attachments are not supported, and a batch
+    # may partially succeed, so callers should inspect ``response.failures``
+    # and retry just those items rather than the whole batch.
+
+    def batch_create_messages(
+        self,
+        items: list[BatchMutationItem],
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        """Create up to ``MAX_BATCH_MUTATIONS`` messages in one request.
+
+        Give an item a ``message_id`` to make its creation idempotent - without
+        one the server generates an id, so a retry after a lost response
+        creates a duplicate message.
+        """
+        return self._batch_mutate_messages("POST", items, organisation_id)
+
+    def batch_update_messages(
+        self,
+        items: list[BatchMutationItem],
+        replace_data: bool = False,
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        """Merge (or, with ``replace_data``, replace) up to 50 messages.
+
+        Every item must carry a ``message_id``.
+        """
+        method = "PUT" if replace_data else "PATCH"
+        return self._batch_mutate_messages(method, items, organisation_id)
+
+    def batch_delete_messages(
+        self,
+        items: list[BatchMutationItem],
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        """Delete up to ``MAX_BATCH_MUTATIONS`` messages in one request."""
+        return self._batch_mutate_messages("DELETE", items, organisation_id)
+
+    def _batch_mutate_messages(
+        self,
+        method: str,
+        items: list[BatchMutationItem],
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        data = self._request(
+            method,
+            "/agents/messages",
+            data=_build_batch_payload(items),
+            organisation_id=organisation_id,
+        )
+        return BatchMutationResponse.from_dict(data)
+
+    def batch_update_aggregates(
+        self,
+        items: list[BatchMutationItem],
+        organisation_id: int | None = None,
+    ) -> BatchMutationResponse:
+        """Apply up to ``MAX_BATCH_MUTATIONS`` aggregate merge patches.
+
+        Each item's ``replace`` lists any paths to overwrite outright rather
+        than merge.  Unlike the single-aggregate endpoint this cannot log the
+        update as a message or carry attachments.
+        """
+        data = self._request(
+            "PATCH",
+            "/agents/aggregates",
+            data=_build_batch_payload(items),
+            organisation_id=organisation_id,
+        )
+        return BatchMutationResponse.from_dict(data)
 
     # ── Alarms ─────────────────────────────────────────────────────────────
 
