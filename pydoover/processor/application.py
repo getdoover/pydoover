@@ -25,7 +25,9 @@ from ..models import (
     ConnectionStatus,
     Message,
     Notification,
+    NotificationPolicy,
     NotificationSeverity,
+    NotificationTopic,
     SubscriptionInfo,
     DooverConnectionStatus,
 )
@@ -543,7 +545,11 @@ class Application:
         *,
         title: str | None = None,
         severity: NotificationSeverity | int | None = None,
-        topic: str | None = None,
+        topic: str | NotificationTopic | None = None,
+        event: str | None = None,
+        notification_policy: NotificationPolicy | str = (
+            NotificationPolicy.IncludedByDefault
+        ),
         agent_id: int | None = None,
     ) -> Message:
         """Send a notification via the ``notifications`` channel.
@@ -557,15 +563,21 @@ class Application:
         message : str | Notification
             Either the notification body, or a fully-constructed
             :class:`~pydoover.models.Notification` (in which case ``title``,
-            ``severity`` and ``topic`` are ignored).
+            ``severity``, ``topic`` and ``event`` are ignored).
         title : str, optional
             Optional title / headline for the notification.
         severity : NotificationSeverity | int, optional
             Severity level. Subscribers only receive notifications at or
             above their subscription severity.
-        topic : str, optional
-            Optional topic used to match subscription ``topic_filter``
-            entries.
+        topic : str | NotificationTopic, optional
+            Optional raw or structured topic. Preserved for compatibility;
+            cannot be combined with ``event``.
+        event : str, optional
+            A stable event name. When supplied, the application key is used to
+            create ``dev/applications/<policy>/<app_key>/<event>``.
+        notification_policy : NotificationPolicy | str, optional
+            Whether an event is included in default subscriptions or requires
+            explicit opt-in.
         agent_id : int, optional
             Override the agent to send the notification on behalf of.
             Defaults to the processor's current agent.
@@ -575,9 +587,20 @@ class Application:
         Message
             The created channel message.
         """
+        if topic is not None and event is not None:
+            raise ValueError("topic and event are mutually exclusive")
         if isinstance(message, Notification):
             notification = message
         else:
+            if event is not None:
+                if self.app_key is None:
+                    raise RuntimeError(
+                        "Application key has not been initialized; "
+                        "cannot build a notification event topic."
+                    )
+                topic = NotificationTopic.application(
+                    self.app_key, event, notification_policy
+                )
             notification = Notification(
                 message=message, title=title, severity=severity, topic=topic
             )

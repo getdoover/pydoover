@@ -332,18 +332,56 @@ async def on_command(self, channel, data):
 ### Send Notification
 
 ```python
-# Via UIManager
-self.ui_manager.send_notification("High temperature detected!")
+from pydoover.models import NotificationPolicy
 
-# Async
-await self.ui_manager.send_notification_async("Process complete")
+# Application notifications use a stable event name. The application key is
+# inserted automatically:
+# dev/applications/default/<app_key>/high-temperature
+await self.send_notification(
+    "High temperature detected!",
+    event="high-temperature",
+)
 
-# With activity log
-self.ui_manager.send_notification(
-    "Configuration updated",
-    record_activity=True
+# Events that should not be part of broad default subscriptions are opt-in:
+await self.send_notification(
+    "Maintenance is due",
+    event="maintenance-due",
+    notification_policy=NotificationPolicy.ExplicitOptIn,
+)
+
+# Existing raw topics remain supported
+await self.send_notification("Process complete", topic="legacy-process-events")
+
+# Omitting both event and topic preserves the legacy topic-less behaviour
+await self.send_notification("Process complete")
+```
+
+New notification subscriptions use regex topic filters. Omitting
+`topic_filter` subscribes to the concrete default set (default alarms,
+default application events, and temporarily supported legacy events):
+
+```python
+from pydoover.models import NotificationSeverity
+
+client.create_notification_subscription(
+    agent_id,
+    subscribe_to=device_id,
+    severity=NotificationSeverity.Info,
+)
+
+# Add one opt-in application event
+client.create_notification_subscription(
+    agent_id,
+    subscribe_to=device_id,
+    severity=NotificationSeverity.Info,
+    topic_filter=[
+        r"^dev/applications/opt-in/pump-controller/maintenance-due$",
+    ],
 )
 ```
+
+The old `"*"` filter is deprecated. The SDK expands it to the default regex
+set before sending and never writes `"*"` to the API.
 
 ### Direct to significantEvent Channel
 

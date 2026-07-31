@@ -57,9 +57,13 @@ from ...models.data.alarm import AlarmOperator
 from ...models.data.notification import (
     Notification,
     NotificationEndpoint,
+    NotificationPolicy,
     NotificationSeverity,
     NotificationSubscription,
+    NotificationTopic,
     NotificationType,
+    TopicFilterMode,
+    _normalise_topic_filters,
 )
 from ...models.data.wss_connection import (
     ConnectionDetail,
@@ -785,6 +789,11 @@ class AsyncDataClient(BaseClient):
         enabled: bool = True,
         expiry_mins: float | None = None,
         organisation_id: int | None = None,
+        alarm_pending_ms: int | None = None,
+        notification_policy: NotificationPolicy | str = (
+            NotificationPolicy.IncludedByDefault
+        ),
+        topic_name: str | None = None,
     ) -> Alarm:
         payload: dict[str, Any] = {
             "name": name,
@@ -793,9 +802,14 @@ class AsyncDataClient(BaseClient):
             "value": value,
             "description": description,
             "enabled": enabled,
+            "notification_policy": NotificationPolicy(notification_policy).value,
         }
         if expiry_mins is not None:
             payload["expiry_mins"] = expiry_mins
+        if alarm_pending_ms is not None:
+            payload["alarm_pending_ms"] = alarm_pending_ms
+        if topic_name is not None:
+            payload["topic_name"] = topic_name
         data = await self._request(
             "POST",
             f"/agents/{agent_id}/channels/{channel_name}/alarms",
@@ -817,6 +831,11 @@ class AsyncDataClient(BaseClient):
         enabled: bool = True,
         expiry_mins: float | None = None,
         organisation_id: int | None = None,
+        alarm_pending_ms: int | None = None,
+        notification_policy: NotificationPolicy | str = (
+            NotificationPolicy.IncludedByDefault
+        ),
+        topic_name: str | None = None,
     ) -> Alarm:
         payload: dict[str, Any] = {
             "name": name,
@@ -825,9 +844,14 @@ class AsyncDataClient(BaseClient):
             "value": value,
             "description": description,
             "enabled": enabled,
+            "notification_policy": NotificationPolicy(notification_policy).value,
         }
         if expiry_mins is not None:
             payload["expiry_mins"] = expiry_mins
+        if alarm_pending_ms is not None:
+            payload["alarm_pending_ms"] = alarm_pending_ms
+        if topic_name is not None:
+            payload["topic_name"] = topic_name
         data = await self._request(
             "PUT",
             f"/agents/{agent_id}/channels/{channel_name}/alarms/{alarm_id}",
@@ -849,6 +873,9 @@ class AsyncDataClient(BaseClient):
         enabled: bool | None = None,
         expiry_mins: float | None | Unset = UNSET,
         organisation_id: int | None = None,
+        alarm_pending_ms: int | None | Unset = UNSET,
+        notification_policy: NotificationPolicy | str | None = None,
+        topic_name: str | None | Unset = UNSET,
     ) -> Alarm:
         payload: dict[str, Any] = {}
         if name is not None:
@@ -863,8 +890,16 @@ class AsyncDataClient(BaseClient):
             payload["description"] = description
         if enabled is not None:
             payload["enabled"] = enabled
-            if expiry_mins is not UNSET:
-                payload["expiry_mins"] = expiry_mins
+        if expiry_mins is not UNSET:
+            payload["expiry_mins"] = expiry_mins
+        if alarm_pending_ms is not UNSET:
+            payload["alarm_pending_ms"] = alarm_pending_ms
+        if notification_policy is not None:
+            payload["notification_policy"] = NotificationPolicy(
+                notification_policy
+            ).value
+        if topic_name is not UNSET:
+            payload["topic_name"] = topic_name
         data = await self._request(
             "PATCH",
             f"/agents/{agent_id}/channels/{channel_name}/alarms/{alarm_id}",
@@ -981,7 +1016,7 @@ class AsyncDataClient(BaseClient):
         *,
         title: str | None = None,
         severity: NotificationSeverity | int | None = None,
-        topic: str | None = None,
+        topic: str | NotificationTopic | None = None,
         organisation_id: int | None = None,
     ) -> Message:
         """Send a notification for an agent.
@@ -1003,7 +1038,7 @@ class AsyncDataClient(BaseClient):
         severity : NotificationSeverity | int, optional
             Severity level. Subscribers only receive notifications at or above
             their subscription severity.
-        topic : str, optional
+        topic : str | NotificationTopic, optional
             Optional topic used to match subscription ``topic_filter`` entries.
         organisation_id : int, optional
             The organisation context for the request.
@@ -1146,15 +1181,24 @@ class AsyncDataClient(BaseClient):
         agent_id: int,
         subscribe_to: int,
         severity: NotificationSeverity | int,
-        topic_filter: list[str],
+        topic_filter: list[str] | None = None,
         endpoint_id: int | None = None,
         organisation_id: int | None = None,
+        topic_filter_mode: TopicFilterMode | str = TopicFilterMode.Regex,
     ) -> list[dict[str, int]]:
         """Returns a list of created subscriptions, each with ``id`` and ``endpoint_id``."""
+        requested_mode = TopicFilterMode(topic_filter_mode)
+        filters = _normalise_topic_filters(topic_filter, requested_mode)
+        filter_mode = (
+            TopicFilterMode.Regex
+            if topic_filter is None or "*" in topic_filter
+            else requested_mode
+        )
         payload: dict[str, Any] = {
             "subscribe_to": str(subscribe_to),
             "severity": NotificationSeverity(severity).value,
-            "topic_filter": topic_filter,
+            "topic_filter": filters,
+            "topic_filter_mode": filter_mode.value,
         }
         if endpoint_id is not None:
             payload["endpoint_id"] = str(endpoint_id)
@@ -1176,12 +1220,21 @@ class AsyncDataClient(BaseClient):
         severity: NotificationSeverity | int | None = None,
         topic_filter: list[str] | None = None,
         organisation_id: int | None = None,
+        topic_filter_mode: TopicFilterMode | str | None = None,
     ):
         payload: dict[str, Any] = {}
         if severity is not None:
             payload["severity"] = NotificationSeverity(severity).value
         if topic_filter is not None:
-            payload["topic_filter"] = topic_filter
+            requested_mode = TopicFilterMode(topic_filter_mode or TopicFilterMode.Regex)
+            payload["topic_filter"] = _normalise_topic_filters(
+                topic_filter, requested_mode
+            )
+            payload["topic_filter_mode"] = (
+                TopicFilterMode.Regex if "*" in topic_filter else requested_mode
+            ).value
+        elif topic_filter_mode is not None:
+            payload["topic_filter_mode"] = TopicFilterMode(topic_filter_mode).value
         await self._request(
             "PATCH",
             f"/agents/{agent_id}/notifications/subscriptions/{subscription_id}",
