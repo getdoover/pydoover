@@ -62,13 +62,15 @@ class GRPCInterface:
     # The stream is receive-only, so pings never accompany outgoing data:
     # max_pings_without_data=0 is required, or the transport stops pinging
     # after two quiet intervals and the wedge becomes undetectable again.
-    # The 60s cadence is tuned for our Rust device agent, which does not
+    # The 60s cadence was tuned for our Rust device agent, which does not
     # police ping frequency. A strict C-core/Go server (default: no more
     # than one no-data ping per 5 minutes) would GOAWAY this cadence on a
-    # quiet stream — that surfaces as an error and the reconnect loop
-    # recovers, i.e. periodic churn rather than silent deafness — but
-    # revisit the cadence if these options are ever pointed at such a
-    # server.
+    # quiet stream, which is what doover-platform-interface (C-core) used to
+    # do; it now sets min_ping_interval_without_data_ms=30s to tolerate
+    # exactly this cadence. The two constants are coupled — the server's 30s
+    # floor has to stay below the 60s cadence here — so do not lower
+    # keepalive_time_ms without raising the server floor to match, and check
+    # any other C-core/Go server these options get pointed at.
     _STREAM_CHANNEL_OPTIONS: ClassVar[list[tuple[str, int]]] = [
         ("grpc.keepalive_time_ms", 60_000),
         ("grpc.keepalive_timeout_ms", 5_000),

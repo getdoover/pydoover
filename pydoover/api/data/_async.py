@@ -1065,7 +1065,7 @@ class AsyncDataClient(BaseClient):
         """Create a notification endpoint. Returns the new endpoint's snowflake ID."""
         payload: dict[str, Any] = {
             "name": name,
-            "type": NotificationType(type).value,
+            "type": NotificationType(type).wire,
             "extra_data": extra_data,
             "default": default,
         }

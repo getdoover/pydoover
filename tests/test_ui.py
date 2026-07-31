@@ -363,6 +363,50 @@ class TestConfigRefResolution:
             == "$config.app().interpreter_hidden:boolean:false"
         )
 
+    def test_resolves_full_width_from_explicit_deployment_value(self):
+        class S(config.Schema):
+            interpreter_full_width = config.ApplicationFullWidth()
+
+        schema = S()
+        schema._inject_deployment_config({"interpreter_full_width": True})
+
+        class MyUI(ui.UI):
+            pass
+
+        assert MyUI(schema, None, "app_key").to_schema()["fullWidth"] is True
+
+    def test_resolves_full_width_from_config_default(self):
+        class S(config.Schema):
+            interpreter_full_width = config.ApplicationFullWidth()
+
+        schema = S()
+        schema._inject_deployment_config({})
+
+        class MyUI(ui.UI):
+            pass
+
+        assert MyUI(schema, None, "app_key").to_schema()["fullWidth"] is False
+
+    def test_exports_full_width_config_reference(self):
+        class MyUI(ui.UI):
+            pass
+
+        assert (
+            MyUI(None, None, "app_key").to_schema(resolve_config=False)["fullWidth"]
+            == "$config.app().interpreter_full_width:boolean:false"
+        )
+
+    def test_accepts_full_width_class_option(self):
+        class MyUI(ui.UI, full_width=True):
+            pass
+
+        assert MyUI(None, None, "app_key").to_schema()["fullWidth"] is True
+
+    def test_application_container_serializes_full_width(self):
+        application = ui.Application("Application", full_width=True)
+
+        assert application.to_dict()["fullWidth"] is True
+
 
 class TestApplicationUIResolution:
     def test_async_docker_startup_binds_dynamic_ui_to_runtime_tags(self, monkeypatch):

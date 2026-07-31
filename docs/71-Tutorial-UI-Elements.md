@@ -36,6 +36,27 @@ def create_ui() -> list[ui.Element]:
     ]
 ```
 
+When using the class-based UI API, an application can opt into spanning both
+columns of the interpreter:
+
+```python
+from pydoover import config, ui
+
+class AppConfig(config.Schema):
+    interpreter_full_width = config.ApplicationFullWidth()
+
+class MyUI(ui.UI):
+    # By default, full width follows interpreter_full_width from deployment config.
+    ...
+
+# Or make this UI full width in application code regardless of deployment config.
+class FullWidthUI(ui.UI, full_width=True):
+    ...
+```
+
+The setting only changes wide two-column interpreter layouts. Single-column and
+mobile layouts are unchanged.
+
 ## Step 2: Status Display Section
 
 ```python
