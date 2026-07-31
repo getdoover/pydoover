@@ -1,7 +1,15 @@
 from .aggregate import Aggregate
 from .alarm import Alarm, AlarmOperator, AlarmState
 from .attachment import Attachment, File
-from .batch import AgentAggregate, BatchAggregateResponse, BatchMessageResponse
+from .batch import (
+    MAX_BATCH_MUTATIONS,
+    AgentAggregate,
+    BatchAggregateResponse,
+    BatchMessageResponse,
+    BatchMutationItem,
+    BatchMutationResponse,
+    BatchMutationResult,
+)
 from .channel import Channel, ChannelID, ChannelList, ChannelListing
 from .device_token import ConfirmedDeviceToken, RotatedDeviceToken
 from .connection import (
@@ -63,8 +71,12 @@ __all__ = [
     "AgentAggregate",
     "AgentNotificationResponse",
     "Attachment",
+    "MAX_BATCH_MUTATIONS",
     "BatchAggregateResponse",
     "BatchMessageResponse",
+    "BatchMutationItem",
+    "BatchMutationResponse",
+    "BatchMutationResult",
     "Channel",
     "ChannelList",
     "ChannelListing",
