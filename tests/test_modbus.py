@@ -1,74 +1,23 @@
-# # async def run_test():
-#
-# if __name__ == "__main__":
-#     logging.basicConfig(level=logging.DEBUG)
-#
-#     iface = modbus_iface()
-#     iface.open_bus(
-#         bus_type="serial",
-#         name="test",
-#         serial_port="/dev/ttyk37simOut",
-#         serial_baud=38400,
-#         serial_method="rtu",
-#         serial_bits=8,
-#         serial_parity="N",
-#         serial_stop=1,
-#         serial_timeout=0.3,
-#     )
-#
-#     print(iface.getBusStatus(bus_id="test"))
-#
-#     result = iface.read_registers(
-#         bus_id="test",
-#         modbus_id=1,
-#         start_address=0,
-#         num_registers=23,
-#     )
-#     print(result)
-#
-#     watchdog = result[22] + 1
-#
-#     result = iface.write_registers(
-#         bus_id="test",
-#         modbus_id=1,
-#         start_address=22,
-#         values=[watchdog],
-#     )
-#
-#     ## define a function to print the results of read register subscription
-#     def print_results(values):
-#         print(values)
-#
-#     loop = asyncio.get_event_loop()
-#
-#     ## add a read register subscription
-#     iface.add_read_register_subscription(
-#         bus_id="test",
-#         modbus_id=1,
-#         start_address=0,
-#         num_registers=23,
-#         callback=print_results,
-#     )
-#
-#     print("Subscribed to read register subscription")
-#
-#     ## add a read register subscription
-#     iface.add_read_register_subscription(
-#         bus_id="test",
-#         modbus_id=1,
-#         start_address=0,
-#         num_registers=10,
-#         callback=print_results,
-#     )
-#
-#     # async def run_test():
-#     #     await asyncio.sleep(20)
-#     #     iface.close()
-#
-#     try:
-#         asyncio.get_event_loop().run_forever()
-#     except KeyboardInterrupt:
-#         pass
-#
-#     log.info("Closing modbus interface")
-#     # iface.close()
+from pydoover.docker.modbus.modbus_iface import ModbusInterface
+from pydoover.models.generated.modbus import modbus_iface_pb2
+
+
+def _values(*registers: int):
+    """A real protobuf repeated field, as read_registers receives it."""
+    return modbus_iface_pb2.readRegisterResponse(values=registers).values
+
+
+def test_parse_register_output_empty_returns_none():
+    assert ModbusInterface._parse_register_output(_values()) is None
+
+
+def test_parse_register_output_single_returns_int():
+    assert ModbusInterface._parse_register_output(_values(42)) == 42
+
+
+def test_parse_register_output_multiple_returns_list():
+    result = ModbusInterface._parse_register_output(_values(1, 2, 3))
+    assert result == [1, 2, 3]
+    # Must be a real list, not the protobuf repeated-field container —
+    # callers validate responses with isinstance(result, list).
+    assert isinstance(result, list)
