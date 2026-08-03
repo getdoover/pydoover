@@ -271,11 +271,13 @@ class ModbusInterface(GRPCInterface):
 
     @staticmethod
     def _parse_register_output(values):
+        # values is a protobuf repeated field; return a real list so callers'
+        # isinstance(result, list) checks hold, per the documented return type.
         if len(values) == 0:
             return None
         if len(values) == 1:
             return values[0]
-        return values
+        return list(values)
 
     @cli_command()
     async def read_registers(
