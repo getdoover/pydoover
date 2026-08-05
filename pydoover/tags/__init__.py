@@ -838,6 +838,12 @@ class Tags:
 
         cls.__tag_declarations__ = declarations
 
+    # Attached by Application._setup() just before setup() runs, so setup()
+    # can discover platform IO (e.g. fetch_io_details). Stays None when
+    # constructed standalone (config export, unit tests) and in test mode —
+    # setup() code must handle None by falling back to config.
+    platform_iface = None
+
     def __init__(self, app_key: str, tag_manager: TagsManager, config: Schema):
         self.config = config
         self._manager = tag_manager

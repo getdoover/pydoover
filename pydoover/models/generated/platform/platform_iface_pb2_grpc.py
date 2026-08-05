@@ -135,6 +135,11 @@ class platformIfaceStub(object):
                 request_serializer=platform_dot_platform__iface__pb2.getIoTableRequest.SerializeToString,
                 response_deserializer=platform_dot_platform__iface__pb2.getIoTableResponse.FromString,
                 _registered_method=True)
+        self.getIoDetails = channel.unary_unary(
+                '/platform_iface.platformIface/getIoDetails',
+                request_serializer=platform_dot_platform__iface__pb2.getIoDetailsRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getIoDetailsResponse.FromString,
+                _registered_method=True)
         self.syncRtcTime = channel.unary_unary(
                 '/platform_iface.platformIface/syncRtcTime',
                 request_serializer=platform_dot_platform__iface__pb2.syncRtcTimeRequest.SerializeToString,
@@ -345,6 +350,12 @@ class platformIfaceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def getIoTable(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getIoDetails(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -564,6 +575,11 @@ def add_platformIfaceServicer_to_server(servicer, server):
                     servicer.getIoTable,
                     request_deserializer=platform_dot_platform__iface__pb2.getIoTableRequest.FromString,
                     response_serializer=platform_dot_platform__iface__pb2.getIoTableResponse.SerializeToString,
+            ),
+            'getIoDetails': grpc.unary_unary_rpc_method_handler(
+                    servicer.getIoDetails,
+                    request_deserializer=platform_dot_platform__iface__pb2.getIoDetailsRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getIoDetailsResponse.SerializeToString,
             ),
             'syncRtcTime': grpc.unary_unary_rpc_method_handler(
                     servicer.syncRtcTime,
@@ -1175,6 +1191,33 @@ class platformIface(object):
             '/platform_iface.platformIface/getIoTable',
             platform_dot_platform__iface__pb2.getIoTableRequest.SerializeToString,
             platform_dot_platform__iface__pb2.getIoTableResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getIoDetails(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getIoDetails',
+            platform_dot_platform__iface__pb2.getIoDetailsRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getIoDetailsResponse.FromString,
             options,
             channel_credentials,
             insecure,

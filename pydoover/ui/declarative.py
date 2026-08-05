@@ -172,6 +172,12 @@ class UI:
         cls._icon = icon
         cls._colour = colour
 
+    # Attached by Application._setup() just before setup() runs, so setup()
+    # can discover platform IO (e.g. fetch_io_details). Stays None when
+    # constructed standalone (config export, unit tests) and in test mode —
+    # setup() code must handle None by falling back to config.
+    platform_iface = None
+
     def __init__(self, config: Schema, tags: Tags, app_key: str):
         self.config = config
         self.tags = tags

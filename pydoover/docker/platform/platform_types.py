@@ -89,3 +89,153 @@ class Event:
     value: str
     time: int
     cm4_online: bool | None
+
+
+@dataclass
+class IoChannel:
+    """One IO channel in the flat namespace shared with fetch_di/set_do/etc.
+
+    Attributes
+    ----------
+    channel : int
+        Global flat channel number — the number you pass to fetch_di, set_do, etc.
+    device_channel : int
+        Channel number on the owning device (e.g. DI 0 of slave 2).
+    io_type : str
+        One of "DI", "DO", "AI", "AO".
+    kind : str | None
+        Analog channels only: e.g. "voltage", "current", "temperature".
+    units : str | None
+        Display units, e.g. "V", "mA", "degC".
+    supports_events : bool
+        Whether DI edge events (fetch_di_events) work on this channel.
+    supports_pulse_counter : bool
+        Whether pulse counters work on this channel.
+    supports_di_config : bool
+        Whether get/set DI config (PNP/NPN, debounce, wake-on-event) works.
+    """
+
+    channel: int
+    device_channel: int
+    io_type: str
+    kind: str | None = None
+    units: str | None = None
+    supports_events: bool = False
+    supports_pulse_counter: bool = False
+    supports_di_config: bool = False
+
+    @classmethod
+    def from_response(cls, response) -> "IoChannel":
+        """Build an IoChannel from an IoChannelDetail proto message."""
+        return cls(
+            channel=response.channel,
+            device_channel=response.device_channel,
+            io_type=response.io_type,
+            kind=response.kind if response.HasField("kind") else None,
+            units=response.units if response.HasField("units") else None,
+            supports_events=response.supports_events,
+            supports_pulse_counter=response.supports_pulse_counter,
+            supports_di_config=response.supports_di_config,
+        )
+
+
+@dataclass
+class IoDevice:
+    """The master or one slave, with the channels it contributes to the flat namespace.
+
+    Attributes
+    ----------
+    name : str
+        "master", or the slave's configured name.
+    type : str
+        Driver type, e.g. "doovit", "moxa1242", "point_io". Empty string when
+        synthesized from an old server that only supports fetch_io_table.
+    index : int
+        Slave index; 0 for the master (check is_master, not index).
+    is_master : bool
+        Whether this device is the master platform.
+    online : bool
+        Best-effort connectivity to the device.
+    channels : list[IoChannel]
+        The channels this device contributes, in flat-channel order.
+    """
+
+    name: str
+    type: str
+    index: int
+    is_master: bool
+    online: bool
+    channels: "list[IoChannel]"
+
+    def channels_of(self, io_type: str) -> "list[IoChannel]":
+        """Return this device's channels of one IO type ("DI", "DO", "AI", "AO")."""
+        return [c for c in self.channels if c.io_type == io_type]
+
+    @classmethod
+    def from_response(cls, response) -> "IoDevice":
+        """Build an IoDevice from an IoDeviceDetail proto message."""
+        return cls(
+            name=response.name,
+            type=response.type,
+            index=response.index,
+            is_master=response.is_master,
+            online=response.online,
+            channels=[IoChannel.from_response(c) for c in response.channels],
+        )
+
+
+@dataclass
+class IoDetails:
+    """The full IO layout of a device: master plus any configured slaves.
+
+    Attributes
+    ----------
+    devices : list[IoDevice]
+        Master first, then slaves in index order — matching the flat channel
+        numbering the platform interface assigns.
+    """
+
+    devices: "list[IoDevice]"
+
+    @property
+    def master(self) -> "IoDevice | None":
+        """The master device, or None if the layout has no marked master."""
+        for device in self.devices:
+            if device.is_master:
+                return device
+        return None
+
+    def channels(self, io_type: str) -> "list[IoChannel]":
+        """All channels of one IO type across every device, in flat-channel order."""
+        found = [c for d in self.devices for c in d.channels if c.io_type == io_type]
+        return sorted(found, key=lambda c: c.channel)
+
+    @classmethod
+    def from_response(cls, response) -> "IoDetails | None":
+        """Build an IoDetails from a getIoDetailsResponse proto message."""
+        if response is None:
+            return None
+        return cls(devices=[IoDevice.from_response(d) for d in response.devices])
+
+    @classmethod
+    def from_io_table(cls, io_table: dict) -> "IoDetails":
+        """Synthesize an IoDetails from a fetch_io_table dict.
+
+        Fallback for servers that predate getIoDetails: the table only lists
+        flat channel numbers per IO type, so everything lands on one anonymous
+        master device with no per-channel metadata or capability flags.
+        """
+        channels = [
+            IoChannel(channel=int(ch), device_channel=int(ch), io_type=io_type)
+            for io_type, table_channels in io_table.items()
+            for ch in table_channels
+        ]
+        device = IoDevice(
+            name="master",
+            type="",
+            index=0,
+            is_master=True,
+            online=True,
+            channels=channels,
+        )
+        return cls(devices=[device])
