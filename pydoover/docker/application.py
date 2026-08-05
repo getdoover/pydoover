@@ -1158,6 +1158,16 @@ class Application:
         # default commands can come through...
         self.ui_manager.subscribe("ui_cmds")
 
+        # Attach the platform interface here — not in __init__ — so runner-time
+        # rebinding (cf. run_app2's `app.config = config`) can't leave Tags/UI
+        # holding a stale instance. Skipped in test mode so setup() code
+        # exercises its None-fallback path instead of dialing a dead endpoint.
+        if not self.test_mode:
+            if self.tags is not None:
+                self.tags.platform_iface = self.platform_iface
+            if self.ui is not None:
+                self.ui.platform_iface = self.platform_iface
+
         if self.tags is not None:
             await self.tags.setup()
             await self.tags._resolve_remote_tags()

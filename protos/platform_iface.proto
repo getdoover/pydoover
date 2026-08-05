@@ -30,6 +30,7 @@ service platformIface {
     rpc getSystemPower (getSystemPowerRequest) returns (getSystemPowerResponse) {}
     rpc getTemperature (getTemperatureRequest) returns (getTemperatureResponse) {}
     rpc getIoTable (getIoTableRequest) returns (getIoTableResponse) {}
+    rpc getIoDetails (getIoDetailsRequest) returns (getIoDetailsResponse) {}
     // rpc getRtcTime (getRtcTimeRequest) returns (getRtcTimeResponse) {}
     rpc syncRtcTime (syncRtcTimeRequest) returns (syncRtcTimeResponse) {}
     // rpc getUptime (getUptimeRequest) returns (getUptimeResponse) {}
@@ -152,6 +153,37 @@ message getIoTableRequest {}
 message getIoTableResponse {
     ResponseHeader response_header = 1;
     optional string io_table = 2;
+}
+
+// One IO channel in the flat namespace shared with getDI/setDO/etc.
+message IoChannelDetail {
+    int32 channel = 1;            // global flat channel number, as used by getDI/setDO/...
+    int32 device_channel = 2;     // channel number on the owning device
+    string io_type = 3;           // "DI" | "DO" | "AI" | "AO"
+    optional string kind = 4;     // analog channels: e.g. "voltage", "current", "temperature"
+    optional string units = 5;    // e.g. "V", "mA", "degC"
+    bool supports_events = 6;     // DI edge events (getDIEvents)
+    bool supports_pulse_counter = 7;
+    bool supports_di_config = 8;  // PNP/NPN, debounce, wake-on-event (get/setDIConfig)
+}
+
+// The master or one slave, with the channels it contributes to the flat namespace.
+message IoDeviceDetail {
+    string name = 1;              // "master", or the slave's configured name
+    string type = 2;              // driver type, e.g. "doovit", "moxa1242", "point_io"
+    int32 index = 3;              // slave index; 0 for the master (see is_master)
+    bool is_master = 4;
+    bool online = 5;              // best-effort connectivity to the device
+    repeated IoChannelDetail channels = 6;
+}
+
+message getIoDetailsRequest {}
+
+message getIoDetailsResponse {
+    ResponseHeader response_header = 1;
+    // Master first, then slaves in index order — matching the flat channel
+    // numbering produced by the platform interface's IO table accumulation.
+    repeated IoDeviceDetail devices = 2;
 }
 
 message setAORequest {

@@ -153,6 +153,54 @@ class getIoTableResponse(_message.Message):
     io_table: str
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., io_table: _Optional[str] = ...) -> None: ...
 
+class IoChannelDetail(_message.Message):
+    __slots__ = ("channel", "device_channel", "io_type", "kind", "units", "supports_events", "supports_pulse_counter", "supports_di_config")
+    CHANNEL_FIELD_NUMBER: _ClassVar[int]
+    DEVICE_CHANNEL_FIELD_NUMBER: _ClassVar[int]
+    IO_TYPE_FIELD_NUMBER: _ClassVar[int]
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    UNITS_FIELD_NUMBER: _ClassVar[int]
+    SUPPORTS_EVENTS_FIELD_NUMBER: _ClassVar[int]
+    SUPPORTS_PULSE_COUNTER_FIELD_NUMBER: _ClassVar[int]
+    SUPPORTS_DI_CONFIG_FIELD_NUMBER: _ClassVar[int]
+    channel: int
+    device_channel: int
+    io_type: str
+    kind: str
+    units: str
+    supports_events: bool
+    supports_pulse_counter: bool
+    supports_di_config: bool
+    def __init__(self, channel: _Optional[int] = ..., device_channel: _Optional[int] = ..., io_type: _Optional[str] = ..., kind: _Optional[str] = ..., units: _Optional[str] = ..., supports_events: bool = ..., supports_pulse_counter: bool = ..., supports_di_config: bool = ...) -> None: ...
+
+class IoDeviceDetail(_message.Message):
+    __slots__ = ("name", "type", "index", "is_master", "online", "channels")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    INDEX_FIELD_NUMBER: _ClassVar[int]
+    IS_MASTER_FIELD_NUMBER: _ClassVar[int]
+    ONLINE_FIELD_NUMBER: _ClassVar[int]
+    CHANNELS_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    type: str
+    index: int
+    is_master: bool
+    online: bool
+    channels: _containers.RepeatedCompositeFieldContainer[IoChannelDetail]
+    def __init__(self, name: _Optional[str] = ..., type: _Optional[str] = ..., index: _Optional[int] = ..., is_master: bool = ..., online: bool = ..., channels: _Optional[_Iterable[_Union[IoChannelDetail, _Mapping]]] = ...) -> None: ...
+
+class getIoDetailsRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class getIoDetailsResponse(_message.Message):
+    __slots__ = ("response_header", "devices")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    DEVICES_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    devices: _containers.RepeatedCompositeFieldContainer[IoDeviceDetail]
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., devices: _Optional[_Iterable[_Union[IoDeviceDetail, _Mapping]]] = ...) -> None: ...
+
 class setAORequest(_message.Message):
     __slots__ = ("ao", "value")
     AO_FIELD_NUMBER: _ClassVar[int]

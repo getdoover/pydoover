@@ -7,8 +7,9 @@ from collections.abc import Iterable, Coroutine, Callable
 
 import grpc
 
+from ...models import DooverAPIError
 from ...models.generated.platform import platform_iface_pb2, platform_iface_pb2_grpc
-from .platform_types import Location, Event
+from .platform_types import Location, Event, IoDetails
 from ..grpc_interface import GRPCInterface
 from ...utils import call_maybe_async, deprecated
 from ...cli.decorators import command as cli_command
@@ -1184,20 +1185,74 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
-    async def fetch_io_table(self):
+    async def fetch_io_table(self) -> dict | None:
+        """Get the flat IO table: channel numbers per IO type.
+
+        Returns
+        -------
+        dict | None
+            A mapping like ``{"DI": [0, 1, ...], "DO": [...], "AI": [...], "AO": [...]}``
+            of the global flat channel numbers used by :meth:`fetch_di`,
+            :meth:`set_do`, etc. Returns None if the request failed.
+
+            Prefer :meth:`fetch_io_details` — it also reports which device
+            (master or slave) owns each channel, plus per-channel metadata.
+        """
         res = await self.make_request(
             "getIoTable",
             platform_iface_pb2.getIoTableRequest(),
             response_field="io_table",
         )
-        # result = json.loads("".join(await self.make_request("getIoTable", platform_iface_pb2.getIoTableRequest())))
         if res is None:
             return None
-        string = ""
-        for i in res:
-            string += i
-        result = json.loads(string)
-        return result
+        return json.loads(res)
+
+    @cli_command()
+    async def fetch_io_details(self) -> "IoDetails | None":
+        """Get the full IO layout: master plus any configured slaves.
+
+        This is the discovery call for building apps that adapt to whatever IO
+        the device actually has, rather than hardcoding channel counts.
+
+        Examples
+        --------
+
+        Build a channel list per IO type at setup::
+
+            details = await self.platform_iface.fetch_io_details()
+            for channel in details.channels("DI"):
+                print(f"DI {channel.channel} on {channel.device_channel} of some device")
+
+        Returns
+        -------
+        :class:`pydoover.docker.platform.IoDetails` | None
+            Devices in flat-channel order (master first, then slaves by index),
+            each listing the channels it contributes.
+
+            Against a platform interface that predates getIoDetails, this falls
+            back to :meth:`fetch_io_table` and synthesizes a single anonymous
+            master device with no per-channel metadata. Returns None only if
+            that fallback also returned nothing.
+        """
+        try:
+            # Structured response: build the dataclass from the whole message
+            # rather than response_field (which unwraps single-element lists).
+            response = await self.make_request(
+                "getIoDetails",
+                platform_iface_pb2.getIoDetailsRequest(),
+            )
+        except DooverAPIError as e:
+            cause = e.__cause__
+            if (
+                isinstance(cause, grpc.aio.AioRpcError)
+                and cause.code() is grpc.StatusCode.UNIMPLEMENTED
+            ):
+                io_table = await self.fetch_io_table()
+                if io_table is None:
+                    return None
+                return IoDetails.from_io_table(io_table)
+            raise
+        return IoDetails.from_response(response)
 
     @cli_command()
     async def sync_rtc(self):
