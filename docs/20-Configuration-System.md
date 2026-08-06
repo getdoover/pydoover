@@ -228,6 +228,35 @@ All configuration types support:
 | `hidden` | `bool` | Hide from UI (default: False) |
 | `deprecated` | `bool` | Mark as deprecated |
 | `position` | `int` | Order in UI (auto-assigned) |
+| `show_if` | `Condition` | Show and validate the field only when another field matches |
+
+## Conditional Fields
+
+Use `config.equal()` to show a field only when a sibling field has a specific
+value. The condition works with every config element type, including nested
+objects and arrays.
+
+```python
+class SlaveConfig(config.Schema):
+    type = config.Enum(
+        "Type",
+        choices=SlaveType,
+        default=SlaveType.DOOVIT,
+    )
+    name = config.String(
+        "Name",
+        description="The name of the slave",
+        show_if=config.equal(type, SlaveType.DOOVIT),
+    )
+```
+
+A required conditional field is required only while its condition is true.
+Conditions refer to sibling elements in the same `Schema` or `Object`. A JSON
+field name may also be used when referring to an inherited field:
+
+```python
+show_if=config.equal("type", SlaveType.DOOVIT)
+```
 
 ## Required vs Optional
 

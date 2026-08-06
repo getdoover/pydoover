@@ -4,6 +4,7 @@ import logging
 import pathlib
 import re
 
+from dataclasses import dataclass
 from enum import EnumType, Enum as _Enum
 from typing import Any
 
@@ -23,6 +24,27 @@ def check_key(key: str) -> None:
 
 class NotSet:
     """Sentinel used when a config value has not been assigned."""
+
+
+class Comparator(_Enum):
+    """Comparison operators supported by conditional config elements."""
+
+    EQUAL = "equal"
+
+
+@dataclass(frozen=True)
+class Condition:
+    """A condition controlling whether a config element is active."""
+
+    element: "ConfigElement | str"
+    comparator: Comparator
+    value: Any
+
+
+def equal(element: "ConfigElement | str", value: Any) -> Condition:
+    """Show an element when ``element`` equals ``value``."""
+
+    return Condition(element=element, comparator=Comparator.EQUAL, value=value)
 
 
 # Attribute names reserved for ConfigElement internal use.
@@ -52,6 +74,7 @@ RESERVED_NAMES = frozenset(
         "additional_elements",
         "collapsible",
         "default_collapsed",
+        "show_if",
     }
 )
 
@@ -103,7 +126,11 @@ class Schema:
 
     def __init_subclass__(cls, name: str = "$default", advanced: bool = None, **kwargs):
         super().__init_subclass__(**kwargs)
-        cls.name = name
+        cls._schema_name = name
+        # Preserve the historical ``SchemaSubclass.name`` title attribute when
+        # it does not collide with a declared config element named ``name``.
+        if not isinstance(cls.__dict__.get("name"), ConfigElement):
+            cls.name = name
         cls._advanced = advanced
         cls._element_map = {}
         cls._load_elements()
@@ -139,23 +166,18 @@ class Schema:
 
     @classmethod
     def to_schema(cls):
+        object_schema = _build_object_schema(cls._element_map)
         payload = {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "",
-            "title": cls.name,
+            "title": cls._schema_name,
             "type": "object",
-            "properties": {
-                name: element.to_dict()
-                for name, element in cls._element_map.items()
-                if isinstance(element, ConfigElement)
-            },
+            "properties": object_schema["properties"],
             "additionalElements": True,
-            "required": [
-                name
-                for name, element in cls._element_map.items()
-                if isinstance(element, ConfigElement) and element.required
-            ],
+            "required": object_schema["required"],
         }
+        if object_schema["allOf"]:
+            payload["allOf"] = object_schema["allOf"]
         if cls._advanced is not None:
             payload["x-advanced"] = cls._advanced
         return payload
@@ -175,6 +197,12 @@ class Schema:
         for elem_name in set(self._element_map.keys()) - set(config.keys()):
             # catch missing required elements, and set any other elements to their default value
             elem = self._element_map[elem_name]
+            if elem.show_if is not None and not _condition_matches(
+                elem.show_if, self._element_map, config
+            ):
+                if not elem.required:
+                    elem.load_data(elem.default)
+                continue
             if elem.required:
                 raise ValueError(
                     f"Required config element {elem_name} not found in deployment config."
@@ -263,6 +291,7 @@ class ConfigElement:
         name: str | None = None,
         advanced: bool | None = None,
         required: bool | None = None,
+        show_if: Condition | None = None,
     ):
         if name is not None:
             check_key(name)
@@ -285,6 +314,9 @@ class ConfigElement:
         self.format = format
         self.advanced = advanced
         self._required = required
+        if show_if is not None and not isinstance(show_if, Condition):
+            raise TypeError("show_if must be a condition created by config.equal()")
+        self.show_if = show_if
         self._value = NotSet
 
         if (
@@ -380,6 +412,116 @@ class ConfigElement:
 
     def load_data(self, data):
         self.value = data
+
+
+def _condition_element_name(
+    condition: Condition, elements: dict[str, ConfigElement]
+) -> str:
+    controller = condition.element
+    if isinstance(controller, str):
+        name = controller
+    elif isinstance(controller, ConfigElement):
+        name = next(
+            (name for name, element in elements.items() if element is controller),
+            controller._name,
+        )
+    else:
+        raise TypeError("A condition controller must be a ConfigElement or field name")
+
+    if name not in elements:
+        raise ValueError(f"Conditional field references unknown element {name!r}.")
+    return name
+
+
+def _condition_value(value: Any) -> Any:
+    if isinstance(value, _Enum):
+        return str(value.value)
+    return value
+
+
+def _condition_schema(condition: Condition) -> dict[str, Any]:
+    if condition.comparator is Comparator.EQUAL:
+        return {"const": _condition_value(condition.value)}
+    raise ValueError(f"Unsupported config comparator {condition.comparator!r}.")
+
+
+def _condition_matches(
+    condition: Condition,
+    elements: dict[str, ConfigElement],
+    data: dict[str, Any],
+) -> bool:
+    name = _condition_element_name(condition, elements)
+    controller = elements[name]
+    actual = data[name] if name in data else controller.default
+    if actual is NotSet:
+        return False
+    if condition.comparator is Comparator.EQUAL:
+        return _condition_value(actual) == _condition_value(condition.value)
+    raise ValueError(f"Unsupported config comparator {condition.comparator!r}.")
+
+
+def _build_object_schema(
+    elements: dict[str, ConfigElement],
+) -> dict[str, Any]:
+    """Build the properties, required fields, and conditional branches for an object."""
+
+    properties: dict[str, Any] = {}
+    required: list[str] = []
+    groups: list[tuple[str, Condition, list[ConfigElement]]] = []
+
+    for name, element in elements.items():
+        if not isinstance(element, ConfigElement):
+            continue
+        if element.show_if is None:
+            properties[name] = element.to_dict()
+            if element.required:
+                required.append(name)
+            continue
+
+        controller_name = _condition_element_name(element.show_if, elements)
+        if controller_name == name:
+            raise ValueError(f"Config element {name!r} cannot depend on itself.")
+        if elements[controller_name].show_if is not None:
+            raise ValueError(
+                f"Config element {name!r} cannot depend on conditional element "
+                f"{controller_name!r}."
+            )
+
+        matching_group = next(
+            (
+                group
+                for group in groups
+                if group[0] == controller_name and group[1] == element.show_if
+            ),
+            None,
+        )
+        if matching_group is None:
+            groups.append((controller_name, element.show_if, [element]))
+        else:
+            matching_group[2].append(element)
+
+    all_of: list[dict[str, Any]] = []
+    for controller_name, condition, conditional_elements in groups:
+        then_properties = {
+            element._name: element.to_dict() for element in conditional_elements
+        }
+        then_schema: dict[str, Any] = {"properties": then_properties}
+        then_required = [
+            element._name for element in conditional_elements if element.required
+        ]
+        if then_required:
+            then_schema["required"] = then_required
+        if_schema: dict[str, Any] = {
+            "properties": {controller_name: _condition_schema(condition)}
+        }
+        # JSON Schema's ``properties`` matches when the property is absent.
+        # That is correct only when the controller's effective default also
+        # satisfies the condition; otherwise require the controller to exist.
+        if not _condition_matches(condition, elements, {}):
+            if_schema["required"] = [controller_name]
+        all_of.append({"if": if_schema, "then": then_schema})
+
+    return {"properties": properties, "required": required, "allOf": all_of}
 
 
 class Integer(ConfigElement):
@@ -913,13 +1055,12 @@ class Object(ConfigElement):
 
     def to_dict(self):
         res = super().to_dict()
-        res["properties"] = {
-            element._name: element.to_dict() for element in self._elements.values()
-        }
+        object_schema = _build_object_schema(self._elements)
+        res["properties"] = object_schema["properties"]
         res["additionalElements"] = self.additional_elements
-        res["required"] = [
-            elem._name for elem in self._elements.values() if elem.required is True
-        ]
+        res["required"] = object_schema["required"]
+        if object_schema["allOf"]:
+            res["allOf"] = object_schema["allOf"]
         res["x-collapsible"] = self.collapsible
         res["x-defaultCollapsed"] = self.default_collapsed
         return res
@@ -952,6 +1093,12 @@ class Object(ConfigElement):
         # fall back to their declared default.
         for name, elem in self._elements.items():
             if name in data:
+                continue
+            if elem.show_if is not None and not _condition_matches(
+                elem.show_if, self._elements, data
+            ):
+                if not elem.required:
+                    elem.load_data(elem.default)
                 continue
             if elem.required:
                 raise ValueError(f"Required config element {name} not found in config.")
