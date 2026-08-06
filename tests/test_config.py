@@ -1,4 +1,5 @@
 from copy import deepcopy
+from enum import Enum
 
 import pytest
 
@@ -644,3 +645,143 @@ class TestDataPermissions:
 
         schema = ExtendedPermissionsConfig(dd_permissions__hidden=False).to_dict()
         assert schema["properties"]["dd_permissions"]["x-hidden"] is False
+
+
+class TestConditionalElements:
+    class Mode(Enum):
+        DOOVIT = "doovit"
+        OTHER = "other"
+
+    def test_conditional_field_moves_into_then_schema(self):
+        class S(config.Schema):
+            type = config.Enum(
+                "Type",
+                choices=TestConditionalElements.Mode,
+                default=TestConditionalElements.Mode.DOOVIT,
+            )
+            name = config.String(
+                "Name",
+                show_if=config.equal(type, TestConditionalElements.Mode.DOOVIT),
+            )
+
+        schema = S.to_schema()
+
+        assert set(schema["properties"]) == {"type"}
+        assert schema["required"] == []
+        assert schema["allOf"] == [
+            {
+                "if": {
+                    "properties": {"type": {"const": "doovit"}},
+                },
+                "then": {
+                    "properties": {"name": S.name.to_dict()},
+                    "required": ["name"],
+                },
+            }
+        ]
+
+        validate({"type": "other"}, schema)
+        with pytest.raises(ValidationError):
+            validate({"type": "doovit"}, schema)
+        with pytest.raises(ValidationError):
+            validate({}, schema)
+
+    def test_fields_with_the_same_condition_share_a_branch(self):
+        class S(config.Schema):
+            enabled = config.Boolean("Enabled", default=False)
+            hostname = config.String(
+                "Hostname", default="localhost", show_if=config.equal(enabled, True)
+            )
+            port = config.Integer("Port", show_if=config.equal(enabled, True))
+
+        branch = S.to_schema()["allOf"][0]
+        assert set(branch["then"]["properties"]) == {"hostname", "port"}
+        assert branch["then"]["required"] == ["port"]
+
+    def test_inactive_required_field_is_not_required_at_runtime(self):
+        class S(config.Schema):
+            enabled = config.Boolean("Enabled", default=False)
+            secret = config.String("Secret", show_if=config.equal(enabled, True))
+
+        instance = S()
+        instance._inject_deployment_config({"enabled": False})
+        with pytest.raises(ValueError, match="secret"):
+            _ = instance.secret.value
+
+    def test_active_required_field_is_required_at_runtime(self):
+        class S(config.Schema):
+            enabled = config.Boolean("Enabled", default=False)
+            secret = config.String("Secret", show_if=config.equal(enabled, True))
+
+        with pytest.raises(ValueError, match="secret"):
+            S()._inject_deployment_config({"enabled": True})
+
+    def test_controller_default_activates_condition(self):
+        class S(config.Schema):
+            enabled = config.Boolean("Enabled", default=True)
+            secret = config.String("Secret", show_if=config.equal(enabled, True))
+
+        with pytest.raises(ValueError, match="secret"):
+            S()._inject_deployment_config({})
+
+    def test_inactive_optional_field_keeps_its_default(self):
+        class S(config.Schema):
+            enabled = config.Boolean("Enabled", default=False)
+            retries = config.Integer(
+                "Retries", default=3, show_if=config.equal(enabled, True)
+            )
+
+        instance = S()
+        instance._inject_deployment_config({"enabled": False})
+        assert instance.retries.value == 3
+
+    def test_nested_object_supports_conditional_children(self):
+        class Connection(config.Object):
+            enabled = config.Boolean("Enabled", default=False)
+            hostname = config.String("Hostname", show_if=config.equal(enabled, True))
+
+        class S(config.Schema):
+            connection = Connection("Connection")
+
+        connection_schema = S.to_schema()["properties"]["connection"]
+        assert set(connection_schema["properties"]) == {"enabled"}
+        assert connection_schema["allOf"][0]["then"]["required"] == ["hostname"]
+
+        instance = S()
+        instance._inject_deployment_config({"connection": {"enabled": False}})
+        with pytest.raises(ValueError, match="hostname"):
+            _ = instance.connection.hostname.value
+
+    def test_string_controller_reference_is_supported(self):
+        class S(config.Schema):
+            enabled = config.Boolean("Enabled", default=False, name="feature_enabled")
+            label = config.String(
+                "Label", default="x", show_if=config.equal("feature_enabled", True)
+            )
+
+        branch = S.to_schema()["allOf"][0]
+        assert branch["if"]["properties"] == {"feature_enabled": {"const": True}}
+
+    def test_unknown_and_self_references_are_rejected(self):
+        class Unknown(config.Schema):
+            setting = config.String(
+                "Value", default="x", show_if=config.equal("missing", True)
+            )
+
+        with pytest.raises(ValueError, match="unknown element 'missing'"):
+            Unknown.to_schema()
+
+        element = config.Boolean("Enabled", default=False)
+        element.show_if = config.equal(element, True)
+
+        class SelfReference(config.Schema):
+            enabled = element
+
+        with pytest.raises(ValueError, match="cannot depend on itself"):
+            SelfReference.to_schema()
+
+    def test_schema_without_conditions_does_not_gain_all_of(self):
+        class S(config.Schema):
+            setting = config.String("Value", default="x")
+
+        assert "allOf" not in S.to_schema()
