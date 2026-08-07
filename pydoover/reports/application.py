@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 import os
 import re
@@ -39,6 +40,25 @@ class Application(ApplicationBase):
         self.period_start = None
         self.period_end = None
         self.devices = None
+
+        # Capture all log output so it can be attached to the report message
+        # ("logs" field) for users to read. The processor base used to own
+        # this capture but it was removed in the move to structured stdout
+        # logging; reports still need it, so the capture lives here now.
+        # Remove any capture handler left over from a previous invocation in
+        # a warm lambda container before installing ours.
+        self.log_capture_string = io.StringIO()
+        root_logger = logging.getLogger()
+        for handler in [
+            h for h in root_logger.handlers if getattr(h, "_report_log_capture", False)
+        ]:
+            root_logger.removeHandler(handler)
+        capture_handler = logging.StreamHandler(self.log_capture_string)
+        capture_handler._report_log_capture = True
+        capture_handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+        )
+        root_logger.addHandler(capture_handler)
 
     async def on_message_create(self, event: MessageCreateEvent):
         raise RuntimeError("Report Generator does not support message create events")
