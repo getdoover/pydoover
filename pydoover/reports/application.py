@@ -157,6 +157,7 @@ class Application(ApplicationBase):
         except Exception as e:
             log.error(f"Error generating report: {e}", exc_info=e)
 
+            self._report_metadata["status"] = "Failed"
             self._report_metadata["logs"] = self.log_capture_string.getvalue()
 
             await self.api.update_message(
