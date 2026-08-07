@@ -1317,6 +1317,7 @@ class DataClient(BaseClient):
         mini_token: bool = False,
         is_org: bool | None = None,
         organisation_id: int | None = None,
+        origin: str | None = None,
     ) -> ProcessorTokenResponse:
         payload: dict[str, Any] = {
             "lambda_arn": lambda_arn,
@@ -1333,6 +1334,11 @@ class DataClient(BaseClient):
             payload["signing_key_hash_header"] = signing_key_hash_header
         if is_org is not None:
             payload["is_org"] = is_org
+        # Identifies the external system allowed to complete this ingestion's
+        # unauthenticated setup handshake (an AWS IoT rule destination ARN).
+        # Omitting it clears any previously registered origin.
+        if origin is not None:
+            payload["origin"] = origin
         data = self._request(
             "PUT",
             f"/agents/{agent_id}/processors/ingestions/{ingestion_id}",
