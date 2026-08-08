@@ -1,5 +1,89 @@
-from enum import IntEnum
+import re
+from enum import Enum, IntEnum
 from typing import Any
+
+
+class NotificationPolicy(str, Enum):
+    """Whether a structured notification is included in broad subscriptions."""
+
+    IncludedByDefault = "default"
+    ExplicitOptIn = "opt-in"
+
+
+class TopicFilterMode(str, Enum):
+    """How notification subscription topic filters are interpreted."""
+
+    Exact = "exact"
+    Regex = "regex"
+
+
+DEFAULT_NOTIFICATION_TOPIC_FILTERS = (
+    r"^dev/alarms/default/[^/]+/(?:triggered|cleared|pending|no-data)$",
+    r"^dev/applications/default/[^/]+/[^/]+$",
+    r"^legacy/default(?:/.*)?$",
+)
+
+_TOPIC_SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+
+
+def _validate_topic_segment(name: str, value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(
+            f"notification topic {name} must be a str, "
+            f"got {type(value).__name__}: {value!r}"
+        )
+    if not _TOPIC_SEGMENT_RE.fullmatch(value):
+        raise ValueError(
+            f"notification topic {name} must match "
+            f"{_TOPIC_SEGMENT_RE.pattern!r}, got {value!r}"
+        )
+    return value
+
+
+class NotificationTopic(str):
+    """A validated, structured notification topic."""
+
+    @classmethod
+    def application(
+        cls,
+        app_key: str,
+        event: str,
+        policy: NotificationPolicy | str = NotificationPolicy.IncludedByDefault,
+    ) -> "NotificationTopic":
+        """Build ``dev/applications/<policy>/<app_key>/<event>``."""
+        app_key = _validate_topic_segment("app_key", app_key)
+        event = _validate_topic_segment("event", event)
+        policy = NotificationPolicy(policy)
+        return cls(f"dev/applications/{policy.value}/{app_key}/{event}")
+
+
+def _normalise_topic_filters(
+    topic_filter: list[str] | None,
+    mode: TopicFilterMode | str = TopicFilterMode.Regex,
+) -> list[str]:
+    """Return SDK-write filters, expanding the deprecated ``*`` token."""
+    if topic_filter is None:
+        return list(DEFAULT_NOTIFICATION_TOPIC_FILTERS)
+    if not isinstance(topic_filter, list) or not all(
+        isinstance(pattern, str) for pattern in topic_filter
+    ):
+        raise TypeError("topic_filter must be a list of strings")
+
+    mode = TopicFilterMode(mode)
+    contains_default_shortcut = "*" in topic_filter
+    result: list[str] = []
+    for pattern in topic_filter:
+        if pattern == "*":
+            result.extend(DEFAULT_NOTIFICATION_TOPIC_FILTERS)
+        else:
+            # Expanding `*` changes the payload to regex mode. Preserve exact
+            # semantics for any literal filters that accompanied it.
+            result.append(
+                re.escape(pattern)
+                if contains_default_shortcut and mode is TopicFilterMode.Exact
+                else pattern
+            )
+    return list(dict.fromkeys(result))
 
 
 class _NameWireEnum(IntEnum):
@@ -154,6 +238,7 @@ class NotificationSubscription:
         severity: NotificationSeverity,
         topic_filter: list[str],
         endpoints: list[NotificationSubscriptionEndpoint],
+        topic_filter_mode: TopicFilterMode | str = TopicFilterMode.Exact,
     ):
         self.id = id
         self.subscriber = subscriber
@@ -161,6 +246,7 @@ class NotificationSubscription:
         self.severity = severity
         self.topic_filter = topic_filter
         self.endpoints = endpoints
+        self.topic_filter_mode = TopicFilterMode(topic_filter_mode)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -170,6 +256,8 @@ class NotificationSubscription:
             subscribed_to=int(data["subscribed_to"]),
             severity=NotificationSeverity(data["severity"]),
             topic_filter=data["topic_filter"],
+            # Rows created before regex support have exact-match semantics.
+            topic_filter_mode=data.get("topic_filter_mode", TopicFilterMode.Exact),
             endpoints=[
                 NotificationSubscriptionEndpoint.from_dict(e)
                 for e in data.get("endpoints", [])
@@ -183,6 +271,7 @@ class NotificationSubscription:
             "subscribed_to": self.subscribed_to,
             "severity": self.severity.value,
             "topic_filter": self.topic_filter,
+            "topic_filter_mode": self.topic_filter_mode.value,
             "endpoints": [e.to_dict() for e in self.endpoints],
         }
 
@@ -205,9 +294,10 @@ class Notification:
         The severity level. Subscribers only receive notifications at or
         above their subscription severity. Accepts the enum, a member name
         (``"warn"``, case-insensitive) or the integer value.
-    topic : str, optional
+    topic : str | NotificationTopic, optional
         An optional topic string used to filter subscriptions by
-        ``topic_filter``.
+        ``topic_filter``. Use :meth:`NotificationTopic.application` for new
+        application-generated topics; arbitrary legacy strings remain valid.
 
     Raises
     ------
@@ -232,7 +322,7 @@ class Notification:
         message: str,
         title: str | None = None,
         severity: NotificationSeverity | str | int | None = None,
-        topic: str | None = None,
+        topic: str | NotificationTopic | None = None,
     ):
         if not isinstance(message, str):
             raise TypeError(
@@ -278,5 +368,5 @@ class Notification:
             # (unlike NotificationType), so the historical int is kept.
             result["severity"] = self.severity.value
         if self.topic is not None:
-            result["topic"] = self.topic
+            result["topic"] = str(self.topic)
         return result

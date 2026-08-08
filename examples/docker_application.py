@@ -124,6 +124,7 @@ class HelloWorld(Application):
                 f"Battery voltage is {voltage:.2f}V, below the {setpoint}V setpoint",
                 title="Low battery",
                 severity=NotificationSeverity.Warn,
+                event="low-battery",
             )
         self.battery_was_low = is_low
 
