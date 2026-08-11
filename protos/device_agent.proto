@@ -4,6 +4,38 @@ import "google/protobuf/struct.proto";
 
 package device_agent;
 
+// CROSS-AGENT REQUESTS
+//
+// Every channel-scoped request carries an optional `agent_id`: the agent that
+// OWNS the channel. Absent (or 0) means "the agent I am talking to", which is
+// what every pre-existing client sends, so the default is unchanged.
+//
+// A non-self `agent_id` requires the device's token to hold a grant on that
+// agent (`ag:{agent_id}`) or channel (`ch:{agent_id}:{name}`); without one the
+// agent answers with a 403 response header.
+//
+// Cross-agent WRITES are restricted by the agent: messages are accepted
+// normally, and aggregate updates are always best-effort (never persisted
+// across a restart, never merged into the local cache), because a remote
+// aggregate is a read-through cache of the owning agent's state rather than
+// state this agent owns.
+
+// WRITE QUALITY OF SERVICE
+//
+// `qos` on a write request selects how hard the agent tries to get it to the
+// cloud. It is deliberately an `optional uint32` and not an enum: absent must
+// mean 1, and a proto3 enum's zero value is unavoidably its default, which
+// would silently reclassify every existing client's writes as fire-and-forget.
+//
+//   0 — at-most-once. Attempted once if the cloud is reachable at write time,
+//       otherwise dropped. Never queued to disk, never retried.
+//   1 — the agent's normal durability routing. This is the default and the
+//       behaviour every existing client already gets.
+//
+// QoS governs CLOUD delivery only. The local write, the local cache update and
+// the local event fan-out are identical at every QoS, so an app writing at
+// QoS 0 still sees its own event and still reads its own value back.
+
 // Wire format a channel-event subscriber wants its payload delivered in.
 // The protobuf `Struct` build (json_format.ParseDict) is ~90% of per-event
 // encode cost; clients that read `data_json` can opt out of it with JSON_ONLY.
@@ -59,6 +91,8 @@ message MessageDetails {
 message ChannelDetails {
   string channel_name = 1;
   optional string aggregate = 2;
+  // Owning agent. Absent = the agent that answered.
+  optional uint64 agent_id = 3;
 }
 
 message AgentDetails {
@@ -222,6 +256,7 @@ message GetMessageRequest {
   RequestHeader header = 1;
   string channel_name = 2;
   uint64 message_id = 3;
+  optional uint64 agent_id = 4;
 }
 
 message GetMessageResponse {
@@ -236,6 +271,7 @@ message GetMessagesRequest {
   optional uint64 after = 4;
   optional uint32 limit = 5;
   repeated string field_names = 6;
+  optional uint64 agent_id = 7;
 }
 
 message GetMessagesResponse {
@@ -251,6 +287,8 @@ message CreateMessageRequest {
   repeated File files = 4;
   uint64 timestamp = 5;
   string data_json = 6;
+  optional uint64 agent_id = 7;
+  optional uint32 qos = 8;
 }
 
 message CreateMessageResponse {
@@ -268,6 +306,8 @@ message UpdateMessageRequest {
   optional bool clear_attachments = 6;
   optional bool replace_data = 7;
   string data_json = 8;
+  optional uint64 agent_id = 9;
+  optional uint32 qos = 10;
 }
 
 message UpdateMessageResponse {
@@ -305,6 +345,9 @@ message UpdateAggregateRequest {
   // subtree in one write instead of a clear(null)+set pair, which can be
   // reordered on the wire and leave the cloud aggregate cleared.
   repeated string replace_keys = 12;
+
+  optional uint64 agent_id = 13;
+  optional uint32 qos = 14;
 }
 
 message UpdateAggregateResponse {
@@ -318,6 +361,7 @@ message ChannelEventSubscriptionRequest {
   WireFormat wire_format = 3;  // default WIRE_FORMAT_BOTH keeps legacy behaviour
   // Absent defaults to true in the server for backwards compatibility.
   optional bool replay_missed_messages = 4;
+  optional uint64 agent_id = 5;
 }
 
 message ChannelEventSubscriptionResponse {
@@ -331,6 +375,7 @@ message ChannelEventSubscriptionResponse {
 message GetAggregateRequest {
   RequestHeader header = 1;
   string channel_name = 2;
+  optional uint64 agent_id = 3;
 }
 
 message GetAggregateResponse {
@@ -343,6 +388,8 @@ message ListChannelsRequest {
   // Populate each channel's `aggregate`. Off by default: the agent can list
   // channel names without reading any aggregate body.
   optional bool include_aggregate = 2;
+  // List another agent's channels. Absent = this agent's own.
+  optional uint64 agent_id = 3;
 }
 
 message ListChannelsResponse {
@@ -369,6 +416,8 @@ message SendOneShotMessageRequest {
   google.protobuf.Struct data = 3;
   optional uint64 timestamp = 4;
   string data_json = 5;
+  optional uint64 agent_id = 6;
+  optional uint32 qos = 7;
 }
 
 message SendOneShotMessageResponse {

@@ -16,10 +16,19 @@ import pytest
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from pydoover.models.data import Aggregate, Attachment, File
-from pydoover.models.generated.device_agent import device_agent_pb2
+from pydoover.models.data import Aggregate, Attachment, ChannelListing, File
+from pydoover.models.generated.device_agent import (
+    device_agent_pb2,
+    device_agent_pb2_grpc,
+)
 from pydoover.models.data.exceptions import DooverAPIError, HTTPError, NotFoundError
 from pydoover.docker.device_agent import DeviceAgentInterface, MockDeviceAgentInterface
+from pydoover.docker.device_agent.device_agent import (
+    QOS_AT_MOST_ONCE,
+    QOS_DEFAULT,
+    _channel_key,
+    _routing_fields,
+)
 
 
 # ── helpers ──────────────────────────────────────────────────────────────
@@ -667,3 +676,236 @@ class TestStreamChannelKeepalive:
         assert opts["grpc.keepalive_time_ms"] > 0
         assert opts["grpc.keepalive_timeout_ms"] > 0
         assert opts["grpc.http2.max_pings_without_data"] == 0
+
+
+# ── cross-agent channels + write QoS ────────────────────────────────────
+
+
+class TestChannelKey:
+    """Own channels must keep their bare name as the cache key, or every
+    existing cache entry, log line and override changes meaning."""
+
+    def test_own_channel_key_is_the_bare_name(self):
+        assert _channel_key("ui_state", None) == "ui_state"
+
+    def test_remote_channel_key_is_namespaced(self):
+        assert _channel_key("ui_state", 123) == "123:ui_state"
+
+    def test_two_agents_do_not_collide(self):
+        assert _channel_key("ui_state", 1) != _channel_key("ui_state", 2)
+        assert _channel_key("ui_state", 1) != _channel_key("ui_state", None)
+
+
+class TestRoutingFields:
+    """Defaults must be omitted entirely: a request to an older device agent
+    has to be byte-identical to what this client sent before these fields
+    existed."""
+
+    def test_defaults_send_nothing(self):
+        assert _routing_fields(None, QOS_DEFAULT) == {}
+
+    def test_agent_id_only_when_cross_agent(self):
+        assert _routing_fields(42, QOS_DEFAULT) == {"agent_id": 42}
+
+    def test_qos_only_when_not_default(self):
+        assert _routing_fields(None, QOS_AT_MOST_ONCE) == {"qos": 0}
+
+    def test_both(self):
+        assert _routing_fields(42, QOS_AT_MOST_ONCE) == {"agent_id": 42, "qos": 0}
+
+
+class TestCrossAgentReads:
+    def setup_method(self):
+        self.dda = DeviceAgentInterface(app_key="test", dda_uri="localhost:50051")
+
+    @pytest.mark.asyncio
+    async def test_fetch_aggregate_sends_agent_id(self):
+        resp = _make_get_aggregate_response({"temperature": 22.5})
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.fetch_channel_aggregate("sensor_data", agent_id=777)
+
+        req = self.dda.make_request.call_args[0][1]
+        assert req.agent_id == 777
+        assert req.channel_name == "sensor_data"
+
+    @pytest.mark.asyncio
+    async def test_fetch_aggregate_omits_agent_id_by_default(self):
+        resp = _make_get_aggregate_response({})
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.fetch_channel_aggregate("sensor_data")
+
+        req = self.dda.make_request.call_args[0][1]
+        assert not req.HasField("agent_id")
+
+    @pytest.mark.asyncio
+    async def test_remote_cache_does_not_shadow_own_channel(self):
+        """The bug this keying exists to prevent: a cached remote aggregate
+        being served for our own same-named channel."""
+        self.dda._aggregates["777:sensor_data"] = Aggregate(
+            data={"theirs": True}, attachments=[], last_updated=None
+        )
+        resp = _make_get_aggregate_response({"ours": True})
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        own = await self.dda.fetch_channel_aggregate("sensor_data")
+        remote = await self.dda.fetch_channel_aggregate("sensor_data", agent_id=777)
+
+        assert own.data == {"ours": True}
+        assert remote.data == {"theirs": True}
+
+    @pytest.mark.asyncio
+    async def test_list_channels_sends_agent_id(self):
+        resp = device_agent_pb2.ListChannelsResponse(
+            response_header=_make_response_header(), channels=[], from_cloud=True
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.list_channels(agent_id=777)
+
+        assert self.dda.make_request.call_args[0][1].agent_id == 777
+
+    @pytest.mark.asyncio
+    async def test_fetch_message_sends_agent_id(self):
+        resp = device_agent_pb2.GetMessageResponse(
+            response_header=_make_response_header(),
+            message=device_agent_pb2.Message(message_id=1, data_json="{}"),
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.fetch_message("ch", 1, agent_id=777)
+
+        assert self.dda.make_request.call_args[0][1].agent_id == 777
+
+    @pytest.mark.asyncio
+    async def test_list_messages_sends_agent_id(self):
+        resp = device_agent_pb2.GetMessagesResponse(
+            response_header=_make_response_header(), messages=[]
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.list_messages("ch", agent_id=777)
+
+        assert self.dda.make_request.call_args[0][1].agent_id == 777
+
+    def test_subscriptions_are_tracked_per_agent(self):
+        self.dda._ensure_stream = lambda *a, **kw: None
+
+        self.dda.add_event_callback("ui_cmds", AsyncMock())
+        self.dda.add_event_callback("ui_cmds", AsyncMock(), agent_id=777)
+
+        assert "ui_cmds" in self.dda._event_callbacks
+        assert "777:ui_cmds" in self.dda._event_callbacks
+        assert len(self.dda._event_callbacks["ui_cmds"]) == 1
+        assert len(self.dda._event_callbacks["777:ui_cmds"]) == 1
+
+    def test_is_channel_synced_is_per_agent(self):
+        self.dda._ensure_stream = lambda *a, **kw: None
+        self.dda.add_event_callback("ui_cmds", AsyncMock(), agent_id=777)
+        self.dda._synced_channels["777:ui_cmds"] = True
+
+        assert self.dda.is_channel_synced("ui_cmds", agent_id=777) is True
+        assert self.dda.is_channel_synced("ui_cmds") is False
+
+    @pytest.mark.asyncio
+    async def test_stream_request_carries_agent_id(self, monkeypatch):
+        captured = {}
+
+        class _Stub:
+            def __init__(self, channel):
+                pass
+
+            def ChannelEventSubscription(self, pl):
+                captured["request"] = pl
+                raise asyncio.CancelledError
+
+        monkeypatch.setattr(
+            device_agent_pb2_grpc, "deviceAgentStub", _Stub, raising=False
+        )
+
+        gen = self.dda.stream_channel_events("ui_cmds", agent_id=777)
+        with pytest.raises(asyncio.CancelledError):
+            await gen.__anext__()
+
+        assert captured["request"].agent_id == 777
+
+
+class TestWriteQoS:
+    def setup_method(self):
+        self.dda = DeviceAgentInterface(app_key="test", dda_uri="localhost:50051")
+
+    @pytest.mark.asyncio
+    async def test_create_message_defaults_to_no_qos_field(self):
+        resp = device_agent_pb2.CreateMessageResponse(
+            response_header=_make_response_header(), message_id=5
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.create_message("ch", {"a": 1})
+
+        assert not self.dda.make_request.call_args[0][1].HasField("qos")
+
+    @pytest.mark.asyncio
+    async def test_create_message_carries_qos_zero(self):
+        resp = device_agent_pb2.CreateMessageResponse(
+            response_header=_make_response_header(), message_id=5
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.create_message("ch", {"a": 1}, qos=QOS_AT_MOST_ONCE)
+
+        req = self.dda.make_request.call_args[0][1]
+        assert req.HasField("qos")
+        assert req.qos == 0
+
+    @pytest.mark.asyncio
+    async def test_update_aggregate_carries_qos_and_agent_id(self):
+        resp = device_agent_pb2.UpdateAggregateResponse(
+            response_header=_make_response_header(),
+            aggregate=_make_aggregate_proto({}),
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.update_channel_aggregate(
+            "ch", {"a": 1}, agent_id=777, qos=QOS_AT_MOST_ONCE
+        )
+
+        req = self.dda.make_request.call_args[0][1]
+        assert req.agent_id == 777
+        assert req.qos == 0
+
+    @pytest.mark.asyncio
+    async def test_update_message_carries_qos(self):
+        resp = device_agent_pb2.UpdateMessageResponse(
+            response_header=_make_response_header(),
+            message=device_agent_pb2.Message(message_id=1, data_json="{}"),
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.update_message("ch", 1, {"a": 1}, qos=QOS_AT_MOST_ONCE)
+
+        assert self.dda.make_request.call_args[0][1].qos == 0
+
+    @pytest.mark.asyncio
+    async def test_oneshot_carries_qos(self):
+        resp = device_agent_pb2.SendOneShotMessageResponse(
+            response_header=_make_response_header()
+        )
+        self.dda.make_request = AsyncMock(return_value=resp)
+
+        await self.dda.send_oneshot_message("ch", {"a": 1}, qos=QOS_AT_MOST_ONCE)
+
+        assert self.dda.make_request.call_args[0][1].qos == 0
+
+
+class TestChannelListingAgentId:
+    def test_from_proto_reads_agent_id(self):
+        proto = device_agent_pb2.ChannelDetails(channel_name="ch", agent_id=777)
+        listing = ChannelListing.from_proto(proto)
+        assert listing.agent_id == 777
+        assert listing.name == "ch"
+
+    def test_from_proto_without_agent_id(self):
+        proto = device_agent_pb2.ChannelDetails(channel_name="ch")
+        assert ChannelListing.from_proto(proto).agent_id is None

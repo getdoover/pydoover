@@ -42,6 +42,50 @@ log = logging.getLogger(__name__)
 _VALID_KEY_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 _SCALAR_TYPES = (bool, int, float, str, type(None))
 
+#: Fire-and-forget: the agent attempts the cloud write once if it is connected,
+#: and drops it otherwise. Never queued to disk, never retried.
+QOS_AT_MOST_ONCE = 0
+#: The agent's normal durability routing — the default, and what every client
+#: got before ``qos`` existed.
+QOS_DEFAULT = 1
+
+
+def _agent_kwarg(agent_id: int | None) -> dict[str, int]:
+    """``{"agent_id": ...}``, or nothing at all when targeting our own agent.
+
+    Used for INTERNAL calls between the interface's own methods, which
+    subclasses and tests routinely substitute. Omitting the argument entirely on
+    the default path means an override written against the old signature keeps
+    working; only a genuine cross-agent call requires the new one.
+    """
+    return {} if agent_id is None else {"agent_id": agent_id}
+
+
+def _routing_fields(agent_id: int | None, qos: int = QOS_DEFAULT) -> dict[str, int]:
+    """Proto kwargs for a write's cross-agent target and QoS.
+
+    Both are omitted when they carry the default meaning, so a request to an
+    older device agent is byte-identical to what this client sent before either
+    field existed.
+    """
+    fields = {}
+    if agent_id is not None:
+        fields["agent_id"] = agent_id
+    if qos != QOS_DEFAULT:
+        fields["qos"] = qos
+    return fields
+
+
+def _channel_key(channel_name: str, agent_id: int | None) -> str:
+    """Cache key for a channel, namespaced by owning agent.
+
+    Own channels keep their bare name so nothing about the existing single-agent
+    behaviour changes; another agent's channels are prefixed, so two agents with
+    a channel of the same name never collide in the caches. Mirrors the device
+    agent's own key scheme.
+    """
+    return channel_name if agent_id is None else f"{agent_id}:{channel_name}"
+
 
 def validate_payload(data, _path=""):
     """Validate that a payload is compatible with doover channel data.
@@ -179,12 +223,17 @@ class DeviceAgentInterface(GRPCInterface):
         channel_name: str,
         wire_format: WireFormat = WireFormat.json_only,
         replay_missed_messages: bool = True,
+        agent_id: int | None = None,
     ) -> None:
         """Ensure a single event stream is running for this channel."""
-        if channel_name not in self._stream_tasks:
-            self._stream_tasks[channel_name] = asyncio.create_task(
+        key = _channel_key(channel_name, agent_id)
+        if key not in self._stream_tasks:
+            self._stream_tasks[key] = asyncio.create_task(
                 self._run_channel_stream(
-                    channel_name, wire_format, replay_missed_messages
+                    channel_name,
+                    wire_format,
+                    replay_missed_messages,
+                    **_agent_kwarg(agent_id),
                 )
             )
 
@@ -195,6 +244,7 @@ class DeviceAgentInterface(GRPCInterface):
         events: EventSubscription = EventSubscription.all,
         wire_format: WireFormat = WireFormat.json_only,
         replay_missed_messages: bool = True,
+        agent_id: int | None = None,
     ) -> None:
         """Register a callback for events on a channel.
 
@@ -226,14 +276,24 @@ class DeviceAgentInterface(GRPCInterface):
             act on current state rather than re-run a backlog of stale
             commands. Like ``wire_format``, only the first subscriber to a
             channel establishes this.
+        agent_id : int, optional
+            Subscribe to a channel belonging to *another* agent. Defaults to
+            ``None`` (this device's own channel). Requires the device's token to
+            have been granted access to that agent or channel.
         """
         entry = (callback, events)
+        key = _channel_key(channel_name, agent_id)
         try:
-            self._event_callbacks[channel_name].append(entry)
+            self._event_callbacks[key].append(entry)
         except KeyError:
-            self._event_callbacks[channel_name] = [entry]
+            self._event_callbacks[key] = [entry]
 
-        self._ensure_stream(channel_name, wire_format, replay_missed_messages)
+        self._ensure_stream(
+            channel_name,
+            wire_format,
+            replay_missed_messages,
+            **_agent_kwarg(agent_id),
+        )
 
     @staticmethod
     def _event_type_to_flag(event) -> EventSubscription | None:
@@ -254,33 +314,46 @@ class DeviceAgentInterface(GRPCInterface):
         channel_name: str,
         wire_format: WireFormat = WireFormat.json_only,
         replay_missed_messages: bool = True,
+        agent_id: int | None = None,
     ):
         """Single event stream per channel. Seeds aggregate cache, then distributes events."""
         await self.wait_until_healthy()
+        key = _channel_key(channel_name, agent_id)
 
         # Seed the aggregate cache, then fire ChannelSyncEvent so subscribers get the initial state.
         agg = None
         try:
-            agg = await self.fetch_channel_aggregate(channel_name)
-            self._aggregates[channel_name] = agg
-        except NotFoundError:
-            log.info(
-                f"Channel '{channel_name}' not found, creating with empty aggregate"
+            agg = await self.fetch_channel_aggregate(
+                channel_name, **_agent_kwarg(agent_id)
             )
-            try:
-                agg = await self.update_channel_aggregate(channel_name, {})
-            except Exception as e:
-                log.error(f"Failed to create channel '{channel_name}': {e}")
+            self._aggregates[key] = agg
+        except NotFoundError:
+            # Only our own missing channels are created on read. A channel that
+            # is absent on ANOTHER agent stays absent: creating it there would
+            # invent a channel on a device we do not own.
+            if agent_id is not None:
+                log.info(
+                    f"Channel '{channel_name}' not found on agent {agent_id}; "
+                    f"subscribing without a seeded aggregate"
+                )
             else:
-                self._aggregates[channel_name] = agg
+                log.info(
+                    f"Channel '{channel_name}' not found, creating with empty aggregate"
+                )
+                try:
+                    agg = await self.update_channel_aggregate(channel_name, {})
+                except Exception as e:
+                    log.error(f"Failed to create channel '{channel_name}': {e}")
+                else:
+                    self._aggregates[key] = agg
         except Exception as e:
             log.error(f"Failed to seed aggregate cache for '{channel_name}': {e}")
 
-        self._synced_channels[channel_name] = True
+        self._synced_channels[key] = True
 
         if agg is not None:
             sync_event = ChannelSyncEvent(aggregate=agg)
-            for callback, events in self._event_callbacks.get(channel_name, []):
+            for callback, events in self._event_callbacks.get(key, []):
                 if EventSubscription.channel_sync not in events:
                     continue
                 try:
@@ -299,13 +372,16 @@ class DeviceAgentInterface(GRPCInterface):
         while True:
             try:
                 async for event in self.stream_channel_events(
-                    channel_name, wire_format, replay_missed_messages
+                    channel_name,
+                    wire_format,
+                    replay_missed_messages,
+                    **_agent_kwarg(agent_id),
                 ):
                     # Update internal aggregate state on AggregateUpdate
                     if isinstance(event, AggregateUpdateEvent):
-                        self._aggregates[channel_name] = event.aggregate
-                        self._synced_channels[channel_name] = True
-                        self.last_channel_message_ts[channel_name] = datetime.now(
+                        self._aggregates[key] = event.aggregate
+                        self._synced_channels[key] = True
+                        self.last_channel_message_ts[key] = datetime.now(
                             tz=timezone.utc
                         )
 
@@ -313,7 +389,7 @@ class DeviceAgentInterface(GRPCInterface):
                     event_flag = self._event_type_to_flag(event)
 
                     # Distribute to matching registered callbacks
-                    for callback, events in self._event_callbacks.get(channel_name, []):
+                    for callback, events in self._event_callbacks.get(key, []):
                         if event_flag is None or event_flag not in events:
                             continue
                         try:
@@ -337,6 +413,7 @@ class DeviceAgentInterface(GRPCInterface):
         channel_name: str,
         wire_format: WireFormat = WireFormat.json_only,
         replay_missed_messages: bool = True,
+        agent_id: int | None = None,
     ):
         backoff = 1
         while True:
@@ -348,6 +425,7 @@ class DeviceAgentInterface(GRPCInterface):
                         channel_name=channel_name,
                         wire_format=int(wire_format),
                         replay_missed_messages=replay_missed_messages,
+                        **({} if agent_id is None else {"agent_id": agent_id}),
                     )
                     channel_stream = device_agent_pb2_grpc.deviceAgentStub(
                         channel
@@ -413,7 +491,7 @@ class DeviceAgentInterface(GRPCInterface):
         else:
             self.is_dda_online = False
 
-    def is_channel_synced(self, channel_name):
+    def is_channel_synced(self, channel_name, agent_id: int | None = None):
         """Check if a channel is synced with DDA.
 
         During normal operation, this should always return `True` while DDA is active.
@@ -424,20 +502,27 @@ class DeviceAgentInterface(GRPCInterface):
         ----------
         channel_name : str
             Name of the channel to check.
+        agent_id : int, optional
+            Owning agent, if this is another agent's channel.
 
         Returns
         -------
         bool
             True if the channel is synced, False otherwise.
         """
-        if channel_name not in self._event_callbacks:
+        key = _channel_key(channel_name, agent_id)
+        if key not in self._event_callbacks:
             return False
-        if channel_name not in self._synced_channels:
+        if key not in self._synced_channels:
             return False
-        return self._synced_channels[channel_name]
+        return self._synced_channels[key]
 
     async def wait_for_channels_sync(
-        self, channel_names: list[str], timeout: int = 5, inter_wait: float = 0.2
+        self,
+        channel_names: list[str],
+        timeout: int = 5,
+        inter_wait: float = 0.2,
+        agent_id: int | None = None,
     ) -> bool:
         """Wait for all specified channels to be synced with DDA.
 
@@ -461,7 +546,10 @@ class DeviceAgentInterface(GRPCInterface):
         """
         start_time = datetime.now(tz=timezone.utc)
         while not all(
-            [self.is_channel_synced(channel_name) for channel_name in channel_names]
+            [
+                self.is_channel_synced(channel_name, agent_id)
+                for channel_name in channel_names
+            ]
         ):
             if (datetime.now(tz=timezone.utc) - start_time).seconds > timeout:
                 return False
@@ -469,7 +557,9 @@ class DeviceAgentInterface(GRPCInterface):
         return True
 
     @cli_command()
-    async def list_channels(self, include_aggregate: bool = False) -> ChannelList:
+    async def list_channels(
+        self, include_aggregate: bool = False, agent_id: int | None = None
+    ) -> ChannelList:
         """List the agent's channels.
 
         The device agent answers from the cloud when it can reach it, and from
@@ -488,6 +578,8 @@ class DeviceAgentInterface(GRPCInterface):
         include_aggregate : bool, optional
             Populate each channel's ``aggregate``. Defaults to False, so a
             name-only listing doesn't pull every aggregate body over.
+        agent_id : int, optional
+            List another agent's channels instead of this device's own.
 
         Returns
         -------
@@ -504,12 +596,15 @@ class DeviceAgentInterface(GRPCInterface):
             device_agent_pb2.ListChannelsRequest(
                 header=device_agent_pb2.RequestHeader(app_id=self.app_key),
                 include_aggregate=include_aggregate,
+                **({} if agent_id is None else {"agent_id": agent_id}),
             ),
         )
         return ChannelList.from_proto(resp)
 
     @cli_command()
-    async def fetch_channel_aggregate(self, channel_name: str) -> Aggregate:
+    async def fetch_channel_aggregate(
+        self, channel_name: str, agent_id: int | None = None
+    ) -> Aggregate:
         """Fetch a channel's current aggregate payload.
 
         If the channel has been subscribed to via :meth:`add_event_callback`, the cached
@@ -524,6 +619,10 @@ class DeviceAgentInterface(GRPCInterface):
         ----------
         channel_name : str
             Name of channel to get aggregate from.
+        agent_id : int, optional
+            Read a channel belonging to another agent. Note that, unlike an own
+            channel, a missing channel on another agent is *not* created — the
+            call raises :class:`NotFoundError`.
 
         Returns
         -------
@@ -537,13 +636,17 @@ class DeviceAgentInterface(GRPCInterface):
         DooverAPIError
             If the request fails.
         """
-        if channel_name in self._aggregates:
-            return copy.deepcopy(self._aggregates[channel_name])
+        key = _channel_key(channel_name, agent_id)
+        if key in self._aggregates:
+            return copy.deepcopy(self._aggregates[key])
 
-        log.debug(f"Getting channel aggregate for {channel_name}")
+        log.debug(f"Getting channel aggregate for {key}")
         resp = await self.make_request(
             "GetAggregate",
-            device_agent_pb2.GetAggregateRequest(channel_name=channel_name),
+            device_agent_pb2.GetAggregateRequest(
+                channel_name=channel_name,
+                **({} if agent_id is None else {"agent_id": agent_id}),
+            ),
         )
         return Aggregate.from_proto(resp.aggregate)
 
@@ -564,12 +667,14 @@ class DeviceAgentInterface(GRPCInterface):
         self,
         channel_name: str,
         message_id: int,
+        agent_id: int | None = None,
     ) -> Message:
         resp = await self.make_request(
             "GetMessage",
             device_agent_pb2.GetMessageRequest(
                 channel_name=channel_name,
                 message_id=message_id,
+                **({} if agent_id is None else {"agent_id": agent_id}),
             ),
         )
         return Message.from_proto(resp.message)
@@ -582,8 +687,11 @@ class DeviceAgentInterface(GRPCInterface):
         after: int | datetime | None = None,
         limit: int | None = None,
         field_names: list[str] | None = None,
+        agent_id: int | None = None,
     ) -> list[Message]:
         kwargs = {}
+        if agent_id is not None:
+            kwargs["agent_id"] = agent_id
         if before is not None:
             kwargs["before"] = (
                 before if isinstance(before, int) else generate_snowflake_id_at(before)
@@ -615,6 +723,8 @@ class DeviceAgentInterface(GRPCInterface):
         data: dict[str, Any],
         files: list[File] = None,
         timestamp: datetime = None,
+        agent_id: int | None = None,
+        qos: int = QOS_DEFAULT,
     ) -> int:
         validate_payload(data)
 
@@ -625,6 +735,7 @@ class DeviceAgentInterface(GRPCInterface):
             channel_name=channel_name,
             files=[file.to_proto() for file in files],
             timestamp=int(timestamp),
+            **_routing_fields(agent_id, qos),
             **encode_data_fields(data),
         )
         resp = await self.make_request("CreateMessage", req)
@@ -632,7 +743,12 @@ class DeviceAgentInterface(GRPCInterface):
 
     @cli_command()
     async def send_oneshot_message(
-        self, channel_name: str, data: dict[str, Any], timestamp: datetime | None = None
+        self,
+        channel_name: str,
+        data: dict[str, Any],
+        timestamp: datetime | None = None,
+        agent_id: int | None = None,
+        qos: int = QOS_DEFAULT,
     ) -> bool:
         # Oneshot messages are fire-and-forget (e.g. live tags) — best-effort by
         # nature, with no retry or delivery guarantee. A DDA that's too old to accept
@@ -642,6 +758,7 @@ class DeviceAgentInterface(GRPCInterface):
         req = device_agent_pb2.SendOneShotMessageRequest(
             header=device_agent_pb2.RequestHeader(app_id=self.app_key),
             channel_name=channel_name,
+            **_routing_fields(agent_id, qos),
             **encode_data_fields(data),
         )
         if timestamp is not None:
@@ -667,6 +784,8 @@ class DeviceAgentInterface(GRPCInterface):
         files: list[File] = None,
         replace_data: bool = False,
         clear_attachments: bool = False,
+        agent_id: int | None = None,
+        qos: int = QOS_DEFAULT,
     ) -> Message:
         validate_payload(data)
 
@@ -678,6 +797,7 @@ class DeviceAgentInterface(GRPCInterface):
             files=[file.to_proto() for file in files],
             clear_attachments=clear_attachments,
             replace_data=replace_data,
+            **_routing_fields(agent_id, qos),
             **encode_data_fields(data),
         )
         resp = await self.make_request("UpdateMessage", req)
@@ -694,6 +814,8 @@ class DeviceAgentInterface(GRPCInterface):
         max_age_secs: float = None,
         return_aggregate: bool = True,
         replace_keys: list[str] = None,
+        agent_id: int | None = None,
+        qos: int = QOS_DEFAULT,
     ):
         validate_payload(data)
 
@@ -706,6 +828,7 @@ class DeviceAgentInterface(GRPCInterface):
             max_age_secs=max_age_secs,
             return_aggregate=return_aggregate,
             replace_keys=replace_keys or [],
+            **_routing_fields(agent_id, qos),
             **encode_data_fields(data),
         )
         resp = await self.make_request("UpdateAggregate", req)
@@ -818,16 +941,22 @@ class DeviceAgentInterface(GRPCInterface):
         await super().close()
 
     @cli_command()
-    async def listen_channel(self, channel_name: str) -> None:
+    async def listen_channel(
+        self, channel_name: str, agent_id: int | None = None
+    ) -> None:
         """Listen to channel events, printing the output to the console.
 
         Parameters
         ----------
         channel_name : str
             Name of channel to listen to.
+        agent_id : int, optional
+            Listen to another agent's channel.
         """
         try:
-            async for event in self.stream_channel_events(channel_name):
+            async for event in self.stream_channel_events(
+                channel_name, agent_id=agent_id
+            ):
                 print(json.dumps(obj=event.to_dict()))
                 sys.stdout.flush()
         except asyncio.CancelledError:
@@ -847,14 +976,19 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         self.has_dda_been_online = True
 
     async def wait_for_channels_sync(
-        self, channel_names: list[str], timeout: int = 5, inter_wait: float = 0.2
+        self,
+        channel_names: list[str],
+        timeout: int = 5,
+        inter_wait: float = 0.2,
+        agent_id: int | None = None,
     ):
         for channel in channel_names:
-            if channel not in self._aggregates:
-                self._aggregates[channel] = Aggregate(
+            key = _channel_key(channel, agent_id)
+            if key not in self._aggregates:
+                self._aggregates[key] = Aggregate(
                     data={}, attachments=[], last_updated=None
                 )
-            self._synced_channels[channel] = True
+            self._synced_channels[key] = True
         return True
 
     async def _run_channel_stream(
@@ -862,27 +996,34 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         channel_name: str,
         wire_format: WireFormat = WireFormat.json_only,
         replay_missed_messages: bool = True,
+        agent_id: int | None = None,
     ):
         # No-op in mock — no real event stream to listen to
         return
 
-    async def fetch_channel_aggregate(self, channel_name):
+    async def fetch_channel_aggregate(self, channel_name, agent_id: int | None = None):
         return copy.deepcopy(
             self._aggregates.get(
-                channel_name,
+                _channel_key(channel_name, agent_id),
                 Aggregate(data={}, attachments=[], last_updated=None),
             )
         )
 
-    async def list_channels(self, include_aggregate: bool = False) -> ChannelList:
+    async def list_channels(
+        self, include_aggregate: bool = False, agent_id: int | None = None
+    ) -> ChannelList:
         # There is no cloud in the mock, so the channels it knows of are the
         # ones it has been given — reported as a local answer.
+        prefix = "" if agent_id is None else f"{agent_id}:"
         return ChannelList(
             [
                 ChannelListing(
-                    name, copy.deepcopy(agg.data) if include_aggregate else None
+                    name.removeprefix(prefix),
+                    copy.deepcopy(agg.data) if include_aggregate else None,
+                    agent_id,
                 )
                 for name, agg in self._aggregates.items()
+                if name.startswith(prefix) and (agent_id is not None or ":" not in name)
             ],
             from_cloud=False,
         )
@@ -894,11 +1035,12 @@ class MockDeviceAgentInterface(DeviceAgentInterface):
         raise NotImplementedError("make_request is not implemented")
 
     async def update_channel_aggregate(self, channel_name, data, **kwargs):
+        key = _channel_key(channel_name, kwargs.get("agent_id"))
         existing = self._aggregates.get(
-            channel_name, Aggregate(data={}, attachments=[], last_updated=None)
+            key, Aggregate(data={}, attachments=[], last_updated=None)
         )
         existing.data.update(data)
-        self._aggregates[channel_name] = existing
+        self._aggregates[key] = existing
         return copy.deepcopy(existing)
 
     async def create_message(self, channel_name, data, **kwargs):
