@@ -50,11 +50,19 @@ class ChannelID:
 class ChannelListing:
     """One channel in a :meth:`DeviceAgentInterface.list_channels` result."""
 
-    def __init__(self, name: str, aggregate: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        name: str,
+        aggregate: dict[str, Any] | None = None,
+        agent_id: int | None = None,
+    ):
         self.name = name
         #: The channel's aggregate data, when the listing was asked to include
         #: it and the agent had one to give.
         self.aggregate = aggregate
+        #: The agent that owns this channel. ``None`` for the agent that
+        #: answered the listing (i.e. an ordinary own-channel listing).
+        self.agent_id = agent_id
 
     @classmethod
     def from_proto(cls, response):
@@ -63,10 +71,15 @@ class ChannelListing:
         aggregate = (
             json.loads(response.aggregate) if response.HasField("aggregate") else None
         )
-        return cls(response.channel_name, aggregate)
+        agent_id = response.agent_id if response.HasField("agent_id") else None
+        return cls(response.channel_name, aggregate, agent_id)
 
     def to_dict(self):
-        return {"channel_name": self.name, "aggregate": self.aggregate}
+        return {
+            "channel_name": self.name,
+            "aggregate": self.aggregate,
+            "agent_id": self.agent_id,
+        }
 
 
 class ChannelList:
