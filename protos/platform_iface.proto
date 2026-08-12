@@ -12,6 +12,7 @@ service platformIface {
     rpc startPulseCounter (pulseCounterRequest) returns (stream pulseCounterResponse) {}
 
     rpc getDO (getDORequest) returns (getDOResponse) {}
+    rpc getDOCurrent (getDOCurrentRequest) returns (getDOCurrentResponse) {}
     rpc setDO (setDORequest) returns (setDOResponse) {}
     rpc scheduleDO (scheduleDORequest) returns (scheduleDOResponse) {}
 
@@ -115,6 +116,16 @@ message getDORequest {
 message getDOResponse {
     ResponseHeader response_header = 1;
     repeated bool do = 2;
+}
+
+message getDOCurrentRequest {
+    repeated int32 do = 1;
+}
+
+message getDOCurrentResponse {
+    ResponseHeader response_header = 1;
+    // Load current drawn by each requested output, in amps, in request order.
+    repeated float current = 2;
 }
 
 message setDORequest {

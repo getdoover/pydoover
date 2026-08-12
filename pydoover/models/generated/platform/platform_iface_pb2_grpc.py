@@ -65,6 +65,11 @@ class platformIfaceStub(object):
                 request_serializer=platform_dot_platform__iface__pb2.getDORequest.SerializeToString,
                 response_deserializer=platform_dot_platform__iface__pb2.getDOResponse.FromString,
                 _registered_method=True)
+        self.getDOCurrent = channel.unary_unary(
+                '/platform_iface.platformIface/getDOCurrent',
+                request_serializer=platform_dot_platform__iface__pb2.getDOCurrentRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getDOCurrentResponse.FromString,
+                _registered_method=True)
         self.setDO = channel.unary_unary(
                 '/platform_iface.platformIface/setDO',
                 request_serializer=platform_dot_platform__iface__pb2.setDORequest.SerializeToString,
@@ -266,6 +271,12 @@ class platformIfaceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def getDO(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getDOCurrent(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -505,6 +516,11 @@ def add_platformIfaceServicer_to_server(servicer, server):
                     servicer.getDO,
                     request_deserializer=platform_dot_platform__iface__pb2.getDORequest.FromString,
                     response_serializer=platform_dot_platform__iface__pb2.getDOResponse.SerializeToString,
+            ),
+            'getDOCurrent': grpc.unary_unary_rpc_method_handler(
+                    servicer.getDOCurrent,
+                    request_deserializer=platform_dot_platform__iface__pb2.getDOCurrentRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getDOCurrentResponse.SerializeToString,
             ),
             'setDO': grpc.unary_unary_rpc_method_handler(
                     servicer.setDO,
@@ -813,6 +829,33 @@ class platformIface(object):
             '/platform_iface.platformIface/getDO',
             platform_dot_platform__iface__pb2.getDORequest.SerializeToString,
             platform_dot_platform__iface__pb2.getDOResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getDOCurrent(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getDOCurrent',
+            platform_dot_platform__iface__pb2.getDOCurrentRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getDOCurrentResponse.FromString,
             options,
             channel_credentials,
             insecure,

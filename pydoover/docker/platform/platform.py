@@ -654,6 +654,53 @@ class PlatformInterface(GRPCInterface):
         )
 
     @cli_command()
+    async def fetch_do_current(self, *do: int) -> float | list[float] | None:
+        """Get the load current being drawn through digital outputs.
+
+        This is measured per-channel on the output driver, so it reads the current
+        drawn by whatever the output is switching, not the system supply current.
+
+        .. note::
+            Reading this briefly enables the output driver's diagnostic mode, which
+            is otherwise left off to save power. Expect this call to be slower than
+            :meth:`fetch_do`, and don't poll it tightly.
+
+        Examples
+        --------
+
+        Get the current through a single digital output pin::
+
+            await self.platform_iface.fetch_do_current(1)
+
+
+        Get the current through digital output pins 1, 2 and 3::
+
+            await self.platform_iface.fetch_do_current(1, 2, 3)
+
+        Parameters
+        ----------
+        *do
+            Pin numbers to get the current of. Can be one or more integers.
+
+        Returns
+        -------
+        float | list[float]
+            If you requested one, returns a single value in amps.
+            If you requested more than one pin, returns a list of values in amps.
+
+        Raises
+        ------
+        HTTPError
+            If the read failed, or the platform has no per-output current sensing.
+        """
+        pins = self._cast_pins(do)
+        return await self.make_request(
+            "getDOCurrent",
+            platform_iface_pb2.getDOCurrentRequest(do=pins),
+            response_field="current",
+        )
+
+    @cli_command()
     async def set_do(
         self, do: int | list[int], value: int | list[int]
     ) -> list[bool] | None:

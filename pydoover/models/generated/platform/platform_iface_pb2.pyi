@@ -91,6 +91,20 @@ class getDOResponse(_message.Message):
     do: _containers.RepeatedScalarFieldContainer[bool]
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., do: _Optional[_Iterable[bool]] = ...) -> None: ...
 
+class getDOCurrentRequest(_message.Message):
+    __slots__ = ("do",)
+    DO_FIELD_NUMBER: _ClassVar[int]
+    do: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, do: _Optional[_Iterable[int]] = ...) -> None: ...
+
+class getDOCurrentResponse(_message.Message):
+    __slots__ = ("response_header", "current")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    CURRENT_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    current: _containers.RepeatedScalarFieldContainer[float]
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., current: _Optional[_Iterable[float]] = ...) -> None: ...
+
 class setDORequest(_message.Message):
     __slots__ = ("do", "value")
     DO_FIELD_NUMBER: _ClassVar[int]
