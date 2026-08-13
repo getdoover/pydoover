@@ -507,10 +507,29 @@ class TestUiCommandOptions:
 
         assert button.to_dict()["commandRetryTimeout"] == 3000
 
+    def test_command_pending_timeout_serialize(self):
+        button = ui.Button(
+            "Start",
+            name="start",
+            command_timeout=timedelta(seconds=5),
+            command_pending_timeout=timedelta(minutes=4),
+        )
+
+        data = button.to_dict()
+
+        assert data["commandTimeout"] == 5000
+        assert data["commandPendingTimeout"] == 240000
+
+    def test_command_pending_timeout_accepts_seconds(self):
+        button = ui.Button("Start", name="start", command_pending_timeout=90)
+
+        assert button.to_dict()["commandPendingTimeout"] == 90000
+
     def test_options_omitted_by_default(self):
         data = ui.Button("Restart", name="restart").to_dict()
 
         assert "commandTimeout" not in data
+        assert "commandPendingTimeout" not in data
         assert "commandRetryTimeout" not in data
         assert "direct" not in data
 
