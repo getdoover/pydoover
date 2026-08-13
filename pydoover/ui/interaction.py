@@ -46,6 +46,16 @@ class Interaction(Element):
         How long the site waits for the device to acknowledge a command from this
         interaction before marking it as failed. A timedelta, or seconds.
         Defaults to waiting forever.
+    command_pending_timeout: timedelta | float, optional
+        How long the command may then stay in flight once the device has
+        answered it — acknowledged it, or reported progress via
+        :meth:`~pydoover.rpc.RPCContext.progress`. Set this on interactions
+        whose handler keeps working for a while (a pump start sequence, a
+        firmware push): ``command_timeout`` only covers the wait to hear from
+        the device at all, and a healthy device should answer that within a few
+        seconds however long the work then takes. The device must report
+        progress at least this often. A timedelta, or seconds. Defaults to the
+        command timeout.
     command_retry_timeout: timedelta | float, optional
         The maximum additional time the site waits after the user accepts a retry
         of a timed-out command. A timedelta, or seconds. Defaults to the command timeout.
@@ -67,6 +77,7 @@ class Interaction(Element):
         requires_confirm: bool | ConfirmDialog = NotSet,
         global_interaction: bool = NotSet,
         command_timeout=NotSet,
+        command_pending_timeout=NotSet,
         command_retry_timeout=NotSet,
         direct: bool = NotSet,
         **kwargs,
@@ -89,6 +100,7 @@ class Interaction(Element):
 
         self.global_interaction = global_interaction
         self.command_timeout = command_timeout
+        self.command_pending_timeout = command_pending_timeout
         self.command_retry_timeout = command_retry_timeout
         self.direct = direct
 
@@ -122,6 +134,8 @@ class Interaction(Element):
             res["global"] = self.global_interaction
         if self.command_timeout is not NotSet:
             res["commandTimeout"] = duration_ms(self.command_timeout)
+        if self.command_pending_timeout is not NotSet:
+            res["commandPendingTimeout"] = duration_ms(self.command_pending_timeout)
         if self.command_retry_timeout is not NotSet:
             res["commandRetryTimeout"] = duration_ms(self.command_retry_timeout)
         if self.direct is not NotSet:

@@ -175,6 +175,32 @@ class RPCContext:
         }
         await self._update_fn(self.channel.name, self.message.id, payload)
 
+    async def progress(self, text: str = None, **fields: Any):
+        """Report intermediate progress on a command that is still running.
+
+        Handlers that take a while — a pump pre-start warning, a panel reboot,
+        a firmware push — should call this as they move between phases, so the
+        operator watches the sequence advance instead of a bare spinner. The
+        ``pending`` status is non-terminal: the command stays in flight and the
+        site keeps the control locked until the handler returns.
+
+        ``text`` is the one-line summary shown beside the spinner. Any extra
+        keyword arguments ride alongside it for consumers that want structure
+        rather than prose::
+
+            await ctx.progress("Cranking…", phase="starting", remaining=12)
+
+        Reporting progress also tells the site the device is alive, so the
+        longer ``command_pending_timeout`` (how long the command may stay busy)
+        governs from the first report onwards, in place of the short
+        "no response from device" window. Call it at least that often.
+        """
+        message = dict(fields)
+        if text is not None:
+            message["text"] = str(text)
+        payload = {"status": {"code": "pending", "message": message}}
+        await self._update_fn(self.channel.name, self.message.id, payload)
+
     async def defer(self, seconds: float):
         now = datetime.now(tz=timezone.utc)
         until = now + timedelta(seconds=seconds)

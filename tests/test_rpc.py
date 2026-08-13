@@ -183,6 +183,45 @@ class TestRPCContext:
         assert isinstance(status["message"]["at"], int)
         assert status["message"]["until"] >= status["message"]["at"]
 
+    @pytest.mark.asyncio
+    async def test_progress_reports_text_and_extra_fields(self):
+        updates = []
+
+        async def update_fn(channel_name, message_id, data):
+            updates.append((channel_name, message_id, data))
+
+        ctx = RPCContext(
+            method="slow_op",
+            message=Message(
+                id=55,
+                author_id=10,
+                channel=_make_channel("control"),
+                data={"type": "rpc", "method": "slow_op", "request": {}},
+                attachments=[],
+            ),
+            _update_fn=update_fn,
+            _handler=lambda ctx: None,
+        )
+
+        await ctx.progress("Cranking…", phase="starting", remaining=12)
+        # Structured-only progress: no prose, just fields.
+        await ctx.progress(phase="running")
+
+        assert [u[0] for u in updates] == ["control", "control"]
+        assert [u[1] for u in updates] == [55, 55]
+
+        first = updates[0][2]["status"]
+        assert first["code"] == "pending"
+        assert first["message"] == {
+            "phase": "starting",
+            "remaining": 12,
+            "text": "Cranking…",
+        }
+
+        second = updates[1][2]["status"]
+        assert second["code"] == "pending"
+        assert second["message"] == {"phase": "running"}
+
 
 class TestRegisterHandlers:
     def test_discovers_string_and_regex_handlers(self):
