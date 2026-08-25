@@ -172,6 +172,7 @@ class Application:
         self.loop_target_period = 1
         self._error_wait_period = 10
         self.dda_startup_timeout: int = 300
+        self.config_sync_timeout: int = 120
 
         self._last_interval_time: float | None = None
         self._last_loop_time_warning: float | None = None
@@ -287,6 +288,13 @@ class Application:
         self._test_next_loop_done.clear()
         await self._test_next_loop_done.wait()
 
+    async def _wait_before_restart(self):
+        """Pause, then let `_run` return so the container restarts the app."""
+        log.warning(
+            f"\n\nWaiting {self._error_wait_period} seconds before restarting app\n\n"
+        )
+        await asyncio.sleep(self._error_wait_period)
+
     async def _run(self):
         if RUN_HEALTHCHECK:
             try:
@@ -318,14 +326,33 @@ class Application:
                 self._wrap_aggregate_callback(self._on_deployment_config_update),
                 EventSubscription.aggregate_update,
             )
-            await self.device_agent.wait_for_channels_sync(["deployment_config"])
+            synced = await self.device_agent.wait_for_channels_sync(
+                ["deployment_config"], timeout=self.config_sync_timeout
+            )
+            if not synced:
+                log.warning(
+                    f"deployment_config did not sync with the DDA within "
+                    f"{self.config_sync_timeout} seconds; trying to fetch it anyway."
+                )
+
             # Fetch initial deployment config from the aggregate cache
             try:
                 config_agg = await self.device_agent.fetch_channel_aggregate(
                     "deployment_config"
                 )
                 await self._on_deployment_config_update(config_agg.data)
-            except Exception:
+            except Exception as e:
+                if self.config is not None:
+                    # Fatal: an app that declares a schema and gets no config
+                    # would fall back to defaults, and "configured to do
+                    # nothing" is indistinguishable from "never got its
+                    # config" — the app runs, reports healthy, and does
+                    # nothing until someone notices. Restart instead.
+                    log.error(
+                        f"Failed to load initial deployment config: {e}", exc_info=e
+                    )
+                    await self._wait_before_restart()
+                    return
                 log.warning("No initial deployment config available from DDA")
 
         # await self._resolve_tags()
@@ -338,10 +365,7 @@ class Application:
             await self.setup()
         except Exception as e:
             log.error(f"Error in setup function: {e}", exc_info=e)
-            log.warning(
-                f"\n\nWaiting {self._error_wait_period} seconds before restarting app\n\n"
-            )
-            await asyncio.sleep(self._error_wait_period)
+            await self._wait_before_restart()
             return
 
         self._ready.set()
