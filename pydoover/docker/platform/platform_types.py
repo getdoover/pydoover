@@ -110,9 +110,18 @@ class IoChannel:
     supports_events : bool
         Whether DI edge events (fetch_di_events) work on this channel.
     supports_pulse_counter : bool
-        Whether pulse counters work on this channel.
+        Whether the per-pulse edge *stream* (get_new_pulse_counter) works on this
+        channel. Needs an edge source on the platform.
     supports_di_config : bool
         Whether get/set DI config (PNP/NPN, debounce, wake-on-event) works.
+    supports_pulse_count : bool
+        Whether this channel has a hardware pulse totaliser, read through
+        :meth:`PlatformInterface.fetch_di_readings`. Distinct from
+        ``supports_pulse_counter``: that promises per-pulse *timing*, while this
+        is a number that can simply be read. A platform can have either, both or
+        neither — an ELPRO Quantum counts on DIO1-4 and can time nothing.
+    supports_pulse_rate : bool
+        Whether the hardware measures pulse frequency on this channel.
     """
 
     channel: int
@@ -123,6 +132,8 @@ class IoChannel:
     supports_events: bool = False
     supports_pulse_counter: bool = False
     supports_di_config: bool = False
+    supports_pulse_count: bool = False
+    supports_pulse_rate: bool = False
 
     @classmethod
     def from_response(cls, response) -> "IoChannel":
@@ -136,6 +147,11 @@ class IoChannel:
             supports_events=response.supports_events,
             supports_pulse_counter=response.supports_pulse_counter,
             supports_di_config=response.supports_di_config,
+            # getattr, not attribute access: a platform interface built against
+            # stubs that predate these fields sends a message without them, and
+            # discovery must degrade to "not advertised" rather than raise.
+            supports_pulse_count=getattr(response, "supports_pulse_count", False),
+            supports_pulse_rate=getattr(response, "supports_pulse_rate", False),
         )
 
 
