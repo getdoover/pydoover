@@ -36,6 +36,8 @@ def make_details_response() -> platform_iface_pb2.getIoDetailsResponse:
                         supports_events=True,
                         supports_pulse_counter=True,
                         supports_di_config=True,
+                        supports_pulse_count=True,
+                        supports_pulse_rate=True,
                     ),
                     platform_iface_pb2.IoChannelDetail(
                         channel=0,
@@ -83,6 +85,79 @@ class TestIoDetailsFromResponse:
         assert slave_di.kind is None
         assert slave_di.units is None
         assert slave_di.supports_events is False
+
+    def test_pulse_capabilities_are_surfaced(self):
+        """Discovery has to expose these or an app cannot find a counter.
+
+        supports_pulse_count is what tells an app it can call
+        fetch_di_readings and get a number back, so it must survive the trip
+        from proto to dataclass.
+        """
+        details = IoDetails.from_response(make_details_response())
+        master_di = details.master.channels_of("DI")[0]
+        assert master_di.supports_pulse_count is True
+        assert master_di.supports_pulse_rate is True
+
+    def test_a_channel_that_cannot_count_says_so(self):
+        details = IoDetails.from_response(make_details_response())
+        slave_di = details.devices[1].channels[0]
+        assert slave_di.supports_pulse_count is False
+        assert slave_di.supports_pulse_rate is False
+
+    def test_counting_is_distinct_from_the_edge_stream(self):
+        """A platform can count without being able to time individual pulses.
+
+        An ELPRO Quantum is exactly that, so the two flags must not be
+        collapsed into one.
+        """
+        response = platform_iface_pb2.getIoDetailsResponse(
+            response_header=platform_iface_pb2.ResponseHeader(success=True),
+            devices=[
+                platform_iface_pb2.IoDeviceDetail(
+                    name="master",
+                    type="elpro_quantum",
+                    index=0,
+                    is_master=True,
+                    online=True,
+                    channels=[
+                        platform_iface_pb2.IoChannelDetail(
+                            channel=0,
+                            device_channel=0,
+                            io_type="DI",
+                            supports_pulse_counter=False,
+                            supports_pulse_count=True,
+                            supports_pulse_rate=True,
+                        )
+                    ],
+                )
+            ],
+        )
+        channel = IoDetails.from_response(response).master.channels_of("DI")[0]
+        assert channel.supports_pulse_counter is False
+        assert channel.supports_pulse_count is True
+
+    def test_stubs_predating_the_fields_degrade(self):
+        """A platform interface built against older stubs omits them entirely.
+
+        from_response reads them with getattr so discovery reports "not
+        advertised" rather than raising and losing the whole IO layout.
+        """
+
+        class OldChannelDetail:
+            channel = 3
+            device_channel = 3
+            io_type = "DI"
+            supports_events = True
+            supports_pulse_counter = True
+            supports_di_config = True
+
+            def HasField(self, name):
+                return False
+
+        channel = IoChannel.from_response(OldChannelDetail())
+        assert channel.supports_pulse_count is False
+        assert channel.supports_pulse_rate is False
+        assert channel.supports_events is True
 
     def test_none_response_returns_none(self):
         assert IoDetails.from_response(None) is None
