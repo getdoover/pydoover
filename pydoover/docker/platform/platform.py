@@ -9,7 +9,7 @@ import grpc
 
 from ...models import DooverAPIError
 from ...models.generated.platform import platform_iface_pb2, platform_iface_pb2_grpc
-from .platform_types import Location, Event, IoDetails
+from .platform_types import Location, Event, IoDetails, DIReading
 from ..grpc_interface import GRPCInterface
 from ...utils import call_maybe_async, deprecated
 from ...cli.decorators import command as cli_command
@@ -580,6 +580,74 @@ class PlatformInterface(GRPCInterface):
         return await self.make_request(
             "getDI", platform_iface_pb2.getDIRequest(di=pins), response_field="di"
         )
+
+    @cli_command()
+    async def fetch_di_readings(self, *di: int) -> list[DIReading] | None:
+        """Get digital input levels together with their hardware pulse counters.
+
+        Unlike :meth:`fetch_di`, this returns the pin level *and*, on platforms
+        that have them, the hardware pulse totaliser and rate. Level and counts
+        come from the same read, so they describe the same instant.
+
+        Not every pin can count, and support is per-pin rather than per-device:
+        an ELPRO Quantum counts on DIO1-4 and not on DIO5-8. So
+        ``pulse_count``/``pulse_rate_hz`` are ``None`` on a pin without the
+        hardware, and ``0`` on one that has it and has seen nothing.
+
+        Examples
+        --------
+
+        Totalise a flow meter across app restarts, using the device's count
+        rather than a tally of our own::
+
+            reading = (await self.platform_iface.fetch_di_readings(1))[0]
+            if reading.pulse_count is not None:
+                await self.tags.litres.set(reading.pulse_count * self.litres_per_pulse)
+
+        Parameters
+        ----------
+        *di
+            Pin numbers to read. Can be one or more integers.
+
+        Returns
+        -------
+        list[DIReading] | None
+            One reading per requested pin, in the order requested. Always a
+            list, even for a single pin - unlike ``fetch_di``, which unwraps.
+            Returns None if the request failed.
+        """
+        pins = self._cast_pins(di)
+        # The whole response, not just `readings`: an older platform interface
+        # does not know the field and answers with levels only, and that has to
+        # degrade rather than come back as an empty list.
+        response = await self.make_request(
+            "getDI", platform_iface_pb2.getDIRequest(di=pins, include_pulses=True)
+        )
+        if response is None:
+            return None
+
+        if not response.readings:
+            # Either the platform interface predates DIReading, or its counter
+            # read failed and it fell back to levels. Both mean the same thing
+            # to a caller - levels are known, counts are not - which is exactly
+            # what pulse_count=None says.
+            return [
+                DIReading(pin=pin, value=value) for pin, value in zip(pins, response.di)
+            ]
+
+        return [
+            DIReading(
+                pin=r.pin,
+                value=r.value,
+                # HasField, not truthiness: a pin that has counted 0 pulses is
+                # not the same as a pin that cannot count.
+                pulse_count=r.pulse_count if r.HasField("pulse_count") else None,
+                pulse_rate_hz=(
+                    r.pulse_rate_hz if r.HasField("pulse_rate_hz") else None
+                ),
+            )
+            for r in response.readings
+        ]
 
     @cli_command()
     async def fetch_ai(self, *ai: int) -> float | list[float]:

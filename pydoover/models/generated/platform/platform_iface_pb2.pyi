@@ -30,18 +30,34 @@ class TestCommsResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., response: _Optional[str] = ...) -> None: ...
 
 class getDIRequest(_message.Message):
-    __slots__ = ("di",)
+    __slots__ = ("di", "include_pulses")
     DI_FIELD_NUMBER: _ClassVar[int]
+    INCLUDE_PULSES_FIELD_NUMBER: _ClassVar[int]
     di: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, di: _Optional[_Iterable[int]] = ...) -> None: ...
+    include_pulses: bool
+    def __init__(self, di: _Optional[_Iterable[int]] = ..., include_pulses: bool = ...) -> None: ...
+
+class DIReading(_message.Message):
+    __slots__ = ("pin", "value", "pulse_count", "pulse_rate_hz")
+    PIN_FIELD_NUMBER: _ClassVar[int]
+    VALUE_FIELD_NUMBER: _ClassVar[int]
+    PULSE_COUNT_FIELD_NUMBER: _ClassVar[int]
+    PULSE_RATE_HZ_FIELD_NUMBER: _ClassVar[int]
+    pin: int
+    value: bool
+    pulse_count: int
+    pulse_rate_hz: float
+    def __init__(self, pin: _Optional[int] = ..., value: bool = ..., pulse_count: _Optional[int] = ..., pulse_rate_hz: _Optional[float] = ...) -> None: ...
 
 class getDIResponse(_message.Message):
-    __slots__ = ("response_header", "di")
+    __slots__ = ("response_header", "di", "readings")
     RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
     DI_FIELD_NUMBER: _ClassVar[int]
+    READINGS_FIELD_NUMBER: _ClassVar[int]
     response_header: ResponseHeader
     di: _containers.RepeatedScalarFieldContainer[bool]
-    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., di: _Optional[_Iterable[bool]] = ...) -> None: ...
+    readings: _containers.RepeatedCompositeFieldContainer[DIReading]
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., di: _Optional[_Iterable[bool]] = ..., readings: _Optional[_Iterable[_Union[DIReading, _Mapping]]] = ...) -> None: ...
 
 class getAIRequest(_message.Message):
     __slots__ = ("ai",)
@@ -168,7 +184,7 @@ class getIoTableResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., io_table: _Optional[str] = ...) -> None: ...
 
 class IoChannelDetail(_message.Message):
-    __slots__ = ("channel", "device_channel", "io_type", "kind", "units", "supports_events", "supports_pulse_counter", "supports_di_config")
+    __slots__ = ("channel", "device_channel", "io_type", "kind", "units", "supports_events", "supports_pulse_counter", "supports_di_config", "supports_pulse_count", "supports_pulse_rate")
     CHANNEL_FIELD_NUMBER: _ClassVar[int]
     DEVICE_CHANNEL_FIELD_NUMBER: _ClassVar[int]
     IO_TYPE_FIELD_NUMBER: _ClassVar[int]
@@ -177,6 +193,8 @@ class IoChannelDetail(_message.Message):
     SUPPORTS_EVENTS_FIELD_NUMBER: _ClassVar[int]
     SUPPORTS_PULSE_COUNTER_FIELD_NUMBER: _ClassVar[int]
     SUPPORTS_DI_CONFIG_FIELD_NUMBER: _ClassVar[int]
+    SUPPORTS_PULSE_COUNT_FIELD_NUMBER: _ClassVar[int]
+    SUPPORTS_PULSE_RATE_FIELD_NUMBER: _ClassVar[int]
     channel: int
     device_channel: int
     io_type: str
@@ -185,7 +203,9 @@ class IoChannelDetail(_message.Message):
     supports_events: bool
     supports_pulse_counter: bool
     supports_di_config: bool
-    def __init__(self, channel: _Optional[int] = ..., device_channel: _Optional[int] = ..., io_type: _Optional[str] = ..., kind: _Optional[str] = ..., units: _Optional[str] = ..., supports_events: bool = ..., supports_pulse_counter: bool = ..., supports_di_config: bool = ...) -> None: ...
+    supports_pulse_count: bool
+    supports_pulse_rate: bool
+    def __init__(self, channel: _Optional[int] = ..., device_channel: _Optional[int] = ..., io_type: _Optional[str] = ..., kind: _Optional[str] = ..., units: _Optional[str] = ..., supports_events: bool = ..., supports_pulse_counter: bool = ..., supports_di_config: bool = ..., supports_pulse_count: bool = ..., supports_pulse_rate: bool = ...) -> None: ...
 
 class IoDeviceDetail(_message.Message):
     __slots__ = ("name", "type", "index", "is_master", "online", "channels")
