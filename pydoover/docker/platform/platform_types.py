@@ -239,3 +239,38 @@ class IoDetails:
             channels=channels,
         )
         return cls(devices=[device])
+
+
+@dataclass
+class DIReading:
+    """One digital input's level, plus its hardware pulse counters if it has any.
+
+    Returned by :meth:`PlatformInterface.fetch_di_readings`.
+
+    Attributes
+    ----------
+    pin : int
+        The digital input pin this reading is for.
+    value : bool
+        Pin level: True is high (1), False is low (0).
+    pulse_count : int | None
+        Total pulses counted in hardware since the *device* started counting -
+        not since this app connected, so it is unaffected by the app
+        restarting, and on some platforms it wraps rather than resetting. How
+        to handle that is the app's call.
+
+        ``None`` means this pin has no hardware counter. ``0`` means it has one
+        and nothing has been counted yet. The two are not the same, so test for
+        ``None`` rather than falsiness.
+    pulse_rate_hz : float | None
+        Pulse frequency in Hz, where the hardware measures it. ``None`` means
+        this platform does not measure rate on this pin - a driver with only a
+        totaliser leaves it unset rather than differencing counts, because the
+        caller knows its own sampling interval and the driver does not. Derive
+        the rate from successive ``pulse_count`` readings instead.
+    """
+
+    pin: int
+    value: bool
+    pulse_count: int | None = None
+    pulse_rate_hz: float | None = None
