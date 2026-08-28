@@ -13,12 +13,16 @@ JSON as the notification text. These tests pin the encoding.
 import pytest
 
 from pydoover.models.data import (
+    DEFAULT_NOTIFICATION_TOPIC_FILTERS,
     Notification,
     NotificationEndpoint,
+    NotificationPolicy,
     NotificationSeverity,
     NotificationSubscription,
     NotificationSubscriptionEndpoint,
+    NotificationTopic,
     NotificationType,
+    TopicFilterMode,
 )
 
 
@@ -63,6 +67,16 @@ class TestWireEncoding:
 
     def test_topic_included_when_set(self):
         assert Notification(message="m", topic="pumps").to_dict()["topic"] == "pumps"
+
+    def test_structured_application_topic(self):
+        topic = NotificationTopic.application(
+            "pump-controller",
+            "low-pressure",
+            NotificationPolicy.ExplicitOptIn,
+        )
+
+        assert topic == "dev/applications/opt-in/pump-controller/low-pressure"
+        assert Notification(message="m", topic=topic).to_dict()["topic"] == str(topic)
 
 
 class TestCoercion:
@@ -142,6 +156,20 @@ class TestValidation:
         with pytest.raises(TypeError, match="topic must be a str"):
             Notification(message="m", topic=["pumps"])
 
+    @pytest.mark.parametrize(
+        ("app_key", "event"),
+        [
+            ("Pump Controller", "low-pressure"),
+            ("pump/controller", "low-pressure"),
+            ("pump-controller", "Low Pressure"),
+            ("pump-controller", "low/pressure"),
+            ("", "low-pressure"),
+        ],
+    )
+    def test_structured_topic_rejects_invalid_segments(self, app_key, event):
+        with pytest.raises(ValueError, match="must match"):
+            NotificationTopic.application(app_key, event)
+
 
 class TestParsingResponses:
     """The API returns names for both enums — plain IntEnum lookup would raise."""
@@ -158,7 +186,23 @@ class TestParsingResponses:
         sub = NotificationSubscription.from_dict(payload)
 
         assert sub.severity is NotificationSeverity.Info
+        assert sub.topic_filter_mode is TopicFilterMode.Exact
         assert isinstance(sub.endpoints[0], NotificationSubscriptionEndpoint)
+
+    def test_subscription_response_parses_regex_mode(self):
+        payload = {
+            "id": "1",
+            "subscriber": "2",
+            "subscribed_to": "3",
+            "severity": "Info",
+            "topic_filter": list(DEFAULT_NOTIFICATION_TOPIC_FILTERS),
+            "topic_filter_mode": "regex",
+        }
+
+        sub = NotificationSubscription.from_dict(payload)
+
+        assert sub.topic_filter_mode is TopicFilterMode.Regex
+        assert sub.to_dict()["topic_filter_mode"] == "regex"
 
     def test_endpoint_response_uses_type_name(self):
         payload = {

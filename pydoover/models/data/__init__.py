@@ -44,12 +44,16 @@ from .events import (
 from .message import Message
 from .message_log import MessageLogEntry
 from .notification import (
+    DEFAULT_NOTIFICATION_TOPIC_FILTERS,
     Notification,
     NotificationEndpoint,
+    NotificationPolicy,
     NotificationSeverity,
     NotificationSubscription,
     NotificationSubscriptionEndpoint,
+    NotificationTopic,
     NotificationType,
+    TopicFilterMode,
 )
 from .notification_response import AgentNotificationResponse
 from .processor_info import SubscriptionInfo
@@ -107,11 +111,15 @@ __all__ = [
     "MessageUpdateEvent",
     "NotFoundError",
     "Notification",
+    "DEFAULT_NOTIFICATION_TOPIC_FILTERS",
     "NotificationEndpoint",
+    "NotificationPolicy",
     "NotificationSeverity",
     "NotificationSubscription",
     "NotificationSubscriptionEndpoint",
+    "NotificationTopic",
     "NotificationType",
+    "TopicFilterMode",
     "OneShotMessage",
     "ProcessorTokenResponse",
     "RotatedDeviceToken",
