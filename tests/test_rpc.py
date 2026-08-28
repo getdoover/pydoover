@@ -10,7 +10,14 @@ from pydoover.models.data import (
     MessageCreateEvent,
     MessageUpdateEvent,
 )
-from pydoover.rpc import RPCContext, RPCError, RPCManager, RPCTimeoutError, handler
+from pydoover.rpc import (
+    RPCCancelled,
+    RPCContext,
+    RPCError,
+    RPCManager,
+    RPCTimeoutError,
+    handler,
+)
 from pydoover.utils.snowflake import SnowflakeType, generate_snowflake_id_at
 
 
@@ -612,3 +619,524 @@ class TestCommandAuditFields:
             _make_response_event({"code": "success"}, {}, message_id=1000),
         )
         await task
+
+
+# How the site cancels an in-flight command: a terminal `error` carrying a
+# marker in its message body. See handleCancelCommand in customer-site's
+# src/home/AgentPage.tsx — there is no dedicated "cancelled" status code.
+def _cancel_status(
+    info: str | None = "Command cancelled",
+    cancelled_at: int | None = 1787812081613,
+    cancelled_by: dict | None = None,
+) -> dict:
+    message: dict = {}
+    if info is not None:
+        message["info"] = info
+    if cancelled_at is not None:
+        message["cancelled_at"] = cancelled_at
+    if cancelled_by is not None:
+        message["cancelled_by"] = cancelled_by
+    return {"code": "error", "message": message}
+
+
+def _make_cancel_event(
+    message_id: int = 100,
+    channel_name: str = "test_channel",
+    status: dict | None = None,
+    method: str | None = None,
+) -> MessageUpdateEvent:
+    """An update withdrawing a command, as the site would write it."""
+    data: dict = {"status": status or _cancel_status(), "response": {}}
+    if method is not None:
+        data["method"] = method
+    channel = _make_channel(channel_name)
+    return MessageUpdateEvent(
+        channel=channel,
+        author_id=99,
+        organisation_id=1,
+        message=Message(
+            id=message_id,
+            author_id=99,
+            channel=channel,
+            data=data,
+            attachments=[],
+        ),
+        request_data={},
+    )
+
+
+class TestInboundCancellation:
+    """A command withdrawn while its handler is still running."""
+
+    @pytest.mark.asyncio
+    async def test_running_handler_sees_cancellation(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+        observed = []
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                # Stand in for a long sequence that polls as it goes.
+                for _ in range(50):
+                    if ctx.cancelled:
+                        observed.append("cancelled")
+                        return {"stopped": True}
+                    await asyncio.sleep(0)
+                observed.append("ran to completion")
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        await manager._on_event(_make_cancel_event())
+        await task
+
+        assert observed == ["cancelled"]
+
+    @pytest.mark.asyncio
+    async def test_handler_can_unwind_via_raise(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                for _ in range(50):
+                    ctx.raise_if_cancelled()
+                    await asyncio.sleep(0)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        await manager._on_event(_make_cancel_event())
+        await task
+
+        # RPCCancelled unwinds quietly and writes nothing: the command already
+        # carries the canceller's terminal status, and neither an `error` nor a
+        # `success` from us should overwrite it.
+        assert 100 not in app.messages
+
+    @pytest.mark.asyncio
+    async def test_wait_cancelled_unblocks(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        woken = []
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                await ctx.wait_cancelled()
+                woken.append(True)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        await manager._on_event(_make_cancel_event())
+        await asyncio.wait_for(task, timeout=1)
+
+        assert woken == [True]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "status",
+        [
+            pytest.param(_cancel_status(), id="site-writes-this"),
+            pytest.param(
+                _cancel_status(info=None, cancelled_at=None, cancelled_by={"id": 1}),
+                id="cancelled_by-only",
+            ),
+            pytest.param(
+                _cancel_status(info=None, cancelled_by=None), id="cancelled_at-only"
+            ),
+            pytest.param(_cancel_status(cancelled_at=None), id="info-only"),
+            pytest.param(
+                _cancel_status(info="Command canceled", cancelled_at=None),
+                id="single-l-spelling",
+            ),
+            pytest.param(
+                {"code": "error", "message": "Command cancelled"},
+                id="bare-string-from-older-writers",
+            ),
+        ],
+    )
+    async def test_shapes_the_site_treats_as_cancelled(self, status):
+        app = FakeApp()
+        manager = RPCManager(app)
+        seen = []
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                for _ in range(50):
+                    if ctx.cancelled:
+                        seen.append(True)
+                        return {}
+                    await asyncio.sleep(0)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        await manager._on_event(_make_cancel_event(status=status))
+        await task
+
+        assert seen == [True]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "status",
+        [
+            pytest.param(
+                {"code": "error", "message": "Device did not come back online"},
+                id="ordinary-error",
+            ),
+            pytest.param(
+                {"code": "error", "message": {"code": "OFFLINE", "message": "nope"}},
+                id="structured-handler-error",
+            ),
+            pytest.param({"code": "error"}, id="error-with-no-message"),
+            pytest.param({"code": "pending", "message": {}}, id="progress-update"),
+        ],
+    )
+    async def test_shapes_that_are_not_cancellations(self, status):
+        """An ordinary failure must not read as the operator cancelling."""
+        app = FakeApp()
+        manager = RPCManager(app)
+        finished = []
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                for _ in range(5):
+                    assert not ctx.cancelled
+                    await asyncio.sleep(0)
+                finished.append(True)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        await manager._on_event(_make_cancel_event(status=status))
+        await task
+
+        assert finished == [True]
+
+    @pytest.mark.asyncio
+    async def test_exposes_who_cancelled_and_when(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+        captured = {}
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                await ctx.wait_cancelled()
+                captured["by"] = ctx.cancelled_by
+                captured["at"] = ctx.cancelled_at
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        actor = {"id": 7, "name": "Tom"}
+        await manager._on_event(
+            _make_cancel_event(
+                status=_cancel_status(cancelled_at=1787812081613, cancelled_by=actor)
+            )
+        )
+        await asyncio.wait_for(task, timeout=1)
+
+        assert captured["by"] == actor
+        assert captured["at"] == datetime.fromtimestamp(
+            1787812081613 / 1000, tz=timezone.utc
+        )
+
+    @pytest.mark.asyncio
+    async def test_result_does_not_overwrite_the_cancellation(self):
+        """The site renders the cancelled command from its terminal status."""
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                await ctx.wait_cancelled()
+                return {"finished": "anyway"}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        await manager._on_event(_make_cancel_event())
+        await asyncio.wait_for(task, timeout=1)
+
+        assert 100 not in app.messages
+
+    @pytest.mark.asyncio
+    async def test_inflight_registry_is_emptied(self):
+        """A leak here would pin every command's context for the app's lifetime."""
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        class HandlerSet:
+            @handler("ok", channel="test_channel")
+            async def ok(self, ctx, payload):
+                del ctx, payload
+                return {}
+
+            @handler("boom", channel="test_channel")
+            async def boom(self, ctx, payload):
+                del ctx, payload
+                raise RuntimeError("nope")
+
+        manager.register_handlers(HandlerSet())
+        await app.fire_event("test_channel", _make_request_event("ok", message_id=1))
+        await app.fire_event("test_channel", _make_request_event("boom", message_id=2))
+
+        assert manager._inflight == {}
+
+    @pytest.mark.asyncio
+    async def test_command_already_cancelled_on_arrival_is_skipped(self):
+        """A reconnect backlog can deliver the cancellation before the command."""
+        app = FakeApp()
+        manager = RPCManager(app)
+        calls = []
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del ctx
+                calls.append(payload)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        await app.fire_event(
+            "test_channel",
+            _make_request_event("start", extra_data={"status": _cancel_status()}),
+        )
+
+        assert calls == []
+
+    @pytest.mark.asyncio
+    async def test_cancel_for_unknown_message_is_ignored(self):
+        manager = RPCManager(FakeApp())
+        await manager._on_event(_make_cancel_event(message_id=9999))  # must not raise
+
+
+class TestOutboundCancellation:
+    @pytest.mark.asyncio
+    async def test_cancelled_call_raises_instead_of_timing_out(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        call = asyncio.create_task(
+            manager.call("reboot", channel="test_channel", timeout=5)
+        )
+        await asyncio.sleep(0)
+        message_id = next(iter(manager._pending_calls))
+        await manager._on_event(
+            _make_cancel_event(message_id=message_id, method="reboot")
+        )
+
+        with pytest.raises(RPCCancelled) as exc:
+            await asyncio.wait_for(call, timeout=1)
+        assert exc.value.code == "CANCELLED"
+
+
+class TestCancellationEdgeCases:
+    @pytest.mark.asyncio
+    async def test_cancel_during_an_async_parser_is_not_lost(self):
+        """The command must be tracked before the first await, not after.
+
+        An async parser is a yield point between the cancelled-on-arrival check
+        and the handler starting. A cancellation landing in that window used to
+        find nothing registered and was dropped.
+        """
+        app = FakeApp()
+        manager = RPCManager(app)
+        released = asyncio.Event()
+        observed = []
+
+        async def slow_parser(payload):
+            await released.wait()
+            return payload
+
+        class HandlerSet:
+            @handler("start", channel="test_channel", parser=slow_parser)
+            async def start(self, ctx, payload):
+                del payload
+                observed.append(ctx.cancelled)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        # Cancel while the parser is still awaiting.
+        await manager._on_event(_make_cancel_event())
+        released.set()
+        await asyncio.wait_for(task, timeout=1)
+
+        assert observed == [True]
+
+    @pytest.mark.asyncio
+    async def test_inflight_cleared_when_the_parser_raises(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        def bad_parser(payload):
+            del payload
+            raise ValueError("unparseable")
+
+        class HandlerSet:
+            @handler("start", channel="test_channel", parser=bad_parser)
+            async def start(self, ctx, payload):
+                del ctx, payload
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        await app.fire_event("test_channel", _make_request_event("start"))
+
+        assert manager._inflight == {}
+        assert app.messages[100]["data"]["status"]["code"] == "error"
+
+    @pytest.mark.parametrize(
+        "raw", [None, "nope", True, float("nan"), 10**30, -(10**30)]
+    )
+    def test_cancelled_at_never_raises(self, raw):
+        """The timestamp is whatever the canceller wrote — treat it as untrusted."""
+        ctx = RPCContext(
+            method="start",
+            message=Message(
+                id=1,
+                author_id=1,
+                channel=_make_channel(),
+                data={},
+                attachments=[],
+            ),
+            _update_fn=None,
+            _handler=None,
+        )
+        ctx._mark_cancelled(
+            {"code": "error", "message": {"cancelled_at": raw, "cancelled_by": "x"}}
+        )
+        assert ctx.cancelled
+        assert ctx.cancelled_at is None
+        assert ctx.cancelled_by == "x"
+
+    def test_cancelled_at_parses_the_sites_millisecond_epoch(self):
+        ctx = RPCContext(
+            method="start",
+            message=Message(
+                id=1,
+                author_id=1,
+                channel=_make_channel(),
+                data={},
+                attachments=[],
+            ),
+            _update_fn=None,
+            _handler=None,
+        )
+        ctx._mark_cancelled(_cancel_status(cancelled_at=1787812081613))
+        assert ctx.cancelled_at == datetime.fromtimestamp(
+            1787812081613 / 1000, tz=timezone.utc
+        )
+
+    @pytest.mark.asyncio
+    async def test_handler_error_after_cancellation_is_not_written(self):
+        """A cancelled command's record must survive a handler that then fails."""
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                await ctx.wait_cancelled()
+                raise RuntimeError("fell over on the way out")
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        await manager._on_event(_make_cancel_event())
+        await asyncio.wait_for(task, timeout=1)
+
+        assert 100 not in app.messages
+
+
+class TestCancelledCommandIsNotWrittenOver:
+    """Every status write stops once cancelled, not just the terminal one."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("call", ["acknowledge", "progress", "defer"])
+    async def test_status_writes_stop_after_cancellation(self, call):
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                await ctx.wait_cancelled()
+                # A long handler keeps reporting in; none of it may land.
+                if call == "progress":
+                    await ctx.progress("still going")
+                elif call == "acknowledge":
+                    await ctx.acknowledge()
+                else:
+                    await ctx.defer(5)
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        task = asyncio.create_task(
+            app.fire_event("test_channel", _make_request_event("start"))
+        )
+        await asyncio.sleep(0)
+        await manager._on_event(_make_cancel_event())
+        await asyncio.wait_for(task, timeout=1)
+
+        assert 100 not in app.messages
+
+    @pytest.mark.asyncio
+    async def test_progress_still_works_before_cancellation(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+
+        class HandlerSet:
+            @handler("start", channel="test_channel")
+            async def start(self, ctx, payload):
+                del payload
+                await ctx.progress("cranking")
+                return {}
+
+        manager.register_handlers(HandlerSet())
+        await app.fire_event("test_channel", _make_request_event("start"))
+
+        assert app.messages[100]["data"]["status"]["code"] == "success"

@@ -61,6 +61,15 @@ class RPCTimeoutError(RPCError):
         super().__init__("TIMEOUT", f"RPC call '{method}' timed out after {timeout}s")
 
 
+class RPCCancelled(RPCError):
+    """Raised when a command was cancelled by whoever issued it."""
+
+    def __init__(self, method: str):
+        super().__init__(
+            "CANCELLED", f"RPC call '{method}' was cancelled by the caller"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Decorator
 # ---------------------------------------------------------------------------
@@ -115,6 +124,49 @@ def command_is_expired(message: Message) -> bool:
     return datetime.now(tz=timezone.utc) >= expires_at
 
 
+# A cancelled command, as the site writes it.
+#
+# There is no dedicated status code: the site's cancel patches the command
+# message to a terminal ``error`` carrying a marker in its ``message`` body
+# (``customer-site`` — ``handleCancelCommand`` in ``src/home/AgentPage.tsx``)::
+#
+#     {"status": {"code": "error",
+#                 "message": {"info": "Command cancelled",
+#                             "cancelled_at": 1787812081613,
+#                             "cancelled_by": {...}}}}
+#
+# So a cancellation is a *kind of* error rather than a status of its own, and it
+# has to be recognised by that marker. The checks below mirror the site's own
+# reader (``isCancelledStatus``, ``src/interpreterV2/components/commandStatus.tsx``)
+# including its tolerance of the single-l spelling and of a bare string message
+# from older writers — if the two ever disagree, the site's version is canonical.
+_CANCELLED_TEXT = re.compile(r"^command cancell?ed$", re.IGNORECASE)
+
+
+def status_is_cancelled(status: Any) -> bool:
+    """Whether a command ``status`` block marks the command as cancelled."""
+    if not isinstance(status, dict) or status.get("code") != "error":
+        return False
+    if "message" not in status:
+        return False
+
+    message = status["message"]
+    if isinstance(message, str):
+        return bool(_CANCELLED_TEXT.match(message.strip()))
+    if not isinstance(message, dict):
+        return False
+
+    if "cancelled_at" in message or "cancelled_by" in message:
+        return True
+    info = message.get("info")
+    return isinstance(info, str) and bool(_CANCELLED_TEXT.match(info.strip()))
+
+
+def command_is_cancelled(message: Message) -> bool:
+    """Whether an RPC command's message has been cancelled by its issuer."""
+    return status_is_cancelled(message.data.get("status"))
+
+
 class RPCContext:
     def __init__(
         self, method: str, message: Message, _update_fn: Callable, _handler: Callable
@@ -123,10 +175,82 @@ class RPCContext:
         self.message = message
         self._update_fn = _update_fn
         self._handler = _handler
+        # Set when the issuer withdraws this command while the handler is still
+        # running. Constructed eagerly: asyncio.Event no longer binds a loop at
+        # construction (3.10+), so building a context off-loop stays safe.
+        self._cancelled = asyncio.Event()
+        # The `status.message` body of the cancelling update, which carries who
+        # cancelled it and when. Empty until (and unless) that arrives.
+        self._cancellation: dict = {}
 
     @property
     def channel(self):
         return self.message.channel
+
+    # -- cancellation -------------------------------------------------------
+    #
+    # A long-running handler — a pump pre-start warning, a panel reboot, a
+    # firmware push — outlives the operator's patience, so the site lets them
+    # withdraw a command that is still in flight. That arrives as an update to
+    # the command's own message, which the manager routes here.
+    #
+    # Cancellation is cooperative: nothing interrupts the handler. A handler
+    # that ignores it behaves exactly as it does today. This is deliberate —
+    # killing a half-finished sequence mid-step (part-way through putting a
+    # panel into Auto, say) is rarely safer than letting it decide where it can
+    # safely stop.
+
+    @property
+    def cancelled(self) -> bool:
+        """Whether the issuer has withdrawn this command since it started."""
+        return self._cancelled.is_set()
+
+    async def wait_cancelled(self) -> None:
+        """Block until this command is cancelled.
+
+        For handlers that are waiting on something else anyway::
+
+            done, _ = await asyncio.wait(
+                [asyncio.create_task(do_work()),
+                 asyncio.create_task(ctx.wait_cancelled())],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+        """
+        await self._cancelled.wait()
+
+    def raise_if_cancelled(self) -> None:
+        """Raise :class:`RPCCancelled` if the command has been cancelled.
+
+        For handlers that step through phases and want to bail at each boundary.
+        """
+        if self.cancelled:
+            raise RPCCancelled(self.method)
+
+    @property
+    def cancelled_at(self) -> datetime | None:
+        """When the command was cancelled, if it was and the issuer said so.
+
+        The timestamp is whatever the canceller wrote, so a nonsensical value
+        yields ``None`` rather than raising: a handler reading this for an audit
+        line must not be able to blow up over a malformed field.
+        """
+        raw = self._cancellation.get("cancelled_at")
+        if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+            return None
+        try:
+            return datetime.fromtimestamp(raw / 1000, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return None
+
+    @property
+    def cancelled_by(self) -> Any:
+        """Audit info for whoever cancelled the command, if the issuer said so."""
+        return self._cancellation.get("cancelled_by")
+
+    def _mark_cancelled(self, status: Any = None) -> None:
+        if isinstance(status, dict) and isinstance(status.get("message"), dict):
+            self._cancellation = status["message"]
+        self._cancelled.set()
 
     @property
     def actor(self) -> dict | None:
@@ -163,7 +287,19 @@ class RPCContext:
         """Whether this command's expiry (message create time + expiry) has passed."""
         return command_is_expired(self.message)
 
+    def _may_write(self) -> bool:
+        """Whether it is still our place to write to this command's message.
+
+        Once cancelled, the command carries the canceller's terminal status and
+        the site renders it from that. A later ``progress`` would put it back to
+        ``pending`` and quietly un-cancel it in the UI — so every status write
+        stops here, not just the terminal one.
+        """
+        return not self.cancelled
+
     async def acknowledge(self):
+        if not self._may_write():
+            return
         # fixme: maybe these should be objects...
         payload = {
             "status": {
@@ -195,6 +331,8 @@ class RPCContext:
         governs from the first report onwards, in place of the short
         "no response from device" window. Call it at least that often.
         """
+        if not self._may_write():
+            return
         message = dict(fields)
         if text is not None:
             message["text"] = str(text)
@@ -202,6 +340,8 @@ class RPCContext:
         await self._update_fn(self.channel.name, self.message.id, payload)
 
     async def defer(self, seconds: float):
+        if not self._may_write():
+            return
         now = datetime.now(tz=timezone.utc)
         until = now + timedelta(seconds=seconds)
         payload = {
@@ -244,6 +384,9 @@ class RPCManager:
         self._re_handlers: list[tuple[str, re.Pattern, Callable, Callable]] = []
 
         self._pending_calls: dict[int, asyncio.Future] = {}
+        # Inbound commands we are currently serving, by message id, so an update
+        # to one (notably a cancellation) can be routed to the running handler.
+        self._inflight: dict[int, RPCContext] = {}
         self._subscribed_channels: set[str] = set()
 
     @property
@@ -455,7 +598,7 @@ class RPCManager:
         return RPCContext(
             method=method,
             message=event.message,
-            _handler=handler,
+            _handler=_handler,
             _update_fn=self.api.update_message,
         )
 
@@ -501,6 +644,16 @@ class RPCManager:
             )
             return
 
+        # Drop commands that were already withdrawn before we got to them — a
+        # backlog delivered after a reconnect can carry both the command and the
+        # cancellation, and the create event may well arrive second.
+        if command_is_cancelled(event.message):
+            log.info(
+                f"Skipping cancelled RPC command '{method}' "
+                f"(message {event.message.id})"
+            )
+            return
+
         channel_name = event.channel.name
 
         try:
@@ -509,26 +662,49 @@ class RPCManager:
             return
 
         ctx = self._build_context(method, event, method_handler)
-        if parser:
-            if asyncio.iscoroutinefunction(parser):
-                payload = await parser(payload)
-            else:
-                payload = parser(payload)
 
         # we can't isinstance MessageCreateEvent because OneShotMessage is a subclass
         can_respond = not isinstance(event, OneShotMessage)
 
+        def should_respond() -> bool:
+            # A cancellation already put this command in a terminal `error`
+            # state, and the site renders it as "Cancelled" from that. Writing
+            # our own outcome over the top would relabel a command the operator
+            # cancelled as having succeeded (or as some unrelated failure), so
+            # once cancelled we stay quiet and let their record stand.
+            return can_respond and not ctx.cancelled
+
+        # Start tracking the command *before* the first await below. An update
+        # that arrives while this message is untracked is dropped on the floor,
+        # so the window must contain no yield points — and an async parser is
+        # one. Registering here leaves only synchronous code between the
+        # cancelled-on-arrival check above and the entry going in, which nothing
+        # else can interleave with. Keyed by message id, and always removed
+        # again in the `finally`: a leak would pin every command's context for
+        # the life of the app.
+        self._inflight[event.message.id] = ctx
         try:
+            if parser:
+                if asyncio.iscoroutinefunction(parser):
+                    payload = await parser(payload)
+                else:
+                    payload = parser(payload)
+
             result = await method_handler(ctx, payload)
+        except RPCCancelled:
+            # The handler chose to unwind via raise_if_cancelled(). The command
+            # already carries the canceller's terminal status, so there is
+            # nothing to report back and this is not a failure.
+            log.info(f"RPC handler for '{method}' stopped: command was cancelled")
         except RPCError as e:
-            if can_respond:
+            if should_respond():
                 await self._send_error(event.message, e.code, e.message)
         except Exception as e:
             log.error(
                 f"Unhandled exception in RPC handler '{method_handler}': {e}",
                 exc_info=e,
             )
-            if can_respond:
+            if should_respond():
                 await self._send_error(event.message, "INTERNAL_ERROR", str(e))
 
             try:
@@ -540,13 +716,15 @@ class RPCManager:
             if result is None:
                 result = {}
 
-            if can_respond:
+            if should_respond():
                 await self._send_result(event.message, result)
 
             try:
                 await self.on_success(ctx, payload)
             except Exception as e:
                 log.error(f"Failed to call on_success: {e}")
+        finally:
+            self._inflight.pop(event.message.id, None)
 
     async def on_success(self, ctx, payload):
         pass
@@ -555,22 +733,48 @@ class RPCManager:
         pass
 
     def _handle_response(self, event: MessageUpdateEvent) -> None:
-        """Resolve a pending future if this update is an RPC response."""
+        """Route an update to a command message.
+
+        Updates arrive for both directions: commands *we* issued (resolve the
+        waiting future) and commands we are currently *serving* (a cancellation
+        the running handler needs to see). Both are keyed by message id, and the
+        two id spaces are disjoint, so the lookups can't collide.
+        """
         try:
             status = event.message.data["status"]
         except KeyError:
             log.debug("Failed to get status from RPC message. Ignoring.")
             return
 
+        status_code = status.get("code") if isinstance(status, dict) else None
+        cancelled = status_is_cancelled(status)
+
+        # Inbound: a command we're serving has been withdrawn by its issuer.
+        ctx = self._inflight.get(event.message.id)
+        if ctx is not None and cancelled:
+            log.info(
+                f"RPC command '{ctx.method}' (message {event.message.id}) was "
+                f"cancelled by the issuer; notifying the running handler."
+            )
+            ctx._mark_cancelled(status)
+            return
+
+        # Outbound: resolve the future waiting on our own call.
         future = self._pending_calls.get(event.message.id)
         if future is None or future.done():
             return
 
-        status_code = status.get("code")
         if status_code in ("sent", "acknowledged", "deferred", "pending"):
             return
 
-        if status_code == "error":
+        if cancelled:
+            # A cancellation reaches us as a terminal `error`, so it must be
+            # tested before the generic error branch or it would surface as an
+            # opaque RPCError instead.
+            future.set_exception(
+                RPCCancelled(event.message.data.get("method", "unknown"))
+            )
+        elif status_code == "error":
             err = status.get("message", "")
             if isinstance(err, dict):
                 code = err.get("code", "UNKNOWN")
