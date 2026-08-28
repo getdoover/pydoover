@@ -5,6 +5,11 @@ of what has changed, and whats new for each version of the library.
 
 Unreleased
 ----------
+- Handlers can now see when a command they are still serving is cancelled by whoever issued it: :attr:`pydoover.rpc.RPCContext.cancelled`, :meth:`~pydoover.rpc.RPCContext.wait_cancelled` and :meth:`~pydoover.rpc.RPCContext.raise_if_cancelled`, plus :attr:`~pydoover.rpc.RPCContext.cancelled_by` / :attr:`~pydoover.rpc.RPCContext.cancelled_at` for the audit trail. Cancellation is cooperative — nothing interrupts the handler, so a handler that ignores it behaves exactly as before. Previously the update carrying the cancellation was received and silently discarded, leaving long sequences (a pump pre-start warning, a panel reboot) running with no way to stop them
+- Add :func:`pydoover.rpc.status_is_cancelled` and :func:`pydoover.rpc.command_is_cancelled`. A cancelled command has no status code of its own — the site patches it to a terminal ``error`` carrying ``cancelled_at`` / ``cancelled_by`` — so these mirror the site's own reader rather than testing for a ``"cancelled"`` code that is never written
+- Once a command has been cancelled, its handler no longer writes an outcome over the top. Reporting ``success`` would relabel a command the operator cancelled as having completed, losing the distinction between "cancelled in time" and "ran anyway"
+- An outbound :meth:`pydoover.rpc.RPCManager.call` now raises :class:`pydoover.rpc.RPCCancelled` when the command is cancelled, rather than surfacing it as an opaque :class:`~pydoover.rpc.RPCError`
+- A command that is already cancelled when it arrives is skipped rather than run, alongside the existing expiry check — a reconnect backlog can deliver the cancellation before the command itself
 - Add ``log=True`` to :meth:`pydoover.tags.BoundTag.set` (and ``increment`` / ``decrement``) to publish a logged data point at the end of the current loop instead of waiting for the next periodic flush
 - Add :meth:`pydoover.tags.BoundTag.delete` as the explicit alternative to ``tag.set(None)``
 - Add typed tag classes :class:`pydoover.tags.Number`, :class:`pydoover.tags.Boolean`, and :class:`pydoover.tags.String` for tag declarations
