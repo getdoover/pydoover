@@ -14,6 +14,7 @@ from pydoover.processor._logging import (
     apply_log_levels,
     get_context,
     install_logging,
+    preserve_handler,
     reset_context,
     update_context,
 )
@@ -111,6 +112,42 @@ def test_install_logging_replaces_existing_handlers():
     assert len(root.handlers) == 1
     assert isinstance(root.handlers[0].formatter, JsonFormatter)
     assert any(isinstance(f, InvocationContextFilter) for f in root.handlers[0].filters)
+
+
+def test_install_logging_keeps_preserved_handlers():
+    # Reports attach a capture handler in ``Application.__init__``, which runs
+    # before ``run_app`` calls install_logging. Dropping it left every
+    # cold-start report with an empty "logs" field.
+    root = logging.getLogger()
+    buf = io.StringIO()
+    kept = preserve_handler(logging.StreamHandler(buf))
+    dropped = logging.StreamHandler(io.StringIO())
+    root.handlers = [dropped, kept]
+
+    install_logging()
+
+    assert kept in root.handlers
+    assert dropped not in root.handlers
+    assert isinstance(root.handlers[0].formatter, JsonFormatter)
+
+    logging.getLogger("test").error("boom")
+    assert "boom" in buf.getvalue()
+
+
+def test_install_logging_does_not_duplicate_preserved_handlers():
+    root = logging.getLogger()
+    kept = preserve_handler(logging.StreamHandler(io.StringIO()))
+    root.handlers = [kept]
+
+    install_logging()
+    install_logging()
+
+    assert root.handlers.count(kept) == 1
+    assert len([h for h in root.handlers if _is_pydoover(h)]) == 1
+
+
+def _is_pydoover(handler: logging.Handler) -> bool:
+    return isinstance(handler.formatter, JsonFormatter)
 
 
 def test_install_logging_is_idempotent():
