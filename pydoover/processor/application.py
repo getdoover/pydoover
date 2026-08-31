@@ -13,6 +13,7 @@ from ..tags import Tags
 from ..tags.manager import TagsManagerProcessor
 
 from ..models import (
+    AlarmTriggerEvent,
     ManualInvokeEvent,
     MessageCreateEvent,
     Channel,
@@ -245,6 +246,15 @@ class Application:
     async def on_manual_invoke(self, event: ManualInvokeEvent):
         pass
 
+    async def on_alarm_trigger(self, event: AlarmTriggerEvent):
+        """Invoked when an alarm on a subscribed channel changes state.
+
+        Fires for every transition (including into and out of
+        ``AlarmPending``), and independently of whether the transition sends a
+        user-facing notification — an alarm whose ``messages`` overrides
+        silence a state still invokes this handler.
+        """
+
     def parse_ingestion_event_payload(self, payload: str):
         # by default, this **should** be base64 encoded json bytes
         # but it's not required to be, and the user should override this if e.g. it's a C-packed struct.
@@ -371,6 +381,13 @@ class Application:
                 payload = AggregateUpdateEvent.from_dict(event["d"])
                 self.api._invoking_channel_name = payload.channel.name
                 original_func = Application.on_aggregate_update
+            case "on_alarm_trigger":
+                func = self.on_alarm_trigger
+                payload = AlarmTriggerEvent.from_dict(event["d"])
+                # writing back to the alarm's channel re-fires the aggregate
+                # update that evaluated it, so guard the same way.
+                self.api._invoking_channel_name = payload.channel.name
+                original_func = Application.on_alarm_trigger
 
         is_deployment = event["op"] == "on_deployment"
         if func == original_func and not is_deployment:

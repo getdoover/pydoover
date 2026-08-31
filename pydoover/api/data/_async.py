@@ -23,10 +23,12 @@ from ..auth._base import AsyncAuthClient
 from ._base import (
     UNSET,
     BaseClient,
+    _build_alarm_payload,
     _build_batch_payload,
     _build_user_agent,
     _consume_auth_kwargs,
     _raise_for_status,
+    _serialise_alarm_messages,
     _to_snowflake,
     Unset,
     build_async_auth,
@@ -53,14 +55,17 @@ from ...models.data import (
     TurnCredential,
     Attachment,
 )
-from ...models.data.alarm import AlarmOperator
+from ...models.data.alarm import AlarmMessages, AlarmOperator, NotificationPolicy
 from ...models.data.notification import (
     Notification,
     NotificationEndpoint,
+    NotificationEndpointSummary,
     NotificationSeverity,
     NotificationSubscription,
+    NotificationTopicFilterMode,
     NotificationType,
 )
+from ...models.data.permission import AgentPermission
 from ...models.data.wss_connection import (
     ConnectionDetail,
     ConnectionSubscription,
@@ -273,13 +278,24 @@ class AsyncDataClient(BaseClient):
         message_schema: dict | None = None,
         aggregate_schema: dict | None = None,
         organisation_id: int | None = None,
+        history_since: int | None = None,
+        default_ttl: int | None = None,
     ) -> int:
-        """Create a channel. Returns the new channel's snowflake ID."""
+        """Create a channel. Returns the new channel's snowflake ID.
+
+        ``history_since`` is the earliest message timestamp (ms) the channel
+        returns; ``default_ttl`` is the fallback TTL in seconds for messages
+        posted without one.
+        """
         payload: dict[str, Any] = {"is_private": is_private}
         if message_schema is not None:
             payload["message_schema"] = message_schema
         if aggregate_schema is not None:
             payload["aggregate_schema"] = aggregate_schema
+        if history_since is not None:
+            payload["history_since"] = history_since
+        if default_ttl is not None:
+            payload["default_ttl"] = default_ttl
         data = await self._request(
             "POST",
             f"/agents/{agent_id}/channels/{channel_name}",
@@ -296,12 +312,18 @@ class AsyncDataClient(BaseClient):
         message_schema: dict | None = None,
         aggregate_schema: dict | None = None,
         organisation_id: int | None = None,
+        history_since: int | None = None,
+        default_ttl: int | None = None,
     ) -> Channel:
         payload: dict[str, Any] = {"is_private": is_private}
         if message_schema is not None:
             payload["message_schema"] = message_schema
         if aggregate_schema is not None:
             payload["aggregate_schema"] = aggregate_schema
+        if history_since is not None:
+            payload["history_since"] = history_since
+        if default_ttl is not None:
+            payload["default_ttl"] = default_ttl
         data = await self._request(
             "PUT",
             f"/agents/{agent_id}/channels/{channel_name}",
@@ -328,6 +350,32 @@ class AsyncDataClient(BaseClient):
                 "after": _to_snowflake(after),
                 "limit": limit,
             },
+            organisation_id=organisation_id,
+        )
+
+    async def archive_channel(
+        self,
+        agent_id: int,
+        channel_name: str,
+        organisation_id: int | None = None,
+    ) -> None:
+        """Archive a channel, hiding it from listings and stopping its hooks."""
+        await self._request(
+            "POST",
+            f"/agents/{agent_id}/channels/{channel_name}/archive",
+            organisation_id=organisation_id,
+        )
+
+    async def unarchive_channel(
+        self,
+        agent_id: int,
+        channel_name: str,
+        organisation_id: int | None = None,
+    ) -> None:
+        """Restore a previously archived channel."""
+        await self._request(
+            "POST",
+            f"/agents/{agent_id}/channels/{channel_name}/unarchive",
             organisation_id=organisation_id,
         )
 
@@ -759,6 +807,24 @@ class AsyncDataClient(BaseClient):
         )
         return [Alarm.from_dict(a) for a in data]
 
+    async def list_agent_alarms(
+        self,
+        agent_id: int,
+        organisation_id: int | None = None,
+    ) -> list[Alarm]:
+        """List every alarm across all of an agent's channels.
+
+        Each alarm carries its :attr:`~pydoover.models.Alarm.channel_name`.
+        Alarms on private channels are omitted unless the caller can read
+        private channels.
+        """
+        data = await self._request(
+            "GET",
+            f"/agents/{agent_id}/alarms",
+            organisation_id=organisation_id,
+        )
+        return [Alarm.from_dict(a) for a in data]
+
     async def fetch_alarm(
         self,
         agent_id: int,
@@ -780,22 +846,41 @@ class AsyncDataClient(BaseClient):
         name: str,
         key: str,
         operator: AlarmOperator | str,
-        value: Any,
+        value: Any = UNSET,
         description: str = "",
         enabled: bool = True,
         expiry_mins: float | None = None,
         organisation_id: int | None = None,
+        *,
+        topic_name: str | None = None,
+        notification_policy: NotificationPolicy | str | None = None,
+        alarm_pending_ms: int | None = None,
+        rate_threshold: float | None = None,
+        rate_window_ms: int | None = None,
+        messages: AlarmMessages | None = None,
     ) -> Alarm:
-        payload: dict[str, Any] = {
-            "name": name,
-            "key": key,
-            "operator": AlarmOperator(operator).value,
-            "value": value,
-            "description": description,
-            "enabled": enabled,
-        }
-        if expiry_mins is not None:
-            payload["expiry_mins"] = expiry_mins
+        """Create a threshold or rate-of-change alarm.
+
+        The two condition styles are mutually exclusive: a threshold alarm
+        needs ``value`` and no rate fields; a rate alarm needs both
+        ``rate_threshold`` (units per *second*) and ``rate_window_ms``, must
+        leave ``value`` unset, and cannot use the ``eq`` operator.
+        """
+        payload = _build_alarm_payload(
+            name=name,
+            key=key,
+            operator=operator,
+            value=value,
+            description=description,
+            enabled=enabled,
+            expiry_mins=expiry_mins,
+            topic_name=topic_name,
+            notification_policy=notification_policy,
+            alarm_pending_ms=alarm_pending_ms,
+            rate_threshold=rate_threshold,
+            rate_window_ms=rate_window_ms,
+            messages=messages,
+        )
         data = await self._request(
             "POST",
             f"/agents/{agent_id}/channels/{channel_name}/alarms",
@@ -812,22 +897,35 @@ class AsyncDataClient(BaseClient):
         name: str,
         key: str,
         operator: AlarmOperator | str,
-        value: Any,
+        value: Any = UNSET,
         description: str = "",
         enabled: bool = True,
         expiry_mins: float | None = None,
         organisation_id: int | None = None,
+        *,
+        topic_name: str | None = None,
+        notification_policy: NotificationPolicy | str | None = None,
+        alarm_pending_ms: int | None = None,
+        rate_threshold: float | None = None,
+        rate_window_ms: int | None = None,
+        messages: AlarmMessages | None = None,
     ) -> Alarm:
-        payload: dict[str, Any] = {
-            "name": name,
-            "key": key,
-            "operator": AlarmOperator(operator).value,
-            "value": value,
-            "description": description,
-            "enabled": enabled,
-        }
-        if expiry_mins is not None:
-            payload["expiry_mins"] = expiry_mins
+        """Create or replace an alarm at a known ID. See :meth:`create_alarm`."""
+        payload = _build_alarm_payload(
+            name=name,
+            key=key,
+            operator=operator,
+            value=value,
+            description=description,
+            enabled=enabled,
+            expiry_mins=expiry_mins,
+            topic_name=topic_name,
+            notification_policy=notification_policy,
+            alarm_pending_ms=alarm_pending_ms,
+            rate_threshold=rate_threshold,
+            rate_window_ms=rate_window_ms,
+            messages=messages,
+        )
         data = await self._request(
             "PUT",
             f"/agents/{agent_id}/channels/{channel_name}/alarms/{alarm_id}",
@@ -844,27 +942,59 @@ class AsyncDataClient(BaseClient):
         name: str | None = None,
         key: str | None = None,
         operator: AlarmOperator | str | None = None,
-        value: Any = None,
+        value: Any = UNSET,
         description: str | None = None,
         enabled: bool | None = None,
         expiry_mins: float | None | Unset = UNSET,
         organisation_id: int | None = None,
+        *,
+        topic_name: str | None = None,
+        notification_policy: NotificationPolicy | str | None = None,
+        alarm_pending_ms: int | None | Unset = UNSET,
+        rate_threshold: float | None | Unset = UNSET,
+        rate_window_ms: int | None | Unset = UNSET,
+        messages: AlarmMessages | None | Unset = UNSET,
     ) -> Alarm:
+        """Partially update an alarm.
+
+        Every nullable field distinguishes "leave alone" (omit it) from "clear
+        it" (pass ``None``). A threshold alarm becomes a rate alarm by passing
+        ``value=None`` together with both rate fields, and back again by
+        passing both rate fields as ``None`` together with a ``value``.
+
+        ``messages`` merges state by state and field by field: a state left
+        out keeps its stored override. Pass ``messages=None`` to clear every
+        override.
+        """
         payload: dict[str, Any] = {}
         if name is not None:
             payload["name"] = name
+        if topic_name is not None:
+            payload["topic_name"] = topic_name
+        if notification_policy is not None:
+            payload["notification_policy"] = NotificationPolicy(
+                notification_policy
+            ).value
         if key is not None:
             payload["key"] = key
         if operator is not None:
             payload["operator"] = AlarmOperator(operator).value
-        if value is not None:
-            payload["value"] = value
         if description is not None:
             payload["description"] = description
         if enabled is not None:
             payload["enabled"] = enabled
-            if expiry_mins is not UNSET:
-                payload["expiry_mins"] = expiry_mins
+        if value is not UNSET:
+            payload["value"] = value
+        if expiry_mins is not UNSET:
+            payload["expiry_mins"] = expiry_mins
+        if alarm_pending_ms is not UNSET:
+            payload["alarm_pending_ms"] = alarm_pending_ms
+        if rate_threshold is not UNSET:
+            payload["rate_threshold"] = rate_threshold
+        if rate_window_ms is not UNSET:
+            payload["rate_window_ms"] = rate_window_ms
+        if messages is not UNSET:
+            payload["messages"] = _serialise_alarm_messages(messages)
         data = await self._request(
             "PATCH",
             f"/agents/{agent_id}/channels/{channel_name}/alarms/{alarm_id}",
@@ -971,6 +1101,20 @@ class AsyncDataClient(BaseClient):
             organisation_id=organisation_id,
         )
         return [ConnectionSubscription.from_dict(s) for s in data]
+
+    # ── Permissions ────────────────────────────────────────────────────────
+
+    async def fetch_agent_permissions(
+        self,
+        agent_id: int,
+        organisation_id: int | None = None,
+    ) -> AgentPermission:
+        data = await self._request(
+            "GET",
+            f"/agents/{agent_id}/permissions",
+            organisation_id=organisation_id,
+        )
+        return AgentPermission.from_dict(data)
 
     # ── Notifications ──────────────────────────────────────────────────────
 
@@ -1149,13 +1293,24 @@ class AsyncDataClient(BaseClient):
         topic_filter: list[str],
         endpoint_id: int | None = None,
         organisation_id: int | None = None,
+        topic_filter_mode: NotificationTopicFilterMode | str | None = None,
     ) -> list[dict[str, int]]:
-        """Returns a list of created subscriptions, each with ``id`` and ``endpoint_id``."""
+        """Returns a list of created subscriptions, each with ``id`` and ``endpoint_id``.
+
+        ``topic_filter`` entries are exact topic values by default; pass
+        ``topic_filter_mode="regex"`` to have each entry matched as a regular
+        expression against the whole canonical topic. Entries are ORed either
+        way.
+        """
         payload: dict[str, Any] = {
             "subscribe_to": str(subscribe_to),
             "severity": NotificationSeverity(severity).value,
             "topic_filter": topic_filter,
         }
+        if topic_filter_mode is not None:
+            payload["topic_filter_mode"] = NotificationTopicFilterMode(
+                topic_filter_mode
+            ).value
         if endpoint_id is not None:
             payload["endpoint_id"] = str(endpoint_id)
         data = await self._request(
@@ -1176,12 +1331,17 @@ class AsyncDataClient(BaseClient):
         severity: NotificationSeverity | int | None = None,
         topic_filter: list[str] | None = None,
         organisation_id: int | None = None,
+        topic_filter_mode: NotificationTopicFilterMode | str | None = None,
     ):
         payload: dict[str, Any] = {}
         if severity is not None:
             payload["severity"] = NotificationSeverity(severity).value
         if topic_filter is not None:
             payload["topic_filter"] = topic_filter
+        if topic_filter_mode is not None:
+            payload["topic_filter_mode"] = NotificationTopicFilterMode(
+                topic_filter_mode
+            ).value
         await self._request(
             "PATCH",
             f"/agents/{agent_id}/notifications/subscriptions/{subscription_id}",
@@ -1260,6 +1420,57 @@ class AsyncDataClient(BaseClient):
             },
             organisation_id=organisation_id,
         )
+
+    async def list_notification_endpoint_summaries(
+        self,
+        agent_id: int,
+        organisation_id: int | None = None,
+    ) -> list[NotificationEndpointSummary]:
+        """List endpoint delivery readiness without destinations or credentials.
+
+        This is the listing available to a delegated subscription manager;
+        :meth:`list_notification_endpoints` requires full endpoint access.
+        """
+        data = await self._request(
+            "GET",
+            f"/agents/{agent_id}/notifications/endpoints/summary",
+            organisation_id=organisation_id,
+        )
+        return [NotificationEndpointSummary.from_dict(e) for e in data["endpoints"]]
+
+    async def update_default_notification_subscription(
+        self,
+        agent_id: int,
+        subscribed_to: int,
+        severity: NotificationSeverity | int | None = None,
+        topic_filter: list[str] | None = None,
+        topic_filter_mode: NotificationTopicFilterMode | str | None = None,
+        organisation_id: int | None = None,
+    ):
+        """Update every default endpoint row for one logical subscription."""
+        payload: dict[str, Any] = {}
+        if severity is not None:
+            payload["severity"] = NotificationSeverity(severity).value
+        if topic_filter is not None:
+            payload["topic_filter"] = topic_filter
+        if topic_filter_mode is not None:
+            payload["topic_filter_mode"] = NotificationTopicFilterMode(
+                topic_filter_mode
+            ).value
+        await self._request(
+            "PATCH",
+            f"/agents/{agent_id}/notifications/subscriptions/default/{subscribed_to}",
+            data=payload,
+            organisation_id=organisation_id,
+        )
+
+    async def fetch_webpush_public_key(self) -> str:
+        """Fetch the VAPID public key used to subscribe a browser to web push.
+
+        Unauthenticated — the key is public by design.
+        """
+        data = await self._request("GET", "/notifications/webpush-public-key")
+        return data["key"]
 
     # ── Processors ─────────────────────────────────────────────────────────
 
@@ -1391,6 +1602,45 @@ class AsyncDataClient(BaseClient):
         await self._request(
             "DELETE",
             f"/agents/{agent_id}/processors/ingestions/{ingestion_id}",
+            organisation_id=organisation_id,
+        )
+
+    async def regenerate_schedule_token(
+        self,
+        agent_id: int,
+        schedule_id: int,
+        organisation_id: int | None = None,
+    ) -> str:
+        """Mint a fresh long-lived token for a processor schedule."""
+        data = await self._request(
+            "POST",
+            f"/agents/{agent_id}/processors/schedules/{schedule_id}/token",
+            organisation_id=organisation_id,
+        )
+        return data["token"]
+
+    async def invoke_ingestion_endpoint(
+        self,
+        agent_id: int,
+        ingestion_id: int,
+        payload: dict[str, Any],
+        wait: bool = False,
+        json_response: bool = False,
+        organisation_id: int | None = None,
+    ) -> dict[str, Any] | None:
+        """Forward a payload to an ingestion endpoint's Lambda.
+
+        With ``wait=False`` (the default) the invocation is asynchronous and
+        the response is ``None``. With ``wait=True`` the result carries
+        ``status_code``, ``payload``, and — when the function failed —
+        ``function_error`` and ``log_result``. ``json_response`` parses the
+        Lambda's payload as JSON rather than returning it base64-encoded.
+        """
+        return await self._request(
+            "POST",
+            f"/agents/{agent_id}/processors/ingestions/{ingestion_id}/invoke",
+            data=payload,
+            params={"wait": wait, "json_response": json_response},
             organisation_id=organisation_id,
         )
 

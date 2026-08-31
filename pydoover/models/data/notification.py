@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import Enum, IntEnum
 from typing import Any
 
 
@@ -78,6 +78,18 @@ class NotificationSeverity(_NameWireEnum):
         }
 
 
+class NotificationTopicFilterMode(str, Enum):
+    """How a subscription's ``topic_filter`` entries are matched.
+
+    ``exact`` preserves literal legacy matching. ``regex`` matches each
+    expression against the complete canonical notification topic. Entries are
+    ORed either way.
+    """
+
+    exact = "exact"
+    regex = "regex"
+
+
 class NotificationEndpoint:
     def __init__(
         self,
@@ -145,6 +157,60 @@ class NotificationSubscriptionEndpoint:
         }
 
 
+class NotificationEndpointSummary:
+    """Read-only delivery readiness for an endpoint.
+
+    Returned by the ``endpoints/summary`` route, which omits the destination
+    address, credentials and ``extra_data`` — it is the one endpoint listing a
+    delegated subscription manager is allowed to see.
+    """
+
+    def __init__(
+        self,
+        id: int,
+        type: NotificationType,
+        name: str,
+        default: bool,
+        ready: bool,
+        priority: int | None = None,
+    ):
+        self.id = id
+        self.type = type
+        self.name = name
+        self.default = default
+        self.ready = ready
+        self.priority = priority
+
+    def __repr__(self):
+        return (
+            f"NotificationEndpointSummary(id={self.id!r}, name={self.name!r}, "
+            f"type={self.type!r}, ready={self.ready!r})"
+        )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            id=int(data["id"]),
+            type=NotificationType(data["type"]),
+            name=data["name"],
+            default=data["default"],
+            ready=data["ready"],
+            priority=data.get("priority"),
+        )
+
+    def to_dict(self):
+        result = {
+            "id": self.id,
+            "type": self.type.wire,
+            "name": self.name,
+            "default": self.default,
+            "ready": self.ready,
+        }
+        if self.priority is not None:
+            result["priority"] = self.priority
+        return result
+
+
 class NotificationSubscription:
     def __init__(
         self,
@@ -154,12 +220,14 @@ class NotificationSubscription:
         severity: NotificationSeverity,
         topic_filter: list[str],
         endpoints: list[NotificationSubscriptionEndpoint],
+        topic_filter_mode: NotificationTopicFilterMode = NotificationTopicFilterMode.exact,
     ):
         self.id = id
         self.subscriber = subscriber
         self.subscribed_to = subscribed_to
         self.severity = severity
         self.topic_filter = topic_filter
+        self.topic_filter_mode = topic_filter_mode
         self.endpoints = endpoints
 
     @classmethod
@@ -170,6 +238,10 @@ class NotificationSubscription:
             subscribed_to=int(data["subscribed_to"]),
             severity=NotificationSeverity(data["severity"]),
             topic_filter=data["topic_filter"],
+            # Defaulted: rows written before regex filters existed omit it.
+            topic_filter_mode=NotificationTopicFilterMode(
+                data.get("topic_filter_mode", "exact")
+            ),
             endpoints=[
                 NotificationSubscriptionEndpoint.from_dict(e)
                 for e in data.get("endpoints", [])
@@ -183,6 +255,7 @@ class NotificationSubscription:
             "subscribed_to": self.subscribed_to,
             "severity": self.severity.value,
             "topic_filter": self.topic_filter,
+            "topic_filter_mode": self.topic_filter_mode.value,
             "endpoints": [e.to_dict() for e in self.endpoints],
         }
 
