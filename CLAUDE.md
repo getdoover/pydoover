@@ -53,7 +53,7 @@ run_app(MyApp(config=Schema()))
 ```
 
 ### Cloud Processors
-Extend `Application` in `pydoover/processor/application.py`. Processors are event-driven — override the `on_*` handlers for the events you care about (`on_message_create`, `on_aggregate_update`, `on_deployment`, `on_schedule`, `on_ingestion_endpoint`, `on_manual_invoke`):
+Extend `Application` in `pydoover/processor/application.py`. Processors are event-driven — override the `on_*` handlers for the events you care about (`on_message_create`, `on_aggregate_update`, `on_deployment`, `on_schedule`, `on_ingestion_endpoint`, `on_manual_invoke`, `on_alarm_trigger`):
 ```python
 from pydoover.processor import Application, run_app
 

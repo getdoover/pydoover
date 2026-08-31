@@ -23,6 +23,7 @@ from ..auth._base import (
 from .._compress import SUPPORTED_ENCODINGS
 from ... import __version__
 from ...models.data import File, MAX_BATCH_MUTATIONS, BatchMutationItem
+from ...models.data.alarm import AlarmMessages, AlarmOperator, NotificationPolicy
 from ...utils.snowflake import generate_snowflake_id_at
 from ...models.data.exceptions import (
     BadRequestError,
@@ -78,6 +79,68 @@ def _build_batch_payload(items: Sequence[BatchMutationItem]) -> dict[str, Any]:
             f"batch cannot contain more than {MAX_BATCH_MUTATIONS} items, got {len(items)}"
         )
     return {"items": [item.to_dict() for item in items]}
+
+
+def _serialise_alarm_messages(
+    messages: "AlarmMessages | None",
+) -> dict[str, Any] | None:
+    """Coerce an ``AlarmMessages`` (or ``None``) to the wire form.
+
+    A pre-built wire dict is still passed through untouched, but isn't part of
+    the advertised signature — construct ``AlarmMessages`` instead.
+    """
+    if messages is None:
+        return None
+    if isinstance(messages, AlarmMessages):
+        return messages.to_dict()
+    return messages
+
+
+def _build_alarm_payload(
+    *,
+    name: str,
+    key: str,
+    operator: "AlarmOperator | str",
+    value: Any,
+    description: str,
+    enabled: bool,
+    expiry_mins: float | None,
+    topic_name: str | None,
+    notification_policy: "NotificationPolicy | str | None",
+    alarm_pending_ms: int | None,
+    rate_threshold: float | None,
+    rate_window_ms: int | None,
+    messages: "AlarmMessages | None",
+) -> dict[str, Any]:
+    """Build the body shared by alarm create (POST) and replace (PUT).
+
+    ``value`` is only sent when given, so a rate alarm — which must leave it
+    unset — is expressible without a separate code path.
+    """
+    payload: dict[str, Any] = {
+        "name": name,
+        "key": key,
+        "operator": AlarmOperator(operator).value,
+        "description": description,
+        "enabled": enabled,
+    }
+    if not isinstance(value, Unset):
+        payload["value"] = value
+    if topic_name is not None:
+        payload["topic_name"] = topic_name
+    if notification_policy is not None:
+        payload["notification_policy"] = NotificationPolicy(notification_policy).value
+    if expiry_mins is not None:
+        payload["expiry_mins"] = expiry_mins
+    if alarm_pending_ms is not None:
+        payload["alarm_pending_ms"] = alarm_pending_ms
+    if rate_threshold is not None:
+        payload["rate_threshold"] = rate_threshold
+    if rate_window_ms is not None:
+        payload["rate_window_ms"] = rate_window_ms
+    if messages is not None:
+        payload["messages"] = _serialise_alarm_messages(messages)
+    return payload
 
 
 def _raise_for_status(status: int, text: str, url: str):

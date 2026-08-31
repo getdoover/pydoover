@@ -1,5 +1,12 @@
 from .aggregate import Aggregate
-from .alarm import Alarm, AlarmOperator, AlarmState
+from .alarm import (
+    Alarm,
+    AlarmMessages,
+    AlarmOperator,
+    AlarmState,
+    AlarmStateMessage,
+    NotificationPolicy,
+)
 from .attachment import Attachment, File
 from .batch import (
     MAX_BATCH_MUTATIONS,
@@ -30,6 +37,7 @@ from .exceptions import (
 )
 from .events import (
     AggregateUpdateEvent,
+    AlarmTriggerEvent,
     ChannelSyncEvent,
     DeploymentEvent,
     EventSubscription,
@@ -46,11 +54,14 @@ from .message_log import MessageLogEntry
 from .notification import (
     Notification,
     NotificationEndpoint,
+    NotificationEndpointSummary,
     NotificationSeverity,
     NotificationSubscription,
     NotificationSubscriptionEndpoint,
+    NotificationTopicFilterMode,
     NotificationType,
 )
+from .permission import AgentPermission, ResourcePermission
 from .notification_response import AgentNotificationResponse
 from .processor_info import SubscriptionInfo
 from .processor_response import ProcessorTokenResponse
@@ -66,8 +77,12 @@ __all__ = [
     "Aggregate",
     "AggregateUpdateEvent",
     "Alarm",
+    "AlarmMessages",
     "AlarmOperator",
     "AlarmState",
+    "AlarmStateMessage",
+    "AlarmTriggerEvent",
+    "NotificationPolicy",
     "AgentAggregate",
     "AgentNotificationResponse",
     "Attachment",
@@ -108,10 +123,14 @@ __all__ = [
     "NotFoundError",
     "Notification",
     "NotificationEndpoint",
+    "NotificationEndpointSummary",
     "NotificationSeverity",
     "NotificationSubscription",
     "NotificationSubscriptionEndpoint",
+    "NotificationTopicFilterMode",
     "NotificationType",
+    "AgentPermission",
+    "ResourcePermission",
     "OneShotMessage",
     "ProcessorTokenResponse",
     "RotatedDeviceToken",
