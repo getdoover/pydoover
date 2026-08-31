@@ -3,6 +3,7 @@ from enum import Flag, IntEnum, auto
 from typing import Any
 
 from .aggregate import Aggregate
+from .alarm import Alarm, AlarmState
 from .channel import ChannelID
 from .message import Message
 
@@ -162,6 +163,91 @@ class AggregateUpdateEvent:
         return cls(
             data["author_id"],
             ChannelID.from_dict(data["channel"]),
+            Aggregate.from_dict(data["aggregate"]),
+            Aggregate.from_dict(data["request_data"]),
+            data["organisation_id"],
+        )
+
+
+class AlarmTriggerEvent:
+    # pub struct AlarmTriggerPayload {
+    #     pub channel: ChannelID,
+    #     pub alarm: Alarm,
+    #     pub old_state: AlarmState,
+    #     pub new_state: AlarmState,
+    #     pub aggregate: ChannelAggregate,
+    #     pub request_data: ChannelAggregate,
+    #     pub organisation_id: SnowflakeID,
+    # }
+    """An alarm on a channel changed state.
+
+    Fired for every transition, including the ones whose user-facing
+    notification is suppressed by the alarm's ``messages`` overrides — the
+    processor fan-out is independent of notification delivery.
+    """
+
+    def __init__(
+        self,
+        channel: ChannelID,
+        alarm: Alarm,
+        old_state: AlarmState,
+        new_state: AlarmState,
+        aggregate: Aggregate,
+        request_data: Aggregate,
+        organisation_id: int,
+    ):
+        self.channel = channel
+        self.alarm = alarm
+        self.old_state = old_state
+        self.new_state = new_state
+        self.aggregate = aggregate
+        self.request_data = request_data
+        self.organisation_id = organisation_id
+
+    def __repr__(self):
+        return (
+            f"AlarmTriggerEvent(alarm={self.alarm!r}, "
+            f"old_state={self.old_state!r}, new_state={self.new_state!r})"
+        )
+
+    @property
+    def is_alarm(self) -> bool:
+        """Whether the alarm has just entered the (fully debounced) alarm state."""
+        return self.new_state is AlarmState.Alarm
+
+    @property
+    def is_cleared(self) -> bool:
+        """Whether the alarm has just recovered to OK."""
+        return self.new_state is AlarmState.OK
+
+    @property
+    def value(self) -> Any:
+        """The value at the alarm's ``key`` in the aggregate at trigger time."""
+        current = self.aggregate.data
+        for part in self.alarm.key.split("."):
+            if not isinstance(current, dict) or part not in current:
+                return None
+            current = current[part]
+        return current
+
+    def to_dict(self):
+        return {
+            "channel": self.channel.to_dict(),
+            "alarm": self.alarm.to_dict(),
+            "old_state": self.old_state.value,
+            "new_state": self.new_state.value,
+            "aggregate": self.aggregate.to_dict(),
+            "request_data": self.request_data.to_dict(),
+            "organisation_id": self.organisation_id,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            ChannelID.from_dict(data["channel"]),
+            Alarm.from_dict(data["alarm"]),
+            AlarmState(data["old_state"]),
+            AlarmState(data["new_state"]),
             Aggregate.from_dict(data["aggregate"]),
             Aggregate.from_dict(data["request_data"]),
             data["organisation_id"],
