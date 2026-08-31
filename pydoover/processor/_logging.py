@@ -27,6 +27,22 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
+#: Attribute name marking a handler that :func:`install_logging` must keep
+#: when it takes over the root logger. Set it with :func:`preserve_handler`
+#: rather than assigning the attribute by hand.
+PRESERVE_HANDLER_ATTR = "_pydoover_preserve_handler"
+
+
+def preserve_handler(handler: logging.Handler) -> logging.Handler:
+    """Mark ``handler`` so :func:`install_logging` leaves it attached.
+
+    Returns the handler, so it can be used inline::
+
+        root.addHandler(preserve_handler(logging.StreamHandler(buffer)))
+    """
+    setattr(handler, PRESERVE_HANDLER_ATTR, True)
+    return handler
+
 
 @dataclass
 class InvocationContext:
@@ -175,6 +191,14 @@ def install_logging(default_level: int = logging.INFO) -> None:
     line as a string in the envelope's ``message`` field; that's
     unavoidable from the producer side and matches AWS Powertools.
 
+    Handlers flagged with :data:`PRESERVE_HANDLER_ATTR` survive the
+    takeover. Callers that attach a handler for their own purposes —
+    report generators tee log output into the report message's "logs"
+    field — cannot control whether they run before or after this
+    function (the app is constructed before ``run_app`` calls it), so
+    an unconditional replacement silently dropped their handler on
+    every cold start.
+
     Idempotent: safe to call once per cold start AND on every warm
     invocation (the second call is effectively a no-op).
 
@@ -193,12 +217,17 @@ def install_logging(default_level: int = logging.INFO) -> None:
 
     root = logging.getLogger()
     if not any(_is_pydoover_handler(h) for h in root.handlers):
-        root.handlers = [handler]
+        preserved = [h for h in root.handlers if _is_preserved_handler(h)]
+        root.handlers = [handler, *preserved]
     root.setLevel(default_level)
 
 
 def _is_pydoover_handler(handler: logging.Handler) -> bool:
     return isinstance(handler.formatter, JsonFormatter)
+
+
+def _is_preserved_handler(handler: logging.Handler) -> bool:
+    return bool(getattr(handler, PRESERVE_HANDLER_ATTR, False))
 
 
 def apply_log_levels(

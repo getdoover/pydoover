@@ -26,6 +26,7 @@ from ..models import (
     File,
 )
 from ..processor.application import Application as ApplicationBase
+from ..processor._logging import preserve_handler
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +48,12 @@ class Application(ApplicationBase):
         # logging; reports still need it, so the capture lives here now.
         # Remove any capture handler left over from a previous invocation in
         # a warm lambda container before installing ours.
+        #
+        # ``run_app`` calls ``install_logging`` *after* the app is
+        # constructed, and that takes over the root logger — so the handler
+        # is marked preserved, otherwise it is dropped before the first
+        # record is emitted and every cold-start report lands with an empty
+        # "logs" field.
         self.log_capture_string = io.StringIO()
         root_logger = logging.getLogger()
         for handler in [
@@ -58,7 +65,7 @@ class Application(ApplicationBase):
         capture_handler.setFormatter(
             logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
         )
-        root_logger.addHandler(capture_handler)
+        root_logger.addHandler(preserve_handler(capture_handler))
 
     async def on_message_create(self, event: MessageCreateEvent):
         raise RuntimeError("Report Generator does not support message create events")
