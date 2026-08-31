@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "source": {
+    "mode": "fixture",
+    "generated_at": "2026-06-24T00:00:00Z",
+    "doover_cli_version": "test",
+    "profile": null,
+    "command": null
+  },
+  "app": {
+    "local_name": "fixture_processor",
+    "app_key": "fixture_processor",
+    "app_id": 111,
+    "app_install_id": 456,
+    "app_install_name": "Fixture Processor",
+    "type": "processor"
+  },
+  "owner": {
+    "agent_id": 123,
+    "organisation_id": 789,
+    "is_org_processor": false
+  },
+  "processor_info": {
+    "deployment_config": {
+      "APP_ID": 111,
+      "APP_DISPLAY_NAME": "Fixture Processor"
+    },
+    "tag_values": {
+      "fixture_processor": {}
+    },
+    "ui_state": {},
+    "ui_cmds": {
+      "fixture_processor": {}
+    },
+    "connection_data": {}
+  },
+  "channels": {
+    "status": {
+      "id": {
+        "agent_id": 123,
+        "name": "status"
+      },
+      "aggregate": {
+        "data": {
+          "state": "idle"
+        },
+        "timestamp": 1780000000000
+      }
+    }
+  },
+  "messages": {},
+  "timeseries": {},
+  "files": {}
+}
