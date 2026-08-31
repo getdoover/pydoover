@@ -418,11 +418,27 @@ class PlatformInterface(GRPCInterface):
                             break
 
                         log.debug(f"Received response from pulseCounter for di={di}")
-                        if (
-                            hasattr(response, "dt_secs")
-                            and response.dt_secs is not None
-                            and response.dt_secs > 0
-                        ):
+                        # HasField, not truthiness. The stream opens with a
+                        # handshake message carrying only `di` and no `dt_secs`,
+                        # which is what this guard is here to skip -- but a
+                        # genuine pulse can report dt_secs=0 too, and dropping
+                        # those loses real edges.
+                        #
+                        # The firmware measures dt as the gap since the previous
+                        # edge on that channel, so it has nothing to measure on
+                        # the FIRST edge (or after a dropped transition) and
+                        # sends 0.0 (see doovit_fw dio.py: "None on the first
+                        # edge(s) / after a dropped transition"). A `> 0` test
+                        # therefore swallows the first pulse of a burst. On an
+                        # app where the pulse COUNT is the payload -- a vending
+                        # terminal pulsing a product number, say -- that is not
+                        # a lost tick, it is the wrong product sold.
+                        #
+                        # `dt_secs` has explicit presence in the proto, so the
+                        # handshake (field unset) and a real zero (field set to
+                        # 0.0) are distinguishable. Same reasoning as
+                        # fetch_di_readings' pulse_count.
+                        if response.HasField("dt_secs"):
                             ## Increment the counter
                             counter += 1
                             ## Call the callback function with the response
