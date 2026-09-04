@@ -12,9 +12,16 @@ class WireFormat(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     WIRE_FORMAT_BOTH: _ClassVar[WireFormat]
     WIRE_FORMAT_JSON_ONLY: _ClassVar[WireFormat]
     WIRE_FORMAT_STRUCT_ONLY: _ClassVar[WireFormat]
+
+class CachePolicy(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    CACHE_POLICY_DEFAULT: _ClassVar[CachePolicy]
+    CACHE_POLICY_HOLD_OFFLINE: _ClassVar[CachePolicy]
 WIRE_FORMAT_BOTH: WireFormat
 WIRE_FORMAT_JSON_ONLY: WireFormat
 WIRE_FORMAT_STRUCT_ONLY: WireFormat
+CACHE_POLICY_DEFAULT: CachePolicy
+CACHE_POLICY_HOLD_OFFLINE: CachePolicy
 
 class RequestHeader(_message.Message):
     __slots__ = ("app_id",)
@@ -491,14 +498,16 @@ class ChannelEventSubscriptionResponse(_message.Message):
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., event_name: _Optional[str] = ..., channel_name: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., data_json: _Optional[str] = ...) -> None: ...
 
 class GetAggregateRequest(_message.Message):
-    __slots__ = ("header", "channel_name", "agent_id")
+    __slots__ = ("header", "channel_name", "agent_id", "cache_policy")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CHANNEL_NAME_FIELD_NUMBER: _ClassVar[int]
     AGENT_ID_FIELD_NUMBER: _ClassVar[int]
+    CACHE_POLICY_FIELD_NUMBER: _ClassVar[int]
     header: RequestHeader
     channel_name: str
     agent_id: int
-    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., agent_id: _Optional[int] = ...) -> None: ...
+    cache_policy: CachePolicy
+    def __init__(self, header: _Optional[_Union[RequestHeader, _Mapping]] = ..., channel_name: _Optional[str] = ..., agent_id: _Optional[int] = ..., cache_policy: _Optional[_Union[CachePolicy, str]] = ...) -> None: ...
 
 class GetAggregateResponse(_message.Message):
     __slots__ = ("response_header", "aggregate")
