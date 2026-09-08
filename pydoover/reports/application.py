@@ -27,6 +27,7 @@ from ..models import (
 )
 from ..processor.application import Application as ApplicationBase
 from ..processor._logging import preserve_handler
+from .config import ReportConfig
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +36,8 @@ MAX_FILE_SIZE = 4.5e7
 
 
 class Application(ApplicationBase):
+    config_cls: type[ReportConfig] = ReportConfig
+
     def __init__(self):
         super().__init__()
 

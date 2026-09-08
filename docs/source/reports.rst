@@ -8,3 +8,9 @@ Reports
 
 .. autoclass:: pydoover.reports.base.ReportGenerator
    :members:
+
+.. autoclass:: pydoover.reports.ReportConfig
+   :members:
+
+.. autoclass:: pydoover.reports.EmailConfig
+   :members:
