@@ -221,6 +221,7 @@ class NotificationSubscription:
         topic_filter: list[str],
         endpoints: list[NotificationSubscriptionEndpoint],
         topic_filter_mode: NotificationTopicFilterMode = NotificationTopicFilterMode.exact,
+        topic_filter_exclude: list[str] | None = None,
     ):
         self.id = id
         self.subscriber = subscriber
@@ -228,6 +229,9 @@ class NotificationSubscription:
         self.severity = severity
         self.topic_filter = topic_filter
         self.topic_filter_mode = topic_filter_mode
+        # Always regex, in either mode, and applied after ``topic_filter``:
+        # an entry here suppresses delivery even when the filter matches.
+        self.topic_filter_exclude = topic_filter_exclude or []
         self.endpoints = endpoints
 
     @classmethod
@@ -242,6 +246,8 @@ class NotificationSubscription:
             topic_filter_mode=NotificationTopicFilterMode(
                 data.get("topic_filter_mode", "exact")
             ),
+            # Defaulted: rows written before exclusions existed omit it.
+            topic_filter_exclude=data.get("topic_filter_exclude") or [],
             endpoints=[
                 NotificationSubscriptionEndpoint.from_dict(e)
                 for e in data.get("endpoints", [])
@@ -256,6 +262,7 @@ class NotificationSubscription:
             "severity": self.severity.value,
             "topic_filter": self.topic_filter,
             "topic_filter_mode": self.topic_filter_mode.value,
+            "topic_filter_exclude": self.topic_filter_exclude,
             "endpoints": [e.to_dict() for e in self.endpoints],
         }
 
