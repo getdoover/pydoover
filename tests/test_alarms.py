@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import datetime
+
 import pytest
 
 from pydoover.api import AsyncDataClient, DataClient
@@ -9,6 +11,8 @@ from pydoover.models.data import (
     AlarmState,
     AlarmStateMessage,
     AlarmTriggerEvent,
+    Condition,
+    ConditionType,
     NotificationPolicy,
 )
 
@@ -114,6 +118,110 @@ def test_alarm_round_trips_through_dict():
     assert again.messages.ok.notify is False
 
 
+# ── Conditions ─────────────────────────────────────────────────────────────
+
+MULTI_CONDITION_ALARM = {
+    "id": "4001",
+    "name": "Overheating under load",
+    "description": "",
+    "enabled": True,
+    "state": "OK",
+    "entered_state_ts": 1777511327615,
+    "expiry_mins": 5.0,
+    "condition_summary": (
+        "sensors.temperature is above 30 and power_kw is above 5 "
+        "and only between 05:00 and 21:00 UTC"
+    ),
+    "conditions": [
+        {
+            "id": "c1",
+            "type": "threshold",
+            "key": "sensors.temperature",
+            "operator": "gt",
+            "value": 30,
+        },
+        {
+            "id": "c2",
+            "type": "threshold",
+            "key": "power_kw",
+            "operator": "gt",
+            "value": 5,
+        },
+        {"id": "c3", "type": "time_of_day", "from_ms": 18000000, "to_ms": 75600000},
+    ],
+    "condition_state": {"c1": {"last_seen_ts": 1777511327999}},
+}
+
+
+def test_condition_constructors_build_the_wire_form():
+    assert Condition.threshold("t", "gt", 30).to_dict() == {
+        "type": "threshold",
+        "operator": "gt",
+        "key": "t",
+        "value": 30,
+    }
+    assert Condition.rate("l", "lt", -0.5, 300_000).to_dict() == {
+        "type": "rate",
+        "operator": "lt",
+        "key": "l",
+        "rate_threshold": -0.5,
+        "rate_window_ms": 300_000,
+    }
+    assert Condition.compare("a", "gt", "b", 15).to_dict() == {
+        "type": "compare",
+        "operator": "gt",
+        "key": "a",
+        "other_key": "b",
+        "offset": 15,
+    }
+    assert Condition.time_between(
+        datetime.time(5, 0), datetime.time(21, 0)
+    ).to_dict() == {"type": "time_of_day", "from_ms": 18000000, "to_ms": 75600000}
+
+
+def test_time_between_rejects_a_tz_aware_time():
+    # Without a date there is no way to know which side of a DST boundary it
+    # falls on, so converting would be wrong for half the year.
+    with pytest.raises(ValueError, match="UTC"):
+        Condition.time_between(
+            datetime.time(5, 0, tzinfo=datetime.timezone.utc), datetime.time(21, 0)
+        )
+
+
+def test_alarm_parses_a_condition_set():
+    alarm = Alarm.from_dict(MULTI_CONDITION_ALARM)
+
+    assert [c.id for c in alarm.conditions] == ["c1", "c2", "c3"]
+    assert alarm.conditions[2].type is ConditionType.time_of_day
+    assert alarm.is_multi_condition is True
+    assert alarm.has_time_window is True
+    assert alarm.condition_state["c1"].last_seen_ts == 1777511327999
+    assert "power_kw is above 5" in alarm.condition_summary
+
+
+def test_single_condition_fields_come_off_the_primary_condition():
+    # The server derives these rather than storing them, and may stop sending
+    # them once this ships — so they must not be subscripted.
+    alarm = Alarm.from_dict(MULTI_CONDITION_ALARM)
+
+    assert alarm.key == "sensors.temperature"
+    assert alarm.operator.value == "gt"
+    assert alarm.value == 30
+    assert alarm.primary_condition.id == "c1"
+
+
+def test_a_legacy_payload_synthesises_one_condition():
+    threshold = Alarm.from_dict(LEGACY_ALARM)
+    assert len(threshold.conditions) == 1
+    assert threshold.conditions[0].type is ConditionType.threshold
+    assert threshold.conditions[0].key == "temperature"
+    assert threshold.is_multi_condition is False
+
+    rate = Alarm.from_dict(RATE_ALARM)
+    assert rate.conditions[0].type is ConditionType.rate
+    assert rate.conditions[0].rate_window_ms == 300000
+
+
 def test_alarm_pending_is_a_known_state():
     assert AlarmState("AlarmPending") is AlarmState.AlarmPending
 
@@ -171,6 +279,86 @@ def _recording_client():
 
     client._request = fake_request
     return client, calls
+
+
+def test_create_alarm_sends_a_condition_set():
+    client, calls = _recording_client()
+    try:
+        client.create_alarm(
+            1,
+            "tag_values",
+            name="Overheating under load",
+            conditions=[
+                Condition.threshold("sensors.temperature", "gt", 30),
+                Condition.time_between(datetime.time(5, 0), datetime.time(21, 0)),
+            ],
+        )
+    finally:
+        client.close()
+
+    _, _, kwargs = calls[0]
+    assert kwargs["data"]["conditions"] == [
+        {
+            "type": "threshold",
+            "operator": "gt",
+            "key": "sensors.temperature",
+            "value": 30,
+        },
+        {"type": "time_of_day", "from_ms": 18000000, "to_ms": 75600000},
+    ]
+    # The single-condition fields are left off entirely.
+    assert "key" not in kwargs["data"]
+
+
+def test_update_alarm_replaces_the_condition_set_preserving_ids():
+    client, calls = _recording_client()
+    try:
+        client.update_alarm(
+            1,
+            "tag_values",
+            3092,
+            conditions=[Condition.threshold("sensors.temperature", "gt", 35, id="c1")],
+        )
+    finally:
+        client.close()
+
+    method, _, kwargs = calls[0]
+    assert method == "PATCH"
+    assert kwargs["data"]["conditions"] == [
+        {
+            "id": "c1",
+            "type": "threshold",
+            "operator": "gt",
+            "key": "sensors.temperature",
+            "value": 35,
+        }
+    ]
+
+
+def test_mixing_conditions_with_the_single_condition_fields_is_rejected():
+    client, _ = _recording_client()
+    try:
+        with pytest.raises(ValueError, match="not both"):
+            client.create_alarm(
+                1,
+                "tag_values",
+                name="Confused",
+                key="sensors.temperature",
+                operator="gt",
+                value=30,
+                conditions=[Condition.threshold("power_kw", "gt", 5)],
+            )
+    finally:
+        client.close()
+
+
+def test_an_alarm_needs_conditions_or_a_key():
+    client, _ = _recording_client()
+    try:
+        with pytest.raises(ValueError, match="needs `conditions`"):
+            client.create_alarm(1, "tag_values", name="Empty")
+    finally:
+        client.close()
 
 
 def test_create_alarm_sends_threshold_payload():
