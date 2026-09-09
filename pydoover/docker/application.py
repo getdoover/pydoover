@@ -37,9 +37,12 @@ from ..models import (
     MessageCreateEvent,
     MessageUpdateEvent,
     Notification,
+    NotificationPolicy,
     NotificationSeverity,
+    NotificationTopic,
     OneShotMessage,
 )
+from ..notifications import Notifications
 from ..rpc import RPCManager
 from ..ui import UI
 from ..utils import (
@@ -112,6 +115,7 @@ class Application:
     config_cls: type[Schema] = Schema
     ui_cls: type[UI] = UI
     tags_cls: type[Tags] = Tags
+    notifications_cls: type[Notifications] = Notifications
 
     def __init__(
         self,
@@ -163,6 +167,7 @@ class Application:
 
         self.tags = self.tags_cls(self.app_key, self.tag_manager, self.config)
         self.ui = self.ui_cls(self.config, self.tags, self.app_key)
+        self.notifications = self.notifications_cls(self.app_key, self)
 
         if name is None:
             self.name = self.__class__.__name__
@@ -767,7 +772,9 @@ class Application:
         *,
         title: str | None = None,
         severity: NotificationSeverity | int | None = None,
-        topic: str | None = None,
+        topic: str | NotificationTopic | None = None,
+        event: str | None = None,
+        notification_policy: NotificationPolicy | str = NotificationPolicy.default,
     ) -> int:
         """Send a notification via the ``notifications`` channel.
 
@@ -780,24 +787,51 @@ class Application:
         message : str | Notification
             Either the notification body, or a fully-constructed
             :class:`~pydoover.models.Notification` (in which case ``title``,
-            ``severity`` and ``topic`` are ignored).
+            ``severity``, ``topic`` and ``event`` are ignored).
         title : str, optional
             Optional title / headline for the notification.
         severity : NotificationSeverity | int, optional
             Severity level. Subscribers only receive notifications at or
             above their subscription severity.
-        topic : str, optional
-            Optional topic used to match subscription ``topic_filter``
-            entries.
+        topic : str | NotificationTopic, optional
+            Optional raw or canonical topic used to match subscription
+            ``topic_filter`` entries. Cannot be combined with ``event``.
+        event : str, optional
+            A stable event name, turned into the canonical topic
+            ``dev/applications/<policy>/<app_key>/<event>``. Prefer declaring
+            notifications on a :class:`~pydoover.notifications.Notifications`
+            subclass, which also publishes a schema the Doover site can offer
+            per-notification opt-outs from; this is the escape hatch for an
+            event that cannot be declared up front.
+        notification_policy : NotificationPolicy | str, optional
+            Whether broad default subscriptions include this event. Only
+            meaningful alongside ``event``.
 
         Returns
         -------
         int
             The ID of the created channel message.
         """
+        if topic is not None and event is not None:
+            raise ValueError(
+                "topic and event are mutually exclusive -- event builds the "
+                "canonical topic for you."
+            )
         if isinstance(message, Notification):
             notification = message
         else:
+            if event is not None:
+                if not self.app_key:
+                    raise RuntimeError(
+                        "Application key has not been set, so a notification "
+                        "event topic cannot be built. This is set from the "
+                        "APP_KEY environment variable by the device runtime, "
+                        "so it is normally only missing in local development "
+                        "or tests."
+                    )
+                topic = NotificationTopic.application(
+                    self.app_key, event, notification_policy
+                )
             notification = Notification(
                 message=message, title=title, severity=severity, topic=topic
             )
@@ -1191,6 +1225,9 @@ class Application:
                 self.tags.platform_iface = self.platform_iface
             if self.ui is not None:
                 self.ui.platform_iface = self.platform_iface
+
+        if self.notifications is not None:
+            await self.notifications.setup()
 
         if self.tags is not None:
             await self.tags.setup()

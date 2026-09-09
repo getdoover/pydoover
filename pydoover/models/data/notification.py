@@ -1,5 +1,59 @@
+import re
 from enum import Enum, IntEnum
 from typing import Any
+
+from .alarm import NotificationPolicy
+
+#: Segments of a canonical topic. Matches what the server and the frontend
+#: both anchor on (``[^/]+``), narrowed to the spellings an app key or event
+#: name can actually take -- app keys are ``<application name>_<n>`` and
+#: application names are validated ``^[0-9a-z_]*$`` server-side.
+_TOPIC_SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+
+
+def _validate_topic_segment(name: str, value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(
+            f"notification topic {name} must be a str, "
+            f"got {type(value).__name__}: {value!r}"
+        )
+    if not _TOPIC_SEGMENT_RE.fullmatch(value):
+        raise ValueError(
+            f"notification topic {name} must match "
+            f"{_TOPIC_SEGMENT_RE.pattern!r}, got {value!r}"
+        )
+    return value
+
+
+class NotificationTopic(str):
+    """A validated, canonical notification topic.
+
+    A ``str`` subclass, so it can be passed anywhere a raw topic can.
+
+    Alarm topics are built server-side from the alarm's ``topic_name`` and
+    ``notification_policy``. Application topics are not -- anything an app
+    sends that does not already start with ``dev/`` is filed under
+    ``legacy/default/<topic>``, so an application that wants to appear in the
+    structured hierarchy has to send the full topic itself. That is what this
+    builds.
+    """
+
+    @classmethod
+    def application(
+        cls,
+        app_key: str,
+        event: str,
+        policy: NotificationPolicy | str = NotificationPolicy.default,
+    ) -> "NotificationTopic":
+        """Build ``dev/applications/<policy>/<app_key>/<event>``.
+
+        ``app_key`` is the *app install* name (``pump_controller_1``), which
+        is what makes the topic unique per device per install.
+        """
+        app_key = _validate_topic_segment("app_key", app_key)
+        event = _validate_topic_segment("event", event)
+        policy = NotificationPolicy(policy)
+        return cls(f"dev/applications/{policy.value}/{app_key}/{event}")
 
 
 class _NameWireEnum(IntEnum):
@@ -351,5 +405,5 @@ class Notification:
             # (unlike NotificationType), so the historical int is kept.
             result["severity"] = self.severity.value
         if self.topic is not None:
-            result["topic"] = self.topic
+            result["topic"] = str(self.topic)
         return result
