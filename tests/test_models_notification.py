@@ -160,6 +160,40 @@ class TestParsingResponses:
         assert sub.severity is NotificationSeverity.Info
         assert isinstance(sub.endpoints[0], NotificationSubscriptionEndpoint)
 
+    def test_subscription_without_excludes_defaults_to_empty(self):
+        """Rows written before exclusions existed omit the field entirely."""
+        sub = NotificationSubscription.from_dict(
+            {
+                "id": "1",
+                "subscriber": "2",
+                "subscribed_to": "3",
+                "severity": "Info",
+                "topic_filter": ["*"],
+                "endpoints": [],
+            }
+        )
+
+        assert sub.topic_filter_exclude == []
+        assert sub.to_dict()["topic_filter_exclude"] == []
+
+    def test_subscription_round_trips_excludes(self):
+        payload = {
+            "id": "1",
+            "subscriber": "2",
+            "subscribed_to": "3",
+            "severity": "Info",
+            "topic_filter": ["^dev/applications/default/[^/]+/[^/]+$"],
+            "topic_filter_mode": "regex",
+            "topic_filter_exclude": ["^dev/applications/default/pump/low-battery$"],
+            "endpoints": [],
+        }
+        sub = NotificationSubscription.from_dict(payload)
+
+        assert sub.topic_filter_exclude == [
+            "^dev/applications/default/pump/low-battery$"
+        ]
+        assert sub.to_dict()["topic_filter_exclude"] == payload["topic_filter_exclude"]
+
     def test_endpoint_response_uses_type_name(self):
         payload = {
             "id": "1",

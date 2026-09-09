@@ -1259,6 +1259,7 @@ class DataClient(BaseClient):
         endpoint_id: int | None = None,
         organisation_id: int | None = None,
         topic_filter_mode: NotificationTopicFilterMode | str | None = None,
+        topic_filter_exclude: list[str] | None = None,
     ) -> list[dict[str, int]]:
         """Returns a list of created subscriptions, each with ``id`` and ``endpoint_id``.
 
@@ -1266,6 +1267,12 @@ class DataClient(BaseClient):
         ``topic_filter_mode="regex"`` to have each entry matched as a regular
         expression against the whole canonical topic. Entries are ORed either
         way.
+
+        ``topic_filter_exclude`` entries are always regular expressions, in
+        either mode, and suppress delivery even when ``topic_filter`` matches.
+        Use them to mute one topic without narrowing a broad filter, so topics
+        added later still arrive. This route replaces the whole subscription,
+        so omitting them clears any already stored.
         """
         payload: dict[str, Any] = {
             "subscribe_to": str(subscribe_to),
@@ -1276,6 +1283,8 @@ class DataClient(BaseClient):
             payload["topic_filter_mode"] = NotificationTopicFilterMode(
                 topic_filter_mode
             ).value
+        if topic_filter_exclude is not None:
+            payload["topic_filter_exclude"] = topic_filter_exclude
         if endpoint_id is not None:
             payload["endpoint_id"] = str(endpoint_id)
         data = self._request(
@@ -1297,7 +1306,14 @@ class DataClient(BaseClient):
         topic_filter: list[str] | None = None,
         organisation_id: int | None = None,
         topic_filter_mode: NotificationTopicFilterMode | str | None = None,
+        topic_filter_exclude: list[str] | None = None,
     ):
+        """Partially update a subscription.
+
+        ``topic_filter_exclude`` entries are always regular expressions and
+        suppress delivery even when ``topic_filter`` matches. Omit it to leave
+        the stored exclusions alone; pass an empty list to clear them.
+        """
         payload: dict[str, Any] = {}
         if severity is not None:
             payload["severity"] = NotificationSeverity(severity).value
@@ -1307,6 +1323,8 @@ class DataClient(BaseClient):
             payload["topic_filter_mode"] = NotificationTopicFilterMode(
                 topic_filter_mode
             ).value
+        if topic_filter_exclude is not None:
+            payload["topic_filter_exclude"] = topic_filter_exclude
         self._request(
             "PATCH",
             f"/agents/{agent_id}/notifications/subscriptions/{subscription_id}",
