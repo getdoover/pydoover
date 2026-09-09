@@ -58,6 +58,7 @@ from .notification import (
     NotificationSeverity,
     NotificationSubscription,
     NotificationSubscriptionEndpoint,
+    NotificationTopic,
     NotificationTopicFilterMode,
     NotificationType,
 )
@@ -127,6 +128,7 @@ __all__ = [
     "NotificationSeverity",
     "NotificationSubscription",
     "NotificationSubscriptionEndpoint",
+    "NotificationTopic",
     "NotificationTopicFilterMode",
     "NotificationType",
     "AgentPermission",
