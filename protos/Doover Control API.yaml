@@ -22832,6 +22832,7 @@ components:
         config_schema: {}
         ui_schema: {}
         tag_schema: {}
+        notification_schema: {}
         depends_on:
           type: array
           items:
@@ -22964,6 +22965,7 @@ components:
         config_schema: {}
         ui_schema: {}
         tag_schema: {}
+        notification_schema: {}
         depends_on:
           type: array
           items:
@@ -23088,6 +23090,7 @@ components:
         config_schema: {}
         ui_schema: {}
         tag_schema: {}
+        notification_schema: {}
         depends_on:
           type: array
           items:
@@ -27612,6 +27615,7 @@ components:
         config_schema: {}
         ui_schema: {}
         tag_schema: {}
+        notification_schema: {}
         depends_on:
           type: array
           items:
