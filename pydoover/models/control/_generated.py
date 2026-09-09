@@ -1006,6 +1006,7 @@ class Application(ControlModel):
     config_schema: Any
     ui_schema: Any
     tag_schema: Any
+    notification_schema: Any
     depends_on: list[str]
     organisation: Organisation | None
     approx_installs: int
@@ -1034,6 +1035,7 @@ class Application(ControlModel):
         config_schema: Any | None = None,
         ui_schema: Any | None = None,
         tag_schema: Any | None = None,
+        notification_schema: Any | None = None,
         depends_on: list[str] | None = None,
         organisation: Organisation | dict[str, Any] | str | int | None = None,
         approx_installs: int | None = None,
@@ -1061,6 +1063,7 @@ class Application(ControlModel):
             config_schema=config_schema,
             ui_schema=ui_schema,
             tag_schema=tag_schema,
+            notification_schema=notification_schema,
             depends_on=depends_on,
             organisation=organisation,
             approx_installs=approx_installs,
@@ -1088,6 +1091,7 @@ class Application(ControlModel):
         "config_schema": ControlField(type="json", nullable=False),
         "ui_schema": ControlField(type="json", nullable=False),
         "tag_schema": ControlField(type="json", nullable=False),
+        "notification_schema": ControlField(type="json", nullable=False),
         "depends_on": ControlField(type="string", nullable=False, is_array=True),
         "organisation": ControlField(type="resource", nullable=True, ref="Organisation"),
         "approx_installs": ControlField(type="integer", nullable=False),
@@ -1117,6 +1121,7 @@ class Application(ControlModel):
                 "config_schema": {},
                 "ui_schema": {},
                 "tag_schema": {},
+                "notification_schema": {},
                 "depends_on": {'required': True},
                 "organisation": {'required': True, 'version': 'BasicOrganisationDetail'},
                 "approx_installs": {'required': True},
@@ -1145,6 +1150,7 @@ class Application(ControlModel):
                 "config_schema": {},
                 "ui_schema": {},
                 "tag_schema": {},
+                "notification_schema": {},
                 "depends_on": {'required': True},
                 "organisation": {'required': True, 'output_id': 'organisation_id'},
                 "stars": {},
@@ -1172,6 +1178,7 @@ class Application(ControlModel):
                 "config_schema": {},
                 "ui_schema": {},
                 "tag_schema": {},
+                "notification_schema": {},
                 "depends_on": {'required': True},
                 "organisation": {'required': True, 'version': 'BasicOrganisationList'},
                 "approx_installs": {'required': True},
@@ -1200,6 +1207,7 @@ class Application(ControlModel):
                 "config_schema": {},
                 "ui_schema": {},
                 "tag_schema": {},
+                "notification_schema": {},
                 "depends_on": {},
                 "organisation": {'output_id': 'organisation_id'},
                 "stars": {},
@@ -6863,6 +6871,7 @@ __all__ = [
     "ApplicationInstallationSolution",
     "ApplicationOrganisationAccess",
     "ApplicationTemplate",
+    "ApplicationWidgetUploadRequest",
     "Attachment",
     "BillingAccount",
     "BillingProduct",
