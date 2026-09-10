@@ -480,7 +480,7 @@ class Application:
         except Exception as e:
             log.error(f"Error attempting to close processor: {e} ", exc_info=e)
 
-        return result, None
+        return result
 
     async def _publish_invocation_summary(
         self,
