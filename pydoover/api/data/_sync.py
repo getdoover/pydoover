@@ -13,50 +13,37 @@ from __future__ import annotations
 import json
 import logging
 import time
+from datetime import datetime
 from typing import Any
 
 import httpx
 
-from datetime import datetime
-
-from .._json import dumps as _json_dumps, loads as _json_loads
-from .._compress import MIN_COMPRESS_SIZE, compress_body
-from ._base import (
-    UNSET,
-    _build_alarm_payload,
-    _build_batch_payload,
-    _build_user_agent,
-    BaseClient,
-    _consume_auth_kwargs,
-    _raise_for_status,
-    _serialise_alarm_messages,
-    _to_snowflake,
-    Unset,
-    build_sync_auth,
-)
-
-from ._iterators import MessageIterator, MultiAgentMessageIterator
 from ...models.data import (
-    Aggregate,
     AgentNotificationResponse,
+    Aggregate,
     Alarm,
+    Attachment,
     BatchAggregateResponse,
     BatchMessageResponse,
     BatchMutationItem,
     BatchMutationResponse,
     Channel,
+    ConfirmedDeviceToken,
     File,
     Message,
     MessageLogEntry,
     ProcessorTokenResponse,
+    RotatedDeviceToken,
     SubscriptionInfo,
     TimeseriesResponse,
-    ConfirmedDeviceToken,
-    RotatedDeviceToken,
     TurnCredential,
-    Attachment,
 )
-from ...models.data.alarm import AlarmMessages, AlarmOperator, NotificationPolicy
+from ...models.data.alarm import (
+    AlarmMessages,
+    AlarmOperator,
+    Condition,
+    NotificationPolicy,
+)
 from ...models.data.notification import (
     Notification,
     NotificationEndpoint,
@@ -72,6 +59,25 @@ from ...models.data.wss_connection import (
     ConnectionSubscription,
     ConnectionSubscriptionLog,
 )
+from .._compress import MIN_COMPRESS_SIZE, compress_body
+from .._json import dumps as _json_dumps
+from .._json import loads as _json_loads
+from ._base import (
+    UNSET,
+    BaseClient,
+    Unset,
+    _build_alarm_payload,
+    _build_batch_payload,
+    _build_user_agent,
+    _check_condition_shape,
+    _consume_auth_kwargs,
+    _raise_for_status,
+    _serialise_alarm_messages,
+    _serialise_conditions,
+    _to_snowflake,
+    build_sync_auth,
+)
+from ._iterators import MessageIterator, MultiAgentMessageIterator
 
 log = logging.getLogger(__name__)
 
@@ -809,14 +815,15 @@ class DataClient(BaseClient):
         agent_id: int,
         channel_name: str,
         name: str,
-        key: str,
-        operator: AlarmOperator | str,
+        key: str | None = None,
+        operator: AlarmOperator | str | None = None,
         value: Any = UNSET,
         description: str = "",
         enabled: bool = True,
         expiry_mins: float | None = None,
         organisation_id: int | None = None,
         *,
+        conditions: list[Condition] | None = None,
         topic_name: str | None = None,
         notification_policy: NotificationPolicy | str | None = None,
         alarm_pending_ms: int | None = None,
@@ -824,12 +831,23 @@ class DataClient(BaseClient):
         rate_window_ms: int | None = None,
         messages: AlarmMessages | None = None,
     ) -> Alarm:
-        """Create a threshold or rate-of-change alarm.
+        """Create an alarm.
 
-        The two condition styles are mutually exclusive: a threshold alarm
-        needs ``value`` and no rate fields; a rate alarm needs both
-        ``rate_threshold`` (units per *second*) and ``rate_window_ms``, must
-        leave ``value`` unset, and cannot use the ``eq`` operator.
+        Pass ``conditions``, a list of :class:`~pydoover.models.Condition` all
+        of which must hold for the alarm to fire::
+
+            client.create_alarm(
+                agent_id, "tag_values", "Overheating under load",
+                conditions=[
+                    Condition.threshold("sensors.temperature", "gt", 30),
+                    Condition.threshold("power_kw", "gt", 5),
+                    Condition.time_between(time(5, 0), time(21, 0)),
+                ],
+            )
+
+        For a single condition the older ``key``/``operator``/``value`` form is
+        equivalent; the two are mutually exclusive. At least one condition must
+        be on a reading.
         """
         payload = _build_alarm_payload(
             name=name,
@@ -845,6 +863,7 @@ class DataClient(BaseClient):
             rate_threshold=rate_threshold,
             rate_window_ms=rate_window_ms,
             messages=messages,
+            conditions=conditions,
         )
         data = self._request(
             "POST",
@@ -860,14 +879,15 @@ class DataClient(BaseClient):
         channel_name: str,
         alarm_id: int,
         name: str,
-        key: str,
-        operator: AlarmOperator | str,
+        key: str | None = None,
+        operator: AlarmOperator | str | None = None,
         value: Any = UNSET,
         description: str = "",
         enabled: bool = True,
         expiry_mins: float | None = None,
         organisation_id: int | None = None,
         *,
+        conditions: list[Condition] | None = None,
         topic_name: str | None = None,
         notification_policy: NotificationPolicy | str | None = None,
         alarm_pending_ms: int | None = None,
@@ -890,6 +910,7 @@ class DataClient(BaseClient):
             rate_threshold=rate_threshold,
             rate_window_ms=rate_window_ms,
             messages=messages,
+            conditions=conditions,
         )
         data = self._request(
             "PUT",
@@ -919,6 +940,7 @@ class DataClient(BaseClient):
         rate_threshold: float | None | Unset = UNSET,
         rate_window_ms: int | None | Unset = UNSET,
         messages: AlarmMessages | None | Unset = UNSET,
+        conditions: list[Condition] | None = None,
     ) -> Alarm:
         """Partially update an alarm.
 
@@ -927,11 +949,26 @@ class DataClient(BaseClient):
         ``value=None`` together with both rate fields, and back again by
         passing both rate fields as ``None`` together with a ``value``.
 
+        ``conditions`` replaces the whole set rather than merging. Send each
+        condition's ``id`` back so the server can tell an edit from a
+        replacement — that is what preserves a rate condition's baseline when a
+        sibling changes. A condition without an ``id`` is treated as new.
+
         ``messages`` merges state by state and field by field: a state left
         out keeps its stored override. Pass ``messages=None`` to clear every
         override.
         """
+        _check_condition_shape(
+            conditions,
+            key=key,
+            operator=operator,
+            value=value,
+            rate_threshold=rate_threshold,
+            rate_window_ms=rate_window_ms,
+        )
         payload: dict[str, Any] = {}
+        if conditions is not None:
+            payload["conditions"] = _serialise_conditions(conditions)
         if name is not None:
             payload["name"] = name
         if topic_name is not None:

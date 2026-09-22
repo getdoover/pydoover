@@ -7,6 +7,23 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 
+from ... import __version__
+from ...models.data import MAX_BATCH_MUTATIONS, BatchMutationItem, File
+from ...models.data.alarm import (
+    AlarmMessages,
+    AlarmOperator,
+    Condition,
+    NotificationPolicy,
+)
+from ...models.data.exceptions import (
+    BadRequestError,
+    ForbiddenError,
+    HTTPError,
+    NotFoundError,
+    UnauthorizedError,
+)
+from ...utils.snowflake import generate_snowflake_id_at
+from .._compress import SUPPORTED_ENCODINGS
 from ..auth import (
     AsyncDataServiceAuthClient,
     AsyncDoover2AuthClient,
@@ -19,18 +36,6 @@ from ..auth._base import (
     AsyncAuthClient,
     SyncAuthClient,
     _normalise_datetime,
-)
-from .._compress import SUPPORTED_ENCODINGS
-from ... import __version__
-from ...models.data import File, MAX_BATCH_MUTATIONS, BatchMutationItem
-from ...models.data.alarm import AlarmMessages, AlarmOperator, NotificationPolicy
-from ...utils.snowflake import generate_snowflake_id_at
-from ...models.data.exceptions import (
-    BadRequestError,
-    ForbiddenError,
-    HTTPError,
-    NotFoundError,
-    UnauthorizedError,
 )
 
 log = logging.getLogger(__name__)
@@ -96,11 +101,54 @@ def _serialise_alarm_messages(
     return messages
 
 
+def _serialise_conditions(
+    conditions: "list[Condition] | None",
+) -> list[dict[str, Any]] | None:
+    if conditions is None:
+        return None
+    return [c.to_dict() if isinstance(c, Condition) else c for c in conditions]
+
+
+def _check_condition_shape(
+    conditions: "list[Condition] | None",
+    *,
+    key: str | None,
+    operator: "AlarmOperator | str | None",
+    value: Any,
+    rate_threshold: Any,
+    rate_window_ms: Any,
+) -> None:
+    """The server enforces this too; checking here turns a round-trip 400 into
+    an immediate, more specific error."""
+    legacy = [
+        name
+        for name, given in (
+            ("key", key is not None),
+            ("operator", operator is not None),
+            ("value", not isinstance(value, Unset) and value is not None),
+            (
+                "rate_threshold",
+                not isinstance(rate_threshold, Unset) and rate_threshold is not None,
+            ),
+            (
+                "rate_window_ms",
+                not isinstance(rate_window_ms, Unset) and rate_window_ms is not None,
+            ),
+        )
+        if given
+    ]
+    if conditions is not None and legacy:
+        raise ValueError(
+            "pass either `conditions` or the single-condition fields "
+            f"({', '.join(legacy)}), not both"
+        )
+
+
 def _build_alarm_payload(
     *,
     name: str,
-    key: str,
-    operator: "AlarmOperator | str",
+    key: str | None,
+    operator: "AlarmOperator | str | None",
     value: Any,
     description: str,
     enabled: bool,
@@ -111,19 +159,37 @@ def _build_alarm_payload(
     rate_threshold: float | None,
     rate_window_ms: int | None,
     messages: "AlarmMessages | None",
+    conditions: "list[Condition] | None" = None,
 ) -> dict[str, Any]:
     """Build the body shared by alarm create (POST) and replace (PUT).
 
-    ``value`` is only sent when given, so a rate alarm — which must leave it
-    unset — is expressible without a separate code path.
+    Either ``conditions`` or the single-condition ``key``/``operator``/``value``
+    fields, never both. ``value`` is only sent when given, so a rate alarm —
+    which must leave it unset — needs no separate code path.
     """
+    _check_condition_shape(
+        conditions,
+        key=key,
+        operator=operator,
+        value=value,
+        rate_threshold=rate_threshold,
+        rate_window_ms=rate_window_ms,
+    )
     payload: dict[str, Any] = {
         "name": name,
-        "key": key,
-        "operator": AlarmOperator(operator).value,
         "description": description,
         "enabled": enabled,
     }
+    if conditions is not None:
+        payload["conditions"] = _serialise_conditions(conditions)
+    else:
+        if key is None or operator is None:
+            raise ValueError(
+                "an alarm needs `conditions`, or a `key` and `operator` for a "
+                "single-condition alarm"
+            )
+        payload["key"] = key
+        payload["operator"] = AlarmOperator(operator).value
     if not isinstance(value, Unset):
         payload["value"] = value
     if topic_name is not None:
