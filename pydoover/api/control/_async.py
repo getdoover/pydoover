@@ -124,6 +124,38 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
             response_kind="raw",
         )
 
+    async def upload_application_artwork(
+        self,
+        application_id: int | str,
+        *,
+        icon: Any = None,
+        banner: Any = None,
+        organisation_id: int | None = None,
+    ) -> Any:
+        """Upload an application's icon and/or banner.
+
+        Both are files now, not URLs: they are stored privately and served
+        through the control plane, which decides per request whether the caller
+        may see a private application's artwork. Accepts a path, raw bytes, or
+        a file-like value, and PNG/JPEG/WebP/SVG content. Passing neither does
+        nothing."""
+        body = {
+            key: value
+            for key, value in (("icon", icon), ("banner", banner))
+            if value is not None
+        }
+        if not body:
+            return None
+        return await self._execute(
+            "PATCH",
+            f"/applications/{application_id}/",
+            body=body,
+            body_mode="multipart",
+            binary_fields=["icon", "banner"],
+            organisation_id=organisation_id,
+            response_kind="raw",
+        )
+
     async def mint_registry_token(
         self, application_id: int | str, *, organisation_id: int | None = None
     ) -> Any:
