@@ -2,7 +2,12 @@ from datetime import datetime, timedelta
 
 from typing import Any, Literal
 
-from .declarative import _value_is_live, is_tag_reference, normalize_ui_value
+from .declarative import (
+    _value_is_live,
+    is_tag_reference,
+    normalize_collection,
+    normalize_ui_value,
+)
 from .element import Element
 from .misc import Range, Threshold, Widget, NotSet
 
@@ -22,10 +27,14 @@ class Variable(Element):
         The current value of the variable. If not set, defaults to NotSet.
     precision: int, optional
         The number of decimal places to round the current value to. Defaults to None.
-    ranges: list[Range]
+    ranges: list[Range] | Tag
         A list of ranges associated with the variable, used for display purposes.
-    thresholds: list[Threshold], optional
-        Thresholds drawn as horizontal lines on the variable's plot.
+        May instead be a reference to a tag holding that list, in which case the
+        site reads the ranges from ``tag_values`` at render time -- the way to
+        gauge a value against bounds that change while the app runs.
+    thresholds: list[Threshold] | Tag, optional
+        Thresholds drawn as horizontal lines on the variable's plot. Accepts a
+        tag reference on the same terms as *ranges*.
     default_range_view: str, optional
         The initial range view (``"line"``, ``"zone"`` or ``"off"``) for the
         plot's hamburger menu. If unset, the site falls back to ``"line"``
@@ -102,10 +111,10 @@ class Variable(Element):
             result["defaultZoom"] = self.default_zoom
 
         if self.ranges is not NotSet:
-            result["ranges"] = [r.to_dict() for r in self.ranges]
+            result["ranges"] = normalize_collection(self.ranges)
 
         if self.thresholds is not NotSet:
-            result["thresholds"] = [t.to_dict() for t in self.thresholds]
+            result["thresholds"] = normalize_collection(self.thresholds)
 
         if self.default_range_view is not NotSet:
             result["defaultRangeView"] = self.default_range_view
@@ -136,9 +145,10 @@ class NumericVariable(Variable):
         The current value of the variable. Defaults to None.
     precision: int, optional
         The number of decimal places to round the current value to. Defaults to None.
-    ranges: list[Range], optional
-        A list of ranges associated with the variable, used for display purposes. Defaults to None.
-    thresholds: list[Threshold], optional
+    ranges: list[Range] | Tag, optional
+        A list of ranges associated with the variable, used for display purposes,
+        or a reference to a tag holding one. Defaults to None.
+    thresholds: list[Threshold] | Tag, optional
         Thresholds drawn as horizontal lines on the variable's plot.
     default_range_view: str, optional
         Initial range view for the plot (``"line"``, ``"zone"`` or ``"off"``).

@@ -321,6 +321,23 @@ def _value_is_live(value: Any) -> bool:
     )
 
 
+def normalize_collection(value: Any) -> Any:
+    """Serialise a list of UI objects, or pass a tag reference straight through.
+
+    A field like a variable's ``ranges`` takes either a literal list -- of
+    ``Range`` / ``Threshold`` objects, each with its own ``to_dict`` -- or a
+    single reference to a tag holding the whole list, which the site resolves
+    at render time against ``tag_values``. That's the only way to bound a gauge
+    by a value a user types in, since the schema itself is published once at
+    app setup.
+
+    Only the list can be iterated, so tell the two apart before doing so.
+    """
+    if isinstance(value, (list, tuple)):
+        return [item.to_dict() for item in value]
+    return value
+
+
 def is_tag_reference(value: Any) -> bool:
     if isinstance(value, (UITagBinding, BoundTag, Tag)):
         return True
