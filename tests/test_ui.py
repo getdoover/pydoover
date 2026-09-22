@@ -24,6 +24,7 @@ class UITags(Tags):
     speed = Tag("number", default=0)
     enabled = Tag("boolean", default=False)
     mode = Tag("string", default="idle")
+    zones = Tag("array", default=[])
 
 
 class BaseUI(ui.UI):
@@ -122,6 +123,54 @@ class TestTagReferenceSerialization:
         assert voltage["conditions"]["armed"] == "$tag.app().enabled:boolean:false"
         assert voltage["ranges"][0]["label"] == '$tag.app().mode:string:"idle"'
         assert voltage["ranges"][0]["max"] == "$tag.app().voltage:number"
+
+    def test_whole_ranges_list_can_be_a_tag_reference(self):
+        """A gauge bounded by values the user types in reads its ranges from a
+        tag, since the schema holding them is only published at app setup."""
+
+        class RangeTagUI(ui.UI):
+            voltage = ui.NumericVariable(
+                "Voltage", name="voltage", value=UITags.voltage, ranges=UITags.zones
+            )
+
+        ui_obj = RangeTagUI(None, None, "test_app").bind_tags(make_tags())
+
+        assert ui_obj.voltage.to_dict()["ranges"] == "$tag.app().zones:array:[]"
+
+    def test_whole_thresholds_list_can_be_a_tag_reference(self):
+        class ThresholdTagUI(ui.UI):
+            voltage = ui.NumericVariable(
+                "Voltage",
+                name="voltage",
+                value=UITags.voltage,
+                thresholds=UITags.zones,
+            )
+
+        ui_obj = ThresholdTagUI(None, None, "test_app").bind_tags(make_tags())
+
+        assert ui_obj.voltage.to_dict()["thresholds"] == "$tag.app().zones:array:[]"
+
+    def test_series_ranges_can_be_a_tag_reference(self):
+        series = ui.Series("Voltage", value=UITags.voltage, ranges=UITags.zones)
+
+        assert series.to_dict()["ranges"] == "$tag.app().zones:array:[]"
+
+    def test_literal_ranges_still_serialize_as_a_list(self):
+        variable = ui.NumericVariable(
+            "Voltage",
+            name="voltage",
+            ranges=[ui.Range("Low", 0, 10, ui.Colour.blue)],
+        )
+
+        assert variable.to_dict()["ranges"] == [
+            {
+                "min": 0,
+                "max": 10,
+                "colour": "blue",
+                "show_on_graph": True,
+                "label": "Low",
+            }
+        ]
 
     def test_name_field_cannot_reference_a_tag(self):
         bad = ui.TextVariable("Bad", value="x", name="bad")

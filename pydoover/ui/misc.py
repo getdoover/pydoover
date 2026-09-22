@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Any, ClassVar
 
-from .declarative import _value_is_live, normalize_ui_value
+from .declarative import _value_is_live, normalize_collection, normalize_ui_value
 from ..utils.utils import sanitize_display_name
 
 
@@ -93,10 +93,12 @@ class Series:
         Labels for step-type series.
     range: tuple[int | float | str, int | float | str], optional
         A ``(min, max)`` tuple for the series range. Values may be numeric or ``"auto"``.
-    ranges: list[Range], optional
+    ranges: list[Range] | Tag, optional
         Ranges for the series, used as zones when the user picks the "zone" range view.
-    thresholds: list[Threshold], optional
+        May instead be a reference to a tag holding that list.
+    thresholds: list[Threshold] | Tag, optional
         Thresholds for the series, drawn as horizontal lines when the user picks the "line" range view.
+        Accepts a tag reference on the same terms as *ranges*.
     value: optional
         A bound tag reference (e.g. ``tag_ref("my_tag")``) that the series data is looked up from.
     """
@@ -154,9 +156,9 @@ class Series:
         if self.range is not None:
             result["range"] = {"min": self.range[0], "max": self.range[1]}
         if self.ranges is not None:
-            result["ranges"] = [r.to_dict() for r in self.ranges]
+            result["ranges"] = normalize_collection(self.ranges)
         if self.thresholds is not None:
-            result["thresholds"] = [t.to_dict() for t in self.thresholds]
+            result["thresholds"] = normalize_collection(self.thresholds)
         if _value_is_live(self.value):
             result["live"] = True
         return normalize_ui_value(result)
