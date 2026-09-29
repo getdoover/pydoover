@@ -14,6 +14,7 @@ service modbusIface {
 
     rpc readRegisters (readRegisterRequest) returns (readRegisterResponse) {}
     rpc writeRegisters (writeRegisterRequest) returns (writeRegisterResponse) {}
+    rpc writeSingleRegister (writeSingleRegisterRequest) returns (writeSingleRegisterResponse) {}
     rpc scheduleWriteRegisters (scheduleWriteRegisterRequest) returns (scheduleWriteRegisterResponse) {}
 
     rpc readRegisterSubscription (readRegisterSubscriptionRequest) returns (stream readRegisterSubscriptionResponse) {}
@@ -151,6 +152,32 @@ message writeRegisterRequest {
 }
 
 message writeRegisterResponse {
+    responseHeader response_header = 1;
+    int32 response_code = 2;
+}
+
+// Write one holding register or coil with the Modbus single-write function
+// codes: FC06 (Write Single Register) for holding registers, FC05 (Write
+// Single Coil) for coils. writeRegisters always uses the multiple-write codes
+// (FC16 / FC15), which some devices refuse for some addresses.
+message writeSingleRegisterRequest {
+    string bus_id = 1;
+    int32 modbus_id = 2;
+    // Holding register (4) -> FC06, coil (1) -> FC05. Other types are rejected.
+    int32 register_type = 3;
+    int32 address = 4;
+    // Register: 0-65535. Coil: 0 (off) or 1 (on).
+    int32 value = 5;
+    // Optional connection settings; bus opened on demand when provided.
+    oneof bus_settings {
+        serialBusSettings serial_settings = 6;
+        ethernetBusSettings ethernet_settings = 7;
+    }
+    // How many times to retry on failure (0 = fail fast). Unset -> default.
+    optional int32 retries = 8;
+}
+
+message writeSingleRegisterResponse {
     responseHeader response_header = 1;
     int32 response_code = 2;
 }

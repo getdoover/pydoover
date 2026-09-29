@@ -199,6 +199,34 @@ class writeRegisterResponse(_message.Message):
     response_code: int
     def __init__(self, response_header: _Optional[_Union[responseHeader, _Mapping]] = ..., response_code: _Optional[int] = ...) -> None: ...
 
+class writeSingleRegisterRequest(_message.Message):
+    __slots__ = ("bus_id", "modbus_id", "register_type", "address", "value", "serial_settings", "ethernet_settings", "retries")
+    BUS_ID_FIELD_NUMBER: _ClassVar[int]
+    MODBUS_ID_FIELD_NUMBER: _ClassVar[int]
+    REGISTER_TYPE_FIELD_NUMBER: _ClassVar[int]
+    ADDRESS_FIELD_NUMBER: _ClassVar[int]
+    VALUE_FIELD_NUMBER: _ClassVar[int]
+    SERIAL_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    ETHERNET_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    RETRIES_FIELD_NUMBER: _ClassVar[int]
+    bus_id: str
+    modbus_id: int
+    register_type: int
+    address: int
+    value: int
+    serial_settings: serialBusSettings
+    ethernet_settings: ethernetBusSettings
+    retries: int
+    def __init__(self, bus_id: _Optional[str] = ..., modbus_id: _Optional[int] = ..., register_type: _Optional[int] = ..., address: _Optional[int] = ..., value: _Optional[int] = ..., serial_settings: _Optional[_Union[serialBusSettings, _Mapping]] = ..., ethernet_settings: _Optional[_Union[ethernetBusSettings, _Mapping]] = ..., retries: _Optional[int] = ...) -> None: ...
+
+class writeSingleRegisterResponse(_message.Message):
+    __slots__ = ("response_header", "response_code")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_CODE_FIELD_NUMBER: _ClassVar[int]
+    response_header: responseHeader
+    response_code: int
+    def __init__(self, response_header: _Optional[_Union[responseHeader, _Mapping]] = ..., response_code: _Optional[int] = ...) -> None: ...
+
 class scheduleWriteRegisterRequest(_message.Message):
     __slots__ = ("bus_id", "register_type", "address", "values", "delay_secs", "serial_settings", "ethernet_settings")
     BUS_ID_FIELD_NUMBER: _ClassVar[int]
