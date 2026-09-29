@@ -403,6 +403,65 @@ class ModbusInterface(GRPCInterface):
         resp = await self.make_request("writeRegisters", req)
         return resp and self._validate_read_register_resp(resp)
 
+    @cli_command()
+    async def write_single_register(
+        self,
+        modbus_id: int = 1,
+        address: int = 0,
+        value: int = 0,
+        register_type: int = 4,
+        bus=None,
+        retries: int | None = None,
+    ) -> bool:
+        """Write one holding register or coil with a Modbus single-write function code.
+
+        Holding registers are written with FC06 (Write Single Register) and coils
+        with FC05 (Write Single Coil). :meth:`write_registers` always uses the
+        multiple-write codes (FC16 / FC15), which some devices refuse for some
+        addresses even when only one value is sent.
+
+        Requires a modbus interface that implements ``writeSingleRegister``; an
+        older one fails the request rather than falling back to FC16.
+
+        Examples
+        --------
+        >>> await self.modbus_iface.write_single_register(
+        ...     modbus_id=1, address=135, value=22
+        ... )
+
+        Parameters
+        ----------
+        modbus_id : int
+            The modbus ID of the device to write to (default is 1)
+        address : int
+            The register or coil address to write (default is 0)
+        value : int
+            Register value (0-65535) or coil state (0 = off, 1 = on)
+        register_type : int
+            4 for a holding register (FC06, the default) or 1 for a coil (FC05)
+        bus : ModbusConfig, optional
+            The bus to write to. If omitted, the bus configured in the application
+            config is used; pass this to select one when several are configured.
+        retries : int, optional
+            How many times the interface retries on failure. ``0`` fails fast.
+            Left unset, the interface applies its default.
+
+        Returns
+        -------
+        bool
+            True if the write operation was successful, False otherwise.
+        """
+        req = modbus_iface_pb2.writeSingleRegisterRequest(
+            modbus_id=modbus_id,
+            register_type=register_type,
+            address=address,
+            value=int(value),
+            **self._resolve_bus_settings(bus),
+            **({} if retries is None else {"retries": retries}),
+        )
+        resp = await self.make_request("writeSingleRegister", req)
+        return resp and self._validate_read_register_resp(resp)
+
     def add_read_register_subscription(
         self,
         bus_id: str = "default",

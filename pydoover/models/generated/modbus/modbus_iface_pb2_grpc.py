@@ -75,6 +75,11 @@ class modbusIfaceStub(object):
                 request_serializer=modbus_dot_modbus__iface__pb2.writeRegisterRequest.SerializeToString,
                 response_deserializer=modbus_dot_modbus__iface__pb2.writeRegisterResponse.FromString,
                 _registered_method=True)
+        self.writeSingleRegister = channel.unary_unary(
+                '/modbus_iface.modbusIface/writeSingleRegister',
+                request_serializer=modbus_dot_modbus__iface__pb2.writeSingleRegisterRequest.SerializeToString,
+                response_deserializer=modbus_dot_modbus__iface__pb2.writeSingleRegisterResponse.FromString,
+                _registered_method=True)
         self.scheduleWriteRegisters = channel.unary_unary(
                 '/modbus_iface.modbusIface/scheduleWriteRegisters',
                 request_serializer=modbus_dot_modbus__iface__pb2.scheduleWriteRegisterRequest.SerializeToString,
@@ -158,6 +163,12 @@ class modbusIfaceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def writeRegisters(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def writeSingleRegister(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -248,6 +259,11 @@ def add_modbusIfaceServicer_to_server(servicer, server):
                     servicer.writeRegisters,
                     request_deserializer=modbus_dot_modbus__iface__pb2.writeRegisterRequest.FromString,
                     response_serializer=modbus_dot_modbus__iface__pb2.writeRegisterResponse.SerializeToString,
+            ),
+            'writeSingleRegister': grpc.unary_unary_rpc_method_handler(
+                    servicer.writeSingleRegister,
+                    request_deserializer=modbus_dot_modbus__iface__pb2.writeSingleRegisterRequest.FromString,
+                    response_serializer=modbus_dot_modbus__iface__pb2.writeSingleRegisterResponse.SerializeToString,
             ),
             'scheduleWriteRegisters': grpc.unary_unary_rpc_method_handler(
                     servicer.scheduleWriteRegisters,
@@ -480,6 +496,33 @@ class modbusIface(object):
             '/modbus_iface.modbusIface/writeRegisters',
             modbus_dot_modbus__iface__pb2.writeRegisterRequest.SerializeToString,
             modbus_dot_modbus__iface__pb2.writeRegisterResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def writeSingleRegister(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/modbus_iface.modbusIface/writeSingleRegister',
+            modbus_dot_modbus__iface__pb2.writeSingleRegisterRequest.SerializeToString,
+            modbus_dot_modbus__iface__pb2.writeSingleRegisterResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -889,6 +889,15 @@ class Application:
             register_type=register_type,
         )
 
+    def write_modbus_register(self, address, value, register_type=4, modbus_id=None):
+        """Write one holding register (FC06) or coil (FC05)."""
+        return self.modbus_iface.write_single_register(
+            modbus_id=modbus_id,
+            address=address,
+            value=value,
+            register_type=register_type,
+        )
+
     def add_new_modbus_read_subscription(
         self,
         address,

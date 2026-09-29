@@ -123,6 +123,27 @@ self.write_modbus_registers(
 )
 ```
 
+### Single-Register Write (FC06 / FC05)
+
+`write_registers` always uses the Modbus *multiple*-write function codes (FC16 for
+holding registers, FC15 for coils), even for one value. Some devices refuse those
+for some addresses, e.g. the Invertek Optidrive E3 rejects FC16 on its parameter
+registers. `write_single_register` writes one value with the *single*-write codes
+instead: FC06 for a holding register, FC05 for a coil.
+
+```python
+# Holding register -> FC06
+await self.modbus_iface.write_single_register(modbus_id=1, address=135, value=22)
+
+# Coil -> FC05 (value 0 = off, 1 = on)
+await self.modbus_iface.write_single_register(
+    modbus_id=1, address=0, value=1, register_type=1
+)
+```
+
+This needs a modbus interface that implements the `writeSingleRegister` RPC. An
+older one fails the request; it never falls back to FC16.
+
 ### Async Write
 
 ```python
