@@ -340,6 +340,65 @@ class TestRPCManagerIntegration:
         assert 1000 not in manager._pending_calls
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("status", "response", "outcome"),
+        [
+            ({"code": "success"}, {"pong": True}, {"pong": True}),
+            (
+                {"code": "error", "message": {"code": "BUSY", "message": "no"}},
+                {},
+                "BUSY",
+            ),
+        ],
+    )
+    async def test_response_arriving_before_create_message_returns(
+        self, status, response, outcome
+    ):
+        """The responder can answer before our create_message call returns.
+
+        On a device the request and its reply travel through the device agent
+        independently, so a fast handler's reply event can be dispatched
+        before create_message hands back the message id. That reply used to
+        be dropped (no pending future yet) and the call timed out even though
+        it had been answered.
+        """
+
+        class RacingApp(FakeApp):
+            async def create_message(self, channel_name, data, **kwargs):
+                message_id = await super().create_message(channel_name, data)
+                await self.fire_event(
+                    channel_name,
+                    _make_response_event(status, response, message_id=message_id),
+                )
+                return message_id
+
+        app = RacingApp()
+        manager = RPCManager(app)
+        call = manager.call("ping", channel="test_channel", timeout=0.5)
+        if isinstance(outcome, dict):
+            assert await call == outcome
+        else:
+            with pytest.raises(RPCError) as exc:
+                await call
+            assert exc.value.code == outcome
+        assert manager._pending_calls == {}
+        assert manager._unclaimed_responses == {}
+
+    @pytest.mark.asyncio
+    async def test_unclaimed_responses_are_bounded(self):
+        app = FakeApp()
+        manager = RPCManager(app)
+        manager.subscribe("test_channel")
+        for message_id in range(1, manager.UNCLAIMED_RESPONSE_LIMIT + 50):
+            await app.fire_event(
+                "test_channel",
+                _make_response_event({"code": "success"}, {}, message_id=message_id),
+            )
+        assert len(manager._unclaimed_responses) == manager.UNCLAIMED_RESPONSE_LIMIT
+        # Oldest dropped first.
+        assert 1 not in manager._unclaimed_responses
+
+    @pytest.mark.asyncio
     async def test_call_fire_and_forget(self):
         app = FakeApp()
         manager = RPCManager(app)
