@@ -477,15 +477,21 @@ class TagsManagerDocker(TagsManager):
 
         if flush:
             logger.debug(f"set_tags: tags={tags} Flushing to dda")
+            # Send any buffered changes along with these tags, then swap in a
+            # fresh pending aggregate (mirroring flush_tags) so later flushes
+            # don't re-send already-published values and the payload handed
+            # to the client isn't mutated by subsequent calls.
             apply_diff(self._pending_tag_aggregate, tags, do_delete=False, clone=False)
+            data = self._pending_tag_aggregate
+            self._pending_tag_aggregate = {}
+            self._tags_dirty = False
             await self.client.update_channel_aggregate(
                 TAG_CHANNEL_NAME,
-                self._pending_tag_aggregate,
+                data,
                 max_age_secs=self.max_age_secs,
                 return_aggregate=False,
             )
-            apply_diff(self._tag_values, self._pending_tag_aggregate, clone=False)
-            self._tags_dirty = False
+            apply_diff(self._tag_values, data, clone=False)
             return
 
         # Just add to the pending aggregate to be flushed at the end of the main loop
