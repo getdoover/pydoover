@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import types
 
 import pytest
@@ -718,6 +719,34 @@ class TestTagsManagerDocker:
         )
 
         assert updates == [("voltage", 13.2)]
+
+    @pytest.mark.asyncio
+    async def test_flush_set_tag_sends_only_its_own_change(self):
+        # Regression: set_tags(flush=True) never cleared the pending aggregate,
+        # so every later flush re-sent all previously flushed values (stale
+        # values overwrote other writers of the same tag) and the live pending
+        # dict handed to the client was mutated by later calls.
+        client = FakeTagClient()
+        manager = TagsManagerDocker(client=client)
+        snapshots = []
+
+        await manager.set_tag("A", 1, app_key="app", only_if_changed=False, flush=True)
+        snapshots.append(copy.deepcopy(client.aggregate_updates[-1][1]))
+        await manager.set_tag("B", 1, app_key="app", only_if_changed=False, flush=True)
+        snapshots.append(copy.deepcopy(client.aggregate_updates[-1][1]))
+        await manager.set_tag("B", 2, app_key="app", only_if_changed=False, flush=True)
+        snapshots.append(copy.deepcopy(client.aggregate_updates[-1][1]))
+
+        expected = [{"app": {"A": 1}}, {"app": {"B": 1}}, {"app": {"B": 2}}]
+        assert snapshots == expected
+        # Payloads handed to the client must not be mutated afterwards.
+        assert [update[1] for update in client.aggregate_updates] == expected
+        assert manager.get_tag("A", app_key="app") == 1
+        assert manager.get_tag("B", app_key="app") == 2
+
+        # Nothing new is pending, so a later flush_tags() sends nothing.
+        await manager.flush_tags()
+        assert len(client.aggregate_updates) == 3
 
 
 class TestUiSubPresence:
