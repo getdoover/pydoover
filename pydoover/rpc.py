@@ -372,6 +372,10 @@ class RPCManager:
         The application key for this app, used to reject messages not intended for this app.
     """
 
+    # Replies that land before their call has registered its future (see
+    # _handle_response) are held until claimed; at most this many are kept.
+    UNCLAIMED_RESPONSE_LIMIT = 256
+
     def __init__(
         self,
         api: Union["DeviceAgentInterface", "AsyncDataClient"],
@@ -387,6 +391,8 @@ class RPCManager:
         # Inbound commands we are currently serving, by message id, so an update
         # to one (notably a cancellation) can be routed to the running handler.
         self._inflight: dict[int, RPCContext] = {}
+        # Final replies with no waiting future yet, by message id, oldest first.
+        self._unclaimed_responses: dict[int, MessageUpdateEvent] = {}
         self._subscribed_channels: set[str] = set()
 
     @property
@@ -557,6 +563,11 @@ class RPCManager:
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
         self._pending_calls[message_id] = future
+        # The reply may already have arrived while create_message was in
+        # flight; if so it is waiting in the unclaimed buffer.
+        early = self._unclaimed_responses.pop(message_id, None)
+        if early is not None:
+            self._handle_response(early)
 
         try:
             result = await asyncio.wait_for(future, timeout)
@@ -759,12 +770,19 @@ class RPCManager:
             ctx._mark_cancelled(status)
             return
 
-        # Outbound: resolve the future waiting on our own call.
-        future = self._pending_calls.get(event.message.id)
-        if future is None or future.done():
+        if status_code in ("sent", "acknowledged", "deferred", "pending"):
             return
 
-        if status_code in ("sent", "acknowledged", "deferred", "pending"):
+        # Outbound: resolve the future waiting on our own call.
+        future = self._pending_calls.get(event.message.id)
+        if future is None:
+            # Either not our call, or our call's reply beat create_message
+            # back: the request and its reply reach us independently, so a fast
+            # handler's reply can be dispatched before call() has registered
+            # its future. Hold it briefly so call() can claim it.
+            self._hold_unclaimed(event)
+            return
+        if future.done():
             return
 
         if cancelled:
@@ -785,6 +803,15 @@ class RPCManager:
             future.set_exception(RPCError(code, message))
         elif status_code == "success":
             future.set_result(event.message.data.get("response", {}))
+
+    def _hold_unclaimed(self, event: MessageUpdateEvent) -> None:
+        # A held reply is only ever claimed by the call() that created its
+        # message, right after create_message returns, so a size cap is enough:
+        # anything pushed out was never going to be claimed.
+        held = self._unclaimed_responses
+        held[event.message.id] = event
+        if len(held) > self.UNCLAIMED_RESPONSE_LIMIT:
+            del held[next(iter(held))]
 
     # -- response helpers ---------------------------------------------------
 
