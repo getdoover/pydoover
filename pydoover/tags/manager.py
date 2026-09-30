@@ -176,69 +176,6 @@ def _strip_paths(target: dict[str, Any], paths: dict[str, Any]) -> None:
             del target[k]
 
 
-# Sentinel for "no value at this path", distinct from a stored ``None``.
-_MISSING = object()
-_ATOMIC_TYPES = (str, int, float, bool, type(None))
-
-
-def _merged_child(cached: Any, pending: Any, key: str) -> tuple[Any, Any]:
-    """Step one level into the cached-plus-pending view of the tag channel.
-
-    ``cached`` / ``pending`` are the nodes at the current path in
-    ``_tag_values`` / ``_pending_tag_aggregate`` (either may be ``_MISSING``),
-    and the merged node there must be a dict (see :func:`_merged_is_dict`).
-    Mirrors ``apply_diff(cached, pending, do_delete=False)``: a pending dict
-    merges into a cached dict but replaces a cached non-dict.
-    """
-    if pending is _MISSING:
-        return cached.get(key, _MISSING), _MISSING
-    if not isinstance(cached, dict):
-        return _MISSING, pending.get(key, _MISSING)
-    return cached.get(key, _MISSING), pending.get(key, _MISSING)
-
-
-def _merged_is_dict(cached: Any, pending: Any) -> bool:
-    """Whether the merged value of a node is a dict."""
-    if pending is _MISSING:
-        return isinstance(cached, dict)
-    return isinstance(pending, dict)
-
-
-def _merged_value(cached: Any, pending: Any) -> Any:
-    """Materialise the merged value of a single node without aliasing the cache."""
-    if pending is _MISSING:
-        if isinstance(cached, _ATOMIC_TYPES):
-            return cached
-        return copy.deepcopy(cached)
-    if isinstance(pending, dict):
-        return apply_diff(
-            cached if isinstance(cached, dict) else {}, pending, do_delete=False
-        )
-    return pending
-
-
-def _project_merged(cached: Any, pending: Any, shape: dict[str, Any]) -> dict:
-    """Project the merged view of a dict node onto the keys present in ``shape``.
-
-    ``generate_diff(projection, shape, do_delete=False)`` equals the diff
-    against the full merged view, but only visits the keys in ``shape``.
-    Values are not copied — ``generate_diff`` never returns values from its
-    ``old`` argument.
-    """
-    result = {}
-    for k, v in shape.items():
-        child_cached, child_pending = _merged_child(cached, pending, k)
-        if child_cached is _MISSING and child_pending is _MISSING:
-            continue
-        if isinstance(v, dict) and _merged_is_dict(child_cached, child_pending):
-            result[k] = _project_merged(child_cached, child_pending, v)
-        elif child_pending is _MISSING:
-            result[k] = child_cached
-        else:
-            result[k] = _merged_value(child_cached, child_pending)
-    return result
-
-
 class TagsManager:
     """Base interface for manager-backed tag access."""
 
@@ -285,6 +222,9 @@ class TagsManagerDocker(TagsManager):
         self.client: DeviceAgentInterface = client
         self.app_key = app_key
 
+        # Current view of the tag channel: the last cloud aggregate with local
+        # writes applied on top. ``_pending_tag_aggregate`` holds the subset of
+        # those writes that haven't been flushed yet.
         self._tag_values: dict[str, Any] = {}
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
 
@@ -418,12 +358,32 @@ class TagsManagerDocker(TagsManager):
     def max_age_secs(self):
         return self.observed_max_age if self.is_app_open else self.default_max_age
 
+    def _replace_tag_values(self, data: dict[str, Any] | None):
+        # Adopt the fresh cloud state and re-apply any unflushed local writes on
+        # top. Applied in place so the cost is the size of the pending writes
+        # (usually empty), not the size of the channel.
+        self._tag_values = data or {}
+        if self._pending_tag_aggregate:
+            apply_diff(
+                self._tag_values,
+                self._pending_tag_aggregate,
+                do_delete=False,
+                clone=False,
+            )
+
     async def _on_tag_sync(self, event: ChannelSyncEvent):
-        self._tag_values = event.aggregate.data
+        self._replace_tag_values(event.aggregate.data)
 
     async def _on_tag_update(self, event: AggregateUpdateEvent):
+        if not self._tag_subscriptions:
+            self._replace_tag_values(event.aggregate.data)
+            return
+
         diff = generate_diff(self._tag_values, event.aggregate.data, do_delete=False)
-        self._tag_values = event.aggregate.data or {}
+        # Don't notify for keys we've written locally but not yet flushed -
+        # the cloud value for those is stale and about to be overwritten.
+        _strip_paths(diff, self._pending_tag_aggregate)
+        self._replace_tag_values(event.aggregate.data)
         await self.fulfill_tag_subscriptions(diff)
 
     async def fulfill_tag_subscriptions(self, diff):
@@ -471,36 +431,18 @@ class TagsManagerDocker(TagsManager):
     ) -> Any | None:
         """Read a tag value from the locally cached tag channel state."""
         key_path = KeyPath(key, app_key=app_key)
-        value = self._lookup_current(key_path)
-
-        if value is _MISSING:
+        if not key_path.in_dict(self._tag_values):
             logger.debug(f"Tag {key_path} not found in current tags")
             if raise_key_error:
                 raise KeyError(key_path)
             return default
+
+        value = key_path.lookup_dict(self._tag_values)
+        # Copy mutable values so callers can't edit the cache in place (which
+        # would make a subsequent ``set`` of the edited value look unchanged).
+        if isinstance(value, (dict, list)):
+            return copy.deepcopy(value)
         return value
-
-    def _lookup_current(self, key_path: KeyPath) -> Any:
-        """Resolve a tag path against the cached values overlaid with pending changes.
-
-        Equivalent to looking the path up in ``apply_diff(self._tag_values,
-        self._pending_tag_aggregate, do_delete=False)``, but only walks and
-        copies the requested path rather than the whole tag channel. The
-        result shares no mutable objects with either store. Returns
-        ``_MISSING`` when the path does not exist.
-        """
-        cached, pending = self._tag_values, self._pending_tag_aggregate
-        for part in key_path.path:
-            if not _merged_is_dict(cached, pending):
-                return _MISSING
-            cached, pending = _merged_child(cached, pending, part)
-            if cached is _MISSING and pending is _MISSING:
-                return _MISSING
-        if pending is not _MISSING and not isinstance(pending, _ATOMIC_TYPES):
-            # apply_diff inserts pending dicts by reference where the cached
-            # value is not a dict, and returns pending leaves as-is.
-            pending = copy.deepcopy(pending)
-        return _merged_value(cached, pending)
 
     async def set_tag(
         self,
@@ -531,17 +473,12 @@ class TagsManagerDocker(TagsManager):
             tags = KeyPath(key, app_key=app_key).construct_dict(tags)
 
         if only_if_changed:
-            current = (
-                _project_merged(self._tag_values, self._pending_tag_aggregate, tags)
-                if isinstance(tags, dict)
-                else {}
-            )
-            diff = generate_diff(current, tags, do_delete=False)
+            diff = generate_diff(self._tag_values, tags, do_delete=False)
             if len(diff) == 0:
-                # Don't log the whole tag channel here: formatting it on every
-                # unchanged set costs far more than the set itself.
                 logger.debug("set_tags: tags=%s Value did not change", tags)
                 return
+
+        apply_diff(self._tag_values, tags, do_delete=False, clone=False)
 
         if log:
             # Promote these paths to the immediate-log buffer (flushed at
@@ -572,7 +509,6 @@ class TagsManagerDocker(TagsManager):
                 max_age_secs=self.max_age_secs,
                 return_aggregate=False,
             )
-            apply_diff(self._tag_values, data, clone=False)
             return
 
         # Just add to the pending aggregate to be flushed at the end of the main loop
@@ -610,7 +546,6 @@ class TagsManagerDocker(TagsManager):
             max_age_secs=self.max_age_secs,
             return_aggregate=False,
         )
-        apply_diff(self._tag_values, data, clone=False)
 
     def set_live_tags(self, keys: Iterable[KeyPath | tuple[str | None, str]]) -> None:
         """Register the tag paths that :meth:`flush_live_tags` should publish.
@@ -653,12 +588,11 @@ class TagsManagerDocker(TagsManager):
             )
             if qualified not in opened:
                 continue
-            value = self._lookup_current(key_path)
-            if value is _MISSING:
+            if not key_path.in_dict(self._tag_values):
                 continue
             apply_diff(
                 payload,
-                key_path.construct_dict(value),
+                key_path.construct_dict(key_path.lookup_dict(self._tag_values)),
                 do_delete=False,
                 clone=False,
             )

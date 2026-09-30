@@ -2,24 +2,23 @@
 
 ``get_tag`` / ``set_tags`` / ``flush_live_tags`` used to materialise the whole
 device-wide tag channel (``apply_diff`` with a full ``copy.deepcopy``) on every
-call. These tests pin the observable semantics of the cached-plus-pending view
-and guard against the full-channel copy creeping back in.
+call. ``_tag_values`` now holds the cloud state with local writes applied on
+top, so reads and change checks are plain lookups. These tests pin the
+observable semantics and guard against the full-channel copy creeping back in.
 """
 
 import copy
 import logging
-import random
 import time
+from types import SimpleNamespace as NS
 
 import pytest
 
 from pydoover.tags import Delta, Tag, Tags
-from pydoover.tags.manager import (
-    KeyPath,
-    TagsManagerDocker,
-    _project_merged,
-)
-from pydoover.utils.diff import apply_diff, generate_diff
+from pydoover.tags.manager import KeyPath, TagsManagerDocker
+from pydoover.utils.diff import apply_diff
+
+_real_deepcopy = copy.deepcopy
 
 
 class _Client:
@@ -35,9 +34,16 @@ class _Client:
 
 
 def _manager(tag_values=None, pending=None):
+    """Build a manager whose cloud state is ``tag_values`` with ``pending``
+    written locally but not yet flushed."""
+    pending = pending if pending is not None else {}
     manager = TagsManagerDocker(client=_Client(), app_key="app")
-    manager._tag_values = tag_values if tag_values is not None else {}
-    manager._pending_tag_aggregate = pending if pending is not None else {}
+    # Build with the real deepcopy so the counting fixture only sees copies
+    # made by the manager itself.
+    manager._tag_values = apply_diff(
+        _real_deepcopy(tag_values or {}), pending, do_delete=False, clone=False
+    )
+    manager._pending_tag_aggregate = _real_deepcopy(pending)
     return manager
 
 
@@ -125,10 +131,11 @@ class TestGetTagSemantics:
         with pytest.raises(KeyError):
             manager.get_tag("missing", app_key="app", raise_key_error=True)
 
-    def test_uninitialised_tag_values_reads_pending_only(self):
-        # ``_on_tag_sync`` can store ``None`` for an empty channel.
-        manager = _manager(None, {"app": {"a": 1}})
-        manager._tag_values = None
+    @pytest.mark.asyncio
+    async def test_empty_channel_sync_keeps_pending_writes(self):
+        manager = _manager({"app": {"a": 0}}, {"app": {"a": 1}})
+
+        await manager._on_tag_sync(NS(aggregate=NS(data=None)))
 
         assert manager.get_tag("a", app_key="app") == 1
         assert manager.get_tag("b", default="dflt", app_key="app") == "dflt"
@@ -144,7 +151,10 @@ class TestReadsDoNotMutateOrAlias:
         tag_values = {"app": {"a": 1, "nested": {"x": [1, 2]}}}
         pending = {"app": {"b": 2, "nested": {"y": {"deep": 1}}}}
         manager = _manager(tag_values, pending)
-        before = (copy.deepcopy(tag_values), copy.deepcopy(pending))
+        before = (
+            copy.deepcopy(manager._tag_values),
+            copy.deepcopy(manager._pending_tag_aggregate),
+        )
 
         subtree = manager.get_tag("app")
         subtree["a"] = "mutated"
@@ -194,7 +204,10 @@ class TestReadsDoNotMutateOrAlias:
         tag_values = {"app": {"a": 1, "nested": {"x": 1}}, "other": {"z": 0}}
         pending = {"app": {"b": None}}
         manager = _manager(tag_values, pending)
-        before = (copy.deepcopy(tag_values), copy.deepcopy(pending))
+        before = (
+            copy.deepcopy(manager._tag_values),
+            copy.deepcopy(manager._pending_tag_aggregate),
+        )
 
         manager.get_tag("a", app_key="app")
         manager.get_tag("missing", app_key="app")
@@ -277,60 +290,6 @@ class TestSetTagsSemantics:
         await manager.set_tag("n", 5, app_key="app")
 
         assert manager._pending_tag_aggregate == {"app": {"n": 5}}
-
-
-def _random_value(rng, depth):
-    roll = rng.random()
-    if depth > 0 and roll < 0.35:
-        return _random_tree(rng, depth - 1)
-    if roll < 0.5:
-        return None
-    if roll < 0.6:
-        return [rng.randint(0, 2)]
-    return rng.randint(0, 2)
-
-
-def _random_tree(rng, depth):
-    return {
-        rng.choice("abcd"): _random_value(rng, depth) for _ in range(rng.randint(0, 4))
-    }
-
-
-def _random_path(rng):
-    return [rng.choice("abcd") for _ in range(rng.randint(1, 4))]
-
-
-class TestEquivalenceWithFullMerge:
-    """Compare against the previous implementation: a full ``apply_diff`` merge."""
-
-    def test_get_tag_matches_full_merge(self):
-        rng = random.Random(1234)
-        sentinel = object()
-        for _ in range(3000):
-            tag_values = _random_tree(rng, 3)
-            pending = _random_tree(rng, 3)
-            manager = _manager(tag_values, pending)
-            full = apply_diff(tag_values, pending, do_delete=False)
-            key_path = KeyPath(_random_path(rng))
-
-            if key_path.in_dict(full):
-                expected = key_path.lookup_dict(full)
-            else:
-                expected = sentinel
-
-            assert manager.get_tag(key_path, default=sentinel) == expected
-
-    def test_set_tags_diff_matches_full_merge(self):
-        rng = random.Random(4321)
-        for _ in range(3000):
-            tag_values = _random_tree(rng, 3)
-            pending = _random_tree(rng, 3)
-            tags = _random_tree(rng, 3)
-            full = apply_diff(tag_values, pending, do_delete=False)
-
-            expected = generate_diff(full, tags, do_delete=False)
-            projected = _project_merged(tag_values, pending, tags)
-            assert generate_diff(projected, tags, do_delete=False) == expected
 
 
 class _ReprCountingDict(dict):
@@ -431,3 +390,102 @@ class TestNoFullChannelCopy:
 
         assert "Value did not change" in caplog.text
         assert _ReprCountingDict.repr_calls == 0
+
+
+class TestCloudUpdates:
+    @pytest.fixture
+    def deepcopy_calls(self, monkeypatch):
+        calls = []
+
+        def counting_deepcopy(obj, *args, **kwargs):
+            calls.append(obj)
+            return _real_deepcopy(obj, *args, **kwargs)
+
+        monkeypatch.setattr(copy, "deepcopy", counting_deepcopy)
+        return calls
+
+    @pytest.mark.asyncio
+    async def test_update_keeps_unflushed_local_writes(self):
+        manager = _manager({"app": {"a": 1}, "other": {"z": 0}})
+        await manager.set_tag("a", 2, app_key="app")
+
+        await manager._on_tag_update(
+            NS(aggregate=NS(data={"app": {"a": 1}, "other": {"z": 5}}))
+        )
+
+        assert manager.get_tag("a", app_key="app") == 2
+        assert manager.get_tag("z", app_key="other") == 5
+        assert manager._pending_tag_aggregate == {"app": {"a": 2}}
+
+    @pytest.mark.asyncio
+    async def test_update_does_not_copy_channel(self, deepcopy_calls):
+        manager = _manager(_big_channel())
+        manager.subscribe_to_tag("tag_0", lambda k, v: None, app_key="app_1")
+        await manager.set_tag("tag_1", -1.0, app_key="app_0")
+
+        for i in range(10):
+            channel = _big_channel()
+            channel["app_1"]["tag_0"] = float(i)
+            await manager._on_tag_update(NS(aggregate=NS(data=channel)))
+
+        assert deepcopy_calls == []
+        assert manager.get_tag("tag_1", app_key="app_0") == -1.0
+
+    @pytest.mark.asyncio
+    async def test_subscription_fires_for_remote_change(self):
+        manager = _manager({"other": {"z": 0}})
+        seen = []
+        manager.subscribe_to_tag("z", lambda k, v: seen.append(v), app_key="other")
+
+        await manager._on_tag_update(NS(aggregate=NS(data={"other": {"z": 1}})))
+
+        assert seen == [1]
+
+    @pytest.mark.asyncio
+    async def test_subscription_skips_locally_pending_key(self):
+        manager = _manager({"app": {"a": 1}})
+        seen = []
+        manager.subscribe_to_tag("a", lambda k, v: seen.append(v), app_key="app")
+        await manager.set_tag("a", 2, app_key="app")
+
+        # The cloud hasn't seen our write yet, so still reports the old value.
+        await manager._on_tag_update(NS(aggregate=NS(data={"app": {"a": 1}})))
+
+        assert seen == []
+        assert manager.get_tag("a", app_key="app") == 2
+
+
+class TestWriteThrough:
+    @pytest.mark.asyncio
+    async def test_cleared_tag_is_not_republished_after_flush(self):
+        manager = _manager({"app": {"a": 1}})
+
+        await manager.set_tag("a", None, app_key="app")
+        await manager.flush_tags()
+        await manager.set_tag("a", None, app_key="app")
+
+        assert manager.client.aggregate_updates == [
+            ("tag_values", {"app": {"a": None}})
+        ]
+        assert manager._tags_dirty is False
+        assert manager.get_tag("a", default="dflt", app_key="app") is None
+
+    @pytest.mark.asyncio
+    async def test_mutating_a_read_list_then_setting_it_is_a_change(self):
+        manager = _manager({"app": {"l": [1]}})
+
+        value = manager.get_tag("l", app_key="app")
+        value.append(2)
+        await manager.set_tag("l", value, app_key="app")
+
+        assert manager._pending_tag_aggregate == {"app": {"l": [1, 2]}}
+
+    @pytest.mark.asyncio
+    async def test_flush_with_nested_none_over_leaf(self):
+        # Both stores can end up sharing the same dict here; flushing must not
+        # try to apply the pending diff onto itself.
+        manager = _manager({"app": {"n": 5}}, {"app": {"n": 5}})
+
+        await manager.set_tag("n", {"x": None, "y": 1}, app_key="app", flush=True)
+
+        assert manager.get_tag("n", app_key="app") == {"x": None, "y": 1}
