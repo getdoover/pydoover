@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pydoover.models import EventSubscription, AggregateUpdateEvent, ChannelSyncEvent
 
 import asyncio
+import copy
 import enum
 import logging
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterable
@@ -221,6 +222,9 @@ class TagsManagerDocker(TagsManager):
         self.client: DeviceAgentInterface = client
         self.app_key = app_key
 
+        # Current view of the tag channel: the last cloud aggregate with local
+        # writes applied on top. ``_pending_tag_aggregate`` holds the subset of
+        # those writes that haven't been flushed yet.
         self._tag_values: dict[str, Any] = {}
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
 
@@ -354,12 +358,32 @@ class TagsManagerDocker(TagsManager):
     def max_age_secs(self):
         return self.observed_max_age if self.is_app_open else self.default_max_age
 
+    def _replace_tag_values(self, data: dict[str, Any] | None):
+        # Adopt the fresh cloud state and re-apply any unflushed local writes on
+        # top. Applied in place so the cost is the size of the pending writes
+        # (usually empty), not the size of the channel.
+        self._tag_values = data or {}
+        if self._pending_tag_aggregate:
+            apply_diff(
+                self._tag_values,
+                self._pending_tag_aggregate,
+                do_delete=False,
+                clone=False,
+            )
+
     async def _on_tag_sync(self, event: ChannelSyncEvent):
-        self._tag_values = event.aggregate.data
+        self._replace_tag_values(event.aggregate.data)
 
     async def _on_tag_update(self, event: AggregateUpdateEvent):
+        if not self._tag_subscriptions:
+            self._replace_tag_values(event.aggregate.data)
+            return
+
         diff = generate_diff(self._tag_values, event.aggregate.data, do_delete=False)
-        self._tag_values = event.aggregate.data or {}
+        # Don't notify for keys we've written locally but not yet flushed -
+        # the cloud value for those is stale and about to be overwritten.
+        _strip_paths(diff, self._pending_tag_aggregate)
+        self._replace_tag_values(event.aggregate.data)
         await self.fulfill_tag_subscriptions(diff)
 
     async def fulfill_tag_subscriptions(self, diff):
@@ -407,18 +431,18 @@ class TagsManagerDocker(TagsManager):
     ) -> Any | None:
         """Read a tag value from the locally cached tag channel state."""
         key_path = KeyPath(key, app_key=app_key)
-        current_values = apply_diff(
-            self._tag_values,
-            self._pending_tag_aggregate,
-            do_delete=False,
-        )
-
-        if not key_path.in_dict(current_values):
+        if not key_path.in_dict(self._tag_values):
             logger.debug(f"Tag {key_path} not found in current tags")
             if raise_key_error:
                 raise KeyError(key_path)
             return default
-        return key_path.lookup_dict(current_values)
+
+        value = key_path.lookup_dict(self._tag_values)
+        # Copy mutable values so callers can't edit the cache in place (which
+        # would make a subsequent ``set`` of the edited value look unchanged).
+        if isinstance(value, (dict, list)):
+            return copy.deepcopy(value)
+        return value
 
     async def set_tag(
         self,
@@ -449,18 +473,12 @@ class TagsManagerDocker(TagsManager):
             tags = KeyPath(key, app_key=app_key).construct_dict(tags)
 
         if only_if_changed:
-            diff = generate_diff(
-                apply_diff(
-                    self._tag_values, self._pending_tag_aggregate, do_delete=False
-                ),
-                tags,
-                do_delete=False,
-            )
+            diff = generate_diff(self._tag_values, tags, do_delete=False)
             if len(diff) == 0:
-                logger.debug(
-                    f"set_tags: tags={tags} Value did not change existing values {self._tag_values}"
-                )
+                logger.debug("set_tags: tags=%s Value did not change", tags)
                 return
+
+        apply_diff(self._tag_values, tags, do_delete=False, clone=False)
 
         if log:
             # Promote these paths to the immediate-log buffer (flushed at
@@ -491,7 +509,6 @@ class TagsManagerDocker(TagsManager):
                 max_age_secs=self.max_age_secs,
                 return_aggregate=False,
             )
-            apply_diff(self._tag_values, data, clone=False)
             return
 
         # Just add to the pending aggregate to be flushed at the end of the main loop
@@ -529,7 +546,6 @@ class TagsManagerDocker(TagsManager):
             max_age_secs=self.max_age_secs,
             return_aggregate=False,
         )
-        apply_diff(self._tag_values, data, clone=False)
 
     def set_live_tags(self, keys: Iterable[KeyPath | tuple[str | None, str]]) -> None:
         """Register the tag paths that :meth:`flush_live_tags` should publish.
@@ -561,9 +577,6 @@ class TagsManagerDocker(TagsManager):
         if not opened:
             return False
 
-        current = apply_diff(
-            self._tag_values, self._pending_tag_aggregate, do_delete=False
-        )
         payload: dict[str, Any] = {}
         for key_path in self._live_tag_keys:
             # The customer-site qualifies tags as "<app_key>.<tag_name>" to
@@ -575,11 +588,11 @@ class TagsManagerDocker(TagsManager):
             )
             if qualified not in opened:
                 continue
-            if not key_path.in_dict(current):
+            if not key_path.in_dict(self._tag_values):
                 continue
             apply_diff(
                 payload,
-                key_path.construct_dict(key_path.lookup_dict(current)),
+                key_path.construct_dict(key_path.lookup_dict(self._tag_values)),
                 do_delete=False,
                 clone=False,
             )
