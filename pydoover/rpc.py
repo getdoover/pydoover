@@ -8,8 +8,6 @@ import asyncio
 import inspect
 import logging
 import re
-import time
-from collections import OrderedDict
 from collections.abc import Callable
 from datetime import timezone, timedelta, datetime
 from typing import Any, TYPE_CHECKING, Union
@@ -375,8 +373,7 @@ class RPCManager:
     """
 
     # Replies that land before their call has registered its future (see
-    # _handle_response) are held this long, and at most this many are kept.
-    UNCLAIMED_RESPONSE_TTL = 30.0
+    # _handle_response) are held until claimed; at most this many are kept.
     UNCLAIMED_RESPONSE_LIMIT = 256
 
     def __init__(
@@ -395,9 +392,7 @@ class RPCManager:
         # to one (notably a cancellation) can be routed to the running handler.
         self._inflight: dict[int, RPCContext] = {}
         # Final replies with no waiting future yet, by message id, oldest first.
-        self._unclaimed_responses: OrderedDict[
-            int, tuple[float, MessageUpdateEvent]
-        ] = OrderedDict()
+        self._unclaimed_responses: dict[int, MessageUpdateEvent] = {}
         self._subscribed_channels: set[str] = set()
 
     @property
@@ -572,7 +567,7 @@ class RPCManager:
         # flight; if so it is waiting in the unclaimed buffer.
         early = self._unclaimed_responses.pop(message_id, None)
         if early is not None:
-            self._handle_response(early[1])
+            self._handle_response(early)
 
         try:
             result = await asyncio.wait_for(future, timeout)
@@ -810,18 +805,13 @@ class RPCManager:
             future.set_result(event.message.data.get("response", {}))
 
     def _hold_unclaimed(self, event: MessageUpdateEvent) -> None:
-        now = time.monotonic()
+        # A held reply is only ever claimed by the call() that created its
+        # message, right after create_message returns, so a size cap is enough:
+        # anything pushed out was never going to be claimed.
         held = self._unclaimed_responses
-        held[event.message.id] = (now, event)
-        held.move_to_end(event.message.id)
-        while held:
-            oldest_at, _ = next(iter(held.values()))
-            if (
-                len(held) <= self.UNCLAIMED_RESPONSE_LIMIT
-                and now - oldest_at <= self.UNCLAIMED_RESPONSE_TTL
-            ):
-                break
-            held.popitem(last=False)
+        held[event.message.id] = event
+        if len(held) > self.UNCLAIMED_RESPONSE_LIMIT:
+            del held[next(iter(held))]
 
     # -- response helpers ---------------------------------------------------
 
