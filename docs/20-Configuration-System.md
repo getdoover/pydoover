@@ -258,6 +258,11 @@ field name may also be used when referring to an inherited field:
 show_if=config.equal("type", SlaveType.DOOVIT)
 ```
 
+Other conditions: `not_equal()`, `one_of(element, values)`, `greater_than()`,
+`greater_than_or_equal()`, `less_than()` and `less_than_or_equal()`. Combine
+several with `config.all_of(...)`, and pass a Boolean element on its own as
+shorthand for `equal(element, True)`.
+
 ## Required vs Optional
 
 Fields without a `default` are required:

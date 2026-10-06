@@ -1,6 +1,7 @@
 import copy
 import json
 import logging
+import operator
 import pathlib
 import re
 
@@ -30,6 +31,39 @@ class Comparator(_Enum):
     """Comparison operators supported by conditional config elements."""
 
     EQUAL = "equal"
+    NOT_EQUAL = "not_equal"
+    ONE_OF = "one_of"
+    GREATER_THAN = "greater_than"
+    GREATER_THAN_OR_EQUAL = "greater_than_or_equal"
+    LESS_THAN = "less_than"
+    LESS_THAN_OR_EQUAL = "less_than_or_equal"
+
+
+def _numeric(op, keyword):
+    # Numeric JSON Schema keywords ignore non-numbers, so pin the type too.
+    def check(actual, value):
+        return (
+            isinstance(actual, (int, float))
+            and not isinstance(actual, bool)
+            and op(actual, value)
+        )
+
+    return check, lambda value: {"type": "number", keyword: value}
+
+
+# Comparator -> (runtime check, JSON Schema the controller must match).
+_COMPARATORS = {
+    Comparator.EQUAL: (operator.eq, lambda value: {"const": value}),
+    Comparator.NOT_EQUAL: (operator.ne, lambda value: {"not": {"const": value}}),
+    Comparator.ONE_OF: (
+        lambda actual, values: actual in values,
+        lambda values: {"enum": list(values)},
+    ),
+    Comparator.GREATER_THAN: _numeric(operator.gt, "exclusiveMinimum"),
+    Comparator.GREATER_THAN_OR_EQUAL: _numeric(operator.ge, "minimum"),
+    Comparator.LESS_THAN: _numeric(operator.lt, "exclusiveMaximum"),
+    Comparator.LESS_THAN_OR_EQUAL: _numeric(operator.le, "maximum"),
+}
 
 
 @dataclass(frozen=True)
@@ -41,10 +75,55 @@ class Condition:
     value: Any
 
 
+@dataclass(frozen=True)
+class AllOf:
+    """Conditions that must all hold for a config element to be active."""
+
+    conditions: tuple[Condition, ...]
+
+
 def equal(element: "ConfigElement | str", value: Any) -> Condition:
     """Show an element when ``element`` equals ``value``."""
 
     return Condition(element=element, comparator=Comparator.EQUAL, value=value)
+
+
+def not_equal(element: "ConfigElement | str", value: Any) -> Condition:
+    """Show an element when ``element`` doesn't equal ``value``."""
+    return Condition(element, Comparator.NOT_EQUAL, value)
+
+
+def one_of(element: "ConfigElement | str", values) -> Condition:
+    """Show an element when ``element`` equals any of ``values``."""
+    return Condition(element, Comparator.ONE_OF, tuple(values))
+
+
+def greater_than(element: "ConfigElement | str", value: float) -> Condition:
+    return Condition(element, Comparator.GREATER_THAN, value)
+
+
+def greater_than_or_equal(element: "ConfigElement | str", value: float) -> Condition:
+    return Condition(element, Comparator.GREATER_THAN_OR_EQUAL, value)
+
+
+def less_than(element: "ConfigElement | str", value: float) -> Condition:
+    return Condition(element, Comparator.LESS_THAN, value)
+
+
+def less_than_or_equal(element: "ConfigElement | str", value: float) -> Condition:
+    return Condition(element, Comparator.LESS_THAN_OR_EQUAL, value)
+
+
+def all_of(*conditions: "Condition | ConfigElement") -> AllOf:
+    """Show an element only when every condition holds, each on a different element."""
+    return AllOf(tuple(_as_condition(c) for c in conditions))
+
+
+def _as_condition(condition):
+    # A bare (Boolean) element is shorthand for equal(element, True).
+    if isinstance(condition, ConfigElement):
+        return equal(condition, True)
+    return condition
 
 
 # Attribute names reserved for ConfigElement internal use.
@@ -291,7 +370,7 @@ class ConfigElement:
         name: str | None = None,
         advanced: bool | None = None,
         required: bool | None = None,
-        show_if: Condition | None = None,
+        show_if: "Condition | AllOf | ConfigElement | None" = None,
     ):
         if name is not None:
             check_key(name)
@@ -314,8 +393,9 @@ class ConfigElement:
         self.format = format
         self.advanced = advanced
         self._required = required
-        if show_if is not None and not isinstance(show_if, Condition):
-            raise TypeError("show_if must be a condition created by config.equal()")
+        show_if = _as_condition(show_if)
+        if show_if is not None and not isinstance(show_if, (Condition, AllOf)):
+            raise TypeError("show_if must be a condition, e.g. config.equal()")
         self.show_if = show_if
         self._value = NotSet
 
@@ -434,18 +514,32 @@ def _condition_element_name(
 
 
 def _condition_value(value: Any) -> Any:
+    if isinstance(value, tuple):
+        return tuple(_condition_value(v) for v in value)
     if isinstance(value, _Enum):
         return str(value.value)
     return value
 
 
+def _conditions(show_if: Condition | AllOf) -> tuple[Condition, ...]:
+    return show_if.conditions if isinstance(show_if, AllOf) else (show_if,)
+
+
 def _condition_schema(condition: Condition) -> dict[str, Any]:
-    if condition.comparator is Comparator.EQUAL:
-        return {"const": _condition_value(condition.value)}
-    raise ValueError(f"Unsupported config comparator {condition.comparator!r}.")
+    return _COMPARATORS[condition.comparator][1](_condition_value(condition.value))
 
 
 def _condition_matches(
+    show_if: Condition | AllOf,
+    elements: dict[str, ConfigElement],
+    data: dict[str, Any],
+) -> bool:
+    return all(
+        _single_condition_matches(c, elements, data) for c in _conditions(show_if)
+    )
+
+
+def _single_condition_matches(
     condition: Condition,
     elements: dict[str, ConfigElement],
     data: dict[str, Any],
@@ -455,9 +549,8 @@ def _condition_matches(
     actual = data[name] if name in data else controller.default
     if actual is NotSet:
         return False
-    if condition.comparator is Comparator.EQUAL:
-        return _condition_value(actual) == _condition_value(condition.value)
-    raise ValueError(f"Unsupported config comparator {condition.comparator!r}.")
+    check = _COMPARATORS[condition.comparator][0]
+    return check(_condition_value(actual), _condition_value(condition.value))
 
 
 def _build_object_schema(
@@ -467,7 +560,7 @@ def _build_object_schema(
 
     properties: dict[str, Any] = {}
     required: list[str] = []
-    groups: list[tuple[str, Condition, list[ConfigElement]]] = []
+    groups: list[tuple[Condition | AllOf, list[ConfigElement]]] = []
 
     for name, element in elements.items():
         if not isinstance(element, ConfigElement):
@@ -478,30 +571,24 @@ def _build_object_schema(
                 required.append(name)
             continue
 
-        controller_name = _condition_element_name(element.show_if, elements)
-        if controller_name == name:
-            raise ValueError(f"Config element {name!r} cannot depend on itself.")
-        if elements[controller_name].show_if is not None:
-            raise ValueError(
-                f"Config element {name!r} cannot depend on conditional element "
-                f"{controller_name!r}."
-            )
+        for condition in _conditions(element.show_if):
+            controller_name = _condition_element_name(condition, elements)
+            if controller_name == name:
+                raise ValueError(f"Config element {name!r} cannot depend on itself.")
+            if elements[controller_name].show_if is not None:
+                raise ValueError(
+                    f"Config element {name!r} cannot depend on conditional element "
+                    f"{controller_name!r}."
+                )
 
-        matching_group = next(
-            (
-                group
-                for group in groups
-                if group[0] == controller_name and group[1] == element.show_if
-            ),
-            None,
-        )
+        matching_group = next((g for g in groups if g[0] == element.show_if), None)
         if matching_group is None:
-            groups.append((controller_name, element.show_if, [element]))
+            groups.append((element.show_if, [element]))
         else:
-            matching_group[2].append(element)
+            matching_group[1].append(element)
 
     all_of: list[dict[str, Any]] = []
-    for controller_name, condition, conditional_elements in groups:
+    for show_if, conditional_elements in groups:
         then_properties = {
             element._name: element.to_dict() for element in conditional_elements
         }
@@ -511,14 +598,15 @@ def _build_object_schema(
         ]
         if then_required:
             then_schema["required"] = then_required
-        if_schema: dict[str, Any] = {
-            "properties": {controller_name: _condition_schema(condition)}
-        }
-        # JSON Schema's ``properties`` matches when the property is absent.
-        # That is correct only when the controller's effective default also
-        # satisfies the condition; otherwise require the controller to exist.
-        if not _condition_matches(condition, elements, {}):
-            if_schema["required"] = [controller_name]
+        if_schema: dict[str, Any] = {"properties": {}}
+        for condition in _conditions(show_if):
+            controller_name = _condition_element_name(condition, elements)
+            if_schema["properties"][controller_name] = _condition_schema(condition)
+            # JSON Schema's ``properties`` matches when the property is absent.
+            # That is correct only when the controller's effective default also
+            # satisfies the condition; otherwise require the controller to exist.
+            if not _single_condition_matches(condition, elements, {}):
+                if_schema.setdefault("required", []).append(controller_name)
         all_of.append({"if": if_schema, "then": then_schema})
 
     return {"properties": properties, "required": required, "allOf": all_of}
