@@ -228,7 +228,7 @@ All configuration types support:
 | `hidden` | `bool` | Hide from UI (default: False) |
 | `deprecated` | `bool` | Mark as deprecated |
 | `position` | `int` | Order in UI (auto-assigned) |
-| `show_if` | `Condition \| AllOf` | Show and validate the field only when other fields match |
+| `show_if` | `Condition` | Show and validate the field only when another field matches |
 
 ## Conditional Fields
 
@@ -258,25 +258,10 @@ field name may also be used when referring to an inherited field:
 show_if=config.equal("type", SlaveType.DOOVIT)
 ```
 
-Use `config.all_of()` when a field depends on more than one sibling. The field
-is shown, and required if it has no default, only while every condition holds:
-
-```python
-class SlaveConfig(config.Schema):
-    type = config.Enum("Type", choices=SlaveType, default=SlaveType.DOOVIT)
-    serial_enabled = config.Boolean("Serial Enabled", default=False)
-    baud_rate = config.Integer(
-        "Baud Rate",
-        default=9600,
-        show_if=config.all_of(
-            config.equal(type, SlaveType.DOOVIT),
-            config.equal(serial_enabled, True),
-        ),
-    )
-```
-
-Each condition in `all_of()` must refer to a different element, and as with
-`equal()`, the elements it refers to can't be conditional themselves.
+Other conditions: `not_equal()`, `one_of(element, values)`, `greater_than()`,
+`greater_than_or_equal()`, `less_than()` and `less_than_or_equal()`. Combine
+several with `config.all_of(...)`, and pass a Boolean element on its own as
+shorthand for `equal(element, True)`.
 
 ## Required vs Optional
 

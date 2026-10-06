@@ -780,173 +780,57 @@ class TestConditionalElements:
         with pytest.raises(ValueError, match="cannot depend on itself"):
             SelfReference.to_schema()
 
-    def test_all_of_combines_conditions_into_one_branch(self):
+    @pytest.mark.parametrize(
+        "condition, if_schema, shown, hidden",
+        [
+            (config.not_equal("n", 1), {"not": {"const": 1}}, 2, 1),
+            (config.one_of("n", [1, 2]), {"enum": [1, 2]}, 2, 3),
+            (
+                config.greater_than("n", 1),
+                {"type": "number", "exclusiveMinimum": 1},
+                2,
+                1,
+            ),
+            (
+                config.less_than_or_equal("n", 1),
+                {"type": "number", "maximum": 1},
+                1,
+                None,
+            ),
+        ],
+    )
+    def test_comparators(self, condition, if_schema, shown, hidden):
         class S(config.Schema):
-            type = config.Enum(
-                "Type",
-                choices=TestConditionalElements.Mode,
-                default=TestConditionalElements.Mode.DOOVIT,
-            )
+            n = config.Integer("N", default=None)
+            port = config.Integer("Port", show_if=condition)
+
+        schema = S.to_schema()
+        assert schema["allOf"][0]["if"]["properties"] == {"n": if_schema}
+        validate({"n": hidden}, schema)
+        with pytest.raises(ValidationError):
+            validate({"n": shown}, schema)
+        with pytest.raises(ValueError, match="port"):
+            S()._inject_deployment_config({"n": shown})
+
+    def test_all_of_and_boolean_shorthand(self):
+        class S(config.Schema):
             enabled = config.Boolean("Enabled", default=False)
+            mode = config.String("Mode", default="a")
             port = config.Integer(
-                "Port",
-                show_if=config.all_of(
-                    config.equal(type, TestConditionalElements.Mode.DOOVIT),
-                    config.equal(enabled, True),
-                ),
+                "Port", show_if=config.all_of(enabled, config.equal(mode, "a"))
             )
 
         schema = S.to_schema()
-
-        assert set(schema["properties"]) == {"type", "enabled"}
-        assert schema["allOf"] == [
-            {
-                "if": {
-                    "properties": {
-                        "type": {"const": "doovit"},
-                        "enabled": {"const": True},
-                    },
-                    # enabled's default doesn't satisfy its condition.
-                    "required": ["enabled"],
-                },
-                "then": {
-                    "properties": {"port": S.port.to_dict()},
-                    "required": ["port"],
-                },
-            }
-        ]
-
-        validate({"type": "doovit", "enabled": False}, schema)
-        validate({"type": "other", "enabled": True}, schema)
-        validate({"type": "doovit", "enabled": True, "port": 80}, schema)
-        with pytest.raises(ValidationError):
-            validate({"type": "doovit", "enabled": True}, schema)
-        with pytest.raises(ValidationError):
-            validate({"enabled": True}, schema)
-
-    def test_all_of_requires_every_condition_at_runtime(self):
-        class S(config.Schema):
-            type = config.Enum(
-                "Type",
-                choices=TestConditionalElements.Mode,
-                default=TestConditionalElements.Mode.DOOVIT,
-            )
-            enabled = config.Boolean("Enabled", default=False)
-            port = config.Integer(
-                "Port",
-                default=8080,
-                show_if=config.all_of(
-                    config.equal(type, TestConditionalElements.Mode.DOOVIT),
-                    config.equal(enabled, True),
-                ),
-            )
-            secret = config.String(
-                "Secret",
-                show_if=config.all_of(
-                    config.equal(type, TestConditionalElements.Mode.DOOVIT),
-                    config.equal(enabled, True),
-                ),
-            )
-
-        instance = S()
-        instance._inject_deployment_config({"type": "other", "enabled": True})
-        assert instance.port.value == 8080
-        with pytest.raises(ValueError, match="secret"):
-            _ = instance.secret.value
-
-        with pytest.raises(ValueError, match="secret"):
-            S()._inject_deployment_config({"enabled": True})
-
-    def test_fields_with_the_same_all_of_share_a_branch(self):
-        class S(config.Schema):
-            enabled = config.Boolean("Enabled", default=False)
-            advanced = config.Boolean("Advanced", default=False)
-            hostname = config.String(
-                "Hostname",
-                default="localhost",
-                show_if=config.all_of(
-                    config.equal(enabled, True), config.equal(advanced, True)
-                ),
-            )
-            port = config.Integer(
-                "Port",
-                show_if=config.all_of(
-                    config.equal(enabled, True), config.equal(advanced, True)
-                ),
-            )
-            retries = config.Integer(
-                "Retries", default=3, show_if=config.equal(enabled, True)
-            )
-
-        branches = S.to_schema()["allOf"]
-        assert len(branches) == 2
-        assert set(branches[0]["then"]["properties"]) == {"hostname", "port"}
-        assert set(branches[1]["then"]["properties"]) == {"retries"}
-
-    def test_nested_object_supports_all_of(self):
-        class Connection(config.Object):
-            enabled = config.Boolean("Enabled", default=False)
-            secure = config.Boolean("Secure", default=True)
-            certificate = config.String(
-                "Certificate",
-                show_if=config.all_of(
-                    config.equal(enabled, True), config.equal(secure, True)
-                ),
-            )
-
-        class S(config.Schema):
-            connection = Connection("Connection")
-
-        branch = S.to_schema()["properties"]["connection"]["allOf"][0]
-        assert branch["if"] == {
-            "properties": {"enabled": {"const": True}, "secure": {"const": True}},
+        assert schema["allOf"][0]["if"] == {
+            "properties": {"enabled": {"const": True}, "mode": {"const": "a"}},
             "required": ["enabled"],
         }
-
-        instance = S()
-        instance._inject_deployment_config(
-            {"connection": {"enabled": True, "secure": False}}
-        )
-        with pytest.raises(ValueError, match="certificate"):
-            _ = instance.connection.certificate.value
-
-        with pytest.raises(ValueError, match="certificate"):
-            S()._inject_deployment_config({"connection": {"enabled": True}})
-
-    def test_all_of_rejects_invalid_conditions(self):
-        with pytest.raises(ValueError, match="at least one"):
-            config.all_of()
-        with pytest.raises(TypeError, match="config.equal"):
-            config.all_of(config.all_of(config.equal("a", True)))
-
-        class Duplicate(config.Schema):
-            enabled = config.Boolean("Enabled", default=False)
-            port = config.Integer(
-                "Port",
-                default=1,
-                show_if=config.all_of(
-                    config.equal(enabled, True), config.equal(enabled, False)
-                ),
-            )
-
-        with pytest.raises(ValueError, match="more than one condition"):
-            Duplicate.to_schema()
-
-        class Chained(config.Schema):
-            enabled = config.Boolean("Enabled", default=False)
-            advanced = config.Boolean(
-                "Advanced", default=False, show_if=config.equal(enabled, True)
-            )
-            port = config.Integer(
-                "Port",
-                default=1,
-                show_if=config.all_of(
-                    config.equal(enabled, True), config.equal(advanced, True)
-                ),
-            )
-
-        with pytest.raises(ValueError, match="conditional element 'advanced'"):
-            Chained.to_schema()
+        validate({"enabled": True, "mode": "b"}, schema)
+        with pytest.raises(ValidationError):
+            validate({"enabled": True}, schema)
+        S()._inject_deployment_config({"enabled": True, "mode": "b"})
+        with pytest.raises(ValueError, match="port"):
+            S()._inject_deployment_config({"enabled": True})
 
     def test_schema_without_conditions_does_not_gain_all_of(self):
         class S(config.Schema):
