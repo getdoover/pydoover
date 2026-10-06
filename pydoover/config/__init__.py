@@ -47,6 +47,27 @@ def equal(element: "ConfigElement | str", value: Any) -> Condition:
     return Condition(element=element, comparator=Comparator.EQUAL, value=value)
 
 
+@dataclass(frozen=True)
+class AllOf:
+    """A set of conditions that must all hold for a config element to be active."""
+
+    conditions: tuple[Condition, ...]
+
+
+def all_of(*conditions: Condition) -> AllOf:
+    """Show an element only when every one of ``conditions`` holds.
+
+    Each condition is created with :func:`equal` and refers to a different
+    sibling element.
+    """
+
+    if not conditions:
+        raise ValueError("all_of() needs at least one condition.")
+    if not all(isinstance(c, Condition) for c in conditions):
+        raise TypeError("all_of() takes conditions created by config.equal().")
+    return AllOf(conditions=tuple(conditions))
+
+
 # Attribute names reserved for ConfigElement internal use.
 # Config elements declared as class attributes must not use these names.
 RESERVED_NAMES = frozenset(
@@ -291,7 +312,7 @@ class ConfigElement:
         name: str | None = None,
         advanced: bool | None = None,
         required: bool | None = None,
-        show_if: Condition | None = None,
+        show_if: Condition | AllOf | None = None,
     ):
         if name is not None:
             check_key(name)
@@ -314,8 +335,10 @@ class ConfigElement:
         self.format = format
         self.advanced = advanced
         self._required = required
-        if show_if is not None and not isinstance(show_if, Condition):
-            raise TypeError("show_if must be a condition created by config.equal()")
+        if show_if is not None and not isinstance(show_if, (Condition, AllOf)):
+            raise TypeError(
+                "show_if must be a condition created by config.equal() or config.all_of()"
+            )
         self.show_if = show_if
         self._value = NotSet
 
@@ -445,7 +468,24 @@ def _condition_schema(condition: Condition) -> dict[str, Any]:
     raise ValueError(f"Unsupported config comparator {condition.comparator!r}.")
 
 
+def _conditions(show_if: Condition | AllOf) -> tuple[Condition, ...]:
+    if isinstance(show_if, AllOf):
+        return show_if.conditions
+    return (show_if,)
+
+
 def _condition_matches(
+    show_if: Condition | AllOf,
+    elements: dict[str, ConfigElement],
+    data: dict[str, Any],
+) -> bool:
+    return all(
+        _single_condition_matches(condition, elements, data)
+        for condition in _conditions(show_if)
+    )
+
+
+def _single_condition_matches(
     condition: Condition,
     elements: dict[str, ConfigElement],
     data: dict[str, Any],
@@ -467,7 +507,7 @@ def _build_object_schema(
 
     properties: dict[str, Any] = {}
     required: list[str] = []
-    groups: list[tuple[str, Condition, list[ConfigElement]]] = []
+    groups: list[tuple[Condition | AllOf, list[ConfigElement]]] = []
 
     for name, element in elements.items():
         if not isinstance(element, ConfigElement):
@@ -478,30 +518,33 @@ def _build_object_schema(
                 required.append(name)
             continue
 
-        controller_name = _condition_element_name(element.show_if, elements)
-        if controller_name == name:
-            raise ValueError(f"Config element {name!r} cannot depend on itself.")
-        if elements[controller_name].show_if is not None:
+        controller_names = [
+            _condition_element_name(condition, elements)
+            for condition in _conditions(element.show_if)
+        ]
+        if len(set(controller_names)) != len(controller_names):
             raise ValueError(
-                f"Config element {name!r} cannot depend on conditional element "
-                f"{controller_name!r}."
+                f"Config element {name!r} has more than one condition on the same element."
             )
+        for controller_name in controller_names:
+            if controller_name == name:
+                raise ValueError(f"Config element {name!r} cannot depend on itself.")
+            if elements[controller_name].show_if is not None:
+                raise ValueError(
+                    f"Config element {name!r} cannot depend on conditional element "
+                    f"{controller_name!r}."
+                )
 
         matching_group = next(
-            (
-                group
-                for group in groups
-                if group[0] == controller_name and group[1] == element.show_if
-            ),
-            None,
+            (group for group in groups if group[0] == element.show_if), None
         )
         if matching_group is None:
-            groups.append((controller_name, element.show_if, [element]))
+            groups.append((element.show_if, [element]))
         else:
-            matching_group[2].append(element)
+            matching_group[1].append(element)
 
     all_of: list[dict[str, Any]] = []
-    for controller_name, condition, conditional_elements in groups:
+    for show_if, conditional_elements in groups:
         then_properties = {
             element._name: element.to_dict() for element in conditional_elements
         }
@@ -511,14 +554,19 @@ def _build_object_schema(
         ]
         if then_required:
             then_schema["required"] = then_required
-        if_schema: dict[str, Any] = {
-            "properties": {controller_name: _condition_schema(condition)}
-        }
-        # JSON Schema's ``properties`` matches when the property is absent.
-        # That is correct only when the controller's effective default also
-        # satisfies the condition; otherwise require the controller to exist.
-        if not _condition_matches(condition, elements, {}):
-            if_schema["required"] = [controller_name]
+        if_properties: dict[str, Any] = {}
+        if_required: list[str] = []
+        for condition in _conditions(show_if):
+            controller_name = _condition_element_name(condition, elements)
+            if_properties[controller_name] = _condition_schema(condition)
+            # JSON Schema's ``properties`` matches when the property is absent.
+            # That is correct only when the controller's effective default also
+            # satisfies the condition; otherwise require the controller to exist.
+            if not _single_condition_matches(condition, elements, {}):
+                if_required.append(controller_name)
+        if_schema: dict[str, Any] = {"properties": if_properties}
+        if if_required:
+            if_schema["required"] = if_required
         all_of.append({"if": if_schema, "then": then_schema})
 
     return {"properties": properties, "required": required, "allOf": all_of}

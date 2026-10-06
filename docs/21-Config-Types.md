@@ -28,7 +28,7 @@ All configuration types accept these parameters:
 | `hidden` | `bool` | `False` | Hide from UI |
 | `deprecated` | `bool` | `None` | Mark as deprecated |
 | `position` | `int` | auto | Order in UI (auto-assigned if not specified) |
-| `show_if` | `Condition` | `None` | Conditionally show and validate the field; create with `config.equal()` |
+| `show_if` | `Condition \| AllOf` | `None` | Conditionally show and validate the field; create with `config.equal()`, or `config.all_of()` to combine several |
 
 ## Integer
 
