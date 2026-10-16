@@ -257,6 +257,17 @@ class TestCanonicalUiTypes:
         assert data["currentValue"] == 1_777_511_327_616
         assert data["precision"] == "second"
         assert data["absoluteFormat"] == "HH:mm:ss"
+        assert "labelFormat" not in data
+
+    def test_timestamp_serializes_label_format(self):
+        timestamp = ui.Timestamp(
+            "Ends At",
+            name="ends_at",
+            value=1_777_511_327_616,
+            label_format="ddd h:mma ({relative})",
+        )
+
+        assert timestamp.to_dict()["labelFormat"] == "ddd h:mma ({relative})"
 
     def test_timestamp_still_serializes_datetime_values_as_ms_since_epoch(self):
         from datetime import datetime, timezone

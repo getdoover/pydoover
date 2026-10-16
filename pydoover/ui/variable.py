@@ -263,14 +263,22 @@ class Timestamp(Variable):
         value: datetime | int | float | Any = NotSet,
         precision: Literal["second", "minute"] | Any = NotSet,
         absolute_format: str | Any = NotSet,
+        label_format: str | Any = NotSet,
         **kwargs,
     ):
         # ``precision`` controls how often the frontend refreshes the relative
         # label. Second precision supports countdown-style timestamps backed by
         # one fixed ms-since-epoch value instead of per-second app updates.
+        #
+        # ``absolute_format`` is the day.js format for the hover tooltip.
+        # ``label_format`` is the day.js format for the visible label, with
+        # ``{relative}`` standing in for the relative time, e.g.
+        # ``"ddd h:mma ({relative})"`` -> "Sat 7:52pm (in a day)". Left unset,
+        # the label is the relative time only.
         super().__init__(display_name, value=value, var_type="timestamp", **kwargs)
         self.precision = precision
         self.absolute_format = absolute_format
+        self.label_format = label_format
 
     def to_dict(self):
         result = super().to_dict()
@@ -286,5 +294,8 @@ class Timestamp(Variable):
 
         if self.absolute_format is not NotSet:
             result["absoluteFormat"] = self.absolute_format
+
+        if self.label_format is not NotSet:
+            result["labelFormat"] = self.label_format
 
         return normalize_ui_value(result)
