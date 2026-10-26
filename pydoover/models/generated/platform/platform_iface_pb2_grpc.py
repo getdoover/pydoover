@@ -145,6 +145,21 @@ class platformIfaceStub(object):
                 request_serializer=platform_dot_platform__iface__pb2.getIoDetailsRequest.SerializeToString,
                 response_deserializer=platform_dot_platform__iface__pb2.getIoDetailsResponse.FromString,
                 _registered_method=True)
+        self.getImage = channel.unary_unary(
+                '/platform_iface.platformIface/getImage',
+                request_serializer=platform_dot_platform__iface__pb2.getImageRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getImageResponse.FromString,
+                _registered_method=True)
+        self.setImage = channel.unary_unary(
+                '/platform_iface.platformIface/setImage',
+                request_serializer=platform_dot_platform__iface__pb2.setImageRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.setImageResponse.FromString,
+                _registered_method=True)
+        self.subscribeImage = channel.unary_stream(
+                '/platform_iface.platformIface/subscribeImage',
+                request_serializer=platform_dot_platform__iface__pb2.subscribeImageRequest.SerializeToString,
+                response_deserializer=platform_dot_platform__iface__pb2.getImageResponse.FromString,
+                _registered_method=True)
         self.syncRtcTime = channel.unary_unary(
                 '/platform_iface.platformIface/syncRtcTime',
                 request_serializer=platform_dot_platform__iface__pb2.syncRtcTimeRequest.SerializeToString,
@@ -368,6 +383,29 @@ class platformIfaceServicer(object):
 
     def getIoDetails(self, request, context):
         """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getImage(self, request, context):
+        """The whole process image in one call: every channel of every device, in
+        the flat numbering getIoTable describes. Served from the platform
+        interface's last poll of each device, so it never waits on hardware.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def setImage(self, request, context):
+        """Write any number of DOs and AOs in one call.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def subscribeImage(self, request, context):
+        """The image again whenever it changes, at most max_rate_hz times a second.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -596,6 +634,21 @@ def add_platformIfaceServicer_to_server(servicer, server):
                     servicer.getIoDetails,
                     request_deserializer=platform_dot_platform__iface__pb2.getIoDetailsRequest.FromString,
                     response_serializer=platform_dot_platform__iface__pb2.getIoDetailsResponse.SerializeToString,
+            ),
+            'getImage': grpc.unary_unary_rpc_method_handler(
+                    servicer.getImage,
+                    request_deserializer=platform_dot_platform__iface__pb2.getImageRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getImageResponse.SerializeToString,
+            ),
+            'setImage': grpc.unary_unary_rpc_method_handler(
+                    servicer.setImage,
+                    request_deserializer=platform_dot_platform__iface__pb2.setImageRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.setImageResponse.SerializeToString,
+            ),
+            'subscribeImage': grpc.unary_stream_rpc_method_handler(
+                    servicer.subscribeImage,
+                    request_deserializer=platform_dot_platform__iface__pb2.subscribeImageRequest.FromString,
+                    response_serializer=platform_dot_platform__iface__pb2.getImageResponse.SerializeToString,
             ),
             'syncRtcTime': grpc.unary_unary_rpc_method_handler(
                     servicer.syncRtcTime,
@@ -1261,6 +1314,87 @@ class platformIface(object):
             '/platform_iface.platformIface/getIoDetails',
             platform_dot_platform__iface__pb2.getIoDetailsRequest.SerializeToString,
             platform_dot_platform__iface__pb2.getIoDetailsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getImage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/getImage',
+            platform_dot_platform__iface__pb2.getImageRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getImageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def setImage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/platform_iface.platformIface/setImage',
+            platform_dot_platform__iface__pb2.setImageRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.setImageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def subscribeImage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/platform_iface.platformIface/subscribeImage',
+            platform_dot_platform__iface__pb2.subscribeImageRequest.SerializeToString,
+            platform_dot_platform__iface__pb2.getImageResponse.FromString,
             options,
             channel_credentials,
             insecure,

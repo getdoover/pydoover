@@ -720,3 +720,84 @@ class setDIConfigResponse(_message.Message):
     response_header: ResponseHeader
     config: DIConfig
     def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., config: _Optional[_Union[DIConfig, _Mapping]] = ...) -> None: ...
+
+class getImageRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class DeviceImageStatus(_message.Message):
+    __slots__ = ("index", "name", "online", "age_ms", "last_error")
+    INDEX_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ONLINE_FIELD_NUMBER: _ClassVar[int]
+    AGE_MS_FIELD_NUMBER: _ClassVar[int]
+    LAST_ERROR_FIELD_NUMBER: _ClassVar[int]
+    index: int
+    name: str
+    online: bool
+    age_ms: int
+    last_error: str
+    def __init__(self, index: _Optional[int] = ..., name: _Optional[str] = ..., online: bool = ..., age_ms: _Optional[int] = ..., last_error: _Optional[str] = ...) -> None: ...
+
+class getImageResponse(_message.Message):
+    __slots__ = ("response_header", "di", "do", "ai", "ao", "invalid_di", "invalid_do", "invalid_ai", "invalid_ao", "di_count", "devices", "sequence")
+    class DiCountEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: int
+        value: int
+        def __init__(self, key: _Optional[int] = ..., value: _Optional[int] = ...) -> None: ...
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    DI_FIELD_NUMBER: _ClassVar[int]
+    DO_FIELD_NUMBER: _ClassVar[int]
+    AI_FIELD_NUMBER: _ClassVar[int]
+    AO_FIELD_NUMBER: _ClassVar[int]
+    INVALID_DI_FIELD_NUMBER: _ClassVar[int]
+    INVALID_DO_FIELD_NUMBER: _ClassVar[int]
+    INVALID_AI_FIELD_NUMBER: _ClassVar[int]
+    INVALID_AO_FIELD_NUMBER: _ClassVar[int]
+    DI_COUNT_FIELD_NUMBER: _ClassVar[int]
+    DEVICES_FIELD_NUMBER: _ClassVar[int]
+    SEQUENCE_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    di: _containers.RepeatedScalarFieldContainer[bool]
+    do: _containers.RepeatedScalarFieldContainer[bool]
+    ai: _containers.RepeatedScalarFieldContainer[float]
+    ao: _containers.RepeatedScalarFieldContainer[float]
+    invalid_di: _containers.RepeatedScalarFieldContainer[int]
+    invalid_do: _containers.RepeatedScalarFieldContainer[int]
+    invalid_ai: _containers.RepeatedScalarFieldContainer[int]
+    invalid_ao: _containers.RepeatedScalarFieldContainer[int]
+    di_count: _containers.ScalarMap[int, int]
+    devices: _containers.RepeatedCompositeFieldContainer[DeviceImageStatus]
+    sequence: int
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., di: _Optional[_Iterable[bool]] = ..., do: _Optional[_Iterable[bool]] = ..., ai: _Optional[_Iterable[float]] = ..., ao: _Optional[_Iterable[float]] = ..., invalid_di: _Optional[_Iterable[int]] = ..., invalid_do: _Optional[_Iterable[int]] = ..., invalid_ai: _Optional[_Iterable[int]] = ..., invalid_ao: _Optional[_Iterable[int]] = ..., di_count: _Optional[_Mapping[int, int]] = ..., devices: _Optional[_Iterable[_Union[DeviceImageStatus, _Mapping]]] = ..., sequence: _Optional[int] = ...) -> None: ...
+
+class setImageRequest(_message.Message):
+    __slots__ = ("do", "do_value", "ao", "ao_value")
+    DO_FIELD_NUMBER: _ClassVar[int]
+    DO_VALUE_FIELD_NUMBER: _ClassVar[int]
+    AO_FIELD_NUMBER: _ClassVar[int]
+    AO_VALUE_FIELD_NUMBER: _ClassVar[int]
+    do: _containers.RepeatedScalarFieldContainer[int]
+    do_value: _containers.RepeatedScalarFieldContainer[bool]
+    ao: _containers.RepeatedScalarFieldContainer[int]
+    ao_value: _containers.RepeatedScalarFieldContainer[float]
+    def __init__(self, do: _Optional[_Iterable[int]] = ..., do_value: _Optional[_Iterable[bool]] = ..., ao: _Optional[_Iterable[int]] = ..., ao_value: _Optional[_Iterable[float]] = ...) -> None: ...
+
+class setImageResponse(_message.Message):
+    __slots__ = ("response_header", "failed_do", "failed_ao")
+    RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
+    FAILED_DO_FIELD_NUMBER: _ClassVar[int]
+    FAILED_AO_FIELD_NUMBER: _ClassVar[int]
+    response_header: ResponseHeader
+    failed_do: _containers.RepeatedScalarFieldContainer[int]
+    failed_ao: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., failed_do: _Optional[_Iterable[int]] = ..., failed_ao: _Optional[_Iterable[int]] = ...) -> None: ...
+
+class subscribeImageRequest(_message.Message):
+    __slots__ = ("max_rate_hz",)
+    MAX_RATE_HZ_FIELD_NUMBER: _ClassVar[int]
+    max_rate_hz: float
+    def __init__(self, max_rate_hz: _Optional[float] = ...) -> None: ...

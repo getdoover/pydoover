@@ -290,3 +290,105 @@ class DIReading:
     value: bool
     pulse_count: int | None = None
     pulse_rate_hz: float | None = None
+
+
+@dataclass
+class DeviceImageStatus:
+    """One device's part of a :class:`ProcessImage`.
+
+    Attributes
+    ----------
+    index : int
+        ``-1`` for the master, else the slave's configured index.
+    name : str
+        The device's name, as the platform interface reports it.
+    online : bool
+        Whether the device's data is fresh enough to serve.
+    age_ms : int | None
+        Age of the device's latest successful poll, or ``None`` before the first.
+    last_error : str | None
+        The latest poll error, if the device is failing.
+    """
+
+    index: int
+    name: str
+    online: bool
+    age_ms: int | None = None
+    last_error: str | None = None
+
+
+@dataclass
+class ProcessImage:
+    """Every channel of every device, as of the platform interface's last poll.
+
+    Returned by :meth:`PlatformInterface.fetch_image` and passed to
+    :meth:`PlatformInterface.subscribe_image` callbacks. Lists are indexed by
+    flat channel number, the same numbering as
+    :meth:`PlatformInterface.fetch_io_table`.
+
+    A channel whose device is offline or stale holds ``False`` / ``0.0`` in its
+    list and appears in the matching ``invalid_*`` set, so indices never shift.
+    Check :meth:`valid` before trusting a value.
+
+    Attributes
+    ----------
+    di, do : list[bool]
+    ai, ao : list[float]
+    invalid_di, invalid_do, invalid_ai, invalid_ao : set[int]
+        Flat channels with no fresh value.
+    di_count : dict[int, int]
+        Pulse totals for the DI channels that have a counter.
+    devices : list[DeviceImageStatus]
+        Master first, then slaves in configured order.
+    sequence : int
+        Increases whenever any device's data changes.
+    """
+
+    di: list[bool]
+    do: list[bool]
+    ai: list[float]
+    ao: list[float]
+    invalid_di: set[int]
+    invalid_do: set[int]
+    invalid_ai: set[int]
+    invalid_ao: set[int]
+    di_count: dict[int, int]
+    devices: list[DeviceImageStatus]
+    sequence: int
+
+    def valid(self, io_type: str, channel: int) -> bool:
+        """Whether ``channel`` of ``io_type`` ("DI", "DO", "AI" or "AO") has a
+        fresh value."""
+        invalid = {
+            "DI": self.invalid_di,
+            "DO": self.invalid_do,
+            "AI": self.invalid_ai,
+            "AO": self.invalid_ao,
+        }[io_type.upper()]
+        return channel not in invalid
+
+    @classmethod
+    def from_response(cls, response) -> "ProcessImage":
+        """Build a ProcessImage from a getImageResponse proto message."""
+        return cls(
+            di=list(response.di),
+            do=list(response.do),
+            ai=list(response.ai),
+            ao=list(response.ao),
+            invalid_di=set(response.invalid_di),
+            invalid_do=set(response.invalid_do),
+            invalid_ai=set(response.invalid_ai),
+            invalid_ao=set(response.invalid_ao),
+            di_count=dict(response.di_count),
+            devices=[
+                DeviceImageStatus(
+                    index=d.index,
+                    name=d.name,
+                    online=d.online,
+                    age_ms=d.age_ms if d.HasField("age_ms") else None,
+                    last_error=d.last_error if d.HasField("last_error") else None,
+                )
+                for d in response.devices
+            ],
+            sequence=response.sequence,
+        )

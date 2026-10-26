@@ -32,6 +32,15 @@ service platformIface {
     rpc getTemperature (getTemperatureRequest) returns (getTemperatureResponse) {}
     rpc getIoTable (getIoTableRequest) returns (getIoTableResponse) {}
     rpc getIoDetails (getIoDetailsRequest) returns (getIoDetailsResponse) {}
+
+    // The whole process image in one call: every channel of every device, in
+    // the flat numbering getIoTable describes. Served from the platform
+    // interface's last poll of each device, so it never waits on hardware.
+    rpc getImage (getImageRequest) returns (getImageResponse) {}
+    // Write any number of DOs and AOs in one call.
+    rpc setImage (setImageRequest) returns (setImageResponse) {}
+    // The image again whenever it changes, at most max_rate_hz times a second.
+    rpc subscribeImage (subscribeImageRequest) returns (stream getImageResponse) {}
     // rpc getRtcTime (getRtcTimeRequest) returns (getRtcTimeResponse) {}
     rpc syncRtcTime (syncRtcTimeRequest) returns (syncRtcTimeResponse) {}
     // rpc getUptime (getUptimeRequest) returns (getUptimeResponse) {}
@@ -528,4 +537,59 @@ message setDIConfigRequest {
 message setDIConfigResponse {
     ResponseHeader response_header = 1;
     optional DIConfig config = 2;
+}
+
+message getImageRequest {}
+
+// One device's part of the image: the master, then each slave.
+message DeviceImageStatus {
+    // -1 for the master, else the slave's configured index.
+    int32 index = 1;
+    string name = 2;
+    // True while the device's data is fresh enough to serve.
+    bool online = 3;
+    // Age of the device's latest successful poll; unset before the first one.
+    optional uint64 age_ms = 4;
+    optional string last_error = 5;
+}
+
+message getImageResponse {
+    ResponseHeader response_header = 1;
+    // Indexed by flat channel number. A channel with no fresh value (its
+    // device is offline or stale) reads false / 0 here and is listed in the
+    // matching invalid_* field, so indices never shift.
+    repeated bool di = 2;
+    repeated bool do = 3;
+    repeated float ai = 4;
+    repeated float ao = 5;
+    repeated int32 invalid_di = 6;
+    repeated int32 invalid_do = 7;
+    repeated int32 invalid_ai = 8;
+    repeated int32 invalid_ao = 9;
+    // Pulse totals, for the DI channels that have a counter.
+    map<int32, uint64> di_count = 10;
+    repeated DeviceImageStatus devices = 11;
+    // Increases whenever any device's data changes.
+    uint64 sequence = 12;
+}
+
+// Sparse: only the listed channels are written. Same parallel-list shape as
+// setDO / setAO.
+message setImageRequest {
+    repeated int32 do = 1;
+    repeated bool do_value = 2;
+    repeated int32 ao = 3;
+    repeated float ao_value = 4;
+}
+
+message setImageResponse {
+    ResponseHeader response_header = 1;
+    // Channels whose write failed. The others were written.
+    repeated int32 failed_do = 2;
+    repeated int32 failed_ao = 3;
+}
+
+message subscribeImageRequest {
+    // Upper bound on messages per second; unset or 0 sends every change.
+    optional float max_rate_hz = 1;
 }
