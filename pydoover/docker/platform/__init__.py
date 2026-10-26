@@ -10,4 +10,6 @@ from .platform_types import (
     IoDetails as IoDetails,
     ProcessImage as ProcessImage,
     DeviceImageStatus as DeviceImageStatus,
+    ChannelQuality as ChannelQuality,
+    ChannelStatus as ChannelStatus,
 )

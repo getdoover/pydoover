@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import IntEnum
 
 
 @dataclass
@@ -292,6 +293,50 @@ class DIReading:
     pulse_rate_hz: float | None = None
 
 
+class ChannelQuality(IntEnum):
+    """Why a channel in a :class:`ProcessImage` is not plain good.
+
+    A value the platform interface sends that this pydoover does not know is
+    read as :attr:`FAULT`, so an old client never mistakes a new kind of
+    problem for a good reading.
+    """
+
+    GOOD = 0
+    #: The device's data is older than its staleness limit.
+    STALE = 1
+    #: The device has not answered yet, or has dropped off.
+    OFFLINE = 2
+    #: The device answered but gave no value for this channel.
+    NO_VALUE = 3
+    #: The hardware reports a fault on this channel.
+    FAULT = 4
+    #: An analog input below its valid range (e.g. < 3.6 mA, a wire break).
+    UNDER_RANGE = 5
+    #: An analog input above its valid range (e.g. > 21 mA).
+    OVER_RANGE = 6
+    #: An input or output tripped on overcurrent.
+    OVERCURRENT = 7
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.FAULT
+
+
+@dataclass
+class ChannelStatus:
+    """A channel that is not plain good, and why.
+
+    Attributes
+    ----------
+    quality : ChannelQuality
+    detail : str | None
+        Human-readable context from the platform interface, if any.
+    """
+
+    quality: ChannelQuality
+    detail: str | None = None
+
+
 @dataclass
 class DeviceImageStatus:
     """One device's part of a :class:`ProcessImage`.
@@ -305,9 +350,13 @@ class DeviceImageStatus:
     online : bool
         Whether the device's data is fresh enough to serve.
     age_ms : int | None
-        Age of the device's latest successful poll, or ``None`` before the first.
+        Age of the device's latest successful poll when the image was built,
+        or ``None`` before the first poll.
     last_error : str | None
         The latest poll error, if the device is failing.
+    timestamp_ms : int | None
+        Wall-clock time of that poll, Unix milliseconds. Can be wrong on a
+        device whose clock has not synced; ``age_ms`` is the reliable measure.
     """
 
     index: int
@@ -315,6 +364,7 @@ class DeviceImageStatus:
     online: bool
     age_ms: int | None = None
     last_error: str | None = None
+    timestamp_ms: int | None = None
 
 
 @dataclass
@@ -324,69 +374,92 @@ class ProcessImage:
     Returned by :meth:`PlatformInterface.fetch_image` and passed to
     :meth:`PlatformInterface.subscribe_image` callbacks. Lists are indexed by
     flat channel number, the same numbering as
-    :meth:`PlatformInterface.fetch_io_table`.
+    :meth:`PlatformInterface.fetch_io_table`, and indices never shift.
 
-    A channel whose device is offline or stale holds ``False`` / ``0.0`` in its
-    list and appears in the matching ``invalid_*`` set, so indices never shift.
-    Check :meth:`valid` before trusting a value.
+    A channel whose quality is not :attr:`ChannelQuality.GOOD` appears in the
+    matching ``*_status`` dict. Check :meth:`valid` (or :meth:`quality`) before
+    trusting a value: an offline channel reads ``False`` / ``0.0``, and an
+    out-of-range analog input keeps the reading it has.
 
     Attributes
     ----------
     di, do : list[bool]
     ai, ao : list[float]
-    invalid_di, invalid_do, invalid_ai, invalid_ao : set[int]
-        Flat channels with no fresh value.
+    di_status, do_status, ai_status, ao_status : dict[int, ChannelStatus]
+        Only channels that are not good.
     di_count : dict[int, int]
         Pulse totals for the DI channels that have a counter.
+    di_rate_hz : dict[int, float]
+        Pulse rates for the DI channels whose hardware measures one.
     devices : list[DeviceImageStatus]
         Master first, then slaves in configured order.
     sequence : int
-        Increases whenever any device's data changes.
+        Increases when any value or channel status changes, and only then.
     """
 
     di: list[bool]
     do: list[bool]
     ai: list[float]
     ao: list[float]
-    invalid_di: set[int]
-    invalid_do: set[int]
-    invalid_ai: set[int]
-    invalid_ao: set[int]
+    di_status: dict[int, ChannelStatus]
+    do_status: dict[int, ChannelStatus]
+    ai_status: dict[int, ChannelStatus]
+    ao_status: dict[int, ChannelStatus]
     di_count: dict[int, int]
+    di_rate_hz: dict[int, float]
     devices: list[DeviceImageStatus]
     sequence: int
 
-    def valid(self, io_type: str, channel: int) -> bool:
-        """Whether ``channel`` of ``io_type`` ("DI", "DO", "AI" or "AO") has a
-        fresh value."""
-        invalid = {
-            "DI": self.invalid_di,
-            "DO": self.invalid_do,
-            "AI": self.invalid_ai,
-            "AO": self.invalid_ao,
+    def quality(self, io_type: str, channel: int) -> ChannelQuality:
+        """The quality of ``channel`` of ``io_type`` ("DI", "DO", "AI" or "AO")."""
+        statuses = {
+            "DI": self.di_status,
+            "DO": self.do_status,
+            "AI": self.ai_status,
+            "AO": self.ao_status,
         }[io_type.upper()]
-        return channel not in invalid
+        status = statuses.get(channel)
+        return status.quality if status else ChannelQuality.GOOD
+
+    def valid(self, io_type: str, channel: int) -> bool:
+        """Whether ``channel`` of ``io_type`` has a good value."""
+        return self.quality(io_type, channel) is ChannelQuality.GOOD
 
     @classmethod
     def from_response(cls, response) -> "ProcessImage":
         """Build a ProcessImage from a getImageResponse proto message."""
+
+        def statuses(field):
+            return {
+                channel: ChannelStatus(
+                    quality=ChannelQuality(status.quality),
+                    detail=status.detail if status.HasField("detail") else None,
+                )
+                for channel, status in field.items()
+            }
+
+        def opt(message, field):
+            return getattr(message, field) if message.HasField(field) else None
+
         return cls(
             di=list(response.di),
             do=list(response.do),
             ai=list(response.ai),
             ao=list(response.ao),
-            invalid_di=set(response.invalid_di),
-            invalid_do=set(response.invalid_do),
-            invalid_ai=set(response.invalid_ai),
-            invalid_ao=set(response.invalid_ao),
+            di_status=statuses(response.di_status),
+            do_status=statuses(response.do_status),
+            ai_status=statuses(response.ai_status),
+            ao_status=statuses(response.ao_status),
             di_count=dict(response.di_count),
+            di_rate_hz=dict(response.di_rate_hz),
             devices=[
                 DeviceImageStatus(
                     index=d.index,
                     name=d.name,
                     online=d.online,
-                    age_ms=d.age_ms if d.HasField("age_ms") else None,
-                    last_error=d.last_error if d.HasField("last_error") else None,
+                    age_ms=opt(d, "age_ms"),
+                    last_error=opt(d, "last_error"),
+                    timestamp_ms=opt(d, "timestamp_ms"),
                 )
                 for d in response.devices
             ],

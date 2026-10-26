@@ -9,7 +9,13 @@ import grpc
 
 from ...models import DooverAPIError
 from ...models.generated.platform import platform_iface_pb2, platform_iface_pb2_grpc
-from .platform_types import Location, Event, IoDetails, DIReading, ProcessImage
+from .platform_types import (
+    DIReading,
+    Event,
+    IoDetails,
+    Location,
+    ProcessImage,
+)
 from ..grpc_interface import GRPCInterface
 from ...utils import call_maybe_async, deprecated
 from ...cli.decorators import command as cli_command
@@ -1350,12 +1356,13 @@ class PlatformInterface(GRPCInterface):
         Examples
         --------
 
-        Read DI 3 and AI 0, checking their devices are online::
+        Read DI 3 and AI 0, checking their quality::
 
             image = await self.platform_iface.fetch_image()
             if image.valid("DI", 3):
                 print(image.di[3])
-            print(image.ai[0], image.valid("AI", 0))
+            if image.quality("AI", 0) is ChannelQuality.UNDER_RANGE:
+                print("AI 0 looks like a broken 4-20 mA loop")
 
         Returns
         -------

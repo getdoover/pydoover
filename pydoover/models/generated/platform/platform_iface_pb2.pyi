@@ -1,9 +1,29 @@
 from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class ChannelQuality(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    CHANNEL_QUALITY_GOOD: _ClassVar[ChannelQuality]
+    CHANNEL_QUALITY_STALE: _ClassVar[ChannelQuality]
+    CHANNEL_QUALITY_OFFLINE: _ClassVar[ChannelQuality]
+    CHANNEL_QUALITY_NO_VALUE: _ClassVar[ChannelQuality]
+    CHANNEL_QUALITY_FAULT: _ClassVar[ChannelQuality]
+    CHANNEL_QUALITY_UNDER_RANGE: _ClassVar[ChannelQuality]
+    CHANNEL_QUALITY_OVER_RANGE: _ClassVar[ChannelQuality]
+    CHANNEL_QUALITY_OVERCURRENT: _ClassVar[ChannelQuality]
+CHANNEL_QUALITY_GOOD: ChannelQuality
+CHANNEL_QUALITY_STALE: ChannelQuality
+CHANNEL_QUALITY_OFFLINE: ChannelQuality
+CHANNEL_QUALITY_NO_VALUE: ChannelQuality
+CHANNEL_QUALITY_FAULT: ChannelQuality
+CHANNEL_QUALITY_UNDER_RANGE: ChannelQuality
+CHANNEL_QUALITY_OVER_RANGE: ChannelQuality
+CHANNEL_QUALITY_OVERCURRENT: ChannelQuality
 
 class ResponseHeader(_message.Message):
     __slots__ = ("success", "response_code", "message")
@@ -725,22 +745,60 @@ class getImageRequest(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
 
+class ChannelStatus(_message.Message):
+    __slots__ = ("quality", "detail")
+    QUALITY_FIELD_NUMBER: _ClassVar[int]
+    DETAIL_FIELD_NUMBER: _ClassVar[int]
+    quality: ChannelQuality
+    detail: str
+    def __init__(self, quality: _Optional[_Union[ChannelQuality, str]] = ..., detail: _Optional[str] = ...) -> None: ...
+
 class DeviceImageStatus(_message.Message):
-    __slots__ = ("index", "name", "online", "age_ms", "last_error")
+    __slots__ = ("index", "name", "online", "age_ms", "last_error", "timestamp_ms")
     INDEX_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     ONLINE_FIELD_NUMBER: _ClassVar[int]
     AGE_MS_FIELD_NUMBER: _ClassVar[int]
     LAST_ERROR_FIELD_NUMBER: _ClassVar[int]
+    TIMESTAMP_MS_FIELD_NUMBER: _ClassVar[int]
     index: int
     name: str
     online: bool
     age_ms: int
     last_error: str
-    def __init__(self, index: _Optional[int] = ..., name: _Optional[str] = ..., online: bool = ..., age_ms: _Optional[int] = ..., last_error: _Optional[str] = ...) -> None: ...
+    timestamp_ms: int
+    def __init__(self, index: _Optional[int] = ..., name: _Optional[str] = ..., online: bool = ..., age_ms: _Optional[int] = ..., last_error: _Optional[str] = ..., timestamp_ms: _Optional[int] = ...) -> None: ...
 
 class getImageResponse(_message.Message):
-    __slots__ = ("response_header", "di", "do", "ai", "ao", "invalid_di", "invalid_do", "invalid_ai", "invalid_ao", "di_count", "devices", "sequence")
+    __slots__ = ("response_header", "di", "do", "ai", "ao", "di_status", "do_status", "ai_status", "ao_status", "di_count", "di_rate_hz", "devices", "sequence")
+    class DiStatusEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: int
+        value: ChannelStatus
+        def __init__(self, key: _Optional[int] = ..., value: _Optional[_Union[ChannelStatus, _Mapping]] = ...) -> None: ...
+    class DoStatusEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: int
+        value: ChannelStatus
+        def __init__(self, key: _Optional[int] = ..., value: _Optional[_Union[ChannelStatus, _Mapping]] = ...) -> None: ...
+    class AiStatusEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: int
+        value: ChannelStatus
+        def __init__(self, key: _Optional[int] = ..., value: _Optional[_Union[ChannelStatus, _Mapping]] = ...) -> None: ...
+    class AoStatusEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: int
+        value: ChannelStatus
+        def __init__(self, key: _Optional[int] = ..., value: _Optional[_Union[ChannelStatus, _Mapping]] = ...) -> None: ...
     class DiCountEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -748,16 +806,24 @@ class getImageResponse(_message.Message):
         key: int
         value: int
         def __init__(self, key: _Optional[int] = ..., value: _Optional[int] = ...) -> None: ...
+    class DiRateHzEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: int
+        value: float
+        def __init__(self, key: _Optional[int] = ..., value: _Optional[float] = ...) -> None: ...
     RESPONSE_HEADER_FIELD_NUMBER: _ClassVar[int]
     DI_FIELD_NUMBER: _ClassVar[int]
     DO_FIELD_NUMBER: _ClassVar[int]
     AI_FIELD_NUMBER: _ClassVar[int]
     AO_FIELD_NUMBER: _ClassVar[int]
-    INVALID_DI_FIELD_NUMBER: _ClassVar[int]
-    INVALID_DO_FIELD_NUMBER: _ClassVar[int]
-    INVALID_AI_FIELD_NUMBER: _ClassVar[int]
-    INVALID_AO_FIELD_NUMBER: _ClassVar[int]
+    DI_STATUS_FIELD_NUMBER: _ClassVar[int]
+    DO_STATUS_FIELD_NUMBER: _ClassVar[int]
+    AI_STATUS_FIELD_NUMBER: _ClassVar[int]
+    AO_STATUS_FIELD_NUMBER: _ClassVar[int]
     DI_COUNT_FIELD_NUMBER: _ClassVar[int]
+    DI_RATE_HZ_FIELD_NUMBER: _ClassVar[int]
     DEVICES_FIELD_NUMBER: _ClassVar[int]
     SEQUENCE_FIELD_NUMBER: _ClassVar[int]
     response_header: ResponseHeader
@@ -765,14 +831,15 @@ class getImageResponse(_message.Message):
     do: _containers.RepeatedScalarFieldContainer[bool]
     ai: _containers.RepeatedScalarFieldContainer[float]
     ao: _containers.RepeatedScalarFieldContainer[float]
-    invalid_di: _containers.RepeatedScalarFieldContainer[int]
-    invalid_do: _containers.RepeatedScalarFieldContainer[int]
-    invalid_ai: _containers.RepeatedScalarFieldContainer[int]
-    invalid_ao: _containers.RepeatedScalarFieldContainer[int]
+    di_status: _containers.MessageMap[int, ChannelStatus]
+    do_status: _containers.MessageMap[int, ChannelStatus]
+    ai_status: _containers.MessageMap[int, ChannelStatus]
+    ao_status: _containers.MessageMap[int, ChannelStatus]
     di_count: _containers.ScalarMap[int, int]
+    di_rate_hz: _containers.ScalarMap[int, float]
     devices: _containers.RepeatedCompositeFieldContainer[DeviceImageStatus]
     sequence: int
-    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., di: _Optional[_Iterable[bool]] = ..., do: _Optional[_Iterable[bool]] = ..., ai: _Optional[_Iterable[float]] = ..., ao: _Optional[_Iterable[float]] = ..., invalid_di: _Optional[_Iterable[int]] = ..., invalid_do: _Optional[_Iterable[int]] = ..., invalid_ai: _Optional[_Iterable[int]] = ..., invalid_ao: _Optional[_Iterable[int]] = ..., di_count: _Optional[_Mapping[int, int]] = ..., devices: _Optional[_Iterable[_Union[DeviceImageStatus, _Mapping]]] = ..., sequence: _Optional[int] = ...) -> None: ...
+    def __init__(self, response_header: _Optional[_Union[ResponseHeader, _Mapping]] = ..., di: _Optional[_Iterable[bool]] = ..., do: _Optional[_Iterable[bool]] = ..., ai: _Optional[_Iterable[float]] = ..., ao: _Optional[_Iterable[float]] = ..., di_status: _Optional[_Mapping[int, ChannelStatus]] = ..., do_status: _Optional[_Mapping[int, ChannelStatus]] = ..., ai_status: _Optional[_Mapping[int, ChannelStatus]] = ..., ao_status: _Optional[_Mapping[int, ChannelStatus]] = ..., di_count: _Optional[_Mapping[int, int]] = ..., di_rate_hz: _Optional[_Mapping[int, float]] = ..., devices: _Optional[_Iterable[_Union[DeviceImageStatus, _Mapping]]] = ..., sequence: _Optional[int] = ...) -> None: ...
 
 class setImageRequest(_message.Message):
     __slots__ = ("do", "do_value", "ao", "ao_value")

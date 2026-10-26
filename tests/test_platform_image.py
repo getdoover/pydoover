@@ -1,9 +1,10 @@
 """Tests for PlatformInterface.fetch_image / set_image / subscribe_image.
 
-The image is indexed by flat channel. A channel whose device is offline keeps
-its index (the value is a placeholder) and is listed as invalid, so a caller
-must check `valid()` rather than trust a 0.0. Pulse counts are a map because
-only some DIs have one; absent means no counter, not zero.
+The image is indexed by flat channel. A channel that is not good keeps its
+index and is listed in a sparse status map with the reason, so a caller checks
+`valid()` / `quality()` rather than trusting a 0.0. Pulse counts and rates are
+maps because only some DIs have them; absent means none, not zero. A quality
+this client does not know reads as FAULT, never as GOOD.
 """
 
 import asyncio
@@ -12,7 +13,7 @@ from contextlib import asynccontextmanager
 import grpc
 import pytest
 
-from pydoover.docker.platform import PlatformInterface, ProcessImage
+from pydoover.docker.platform import ChannelQuality, PlatformInterface, ProcessImage
 from pydoover.models.generated.platform import (
     platform_iface_pb2 as pb,
 )
@@ -26,13 +27,27 @@ def image_response(sequence=7):
         response_header=pb.ResponseHeader(success=True),
         di=[True, False, False],
         do=[False, True],
-        ai=[4.5, 0.0],
+        ai=[4.123456789012, 2.1],
         ao=[10.0],
-        invalid_di=[2],
-        invalid_ai=[1],
+        di_status={
+            2: pb.ChannelStatus(
+                quality=pb.CHANNEL_QUALITY_OFFLINE, detail="no data yet"
+            )
+        },
+        ai_status={
+            1: pb.ChannelStatus(quality=pb.CHANNEL_QUALITY_UNDER_RANGE),
+        },
+        do_status={0: pb.ChannelStatus(quality=99)},
         di_count={0: 0, 1: 1234},
+        di_rate_hz={1: 2.5},
         devices=[
-            pb.DeviceImageStatus(index=-1, name="master (sim)", online=True, age_ms=12),
+            pb.DeviceImageStatus(
+                index=-1,
+                name="master (sim)",
+                online=True,
+                age_ms=12,
+                timestamp_ms=1793000000000,
+            ),
             pb.DeviceImageStatus(
                 index=1, name="slave 1 (wago)", online=False, last_error="timed out"
             ),
@@ -84,24 +99,40 @@ async def serving():
 
 
 @pytest.mark.asyncio
-async def test_fetch_image_keeps_indices_and_flags_invalid():
+async def test_fetch_image_keeps_indices_and_reports_quality():
     async with serving() as (client, _):
         image = await client.fetch_image()
     assert isinstance(image, ProcessImage)
     assert image.di == [True, False, False]
     assert image.do == [False, True]
+    assert image.ai[0] == 4.123456789012, "doubles, not floats"
+
     assert image.valid("DI", 0) and not image.valid("di", 2)
-    assert not image.valid("AI", 1) and image.valid("AO", 0)
+    assert image.quality("DI", 2) is ChannelQuality.OFFLINE
+    assert image.di_status[2].detail == "no data yet"
+    assert image.quality("AI", 1) is ChannelQuality.UNDER_RANGE
+    assert image.ai[1] == 2.1, "an out-of-range reading keeps its value"
+    assert image.quality("DO", 0) is ChannelQuality.FAULT, (
+        "an unknown quality is not good"
+    )
+    assert image.valid("AO", 0)
+
     assert image.di_count == {0: 0, 1: 1234}
-    assert 2 not in image.di_count
+    assert image.di_rate_hz == {1: 2.5}
+
     master, slave = image.devices
-    assert (master.index, master.online, master.age_ms, master.last_error) == (
+    assert (master.index, master.online, master.age_ms, master.timestamp_ms) == (
         -1,
         True,
         12,
+        1793000000000,
+    )
+    assert (slave.online, slave.age_ms, slave.last_error, slave.timestamp_ms) == (
+        False,
+        None,
+        "timed out",
         None,
     )
-    assert (slave.online, slave.age_ms, slave.last_error) == (False, None, "timed out")
     assert image.sequence == 7
 
 
