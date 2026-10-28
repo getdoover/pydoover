@@ -8,4 +8,8 @@ from .platform_types import (
     IoChannel as IoChannel,
     IoDevice as IoDevice,
     IoDetails as IoDetails,
+    ProcessImage as ProcessImage,
+    DeviceImageStatus as DeviceImageStatus,
+    ChannelQuality as ChannelQuality,
+    ChannelStatus as ChannelStatus,
 )

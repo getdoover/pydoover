@@ -9,7 +9,13 @@ import grpc
 
 from ...models import DooverAPIError
 from ...models.generated.platform import platform_iface_pb2, platform_iface_pb2_grpc
-from .platform_types import Location, Event, IoDetails, DIReading
+from .platform_types import (
+    DIReading,
+    Event,
+    IoDetails,
+    Location,
+    ProcessImage,
+)
 from ..grpc_interface import GRPCInterface
 from ...utils import call_maybe_async, deprecated
 from ...cli.decorators import command as cli_command
@@ -1337,6 +1343,142 @@ class PlatformInterface(GRPCInterface):
         if res is None:
             return None
         return json.loads(res)
+
+    @cli_command()
+    async def fetch_image(self) -> "ProcessImage | None":
+        """Get every channel of every device in one call.
+
+        The platform interface serves this from its last poll of each device, so
+        it never waits on hardware and costs the same however many channels
+        there are. Prefer it to several ``fetch_di`` / ``fetch_ai`` calls when
+        you need more than a few channels.
+
+        Examples
+        --------
+
+        Read DI 3 and AI 0, checking their quality::
+
+            image = await self.platform_iface.fetch_image()
+            if image.valid("DI", 3):
+                print(image.di[3])
+            if image.quality("AI", 0) is ChannelQuality.UNDER_RANGE:
+                print("AI 0 looks like a broken 4-20 mA loop")
+
+        Returns
+        -------
+        :class:`pydoover.docker.platform.ProcessImage` | None
+            None only if the platform interface returned nothing.
+
+        Raises
+        ------
+        HTTPError
+            If the platform interface could not build the image.
+        """
+        response = await self.make_request(
+            "getImage", platform_iface_pb2.getImageRequest()
+        )
+        return ProcessImage.from_response(response) if response is not None else None
+
+    async def set_image(
+        self,
+        do: dict[int, bool] | None = None,
+        ao: dict[int, float] | None = None,
+    ) -> tuple[list[int], list[int]] | None:
+        """Write any number of digital and analog outputs in one call.
+
+        Examples
+        --------
+
+        Turn DO 0 on, DO 2 off and set AO 1 to 12.5::
+
+            await self.platform_iface.set_image(do={0: True, 2: False}, ao={1: 12.5})
+
+        Parameters
+        ----------
+        do
+            Digital output channel to value.
+        ao
+            Analog output channel to value, in the channel's units.
+
+        Returns
+        -------
+        tuple[list[int], list[int]] | None
+            The DO and AO channels whose write failed; both empty when every
+            write succeeded. Writes are independent, so one failure does not
+            stop the others.
+        """
+        do = do or {}
+        ao = ao or {}
+        response = await self.make_request(
+            "setImage",
+            platform_iface_pb2.setImageRequest(
+                do=list(do.keys()),
+                do_value=[bool(v) for v in do.values()],
+                ao=list(ao.keys()),
+                ao_value=[float(v) for v in ao.values()],
+            ),
+        )
+        if response is None:
+            return None
+        return list(response.failed_do), list(response.failed_ao)
+
+    def subscribe_image(self, callback, max_rate_hz: float | None = None):
+        """Call ``callback(image)`` with a :class:`ProcessImage` whenever the
+        image changes, at most ``max_rate_hz`` times a second.
+
+        Runs until :meth:`close`, reconnecting if the stream drops. The callback
+        may be sync or async.
+
+        Examples
+        --------
+
+        ::
+
+            def on_image(image):
+                print(image.sequence, image.ai)
+
+            self.platform_iface.subscribe_image(on_image, max_rate_hz=10)
+
+        Parameters
+        ----------
+        callback
+            Called with each :class:`ProcessImage`.
+        max_rate_hz
+            Upper bound on calls per second; ``None`` delivers every change.
+        """
+        listener = asyncio.create_task(self.recv_image(callback, max_rate_hz))
+        self.pulse_counter_listeners.append(listener)
+        listener.add_done_callback(self.pulse_counter_listeners.remove)
+        return listener
+
+    async def recv_image(self, callback, max_rate_hz: float | None = None):
+        request = platform_iface_pb2.subscribeImageRequest()
+        if max_rate_hz:
+            request.max_rate_hz = max_rate_hz
+        while True:
+            try:
+                # Keepalive options for the same reason as recv_di_pulses: a
+                # half-open connection would otherwise never be noticed.
+                async with grpc.aio.insecure_channel(
+                    self.uri, options=self._STREAM_CHANNEL_OPTIONS
+                ) as channel:
+                    stream = platform_iface_pb2_grpc.platformIfaceStub(
+                        channel
+                    ).subscribeImage(request)
+                    while True:
+                        response = await stream.read()
+                        if response is None or response == grpc.aio.EOF:
+                            log.info("subscribeImage ended; reconnecting")
+                            break
+                        await call_maybe_async(
+                            callback, ProcessImage.from_response(response)
+                        )
+            except asyncio.CancelledError:
+                log.info("subscribeImage cancelled.")
+                break
+            except Exception as e:
+                log.error(f"Error receiving image: {e}", exc_info=e)
+                await asyncio.sleep(1)
 
     @cli_command()
     async def fetch_io_details(self) -> "IoDetails | None":

@@ -32,6 +32,15 @@ service platformIface {
     rpc getTemperature (getTemperatureRequest) returns (getTemperatureResponse) {}
     rpc getIoTable (getIoTableRequest) returns (getIoTableResponse) {}
     rpc getIoDetails (getIoDetailsRequest) returns (getIoDetailsResponse) {}
+
+    // The whole process image in one call: every channel of every device, in
+    // the flat numbering getIoTable describes. Served from the platform
+    // interface's last poll of each device, so it never waits on hardware.
+    rpc getImage (getImageRequest) returns (getImageResponse) {}
+    // Write any number of DOs and AOs in one call.
+    rpc setImage (setImageRequest) returns (setImageResponse) {}
+    // The image again whenever it changes, at most max_rate_hz times a second.
+    rpc subscribeImage (subscribeImageRequest) returns (stream getImageResponse) {}
     // rpc getRtcTime (getRtcTimeRequest) returns (getRtcTimeResponse) {}
     rpc syncRtcTime (syncRtcTimeRequest) returns (syncRtcTimeResponse) {}
     // rpc getUptime (getUptimeRequest) returns (getUptimeResponse) {}
@@ -528,4 +537,91 @@ message setDIConfigRequest {
 message setDIConfigResponse {
     ResponseHeader response_header = 1;
     optional DIConfig config = 2;
+}
+
+message getImageRequest {}
+
+// Why a channel's value is not plain good. Values after GOOD may be added;
+// treat any value a client does not know as "not good".
+enum ChannelQuality {
+    CHANNEL_QUALITY_GOOD = 0;
+    // The device's data is older than its staleness limit.
+    CHANNEL_QUALITY_STALE = 1;
+    // The device has not answered yet, or has dropped off.
+    CHANNEL_QUALITY_OFFLINE = 2;
+    // The device answered but gave no value for this channel.
+    CHANNEL_QUALITY_NO_VALUE = 3;
+    // The hardware reports a fault on this channel.
+    CHANNEL_QUALITY_FAULT = 4;
+    // An analog input below its valid range (e.g. NAMUR NE43, < 3.6 mA: wire break).
+    CHANNEL_QUALITY_UNDER_RANGE = 5;
+    // An analog input above its valid range (e.g. NAMUR NE43, > 21 mA).
+    CHANNEL_QUALITY_OVER_RANGE = 6;
+    // An input or output tripped on overcurrent.
+    CHANNEL_QUALITY_OVERCURRENT = 7;
+}
+
+message ChannelStatus {
+    ChannelQuality quality = 1;
+    optional string detail = 2;
+}
+
+// One device's part of the image: the master, then each slave.
+message DeviceImageStatus {
+    // -1 for the master, else the slave's configured index.
+    int32 index = 1;
+    string name = 2;
+    // True while the device's data is fresh enough to serve.
+    bool online = 3;
+    // Age of the device's latest successful poll when this response was
+    // built; unset before the first poll.
+    optional uint64 age_ms = 4;
+    optional string last_error = 5;
+    // Wall-clock time of that poll, Unix milliseconds. Can be wrong on a
+    // device whose clock has not synced; age_ms is the reliable measure.
+    optional uint64 timestamp_ms = 6;
+}
+
+message getImageResponse {
+    ResponseHeader response_header = 1;
+    // Indexed by flat channel number (the getIoTable numbering). Indices never
+    // shift: a channel without a good value still has an entry here (false /
+    // 0 when there is no value at all), and is listed in the matching
+    // *_status map.
+    repeated bool di = 2;
+    repeated bool do = 3;
+    repeated double ai = 4;
+    repeated double ao = 5;
+    // Sparse: only channels whose quality is not GOOD appear.
+    map<int32, ChannelStatus> di_status = 6;
+    map<int32, ChannelStatus> do_status = 7;
+    map<int32, ChannelStatus> ai_status = 8;
+    map<int32, ChannelStatus> ao_status = 9;
+    // Pulse totals and rates, for the DI channels that have them.
+    map<int32, uint64> di_count = 10;
+    map<int32, double> di_rate_hz = 11;
+    repeated DeviceImageStatus devices = 12;
+    // Increases when any value or channel status changes, and only then.
+    uint64 sequence = 13;
+}
+
+// Sparse: only the listed channels are written. Same parallel-list shape as
+// setDO / setAO.
+message setImageRequest {
+    repeated int32 do = 1;
+    repeated bool do_value = 2;
+    repeated int32 ao = 3;
+    repeated double ao_value = 4;
+}
+
+message setImageResponse {
+    ResponseHeader response_header = 1;
+    // Channels whose write failed. The others were written.
+    repeated int32 failed_do = 2;
+    repeated int32 failed_ao = 3;
+}
+
+message subscribeImageRequest {
+    // Upper bound on messages per second; unset or 0 sends every change.
+    optional float max_rate_hz = 1;
 }
