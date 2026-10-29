@@ -197,6 +197,7 @@ class Application(Container):
     def __init__(self, *args, **kwargs):
         self.variant = kwargs.pop("variant", NotSet)
         self.full_width = kwargs.pop("full_width", NotSet)
+        self.hide_header = kwargs.pop("hide_header", NotSet)
         super().__init__(*args, **kwargs)
 
     def to_dict(self):
@@ -205,6 +206,8 @@ class Application(Container):
             result["variant"] = self.variant
         if self.full_width is not NotSet:
             result["fullWidth"] = self.full_width
+        if self.hide_header is not NotSet:
+            result["hideHeader"] = self.hide_header
         return normalize_ui_value(result)
 
 
