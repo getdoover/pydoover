@@ -39,6 +39,7 @@ SAMPLE_CONFIG_A = {
 class ApplicationVisibilityConfig(config.Schema):
     interpreter_hidden = config.ApplicationInterpreterHidden()
     interpreter_full_width = config.ApplicationFullWidth()
+    interpreter_hide_header = config.ApplicationHideHeader()
     cockpit_visible = config.ApplicationCockpitVisible()
 
 
@@ -48,6 +49,7 @@ class TestApplicationVisibilityConfig:
 
         interpreter = schema["properties"]["interpreter_hidden"]
         full_width = schema["properties"]["interpreter_full_width"]
+        hide_header = schema["properties"]["interpreter_hide_header"]
         cockpit = schema["properties"]["cockpit_visible"]
 
         assert interpreter["type"] == ["boolean", "null"]
@@ -58,6 +60,10 @@ class TestApplicationVisibilityConfig:
         assert full_width["default"] is False
         assert full_width["x-hidden"] is False
         assert full_width["x-advanced"] is True
+        assert hide_header["type"] == ["boolean", "null"]
+        assert hide_header["default"] is False
+        assert hide_header["x-hidden"] is False
+        assert hide_header["x-advanced"] is True
         assert cockpit["type"] == ["boolean", "null"]
         assert cockpit["default"] is False
         assert cockpit["x-hidden"] is False
@@ -70,6 +76,7 @@ class TestApplicationVisibilityConfig:
 
         assert schema.interpreter_hidden.value is False
         assert schema.interpreter_full_width.value is False
+        assert schema.interpreter_hide_header.value is False
         assert schema.cockpit_visible.value is False
 
     def test_visibility_elements_accept_explicit_overrides(self):
@@ -78,12 +85,14 @@ class TestApplicationVisibilityConfig:
             {
                 "interpreter_hidden": True,
                 "interpreter_full_width": True,
+                "interpreter_hide_header": True,
                 "cockpit_visible": True,
             }
         )
 
         assert schema.interpreter_hidden.value is True
         assert schema.interpreter_full_width.value is True
+        assert schema.interpreter_hide_header.value is True
         assert schema.cockpit_visible.value is True
 
 

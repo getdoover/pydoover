@@ -467,6 +467,50 @@ class TestConfigRefResolution:
 
         assert application.to_dict()["fullWidth"] is True
 
+    def test_resolves_hide_header_from_explicit_deployment_value(self):
+        class S(config.Schema):
+            interpreter_hide_header = config.ApplicationHideHeader()
+
+        schema = S()
+        schema._inject_deployment_config({"interpreter_hide_header": True})
+
+        class MyUI(ui.UI):
+            pass
+
+        assert MyUI(schema, None, "app_key").to_schema()["hideHeader"] is True
+
+    def test_resolves_hide_header_from_config_default(self):
+        class S(config.Schema):
+            interpreter_hide_header = config.ApplicationHideHeader()
+
+        schema = S()
+        schema._inject_deployment_config({})
+
+        class MyUI(ui.UI):
+            pass
+
+        assert MyUI(schema, None, "app_key").to_schema()["hideHeader"] is False
+
+    def test_exports_hide_header_config_reference(self):
+        class MyUI(ui.UI):
+            pass
+
+        assert (
+            MyUI(None, None, "app_key").to_schema(resolve_config=False)["hideHeader"]
+            == "$config.app().interpreter_hide_header:boolean:false"
+        )
+
+    def test_accepts_hide_header_class_option(self):
+        class MyUI(ui.UI, hide_header=True):
+            pass
+
+        assert MyUI(None, None, "app_key").to_schema()["hideHeader"] is True
+
+    def test_application_container_serializes_hide_header(self):
+        application = ui.Application("Application", hide_header=True)
+
+        assert application.to_dict()["hideHeader"] is True
+
 
 class TestApplicationUIResolution:
     def test_async_docker_startup_binds_dynamic_ui_to_runtime_tags(self, monkeypatch):

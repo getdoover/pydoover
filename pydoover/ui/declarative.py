@@ -120,6 +120,7 @@ class UI:
         display_name: str = "$config.app().APP_DISPLAY_NAME",
         hidden: bool | str = "$config.app().interpreter_hidden",
         full_width: bool | str = "$config.app().interpreter_full_width",
+        hide_header: bool | str = "$config.app().interpreter_hide_header",
         position: int | str = "$config.app().dv_app_position:number:100",
         default_open: bool
         | str = "$config.app().dv_app_default_open:boolean",  # default to None
@@ -157,6 +158,12 @@ class UI:
                     "If `full_width` is a `str` it must start with `$` to represent a variable."
                 )
             full_width = f"{full_width}:boolean:false"
+        if isinstance(hide_header, str):
+            if not hide_header.startswith("$"):
+                raise ValueError(
+                    "If `hide_header` is a `str` it must start with `$` to represent a variable."
+                )
+            hide_header = f"{hide_header}:boolean:false"
         if isinstance(position, str) and not position.startswith("$"):
             if not position.startswith("$"):
                 raise ValueError(
@@ -167,6 +174,7 @@ class UI:
         cls._display_name = display_name
         cls._hidden = hidden
         cls._full_width = full_width
+        cls._hide_header = hide_header
         cls._position = position
         cls._default_open = default_open
         cls._icon = icon
@@ -201,6 +209,7 @@ class UI:
             "displayString": self._display_name,
             "hidden": self._hidden,
             "fullWidth": self._full_width,
+            "hideHeader": self._hide_header,
             "position": self._position,
             "icon": self._icon,
             "colour": self._colour,

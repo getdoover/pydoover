@@ -57,6 +57,17 @@ class FullWidthUI(ui.UI, full_width=True):
 The setting only changes wide two-column interpreter layouts. Single-column and
 mobile layouts are unchanged.
 
+An application can also hide its header, so it is always open and cannot be
+collapsed. Users opt in from deployment config, or the UI can set it in code:
+
+```python
+class AppConfig(config.Schema):
+    interpreter_hide_header = config.ApplicationHideHeader()
+
+class HeaderlessUI(ui.UI, hide_header=True):
+    ...
+```
+
 ## Step 2: Status Display Section
 
 ```python

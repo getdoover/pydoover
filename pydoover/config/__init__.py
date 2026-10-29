@@ -1422,6 +1422,26 @@ class ApplicationFullWidth(Boolean):
         )
 
 
+class ApplicationHideHeader(Boolean):
+    def __init__(
+        self,
+        display_name: str = "Hide Header",
+        *,
+        description: str = "Hide the application's header in the interpreter. "
+        "The application is then always open and cannot be collapsed.",
+        default: bool = False,
+        **kwargs,
+    ):
+        super().__init__(
+            display_name,
+            description=description,
+            default=default,
+            name="interpreter_hide_header",
+            advanced=True,
+            **kwargs,
+        )
+
+
 class ApplicationCockpitVisible(Boolean):
     def __init__(
         self,
