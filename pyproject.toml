@@ -24,7 +24,7 @@ speedups = [
 ]
 grpc = [
     "grpcio==1.65.1",
-    "protobuf==5.28.2",
+    "protobuf==5.29.6",
 ]
 reports = [
     "croniter>=6.0.0",
@@ -35,7 +35,7 @@ test = [
     "pytest-asyncio>=0.26.0",
     "pytest-cov>=7.0.0",
     "grpcio==1.65.1",
-    "protobuf==5.28.2",
+    "protobuf==5.29.6",
     "grpcio-health-checking==1.65.1",
 ]
 
