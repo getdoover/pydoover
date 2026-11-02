@@ -1,3 +1,16 @@
+pydoover (1.18.4) focal jammy; urgency=medium
+
+  * Add config.ApplicationHideHeader (interpreter_hide_header): hides an
+    application's header in the interpreter, leaving it always open.
+    ui.UI exports it as hideHeader; hide_header= forces it on ui.UI and
+    ui.Application.
+  * Add getImage / setImage / subscribeImage to the platform interface, with
+    per-channel quality, rates and change-only sequences.
+  * Add label_format to ui.Timestamp.
+  * Update vulnerable dependencies (MR-2026-019).
+
+ -- Doover Team <hello@span-eng.com>  Mon, 02 Nov 2026 12:00:00 +1000
+
 pydoover (1.1.4) focal jammy; urgency=medium
 
   * Release v1.1.4. See docs.doover.com for release notes.
