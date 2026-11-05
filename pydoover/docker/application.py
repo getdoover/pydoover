@@ -1451,6 +1451,7 @@ def run_app(
         app.tags,
         app.ui,
         app.rpc,
+        app.notifications,
     ):
         if inst is not None:
             inst.app_key = app_key
