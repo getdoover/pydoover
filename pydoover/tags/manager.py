@@ -19,6 +19,11 @@ if TYPE_CHECKING:
 
 TAG_CLOUD_MAX_AGE = 60 * 15  # 15min
 TAG_OBSERVED_MAX_AGE = 3  # 3 seconds
+# How long a flushed tag write is held over incoming aggregates while waiting
+# for the device agent to echo it back. The echo normally arrives within
+# milliseconds; this only bounds how long a lost echo can mask a later change
+# to the same tag by another writer.
+TAG_IN_FLIGHT_TIMEOUT = 10.0  # seconds
 TAG_CHANNEL_NAME = "tag_values"
 # Channel that `live=True` tags are streamed to as one-shot messages every
 # main-loop iteration. Currently the same channel as the persisted tag
@@ -176,6 +181,79 @@ def _strip_paths(target: dict[str, Any], paths: dict[str, Any]) -> None:
             del target[k]
 
 
+_MISSING = object()
+
+
+def _iter_leaves(data: dict[str, Any], prefix: tuple[str, ...] = ()):
+    """Yield ``(path, value)`` for every non-dict value in a nested dict."""
+    for k, v in data.items():
+        if isinstance(v, dict):
+            yield from _iter_leaves(v, prefix + (k,))
+        else:
+            yield prefix + (k,), v
+
+
+def _lookup_path(data: Any, path: tuple[str, ...]) -> Any:
+    """Return the value at ``path`` in a nested dict, or ``_MISSING``."""
+    for part in path:
+        if not isinstance(data, dict) or part not in data:
+            return _MISSING
+        data = data[part]
+    return data
+
+
+def _set_path(data: dict[str, Any], path: tuple[str, ...], value: Any) -> None:
+    """Set ``value`` at ``path``, creating (or replacing non-dict) parents."""
+    for part in path[:-1]:
+        child = data.get(part)
+        if not isinstance(child, dict):
+            child = data[part] = {}
+        data = child
+    data[path[-1]] = value
+
+
+def _pop_path(data: dict[str, Any], path: tuple[str, ...]) -> None:
+    """Remove the value at ``path`` and any parents left empty by it."""
+    parents = []
+    for part in path[:-1]:
+        child = data.get(part)
+        if not isinstance(child, dict):
+            return
+        parents.append((data, part))
+        data = child
+    if data.pop(path[-1], _MISSING) is _MISSING:
+        return
+    for parent, part in reversed(parents):
+        if parent[part]:
+            break
+        del parent[part]
+
+
+def _event_request_data(event: Any) -> dict[str, Any] | None:
+    """The diff that produced an aggregate event, if the event carries one.
+
+    ``AggregateUpdateEvent.request_data.data`` is the payload of the write the
+    event reports — for an echo of our own write, exactly what we sent.
+    ``ChannelSyncEvent`` has none.
+    """
+    request = getattr(event, "request_data", None)
+    data = getattr(request, "data", None)
+    return data if isinstance(data, dict) else None
+
+
+class _InFlightWrite:
+    """A flushed tag value the device agent hasn't echoed back yet."""
+
+    __slots__ = ("value", "unconfirmed", "sent_at")
+
+    def __init__(self, value: Any, sent_at: float):
+        self.value = value
+        # Sends of this path whose echo hasn't been seen yet.
+        self.unconfirmed = 1
+        # time.monotonic() of the latest send.
+        self.sent_at = sent_at
+
+
 class TagsManager:
     """Base interface for manager-backed tag access."""
 
@@ -218,6 +296,7 @@ class TagsManagerDocker(TagsManager):
         client: "DeviceAgentInterface" = None,
         tag_log_interval: int = TAG_CLOUD_MAX_AGE,
         app_key: str | None = None,
+        in_flight_timeout: float = TAG_IN_FLIGHT_TIMEOUT,
     ):
         self.client: DeviceAgentInterface = client
         self.app_key = app_key
@@ -226,6 +305,13 @@ class TagsManagerDocker(TagsManager):
         # writes applied on top. ``_pending_tag_aggregate`` holds the subset of
         # those writes that haven't been flushed yet.
         self._tag_values: dict[str, Any] = {}
+        # Flushed writes the device agent hasn't echoed back yet, by leaf path.
+        # An aggregate event already queued before the write reached the agent
+        # still carries the old value; these are re-applied over such events
+        # so that stale value can't land in ``_tag_values``. See
+        # ``_settle_in_flight``.
+        self._in_flight: dict[tuple[str, ...], _InFlightWrite] = {}
+        self.in_flight_timeout = in_flight_timeout
         self._tag_subscriptions: dict[KeyPath, Callable] = {}
 
         # Resolved (app_key, tag_name) paths for tags declared ``live=True``;
@@ -359,10 +445,13 @@ class TagsManagerDocker(TagsManager):
         return self.observed_max_age if self.is_app_open else self.default_max_age
 
     def _replace_tag_values(self, data: dict[str, Any] | None):
-        # Adopt the fresh cloud state and re-apply any unflushed local writes on
-        # top. Applied in place so the cost is the size of the pending writes
-        # (usually empty), not the size of the channel.
+        # Adopt the fresh cloud state and re-apply our local writes the agent
+        # hasn't reflected yet: in-flight (flushed, unconfirmed) first, then
+        # unflushed pending writes, which are newer. Applied in place so the
+        # cost is the size of those writes (usually none), not the channel.
         self._tag_values = data or {}
+        for path, entry in self._in_flight.items():
+            _set_path(self._tag_values, path, entry.value)
         if self._pending_tag_aggregate:
             apply_diff(
                 self._tag_values,
@@ -371,20 +460,112 @@ class TagsManagerDocker(TagsManager):
                 clone=False,
             )
 
-    async def _on_tag_sync(self, event: ChannelSyncEvent):
-        self._replace_tag_values(event.aggregate.data)
+    def _track_in_flight(self, data: dict[str, Any]) -> None:
+        """Record a payload about to be sent to the device agent."""
+        now = time.monotonic()
+        for path, value in _iter_leaves(data):
+            entry = self._in_flight.get(path)
+            if entry is None:
+                self._in_flight[path] = _InFlightWrite(value, now)
+            else:
+                entry.value = value
+                entry.unconfirmed += 1
+                entry.sent_at = now
 
-    async def _on_tag_update(self, event: AggregateUpdateEvent):
-        if not self._tag_subscriptions:
-            self._replace_tag_values(event.aggregate.data)
+    def _untrack_in_flight(self, data: dict[str, Any]) -> None:
+        """Forget a payload whose send failed, so it can't mask the channel."""
+        for path, _ in _iter_leaves(data):
+            entry = self._in_flight.get(path)
+            if entry is None:
+                continue
+            entry.unconfirmed -= 1
+            if entry.unconfirmed <= 0:
+                del self._in_flight[path]
+
+    def _settle_in_flight(
+        self, data: dict[str, Any], request_data: dict[str, Any] | None
+    ) -> None:
+        """Drop in-flight writes that an incoming aggregate has caught up with.
+
+        The device agent applies writes in order and sends every aggregate
+        event, including the echo of each of our own writes, down one ordered
+        stream. So for a given path, once the echo of our latest send of it has
+        arrived, every later event already includes that write (or a newer
+        one) and the aggregate is authoritative for it again. Anything before
+        that echo may predate our write and is overridden.
+
+        - Events that carry the write that produced them (``request_data``,
+          i.e. ``AggregateUpdateEvent``) confirm by counting: each event whose
+          write touched the path accounts for one outstanding send. This does
+          not rely on comparing values, so a stale event that happens to hold
+          the value we last sent (A -> B -> A) can't confirm it early.
+        - Events without it (``ChannelSyncEvent``) confirm a path when the
+          aggregate already holds the value we sent (a deleted tag: holds None
+          or lacks the key).
+        - Either way an entry expires ``in_flight_timeout`` seconds after its
+          latest send, so a lost echo can't mask a later change to the tag by
+          another writer indefinitely.
+        """
+        if not self._in_flight:
             return
 
-        diff = generate_diff(self._tag_values, event.aggregate.data, do_delete=False)
-        # Don't notify for keys we've written locally but not yet flushed -
-        # the cloud value for those is stale and about to be overwritten.
+        now = time.monotonic()
+        settled = []
+        for path, entry in self._in_flight.items():
+            if now - entry.sent_at >= self.in_flight_timeout:
+                settled.append(path)
+            elif request_data is not None:
+                if _lookup_path(request_data, path) is not _MISSING:
+                    entry.unconfirmed -= 1
+                    if entry.unconfirmed <= 0:
+                        settled.append(path)
+            else:
+                current = _lookup_path(data, path)
+                if current == entry.value or (
+                    entry.value is None and current is _MISSING
+                ):
+                    settled.append(path)
+
+        for path in settled:
+            del self._in_flight[path]
+
+    async def _on_tag_sync(self, event: ChannelSyncEvent):
+        data = event.aggregate.data or {}
+        self._settle_in_flight(data, None)
+        self._replace_tag_values(data)
+
+    async def _on_tag_update(self, event: AggregateUpdateEvent):
+        data = event.aggregate.data or {}
+        self._settle_in_flight(data, _event_request_data(event))
+
+        if not self._tag_subscriptions:
+            self._replace_tag_values(data)
+            return
+
+        diff = generate_diff(self._tag_values, data, do_delete=False)
+        # Don't notify for keys we've written locally but the agent hasn't
+        # reflected yet - the incoming value for those is stale.
         _strip_paths(diff, self._pending_tag_aggregate)
-        self._replace_tag_values(event.aggregate.data)
+        for path in self._in_flight:
+            _pop_path(diff, path)
+        self._replace_tag_values(data)
         await self.fulfill_tag_subscriptions(diff)
+
+    async def _send_tag_aggregate(self, data: dict[str, Any]) -> None:
+        """Send a tag diff to the device agent, tracking it until echoed."""
+        # Track before sending: the echo can be dispatched to _on_tag_update
+        # before the RPC returns.
+        self._track_in_flight(data)
+        try:
+            await self.client.update_channel_aggregate(
+                TAG_CHANNEL_NAME,
+                data,
+                max_age_secs=self.max_age_secs,
+                return_aggregate=False,
+            )
+        except BaseException:
+            self._untrack_in_flight(data)
+            raise
 
     async def fulfill_tag_subscriptions(self, diff):
         """Invoke any callbacks whose subscribed tag paths changed."""
@@ -503,12 +684,7 @@ class TagsManagerDocker(TagsManager):
             data = self._pending_tag_aggregate
             self._pending_tag_aggregate = {}
             self._tags_dirty = False
-            await self.client.update_channel_aggregate(
-                TAG_CHANNEL_NAME,
-                data,
-                max_age_secs=self.max_age_secs,
-                return_aggregate=False,
-            )
+            await self._send_tag_aggregate(data)
             return
 
         # Just add to the pending aggregate to be flushed at the end of the main loop
@@ -540,12 +716,7 @@ class TagsManagerDocker(TagsManager):
         self._pending_tag_aggregate: dict[str, Any] = {}
         self._tags_dirty = False
 
-        await self.client.update_channel_aggregate(
-            TAG_CHANNEL_NAME,
-            data,
-            max_age_secs=self.max_age_secs,
-            return_aggregate=False,
-        )
+        await self._send_tag_aggregate(data)
 
     def set_live_tags(self, keys: Iterable[KeyPath | tuple[str | None, str]]) -> None:
         """Register the tag paths that :meth:`flush_live_tags` should publish.
