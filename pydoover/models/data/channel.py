@@ -137,6 +137,7 @@ class Channel:
         aggregate_schema: dict[str, Any],
         message_schema: dict[str, Any],
         aggregate: Aggregate,
+        proto_schema: dict[str, Any] | None = None,
     ):
         self.name = name
         self.owner_id = int(owner_id)
@@ -144,6 +145,9 @@ class Channel:
         self.aggregate_schema = aggregate_schema
         self.message_schema = message_schema
         self.aggregate = aggregate
+        #: ``{"message": ..., "hash": ...}``: the protobuf message for the channel's
+        #: ``/pb`` MQTT topics, or None.
+        self.proto_schema = proto_schema
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -154,6 +158,7 @@ class Channel:
             data.get("aggregate_schema"),
             data.get("message_schema"),
             Aggregate.from_dict(data["aggregate"]) if data.get("aggregate") else None,
+            data.get("proto_schema"),
         )
 
     def to_dict(self):
@@ -164,6 +169,8 @@ class Channel:
             "aggregate_schema": self.aggregate_schema,
             "message_schema": self.message_schema,
         }
+        if self.proto_schema is not None:
+            result["proto_schema"] = self.proto_schema
         if self.aggregate is not None:
             result["aggregate"] = self.aggregate.to_dict()
         return result

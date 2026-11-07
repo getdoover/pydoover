@@ -99,6 +99,7 @@ class ProcessorDataClient(AsyncDataClient):
         aggregate_schema: dict | None = None,
         agent_id: int | None = None,
         organisation_id: int | None = None,
+        proto_schema: dict | None = None,
     ) -> int:
         return await super().create_channel(
             agent_id=self._resolve_agent_id(agent_id),
@@ -107,6 +108,7 @@ class ProcessorDataClient(AsyncDataClient):
             message_schema=message_schema,
             aggregate_schema=aggregate_schema,
             organisation_id=organisation_id,
+            proto_schema=proto_schema,
         )
 
     async def put_channel(
@@ -117,6 +119,7 @@ class ProcessorDataClient(AsyncDataClient):
         aggregate_schema: dict | None = None,
         agent_id: int | None = None,
         organisation_id: int | None = None,
+        proto_schema: dict | None = None,
     ) -> Channel:
         return await super().put_channel(
             agent_id=self._resolve_agent_id(agent_id),
@@ -125,6 +128,7 @@ class ProcessorDataClient(AsyncDataClient):
             message_schema=message_schema,
             aggregate_schema=aggregate_schema,
             organisation_id=organisation_id,
+            proto_schema=proto_schema,
         )
 
     async def list_data_series(
