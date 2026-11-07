@@ -286,12 +286,15 @@ class AsyncDataClient(BaseClient):
         organisation_id: int | None = None,
         history_since: int | None = None,
         default_ttl: int | None = None,
+        proto_schema: dict | None = None,
     ) -> int:
         """Create a channel. Returns the new channel's snowflake ID.
 
         ``history_since`` is the earliest message timestamp (ms) the channel
         returns; ``default_ttl`` is the fallback TTL in seconds for messages
-        posted without one.
+        posted without one. ``proto_schema`` is ``{"message": ..., "descriptor":
+        <base64 FileDescriptorSet>}`` or ``{"message": ..., "hash": ...}``: the
+        protobuf message for the channel's ``/pb`` MQTT topics.
         """
         payload: dict[str, Any] = {"is_private": is_private}
         if message_schema is not None:
@@ -302,6 +305,8 @@ class AsyncDataClient(BaseClient):
             payload["history_since"] = history_since
         if default_ttl is not None:
             payload["default_ttl"] = default_ttl
+        if proto_schema is not None:
+            payload["proto_schema"] = proto_schema
         data = await self._request(
             "POST",
             f"/agents/{agent_id}/channels/{channel_name}",
@@ -320,6 +325,7 @@ class AsyncDataClient(BaseClient):
         organisation_id: int | None = None,
         history_since: int | None = None,
         default_ttl: int | None = None,
+        proto_schema: dict | None = None,
     ) -> Channel:
         payload: dict[str, Any] = {"is_private": is_private}
         if message_schema is not None:
@@ -330,6 +336,8 @@ class AsyncDataClient(BaseClient):
             payload["history_since"] = history_since
         if default_ttl is not None:
             payload["default_ttl"] = default_ttl
+        if proto_schema is not None:
+            payload["proto_schema"] = proto_schema
         data = await self._request(
             "PUT",
             f"/agents/{agent_id}/channels/{channel_name}",
