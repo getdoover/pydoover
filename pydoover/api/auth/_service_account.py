@@ -63,10 +63,15 @@ class ServiceAccountAuthClient(SyncAuthBase):
         oidc_token_provider: Callable[[], str] | None = None,
         audience: str = DEFAULT_SERVICE_ACCOUNT_AUDIENCE,
         data_base_url: str | None = DEFAULT_DATA_BASE_URL,
+        control_base_url: str | None = None,
         timeout: float = 60.0,
     ):
         super().__init__(token=None, timeout=timeout)
         self.service_account_id = str(service_account_id)
+        # Where ControlClient(auth=...) sends requests; its default if None.
+        self.control_base_url = (
+            control_base_url.rstrip("/") if control_base_url else None
+        )
         self.audience = audience
         self._oidc_token_provider = oidc_token_provider
         self.data_base_url = (data_base_url or DEFAULT_DATA_BASE_URL).rstrip("/")
@@ -103,10 +108,15 @@ class AsyncServiceAccountAuthClient(AsyncAuthBase):
         oidc_token_provider: Callable[[], str | Awaitable[str]] | None = None,
         audience: str = DEFAULT_SERVICE_ACCOUNT_AUDIENCE,
         data_base_url: str | None = DEFAULT_DATA_BASE_URL,
+        control_base_url: str | None = None,
         timeout: float = 60.0,
     ):
         super().__init__(token=None, timeout=timeout)
         self.service_account_id = str(service_account_id)
+        # Where ControlClient(auth=...) sends requests; its default if None.
+        self.control_base_url = (
+            control_base_url.rstrip("/") if control_base_url else None
+        )
         self.audience = audience
         self._oidc_token_provider = oidc_token_provider
         self.data_base_url = (data_base_url or DEFAULT_DATA_BASE_URL).rstrip("/")
