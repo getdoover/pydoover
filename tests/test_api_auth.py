@@ -8,6 +8,7 @@ import pytest
 
 from pydoover.api import AsyncDataClient, DataClient
 from pydoover.api.auth import (
+    ServiceAccountAuthClient,
     AsyncDataServiceAuthClient,
     AsyncDoover2AuthClient,
     AuthProfile,
@@ -649,3 +650,28 @@ def test_fetch_github_actions_oidc_token_requires_runtime(monkeypatch):
 
     with pytest.raises(TokenRefreshError):
         fetch_github_actions_oidc_token()
+
+
+def test_service_account_auth_exchanges_an_oidc_token_on_data(monkeypatch):
+    issued = future_token()
+    calls = []
+
+    def fake_post(url, data=None, timeout=None):
+        calls.append((url, data))
+        return SyncResponse(payload={"access_token": issued, "expires_in": 3600})
+
+    monkeypatch.setattr("httpx.post", fake_post)
+    auth = ServiceAccountAuthClient(
+        "123",
+        oidc_token_provider=lambda: "gh-oidc",
+        data_base_url="https://data.doover.com/api",
+    )
+
+    auth.ensure_token()
+
+    assert auth.token == issued
+    url, form = calls[0]
+    assert url == "https://data.doover.com/api/oauth2/token"
+    assert form["grant_type"] == "urn:ietf:params:oauth:grant-type:token-exchange"
+    assert form["subject_token"] == "gh-oidc"
+    assert form["client_id"] == "123"
