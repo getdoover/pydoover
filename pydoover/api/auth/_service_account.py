@@ -1,20 +1,6 @@
-"""Act as a service account from CI, with no stored secret.
-
-A service account can trust an outside identity, such as a GitHub repository's
-workflow. Inside that workflow (``permissions: id-token: write``) this fetches
-the runner's OIDC token and exchanges it on doover-data's ``/oauth2/token``
-(RFC 8693 token exchange) for a token acting as the account, re-exchanging when
-it expires:
-
-    POST {data_base_url}/oauth2/token
-        grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-        subject_token_type=urn:ietf:params:oauth:token-type:jwt
-        subject_token=<oidc jwt>
-        client_id=<service account id>   (optional: without it, data uses the
-                                          one service account trusting the token)
-
-The result is a normal Doover bearer, accepted by both data and control.
-"""
+"""Act as a service account from CI with no stored secret: the runner's OIDC
+token is exchanged on doover-data's ``/oauth2/token`` (RFC 8693) for a token
+acting as the account that trusts it."""
 
 from __future__ import annotations
 
