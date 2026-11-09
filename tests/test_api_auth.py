@@ -675,3 +675,16 @@ def test_service_account_auth_exchanges_an_oidc_token_on_data(monkeypatch):
     assert form["grant_type"] == "urn:ietf:params:oauth:grant-type:token-exchange"
     assert form["subject_token"] == "gh-oidc"
     assert form["client_id"] == "123"
+
+
+def test_service_account_auth_lets_data_find_the_account(monkeypatch):
+    calls = []
+
+    def fake_post(url, data=None, timeout=None):
+        calls.append(data)
+        return SyncResponse(payload={"access_token": future_token()})
+
+    monkeypatch.setattr("httpx.post", fake_post)
+    ServiceAccountAuthClient(oidc_token_provider=lambda: "gh-oidc").ensure_token()
+
+    assert "client_id" not in calls[0]

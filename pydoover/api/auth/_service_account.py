@@ -10,7 +10,8 @@ it expires:
         grant_type=urn:ietf:params:oauth:grant-type:token-exchange
         subject_token_type=urn:ietf:params:oauth:token-type:jwt
         subject_token=<oidc jwt>
-        client_id=<service account id>
+        client_id=<service account id>   (optional: without it, data uses the
+                                          one service account trusting the token)
 
 The result is a normal Doover bearer, accepted by both data and control.
 """
@@ -39,18 +40,21 @@ TOKEN_EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange"
 JWT_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:jwt"
 
 
-def _exchange_form(service_account_id: str, oidc_token: str) -> dict[str, str]:
-    return {
+def _exchange_form(service_account_id: str | None, oidc_token: str) -> dict[str, str]:
+    form = {
         "grant_type": TOKEN_EXCHANGE_GRANT,
         "subject_token_type": JWT_TOKEN_TYPE,
         "subject_token": oidc_token,
-        "client_id": str(service_account_id),
     }
+    if service_account_id:
+        form["client_id"] = service_account_id
+    return form
 
 
 class ServiceAccountAuthClient(SyncAuthBase):
     """A service account's token, exchanged (and re-exchanged on expiry) from
-    an outside identity's OIDC token.
+    an outside identity's OIDC token. Without ``service_account_id``, data
+    uses the one service account that trusts the token.
 
     The OIDC token comes from ``oidc_token_provider`` if given, else from the
     GitHub Actions runtime for ``audience``.
@@ -58,7 +62,7 @@ class ServiceAccountAuthClient(SyncAuthBase):
 
     def __init__(
         self,
-        service_account_id: str | int,
+        service_account_id: str | int | None = None,
         *,
         oidc_token_provider: Callable[[], str] | None = None,
         audience: str = DEFAULT_SERVICE_ACCOUNT_AUDIENCE,
@@ -67,7 +71,9 @@ class ServiceAccountAuthClient(SyncAuthBase):
         timeout: float = 60.0,
     ):
         super().__init__(token=None, timeout=timeout)
-        self.service_account_id = str(service_account_id)
+        self.service_account_id = (
+            str(service_account_id) if service_account_id is not None else None
+        )
         # Where ControlClient(auth=...) sends requests; its default if None.
         self.control_base_url = (
             control_base_url.rstrip("/") if control_base_url else None
@@ -103,7 +109,7 @@ class AsyncServiceAccountAuthClient(AsyncAuthBase):
 
     def __init__(
         self,
-        service_account_id: str | int,
+        service_account_id: str | int | None = None,
         *,
         oidc_token_provider: Callable[[], str | Awaitable[str]] | None = None,
         audience: str = DEFAULT_SERVICE_ACCOUNT_AUDIENCE,
@@ -112,7 +118,9 @@ class AsyncServiceAccountAuthClient(AsyncAuthBase):
         timeout: float = 60.0,
     ):
         super().__init__(token=None, timeout=timeout)
-        self.service_account_id = str(service_account_id)
+        self.service_account_id = (
+            str(service_account_id) if service_account_id is not None else None
+        )
         # Where ControlClient(auth=...) sends requests; its default if None.
         self.control_base_url = (
             control_base_url.rstrip("/") if control_base_url else None
