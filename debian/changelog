@@ -1,3 +1,13 @@
+pydoover (1.18.5) focal jammy; urgency=medium
+
+  * Add ServiceAccountAuthClient / AsyncServiceAccountAuthClient: act as a
+    service account from CI with no stored secret, exchanging an OIDC token
+    (GitHub Actions by default) on doover-data. The account id is optional.
+  * Add proto_schema to create_channel, put_channel and Channel.
+  * Fix notifications.
+
+ -- Doover Team <hello@span-eng.com>  Tue, 10 Nov 2026 12:00:00 +1000
+
 pydoover (1.18.4) focal jammy; urgency=medium
 
   * Add config.ApplicationHideHeader (interpreter_hide_header): hides an
