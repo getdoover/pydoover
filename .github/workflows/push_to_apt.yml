@@ -79,6 +79,7 @@ jobs:
           deb-s3 upload \
             debian/build/*.deb \
             --lock \
+            --preserve-versions \
             --bucket "apt.u.doover.com" \
             --s3-region "${AWS_DEFAULT_REGION}" \
             --sign "${REPO_SIGNING_KEY_ID}" \
