@@ -423,11 +423,15 @@ class Application:
         """
         Waits for the necessary amount of time to maintain a consistent interval
         of `target_time` seconds between calls to this method.
+
+        Measured on the monotonic clock: a step of the wall clock (an NTP sync
+        after booting from a drifted RTC) must not stretch the sleep. With
+        ``time.time()`` a 23-minute step back froze the main loop for 23 minutes.
         """
         if target_time is None or target_time <= 0:
             return
 
-        current_time = time.time()
+        current_time = time.monotonic()
         if self._last_interval_time is None:
             self._last_interval_time = current_time
             ## Wait for half the target time on the first call
@@ -444,7 +448,7 @@ class Application:
         if remaining > 0:
             log.debug(f"Sleeping for {remaining} seconds to maintain target loop time")
             await asyncio.sleep(remaining)
-        self._last_interval_time = time.time()
+        self._last_interval_time = time.monotonic()
 
     async def _assess_loop_time(self, last_loop_time: float, target_time: float):
         """
@@ -460,12 +464,12 @@ class Application:
                 not hasattr(self, "_last_loop_time_warning")
                 or self._last_loop_time_warning is None
             ):
-                self._last_loop_time_warning = time.time()
-            elif time.time() - self._last_loop_time_warning > 6:
+                self._last_loop_time_warning = time.monotonic()
+            elif time.monotonic() - self._last_loop_time_warning > 6:
                 log.warning(
                     f"Loop is running slower than target. Average loop time: {average_loop_time}, target_time: {target_time}"
                 )
-                self._last_loop_time_warning = time.time()
+                self._last_loop_time_warning = time.monotonic()
 
     async def close(self):
         log.info(
