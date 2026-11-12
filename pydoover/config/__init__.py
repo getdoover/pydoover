@@ -493,6 +493,10 @@ class ConfigElement:
     def load_data(self, data):
         self.value = data
 
+    def _reset(self):
+        """Forget any loaded value, back to the freshly-declared state."""
+        self._value = NotSet
+
 
 def _condition_element_name(
     condition: Condition, elements: dict[str, ConfigElement]
@@ -974,6 +978,10 @@ class Array(ConfigElement):
     def value(self) -> list[ConfigElement]:
         return self._elements
 
+    def _reset(self):
+        super()._reset()
+        self._elements.clear()
+
     def load_data(self, data):
         self._elements.clear()
         for row in data:
@@ -1153,15 +1161,33 @@ class Object(ConfigElement):
         res["x-defaultCollapsed"] = self.default_collapsed
         return res
 
+    def _drop_synthesised(self):
+        for name in [
+            n for n, e in self._elements.items() if getattr(e, "_synthesised", False)
+        ]:
+            del self._elements[name]
+
+    def _reset(self):
+        super()._reset()
+        self._drop_synthesised()
+        for elem in self._elements.values():
+            elem._reset()
+
     def load_data(self, data):
         # An optional Object (``default=None`` → ``required is False``) sent
         # as ``null`` or ``{}`` represents "operator left this blank". Leave
         # sub-elements at NotSet so callers can detect "not provided" — and
         # crucially, skip the required-sub-element check below, which would
         # otherwise raise for fields the user never intended to fill in.
+        #
+        # Element instances are class-level and outlive a single load (a warm
+        # processor lambda reuses them across installs), so a blank load must
+        # also clear whatever a previous load left behind.
         if not data and not self.required:
+            self._reset()
             return
 
+        self._drop_synthesised()
         data = data or {}
         for name, value in data.items():
             try:
@@ -1172,6 +1198,7 @@ class Object(ConfigElement):
                     # with ``_value=NotSet`` and ``.value`` raises for any
                     # non-None value — making free-form keys unreadable.
                     elem = ConfigElement(name, default=value)
+                    elem._synthesised = True
                     elem.load_data(value)
                     self._elements[name] = elem
                 else:
