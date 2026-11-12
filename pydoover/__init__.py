@@ -1,4 +1,4 @@
 __title__ = "pydoover"
-__version__ = "1.18.5"
+__version__ = "1.18.6"
 
 from . import *  # noqa: F403

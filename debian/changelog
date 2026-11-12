@@ -1,3 +1,11 @@
+pydoover (1.18.6) focal jammy; urgency=medium
+
+  * Fix optional config Objects (e.g. TagRef) left blank keeping the
+    previous load's values in a warm processor lambda shared by several
+    installs.
+
+ -- Doover Team <hello@span-eng.com>  Thu, 12 Nov 2026 12:00:00 +1000
+
 pydoover (1.18.5) focal jammy; urgency=medium
 
   * Add ServiceAccountAuthClient / AsyncServiceAccountAuthClient: act as a
