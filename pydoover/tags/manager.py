@@ -236,7 +236,7 @@ class TagsManagerDocker(TagsManager):
         self.observed_max_age = TAG_OBSERVED_MAX_AGE
         self.default_max_age = TAG_CLOUD_MAX_AGE
 
-        self._last_tag_log_time: float = 0.0
+        self._last_tag_log_time: float | None = None
         self._pending_tag_log: dict[str, Any] = {}
         self._pending_immediate_log: dict[str, Any] = {}
         self._pending_tag_aggregate: dict[str, Any] = {}
@@ -524,9 +524,10 @@ class TagsManagerDocker(TagsManager):
         if self._pending_immediate_log:
             await self.flush_immediate_logs()
 
-        now = time.time()
+        now = time.monotonic()
         if self._pending_tag_log and (
-            now - self._last_tag_log_time >= self.tag_log_interval
+            self._last_tag_log_time is None
+            or now - self._last_tag_log_time >= self.tag_log_interval
         ):
             await self.flush_logs()
 
@@ -609,7 +610,7 @@ class TagsManagerDocker(TagsManager):
 
         log_data = self._pending_tag_log
         self._pending_tag_log = {}
-        self._last_tag_log_time = time.time()
+        self._last_tag_log_time = time.monotonic()
 
         await self.client.create_message(
             TAG_CHANNEL_NAME, log_data, timestamp=timestamp

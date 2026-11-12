@@ -31,7 +31,7 @@ class PID:
         :param dt: Optional time interval. If not provided, it's calculated internally.
         :return: The control output
         """
-        current_time = time.time()
+        current_time = time.monotonic()
         error = self.setpoint - feedback_value
 
         if self._last_time is None:

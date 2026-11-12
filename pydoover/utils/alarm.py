@@ -66,11 +66,11 @@ class Alarm:
 
     def _check_grace_period(self):
         if self.initial_trigger_time is None:
-            self.initial_trigger_time = time.time()
+            self.initial_trigger_time = time.monotonic()
             return False
 
         else:
-            if self.initial_trigger_time + self.grace_period < time.time():
+            if self.initial_trigger_time + self.grace_period < time.monotonic():
                 return True
             else:
                 return False
@@ -79,7 +79,7 @@ class Alarm:
         if self.last_alarm_time is None:
             return True
         else:
-            if self.last_alarm_time + self.min_inter_alarm < time.time():
+            if self.last_alarm_time + self.min_inter_alarm < time.monotonic():
                 return True
             else:
                 return False
@@ -90,7 +90,7 @@ class Alarm:
                 await self.callback()
             else:
                 self.callback()
-        self.last_alarm_time = time.time()
+        self.last_alarm_time = time.monotonic()
 
     def reset_alarm(self):
         self.last_alarm_time = None

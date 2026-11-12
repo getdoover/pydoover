@@ -115,10 +115,10 @@ class KalmanFilter1D:
             )
         if self.estimate is None:
             self.estimate = measurement
-            self.last_timestamp = time.time()
+            self.last_timestamp = time.monotonic()
             return self.estimate
 
-        current_time = time.time()
+        current_time = time.monotonic()
         # If dt is not provided, calculate it based on the time since the last update
         if dt is None:
             if self.last_timestamp is None:
