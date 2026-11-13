@@ -1,9 +1,8 @@
 """Connection state over time for many agents.
 
-``GET /agents/connection_history`` folds each agent's ``doover_connection``
-status changes into a timeline server-side, so a fleet chart or an uptime
-strip is one small request rather than a page through every agent's
-messages.
+``GET /agents/connection_history`` returns each agent's connection state
+as a timeline, so a fleet chart or an uptime strip is one small request
+rather than a page through every agent's messages.
 """
 
 from enum import Enum

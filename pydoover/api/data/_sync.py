@@ -708,12 +708,11 @@ class DataClient(BaseClient):
         include_segments: bool = False,
         organisation_id: int | None = None,
     ) -> ConnectionHistoryResponse:
-        """Connection state over time for many agents, folded server-side.
+        """Connection state over time for many agents, in one request.
 
-        Each agent's ``doover_connection`` status changes become a timeline:
-        the state at the window's start and end, the share of time it was
-        up, and its segments when ``include_segments`` is set (at most 25
-        agents per call). Pass ``bucket_ms`` for a fleet series: per slot,
+        For each agent: the state at the window's start and end, the share
+        of time it was up, and its segments when ``include_segments`` is
+        set (at most 25 agents per call). Pass ``bucket_ms`` for a fleet series: per slot,
         how many agents were online, asleep, offline or unknown, and which
         came up or went down. The window defaults to the last 7 days and may
         not exceed 31; ``before`` is clipped to now. Agents the caller cannot
@@ -743,10 +742,10 @@ class DataClient(BaseClient):
     ) -> MessageCountsResponse:
         """Messages stored per UTC day on ``channel_name`` for many agents.
 
-        Read from the channel's daily summaries, so no message is fetched and
-        a quarter for a fleet is cheap; ``totals`` sums every agent by day.
-        The window defaults to the last 7 days and may not exceed 92. Counts
-        are what is retained: a deleted message counts down.
+        Cheap enough to ask for a quarter at a time; ``totals`` sums every
+        agent by day. The window defaults to the last 7 days and may not
+        exceed 92. A message deleted through the API is subtracted; one
+        expired by retention still counts.
         """
         data = self._request(
             "GET",

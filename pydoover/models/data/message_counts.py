@@ -1,8 +1,7 @@
 """Messages stored per day on a channel, for many agents.
 
-``GET /agents/channels/{channel}/messages/counts`` reads the channel's daily
-message summaries, so no message is fetched and a quarter for a fleet is one
-small request.
+``GET /agents/channels/{channel}/messages/counts`` answers for a whole
+fleet in one small request, even for a quarter at a time.
 """
 
 from typing import Any
@@ -11,7 +10,8 @@ from typing import Any
 class DayCount:
     """Messages stored on a channel for one UTC day.
 
-    ``count`` is what is retained now: a deleted message counts down.
+    ``count`` is what was written, less what was deleted through the API;
+    messages expired by retention still count.
     """
 
     def __init__(self, start: int, count: int):
