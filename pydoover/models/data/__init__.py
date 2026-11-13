@@ -21,6 +21,13 @@ from .batch import (
     BatchMutationResult,
 )
 from .channel import Channel, ChannelID, ChannelList, ChannelListing
+from .connection_history import (
+    AgentConnectionHistory,
+    ConnectionBucket,
+    ConnectionHistoryResponse,
+    ConnectionHistoryState,
+    ConnectionSegment,
+)
 from .device_token import ConfirmedDeviceToken, RotatedDeviceToken
 from .connection import (
     ConnectionConfig,
@@ -53,6 +60,7 @@ from .events import (
     ScheduleEvent,
 )
 from .message import Message
+from .message_counts import AgentMessageCounts, DayCount, MessageCountsResponse
 from .message_log import MessageLogEntry
 from .notification import (
     Notification,
@@ -88,6 +96,8 @@ __all__ = [
     "AlarmTriggerEvent",
     "NotificationPolicy",
     "AgentAggregate",
+    "AgentConnectionHistory",
+    "AgentMessageCounts",
     "AgentNotificationResponse",
     "Attachment",
     "MAX_BATCH_MUTATIONS",
@@ -98,6 +108,12 @@ __all__ = [
     "BatchMutationResult",
     "Channel",
     "ChannelList",
+    "ConnectionBucket",
+    "ConnectionHistoryResponse",
+    "ConnectionHistoryState",
+    "ConnectionSegment",
+    "DayCount",
+    "MessageCountsResponse",
     "ChannelListing",
     "ChannelID",
     "ChannelSyncEvent",

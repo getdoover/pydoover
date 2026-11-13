@@ -17,6 +17,8 @@ from typing import Any
 import aiohttp
 
 from ...models.data import (
+    ConnectionHistoryResponse,
+    MessageCountsResponse,
     AgentNotificationResponse,
     Aggregate,
     Alarm,
@@ -731,6 +733,66 @@ class AsyncDataClient(BaseClient):
             organisation_id=organisation_id,
         )
         return BatchAggregateResponse.from_dict(data)
+
+    async def fetch_multi_agent_connection_history(
+        self,
+        agent_ids: list[int],
+        before: int | datetime | None = None,
+        after: int | datetime | None = None,
+        bucket_ms: int | None = None,
+        include_segments: bool = False,
+        organisation_id: int | None = None,
+    ) -> ConnectionHistoryResponse:
+        """Connection state over time for many agents, in one request.
+
+        For each agent: the state at the window's start and end, the share
+        of time it was up, and its segments when ``include_segments`` is
+        set (at most 25 agents per call). Pass ``bucket_ms`` for a fleet series: per slot,
+        how many agents were online, asleep, offline or unknown, and which
+        came up or went down. The window defaults to the last 7 days and may
+        not exceed 31; ``before`` is clipped to now. Agents the caller cannot
+        read are left out.
+        """
+        data = await self._request(
+            "GET",
+            "/agents/connection_history",
+            params={
+                "agent_id": agent_ids,
+                "before": _to_snowflake(before),
+                "after": _to_snowflake(after),
+                "bucket_ms": bucket_ms,
+                "include_segments": include_segments or None,
+            },
+            organisation_id=organisation_id,
+        )
+        return ConnectionHistoryResponse.from_dict(data)
+
+    async def fetch_multi_agent_message_counts(
+        self,
+        channel_name: str,
+        agent_ids: list[int],
+        before: int | datetime | None = None,
+        after: int | datetime | None = None,
+        organisation_id: int | None = None,
+    ) -> MessageCountsResponse:
+        """Messages stored per UTC day on ``channel_name`` for many agents.
+
+        Cheap enough to ask for a quarter at a time; ``totals`` sums every
+        agent by day. The window defaults to the last 7 days and may not
+        exceed 92. A message deleted through the API is subtracted; one
+        expired by retention still counts.
+        """
+        data = await self._request(
+            "GET",
+            f"/agents/channels/{channel_name}/messages/counts",
+            params={
+                "agent_id": agent_ids,
+                "before": _to_snowflake(before),
+                "after": _to_snowflake(after),
+            },
+            organisation_id=organisation_id,
+        )
+        return MessageCountsResponse.from_dict(data)
 
     # ── Batch mutations ────────────────────────────────────────────────────
     #
