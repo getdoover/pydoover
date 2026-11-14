@@ -62,6 +62,13 @@ class Unset:
 UNSET = Unset()
 
 
+#: Agents per connection-history request when reading a whole fleet: the
+#: API's front door caps a URL at 8,192 bytes, and each id costs about 30.
+CONNECTION_HISTORY_CHUNK = 250
+#: The server's largest page of connection events.
+CONNECTION_HISTORY_PAGE = 5000
+
+
 def _to_snowflake(value: int | datetime | None) -> int | None:
     """Coerce a datetime or snowflake int to a snowflake int."""
     if value is None:
