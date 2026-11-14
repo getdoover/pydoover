@@ -39,5 +39,11 @@ class UnauthorizedError(HTTPError):
         super().__init__(401, message, url)
 
 
+class PageLimitError(RuntimeError):
+    """A read that follows pages to the end was still not there after the
+    most pages it may take. Raised by the client rather than hand back part
+    of the answer; the API itself did not fail."""
+
+
 class TokenRefreshError(DooverAPIError):
     """Failed to refresh the access token."""

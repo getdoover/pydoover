@@ -11,13 +11,14 @@ Usage::
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import aiohttp
 
 from ...models.data import (
     ConnectionHistoryResponse,
+    merge_connection_history,
     MessageCountsResponse,
     AgentNotificationResponse,
     Aggregate,
@@ -32,6 +33,7 @@ from ...models.data import (
     File,
     Message,
     MessageLogEntry,
+    PageLimitError,
     ProcessorTokenResponse,
     RotatedDeviceToken,
     SubscriptionInfo,
@@ -64,6 +66,8 @@ from .._json import dumps as _json_dumps
 from .._json import loads as _json_loads
 from ..auth._base import AsyncAuthClient
 from ._base import (
+    CONNECTION_HISTORY_CHUNK,
+    CONNECTION_HISTORY_PAGE,
     UNSET,
     BaseClient,
     Unset,
@@ -739,19 +743,27 @@ class AsyncDataClient(BaseClient):
         agent_ids: list[int],
         before: int | datetime | None = None,
         after: int | datetime | None = None,
-        bucket_ms: int | None = None,
-        include_segments: bool = False,
+        limit: int | None = None,
+        min_gap_ms: int | None = None,
+        cursor: int | None = None,
         organisation_id: int | None = None,
     ) -> ConnectionHistoryResponse:
-        """Connection state over time for many agents, in one request.
+        """One page of connection state over time for many agents.
 
-        For each agent: the state at the window's start and end, the share
-        of time it was up, and its segments when ``include_segments`` is
-        set (at most 25 agents per call). Pass ``bucket_ms`` for a fleet series: per slot,
-        how many agents were online, asleep, offline or unknown, and which
-        came up or went down. The window defaults to the last 7 days and may
-        not exceed 31; ``before`` is clipped to now. Agents the caller cannot
-        read are left out.
+        For each agent: the state at the window's start and end and the
+        share of time it was up; then the changes of state inside the
+        window, newest first, ``limit`` to a page (default 1000, at most
+        5000). Page back by repeating the call with the same ``before`` and
+        ``after`` and the response's ``next`` as ``cursor`` until it is
+        ``None``, or use ``fetch_all_connection_history``. The window does
+        not move while paging, so the agents read the same on every page;
+        the server refuses a ``cursor`` with neither bound given, since
+        such a window starts later on every request. A state
+        held shorter than ``min_gap_ms`` (default one minute) is folded
+        into the one before it; pass 0 for every change. Uptime is measured
+        on every change whatever ``min_gap_ms`` is. The window defaults to
+        the last 7 days and may not exceed 31; ``before`` is clipped to
+        now. Agents the caller cannot read are left out.
         """
         data = await self._request(
             "GET",
@@ -760,12 +772,67 @@ class AsyncDataClient(BaseClient):
                 "agent_id": agent_ids,
                 "before": _to_snowflake(before),
                 "after": _to_snowflake(after),
-                "bucket_ms": bucket_ms,
-                "include_segments": include_segments or None,
+                "limit": limit,
+                "min_gap_ms": min_gap_ms,
+                "cursor": cursor,
             },
             organisation_id=organisation_id,
         )
         return ConnectionHistoryResponse.from_dict(data)
+
+    async def fetch_all_connection_history(
+        self,
+        agent_ids: list[int],
+        before: int | datetime | None = None,
+        after: int | datetime | None = None,
+        min_gap_ms: int | None = None,
+        organisation_id: int | None = None,
+        max_pages: int = 50,
+    ) -> ConnectionHistoryResponse:
+        """The whole window's connection timeline for many agents.
+
+        Every page of ``fetch_multi_agent_connection_history``, for any
+        number of agents (read 250 at a time, the chunks side by side), merged newest first
+        with ``next`` ``None``. Raises :class:`PageLimitError` rather than
+        return part of a timeline if a chunk is still not drained after
+        ``max_pages`` pages.
+        """
+        # A window with neither bound moves with "now", and the server
+        # refuses to page one. Fix its end here and the same start follows
+        # each time.
+        if before is None and after is None:
+            before = datetime.now(timezone.utc)
+
+        async def drain(chunk: list[int]) -> ConnectionHistoryResponse:
+            pages: list[ConnectionHistoryResponse] = []
+            cursor = None
+            while True:
+                page = await self.fetch_multi_agent_connection_history(
+                    chunk,
+                    before=before,
+                    after=after,
+                    limit=CONNECTION_HISTORY_PAGE,
+                    min_gap_ms=min_gap_ms,
+                    cursor=cursor,
+                    organisation_id=organisation_id,
+                )
+                pages.append(page)
+                if page.next is None:
+                    return merge_connection_history(pages)
+                if len(pages) >= max_pages:
+                    raise PageLimitError(
+                        f"connection history ran past {max_pages} pages for one "
+                        "chunk of agents; narrow the window or raise min_gap_ms."
+                    )
+                cursor = page.next
+
+        chunks = [
+            agent_ids[i : i + CONNECTION_HISTORY_CHUNK]
+            for i in range(0, len(agent_ids), CONNECTION_HISTORY_CHUNK)
+        ] or [agent_ids]
+        return merge_connection_history(
+            list(await asyncio.gather(*(drain(chunk) for chunk in chunks)))
+        )
 
     async def fetch_multi_agent_message_counts(
         self,

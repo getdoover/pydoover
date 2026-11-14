@@ -6,6 +6,7 @@ from pydoover.models.data import (
     ConnectionHistoryState,
     MessageCountsResponse,
     MessageLogEntry,
+    PageLimitError,
 )
 from pydoover.processor.data_client import ProcessorDataClient
 
@@ -158,10 +159,6 @@ CONNECTION_HISTORY = {
             "state_at_end": "Online",
             "uptime": 1.0,
             "truncated": False,
-            "segments": [
-                {"start": 0, "end": 3_600_000, "state": "Sleeping"},
-                {"start": 3_600_000, "end": 7_200_000, "state": "Online"},
-            ],
         },
         {
             "id": "1",
@@ -171,28 +168,9 @@ CONNECTION_HISTORY = {
             "truncated": True,
         },
     ],
-    "buckets": [
-        {
-            "start": 0,
-            "end": 3_600_000,
-            "online": 0,
-            "sleeping": 1,
-            "offline": 1,
-            "unknown": 0,
-            "came_up": [],
-            "went_down": [],
-        },
-        {
-            "start": 3_600_000,
-            "end": 7_200_000,
-            "online": 1,
-            "sleeping": 0,
-            "offline": 1,
-            "unknown": 0,
-            "came_up": ["2"],
-            "went_down": [],
-        },
-    ],
+    "events": [{"t": 3_600_000, "agent_id": "2", "state": "Online"}],
+    "count": 1,
+    "next": None,
 }
 
 MESSAGE_COUNTS = {
@@ -215,7 +193,7 @@ def test_sync_client_fetches_multi_agent_connection_history():
 
     try:
         history = client.fetch_multi_agent_connection_history(
-            [1, 2], after=10, bucket_ms=3_600_000, include_segments=True
+            [1, 2], after=10, min_gap_ms=0
         )
     finally:
         client.close()
@@ -229,8 +207,9 @@ def test_sync_client_fetches_multi_agent_connection_history():
                     "agent_id": [1, 2],
                     "before": None,
                     "after": 10,
-                    "bucket_ms": 3_600_000,
-                    "include_segments": True,
+                    "limit": None,
+                    "min_gap_ms": 0,
+                    "cursor": None,
                 },
                 "organisation_id": None,
             },
@@ -240,13 +219,130 @@ def test_sync_client_fetches_multi_agent_connection_history():
     sleeper = history.agents_by_id[2]
     assert sleeper.state_at_start is ConnectionHistoryState.sleeping
     assert sleeper.state_at_start.is_up
-    assert sleeper.segments is not None and len(sleeper.segments) == 2
     assert history.agents_by_id[1].truncated
-    assert history.agents_by_id[1].segments is None
-    assert history.buckets is not None
-    assert history.buckets[1].up == 1
-    assert history.buckets[1].came_up == [2]
+    assert history.events[0].agent_id == 2
+    assert history.events[0].state is ConnectionHistoryState.online
+    assert history.next is None
+    # One agent's timeline, derived from its start state and its events.
+    segments = history.segments_for(2)
+    assert [(s.start, s.end, s.state.value) for s in segments] == [
+        (0, 3_600_000, "Sleeping"),
+        (3_600_000, 7_200_000, "Online"),
+    ]
+    assert history.segments_for(1)[0].state is ConnectionHistoryState.offline
+    assert history.segments_for(9) == []
     assert history.to_dict() == CONNECTION_HISTORY
+
+
+def _history_pages(params):
+    """Two pages for a chunk of more than one agent, one otherwise; the
+    window, and so the agents, the same on both."""
+    ids = params["agent_id"]
+    cursor = params["cursor"]
+    if cursor is None:
+        events = [{"t": 3_600_000, "agent_id": str(i), "state": "Online"} for i in ids]
+    else:
+        events = [{"t": 1_800_000, "agent_id": str(ids[0]), "state": "Offline"}]
+    return {
+        "start": 0,
+        "end": 7_200_000,
+        "agents": [
+            {
+                "id": str(i),
+                "state_at_start": "Offline",
+                "state_at_end": "Online",
+                "uptime": 0.5,
+                "truncated": False,
+            }
+            for i in ids
+        ],
+        "events": events,
+        "count": len(events),
+        "next": "3600000" if cursor is None and len(ids) > 1 else None,
+    }
+
+
+def test_sync_client_drains_connection_history_pages():
+    client = DataClient(base_url="https://data.example", token="test-token")
+    calls = []
+
+    def fake_request(method, path, **kwargs):
+        calls.append(kwargs["params"])
+        return _history_pages(kwargs["params"])
+
+    client._request = fake_request
+    try:
+        history = client.fetch_all_connection_history([1, 2], after=10)
+        # The cursor moves; the window and the page size do not.
+        assert [(c["before"], c["after"], c["cursor"], c["limit"]) for c in calls] == [
+            (None, 10, None, 5000),
+            (None, 10, 3_600_000, 5000),
+        ]
+        assert [(e.t, e.agent_id) for e in history.events] == [
+            (3_600_000, 1),
+            (3_600_000, 2),
+            (1_800_000, 1),
+        ]
+        assert history.count == 3 and history.next is None
+        assert history.end == 7_200_000
+        assert [s.state.value for s in history.segments_by_agent()[1]] == [
+            "Offline",
+            "Offline",
+            "Online",
+        ]
+
+        # With no bounds, "now" is taken once here, not afresh per page.
+        calls.clear()
+        client.fetch_all_connection_history([1, 2])
+        assert calls[0]["before"] is not None and calls[0]["after"] is None
+        assert calls[1]["before"] == calls[0]["before"]
+
+        # A wide fleet is read 250 agents to a request and merged.
+        calls.clear()
+        wide = client.fetch_all_connection_history(list(range(1, 302)), after=10)
+        assert [len(c["agent_id"]) for c in calls] == [250, 250, 51, 51]
+        assert len(wide.agents) == 301 and wide.count == 303
+
+        # A timeline that will not drain is an error, not a short answer.
+        with pytest.raises(PageLimitError, match="1 pages"):
+            client.fetch_all_connection_history([1, 2], after=10, max_pages=1)
+    finally:
+        client.close()
+
+
+def test_segments_need_the_whole_timeline():
+    page = ConnectionHistoryResponse.from_dict(
+        _history_pages({"agent_id": [1, 2], "cursor": None})
+    )
+    assert page.next == 3_600_000
+    with pytest.raises(ValueError, match="whole timeline"):
+        page.segments_for(1)
+    with pytest.raises(ValueError, match="whole timeline"):
+        page.segments_by_agent()
+
+
+@pytest.mark.asyncio
+async def test_async_client_drains_connection_history_pages():
+    client = AsyncDataClient(base_url="https://data.example", token="test-token")
+    calls = []
+
+    async def fake_request(method, path, **kwargs):
+        calls.append(kwargs["params"])
+        return _history_pages(kwargs["params"])
+
+    client._request = fake_request
+
+    history = await client.fetch_all_connection_history(list(range(1, 302)), after=10)
+
+    assert sorted(len(c["agent_id"]) for c in calls) == [51, 51, 250, 250]
+    assert {c["cursor"] for c in calls} == {None, 3_600_000}
+    assert all(c["after"] == 10 and c["before"] is None for c in calls)
+    assert len(history.agents) == 301
+    assert history.count == 303 and history.next is None
+    assert [e.t for e in history.events[-2:]] == [1_800_000, 1_800_000]
+
+    with pytest.raises(PageLimitError, match="1 pages"):
+        await client.fetch_all_connection_history([1, 2], after=10, max_pages=1)
 
 
 @pytest.mark.asyncio

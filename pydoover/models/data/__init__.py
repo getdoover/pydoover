@@ -23,10 +23,11 @@ from .batch import (
 from .channel import Channel, ChannelID, ChannelList, ChannelListing
 from .connection_history import (
     AgentConnectionHistory,
-    ConnectionBucket,
+    ConnectionEvent,
     ConnectionHistoryResponse,
     ConnectionHistoryState,
     ConnectionSegment,
+    merge_connection_history,
 )
 from .device_token import ConfirmedDeviceToken, RotatedDeviceToken
 from .connection import (
@@ -41,6 +42,7 @@ from .exceptions import (
     ForbiddenError,
     HTTPError,
     NotFoundError,
+    PageLimitError,
     TokenRefreshError,
     UnauthorizedError,
     BadRequestError,
@@ -108,10 +110,11 @@ __all__ = [
     "BatchMutationResult",
     "Channel",
     "ChannelList",
-    "ConnectionBucket",
+    "ConnectionEvent",
     "ConnectionHistoryResponse",
     "ConnectionHistoryState",
     "ConnectionSegment",
+    "merge_connection_history",
     "DayCount",
     "MessageCountsResponse",
     "ChannelListing",
@@ -144,6 +147,7 @@ __all__ = [
     "MessageLogEntry",
     "MessageUpdateEvent",
     "NotFoundError",
+    "PageLimitError",
     "Notification",
     "NotificationEndpoint",
     "NotificationEndpointSummary",
