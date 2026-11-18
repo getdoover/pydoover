@@ -250,7 +250,7 @@ class PlatformInterface(GRPCInterface):
         self,
         app_key: str,
         plt_uri: str = "localhost:50053",
-        service_name: str = "doover.PlatformInterface",
+        service_name: str = "platform_iface.platformIface",
     ):
         super().__init__(app_key, plt_uri, service_name)
         self.pulse_counter_listeners = []
