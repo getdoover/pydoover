@@ -39,7 +39,8 @@ service platformIface {
     rpc getImage (getImageRequest) returns (getImageResponse) {}
     // Write any number of DOs and AOs in one call.
     rpc setImage (setImageRequest) returns (setImageResponse) {}
-    // The image again whenever it changes, at most max_rate_hz times a second.
+    // The image again with every new image (see getImageResponse.sequence),
+    // at most max_rate_hz times a second.
     rpc subscribeImage (subscribeImageRequest) returns (stream getImageResponse) {}
     // rpc getRtcTime (getRtcTimeRequest) returns (getRtcTimeResponse) {}
     rpc syncRtcTime (syncRtcTimeRequest) returns (syncRtcTimeResponse) {}
@@ -601,7 +602,9 @@ message getImageResponse {
     map<int32, uint64> di_count = 10;
     map<int32, double> di_rate_hz = 11;
     repeated DeviceImageStatus devices = 12;
-    // Increases when any value or channel status changes, and only then.
+    // Increases with every image a device delivers (on a Doovit 2, every board
+    // frame, 50 a second, identical or not), every write, and every change of
+    // channel status.
     uint64 sequence = 13;
 }
 
@@ -622,6 +625,6 @@ message setImageResponse {
 }
 
 message subscribeImageRequest {
-    // Upper bound on messages per second; unset or 0 sends every change.
+    // Upper bound on messages per second; unset or 0 sends every image.
     optional float max_rate_hz = 1;
 }
