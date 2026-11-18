@@ -846,3 +846,33 @@ class TestConditionalElements:
             setting = config.String("Value", default="x")
 
         assert "allOf" not in S.to_schema()
+
+
+class DurationConfig(config.Schema):
+    every = config.Duration("Every", default=300_000, minimum=1000)
+    delay = config.Duration("Delay", default=None)
+
+
+class TestDuration:
+    def test_schema(self):
+        schema = DurationConfig().to_schema()
+        every = schema["properties"]["every"]
+        assert every["format"] == "doover-duration"
+        assert every["minimum"] == 1000 and every["default"] == 300_000
+        assert "integer" in (
+            every["type"] if isinstance(every["type"], list) else [every["type"]]
+        )
+
+    def test_values_are_ms(self):
+        c = DurationConfig()
+        c._inject_deployment_config({"every": 90_000})
+        assert c.every.value == 90_000 and c.every.seconds == 90.0
+        assert c.delay.value is None and c.delay.seconds is None
+
+    def test_validates_as_an_integer(self):
+        schema = DurationConfig().to_schema()
+        validate({"every": 60_000}, schema)
+        with pytest.raises(ValidationError):
+            validate({"every": "5 min"}, schema)
+        with pytest.raises(ValidationError):
+            validate({"every": 500}, schema)  # under the minimum
