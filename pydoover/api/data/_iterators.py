@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Literal
 
 from ._base import _to_snowflake
 from ...models import Message
@@ -16,6 +16,63 @@ DEFAULT_PAGE_SIZE = 50
 
 # 2 days in milliseconds, shifted into snowflake space (millis << 22).
 _TWO_DAYS_SNOWFLAKE = 2 * 24 * 60 * 60 * 1000 << 22
+
+Order = Literal["asc", "desc"]
+
+_OUT_OF_ORDER = (
+    "messages came back out of order; the server may predate the `order` parameter"
+)
+
+
+class _ChannelPager:
+    """Feeds the server's ``next`` back as ``after`` (asc) or ``before`` (desc)."""
+
+    def __init__(self, before, after, order: Order | None):
+        self.before = _to_snowflake(before)
+        self.after = _to_snowflake(after)
+        # The server's default: `after` alone reads forward, else newest first.
+        if order is None:
+            order = "asc" if self.before is None and self.after is not None else "desc"
+        self.order: Order = order
+        self.exhausted = False
+
+    def advance(self, page: list[Message], next_id: int | None) -> None:
+        ids = [m.id for m in page]
+        if ids != sorted(ids, reverse=self.order == "desc"):
+            raise RuntimeError(_OUT_OF_ORDER)
+        if next_id is None:
+            self.exhausted = True
+        elif self.order == "asc":
+            self.after = next_id
+        else:
+            self.before = next_id
+
+
+class _WindowPager:
+    """Walks back from ``before`` (default now) to ``after`` in 2-day windows,
+    following the server's ``next`` within each."""
+
+    def __init__(self, before, after):
+        self.start = _to_snowflake(after)
+        self.cursor = _to_snowflake(before) or _to_snowflake(datetime.now(UTC))
+        self.window_after = self._floor(self.cursor)
+        self.exhausted = False
+
+    def _floor(self, before: int) -> int:
+        floor = before - _TWO_DAYS_SNOWFLAKE
+        return floor if self.start is None else max(floor, self.start)
+
+    def advance(self, next_id: int | None) -> None:
+        if next_id is not None:
+            if next_id >= self.cursor:
+                raise RuntimeError(_OUT_OF_ORDER)
+            self.cursor = next_id
+        elif self.start is None or self.window_after <= self.start:
+            self.exhausted = True
+        else:
+            # Bounds are exclusive: +1 so a message on the boundary isn't skipped.
+            self.cursor = self.window_after + 1
+            self.window_after = self._floor(self.cursor)
 
 
 class AsyncMessageIterator:
@@ -41,52 +98,37 @@ class AsyncMessageIterator:
         field_names: list[str] | None = None,
         organisation_id: int | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
+        order: Order | None = None,
     ):
         self._client = client
         self._channel_name = channel_name
         self._agent_id = agent_id
-        self._before = _to_snowflake(before)
-        self._after = _to_snowflake(after)
+        self._pager = _ChannelPager(before, after, order)
         self._field_names = field_names
         self._organisation_id = organisation_id
         self._page_size = page_size
         self._buffer: list[Message] = []
-        self._exhausted = False
 
     def __aiter__(self):
         return self
 
     async def __anext__(self) -> Message:
+        while not self._buffer and not self._pager.exhausted:
+            page = await self._client.fetch_messages_page(
+                agent_id=self._agent_id,
+                channel_name=self._channel_name,
+                before=self._pager.before,
+                after=self._pager.after,
+                limit=self._page_size,
+                field_names=self._field_names,
+                order=self._pager.order,
+                organisation_id=self._organisation_id,
+            )
+            self._buffer = list(page.results)
+            self._pager.advance(page.results, page.next)
         if not self._buffer:
-            if self._exhausted:
-                raise StopAsyncIteration
-            await self._fetch_page()
-            if not self._buffer:
-                raise StopAsyncIteration
+            raise StopAsyncIteration
         return self._buffer.pop(0)
-
-    async def _fetch_page(self):
-        page = await self._client.list_messages(
-            agent_id=self._agent_id,
-            channel_name=self._channel_name,
-            before=self._before,
-            after=self._after,
-            limit=self._page_size,
-            field_names=self._field_names,
-            organisation_id=self._organisation_id,
-        )
-        if not page or len(page) < self._page_size:
-            self._exhausted = True
-        if page:
-            # API returns descending order when both before/after are set.
-            # Paginate backwards: move `before` to the oldest in this page.
-            # I'm not 100% sure on this, it needs a fix in doover-data with default sort options
-            # and then this may work a bit better.
-            if self._before is not None:
-                page = [m for m in page if m.id < self._before]
-            if page:
-                self._before = page[-1].id
-                self._buffer = page
 
     async def collect(self) -> list[Message]:
         """Consume the iterator and return all messages as a list."""
@@ -97,11 +139,12 @@ class AsyncMessageIterator:
 
 
 class AsyncMultiAgentMessageIterator:
-    """Async iterator that paginates through multi-agent channel messages.
+    """Async iterator that paginates through multi-agent channel messages,
+    newest first.
 
     The multi-agent endpoint requires ``before`` and ``after`` to be at most
-    2 days apart.  This iterator automatically splits wider ranges into
-    consecutive 2-day windows so callers don't need to worry about it.
+    2 days apart, so this walks wider ranges back in 2-day windows. Without
+    ``after`` it covers the 2 days before ``before`` (default now).
 
     Usage::
 
@@ -128,68 +171,33 @@ class AsyncMultiAgentMessageIterator:
         self._client = client
         self._channel_name = channel_name
         self._agent_ids = agent_ids
-        self._before = _to_snowflake(before)
-        self._after = _to_snowflake(after)
+        self._pager = _WindowPager(before, after)
         self._agent_message_limit = agent_message_limit
         self._field_names = field_names
         self._organisation_id = organisation_id
         self._page_size = page_size
         self._buffer: list[Message] = []
-        self._exhausted = False
-        # Current window upper bound — capped to _before or after + 2 days.
-        self._window_before = self._next_window_before(self._after)
-
-    def _next_window_before(self, after: int | None) -> int | None:
-        """Return the ``before`` for the current window (at most 2 days from *after*)."""
-        if after is None or self._before is None:
-            return self._before
-        window_end = after + _TWO_DAYS_SNOWFLAKE
-        return min(window_end, self._before)
 
     def __aiter__(self):
         return self
 
     async def __anext__(self) -> Message:
-        if not self._buffer:
-            if self._exhausted:
-                raise StopAsyncIteration
-            await self._fetch_page()
-            if not self._buffer:
-                raise StopAsyncIteration
-        return self._buffer.pop(0)
-
-    def _advance_window(self) -> bool:
-        """Move to the next 2-day window. Return True if a new window is available."""
-        if self._window_before is not None and self._window_before < self._before:
-            self._after = self._window_before
-            self._window_before = self._next_window_before(self._after)
-            return True
-        return False
-
-    async def _fetch_page(self):
-        while True:
+        while not self._buffer and not self._pager.exhausted:
             batch = await self._client.fetch_multi_agent_messages(
                 self._channel_name,
                 self._agent_ids,
-                before=self._window_before,
-                after=self._after,
+                before=self._pager.cursor,
+                after=self._pager.window_after,
                 limit=self._page_size,
                 agent_message_limit=self._agent_message_limit,
                 field_names=self._field_names,
                 organisation_id=self._organisation_id,
             )
-            results = batch.results
-            if results and self._after is not None:
-                results = [m for m in results if m.id > self._after]
-            if results:
-                self._after = results[-1].id
-                self._buffer = results
-                if len(batch.results) >= self._page_size:
-                    return
-            # Current window exhausted — try the next one.
-            if not self._advance_window():
-                self._exhausted = True
-                return
+            self._buffer = list(batch.results)
+            self._pager.advance(batch.next)
+        if not self._buffer:
+            raise StopAsyncIteration
+        return self._buffer.pop(0)
 
     async def collect(self) -> list[Message]:
         """Consume the iterator and return all messages as a list."""
@@ -222,50 +230,37 @@ class MessageIterator:
         field_names: list[str] | None = None,
         organisation_id: int | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
+        order: Order | None = None,
     ):
         self._client = client
         self._channel_name = channel_name
         self._agent_id = agent_id
-        self._before = _to_snowflake(before)
-        self._after = _to_snowflake(after)
+        self._pager = _ChannelPager(before, after, order)
         self._field_names = field_names
         self._organisation_id = organisation_id
         self._page_size = page_size
         self._buffer: list[Message] = []
-        self._exhausted = False
 
     def __iter__(self):
         return self
 
     def __next__(self) -> Message:
+        while not self._buffer and not self._pager.exhausted:
+            page = self._client.fetch_messages_page(
+                agent_id=self._agent_id,
+                channel_name=self._channel_name,
+                before=self._pager.before,
+                after=self._pager.after,
+                limit=self._page_size,
+                field_names=self._field_names,
+                order=self._pager.order,
+                organisation_id=self._organisation_id,
+            )
+            self._buffer = list(page.results)
+            self._pager.advance(page.results, page.next)
         if not self._buffer:
-            if self._exhausted:
-                raise StopIteration
-            self._fetch_page()
-            if not self._buffer:
-                raise StopIteration
+            raise StopIteration
         return self._buffer.pop(0)
-
-    def _fetch_page(self):
-        page = self._client.list_messages(
-            agent_id=self._agent_id,
-            channel_name=self._channel_name,
-            before=self._before,
-            after=self._after,
-            limit=self._page_size,
-            field_names=self._field_names,
-            organisation_id=self._organisation_id,
-        )
-        if not page or len(page) < self._page_size:
-            self._exhausted = True
-        if page:
-            # API returns descending order when both before/after are set.
-            # Paginate backwards: move `before` to the oldest in this page.
-            if self._before is not None:
-                page = [m for m in page if m.id < self._before]
-            if page:
-                self._before = page[-1].id
-                self._buffer = page
 
     def collect(self) -> list[Message]:
         """Consume the iterator and return all messages as a list."""
@@ -273,11 +268,12 @@ class MessageIterator:
 
 
 class MultiAgentMessageIterator:
-    """Sync iterator that paginates through multi-agent channel messages.
+    """Sync iterator that paginates through multi-agent channel messages,
+    newest first.
 
     The multi-agent endpoint requires ``before`` and ``after`` to be at most
-    2 days apart.  This iterator automatically splits wider ranges into
-    consecutive 2-day windows so callers don't need to worry about it.
+    2 days apart, so this walks wider ranges back in 2-day windows. Without
+    ``after`` it covers the 2 days before ``before`` (default now).
 
     Usage::
 
@@ -304,64 +300,33 @@ class MultiAgentMessageIterator:
         self._client = client
         self._channel_name = channel_name
         self._agent_ids = agent_ids
-        self._before = _to_snowflake(before)
-        self._after = _to_snowflake(after)
+        self._pager = _WindowPager(before, after)
         self._agent_message_limit = agent_message_limit
         self._field_names = field_names
         self._organisation_id = organisation_id
         self._page_size = page_size
         self._buffer: list[Message] = []
-        self._exhausted = False
-        self._window_before = self._next_window_before(self._after)
-
-    def _next_window_before(self, after: int | None) -> int | None:
-        if after is None or self._before is None:
-            return self._before
-        window_end = after + _TWO_DAYS_SNOWFLAKE
-        return min(window_end, self._before)
 
     def __iter__(self):
         return self
 
     def __next__(self) -> Message:
-        if not self._buffer:
-            if self._exhausted:
-                raise StopIteration
-            self._fetch_page()
-            if not self._buffer:
-                raise StopIteration
-        return self._buffer.pop(0)
-
-    def _advance_window(self) -> bool:
-        if self._window_before is not None and self._window_before < self._before:
-            self._after = self._window_before
-            self._window_before = self._next_window_before(self._after)
-            return True
-        return False
-
-    def _fetch_page(self):
-        while True:
+        while not self._buffer and not self._pager.exhausted:
             batch = self._client.fetch_multi_agent_messages(
                 self._channel_name,
                 self._agent_ids,
-                before=self._window_before,
-                after=self._after,
+                before=self._pager.cursor,
+                after=self._pager.window_after,
                 limit=self._page_size,
                 agent_message_limit=self._agent_message_limit,
                 field_names=self._field_names,
                 organisation_id=self._organisation_id,
             )
-            results = batch.results
-            if results and self._after is not None:
-                results = [m for m in results if m.id > self._after]
-            if results:
-                self._after = results[-1].id
-                self._buffer = results
-                if len(batch.results) >= self._page_size:
-                    return
-            if not self._advance_window():
-                self._exhausted = True
-                return
+            self._buffer = list(batch.results)
+            self._pager.advance(batch.next)
+        if not self._buffer:
+            raise StopIteration
+        return self._buffer.pop(0)
 
     def collect(self) -> list[Message]:
         """Consume the iterator and return all messages as a list."""

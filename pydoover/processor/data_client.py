@@ -5,6 +5,7 @@ from typing import Any
 
 from ..api import AsyncDataClient
 from ..api.data import AsyncMessageIterator
+from ..api.data._iterators import Order
 from ..models.data import (
     Aggregate,
     Channel,
@@ -158,6 +159,7 @@ class ProcessorDataClient(AsyncDataClient):
         field_names: list[str] | None = None,
         agent_id: int | None = None,
         organisation_id: int | None = None,
+        order: Order | None = None,
     ) -> list[Message]:
         return await super().list_messages(
             agent_id=self._resolve_agent_id(agent_id),
@@ -167,6 +169,7 @@ class ProcessorDataClient(AsyncDataClient):
             limit=limit,
             field_names=field_names,
             organisation_id=organisation_id,
+            order=order,
         )
 
     def iter_messages(
@@ -178,6 +181,7 @@ class ProcessorDataClient(AsyncDataClient):
         agent_id: int | None = None,
         organisation_id: int | None = None,
         page_size: int = 50,
+        order: Order | None = None,
     ) -> AsyncMessageIterator:
         return super().iter_messages(
             agent_id=self._resolve_agent_id(agent_id),
@@ -187,6 +191,7 @@ class ProcessorDataClient(AsyncDataClient):
             field_names=field_names,
             organisation_id=organisation_id,
             page_size=page_size,
+            order=order,
         )
 
     async def fetch_message(

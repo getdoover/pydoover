@@ -83,7 +83,7 @@ from ._base import (
     _to_snowflake,
     build_sync_auth,
 )
-from ._iterators import MessageIterator, MultiAgentMessageIterator
+from ._iterators import MessageIterator, MultiAgentMessageIterator, Order
 
 log = logging.getLogger(__name__)
 
@@ -382,6 +382,7 @@ class DataClient(BaseClient):
         limit: int | None = None,
         field_names: list[str] | None = None,
         organisation_id: int | None = None,
+        order: Order | None = None,
     ) -> list[Message]:
         data = self._request(
             "GET",
@@ -391,10 +392,39 @@ class DataClient(BaseClient):
                 "after": _to_snowflake(after),
                 "limit": limit,
                 "field_name": field_names,
+                "order": order,
             },
             organisation_id=organisation_id,
         )
         return [Message.from_dict(m) for m in data]
+
+    def fetch_messages_page(
+        self,
+        agent_id: int,
+        channel_name: str,
+        before: int | datetime | None = None,
+        after: int | datetime | None = None,
+        limit: int | None = None,
+        field_names: list[str] | None = None,
+        order: Order | None = None,
+        organisation_id: int | None = None,
+    ) -> BatchMessageResponse:
+        """One page of messages plus the server's ``next`` cursor: the next
+        page's ``after`` for ``order="asc"``, its ``before`` for ``"desc"``."""
+        data = self._request(
+            "GET",
+            f"/agents/{agent_id}/channels/{channel_name}/messages",
+            params={
+                "before": _to_snowflake(before),
+                "after": _to_snowflake(after),
+                "limit": limit,
+                "field_name": field_names,
+                "order": order,
+                "paginated": True,
+            },
+            organisation_id=organisation_id,
+        )
+        return BatchMessageResponse.from_dict(data)
 
     def iter_messages(
         self,
@@ -404,9 +434,12 @@ class DataClient(BaseClient):
         after: int | datetime | None = None,
         field_names: list[str] | None = None,
         page_size: int = 50,
+        order: Order | None = None,
         organisation_id: int | None = None,
     ) -> MessageIterator:
         """Return a paginating iterator over channel messages.
+
+        ``order`` defaults to oldest first for ``after`` alone, else newest first.
 
         Use as ``for msg in client.iter_messages(...)`` or call
         ``.collect()`` to load all matching messages into a list.
@@ -420,6 +453,7 @@ class DataClient(BaseClient):
             field_names=field_names,
             organisation_id=organisation_id,
             page_size=page_size,
+            order=order,
         )
 
     def fetch_message(
