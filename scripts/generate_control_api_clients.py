@@ -180,7 +180,10 @@ def request_schema_info(operation: dict, schemas: dict[str, dict]):
         for field_name, field_schema in (
             schemas[schema_name].get("properties") or {}
         ).items():
-            if field_schema.get("format") == "binary":
+            items = field_schema.get("items") or {}
+            if field_schema.get("format") == "binary" or (
+                field_schema.get("type") == "array" and items.get("format") == "binary"
+            ):
                 binary_fields.add(field_name)
         if binary_fields:
             body_mode = "multipart"

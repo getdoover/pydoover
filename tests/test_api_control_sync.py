@@ -212,7 +212,7 @@ def test_sync_client_sends_non_binary_multipart_fields_via_files():
     assert method == "PUT"
     assert url == "https://control.example/applications/7/processor_source/"
     assert "data" not in kwargs
-    assert kwargs["files"] == {
+    assert dict(kwargs["files"]) == {
         "name": (None, "processor.py"),
         "published": (None, "true"),
         "config": (None, json.dumps({"version": 1})),
@@ -223,26 +223,27 @@ def test_sync_client_sends_non_binary_multipart_fields_via_files():
 
 
 def test_sync_client_combines_text_and_binary_multipart_fields(tmp_path: Path):
-    upload = tmp_path / "processor.py"
-    upload.write_text("print('ok')", encoding="utf-8")
+    first, second = tmp_path / "widget.js", tmp_path / "gate.dvs"
+    first.write_text("export {}", encoding="utf-8")
+    second.write_bytes(b"script")
     client, session = make_client(DummyResponse(200, json_body=THEME_WITH_ID))
 
     client._execute(
         "PUT",
         "/upload/",
-        body={"label": "processor", "file": upload},
+        body={"label": "processor", "file": [first, second]},
         body_mode="multipart",
         binary_fields={"file"},
     )
 
     _, _, kwargs = session.calls[0]
 
-    assert kwargs["files"]["label"] == (None, "processor")
-    assert kwargs["files"]["file"] == (
-        "processor.py",
-        b"print('ok')",
-        "application/octet-stream",
-    )
+    # A list in a binary field is one part per file, under the field's name.
+    assert kwargs["files"] == [
+        ("label", (None, "processor")),
+        ("file", ("widget.js", b"export {}", "application/octet-stream")),
+        ("file", ("gate.dvs", b"script", "application/octet-stream")),
+    ]
 
     client.close()
 

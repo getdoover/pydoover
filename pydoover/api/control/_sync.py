@@ -186,23 +186,23 @@ class ControlClient(ControlClientGroups, BaseControlClient):
 
                 if payload is not None:
                     if body_mode == "multipart":
-                        files: dict[str, tuple[str, bytes, str]] = {}
-                        multipart_fields: dict[str, tuple[None, str]] = {}
+                        # A list of pairs, so a binary field can carry several files.
+                        parts: list[tuple[str, tuple]] = []
                         for key, value in payload.items():
                             if value is None:
                                 continue
                             if binary_fields and key in binary_fields:
-                                files[key] = _coerce_file_value(key, value)
+                                values = value if isinstance(value, list) else [value]
+                                parts.extend(
+                                    (key, _coerce_file_value(key, v)) for v in values
+                                )
                             elif isinstance(value, (dict, list)):
-                                multipart_fields[key] = (None, json.dumps(value))
+                                parts.append((key, (None, json.dumps(value))))
                             elif isinstance(value, bool):
-                                multipart_fields[key] = (None, str(value).lower())
+                                parts.append((key, (None, str(value).lower())))
                             else:
-                                multipart_fields[key] = (None, str(value))
-                        request_kwargs["files"] = {
-                            **multipart_fields,
-                            **files,
-                        }
+                                parts.append((key, (None, str(value))))
+                        request_kwargs["files"] = parts
                     else:
                         request_kwargs["json"] = payload
 

@@ -81,6 +81,8 @@ INCLUDED_OPERATION_IDS = [
     "applications_processor_source_update",
     "applications_processor_version_create",
     "applications_unarchive_create",
+    "applications_files_retrieve",
+    "applications_files_update",
     "applications_widget_update",
     "applications_config_profiles_list",
     "applications_config_profiles_create",
@@ -379,7 +381,7 @@ INCLUDED_OPERATION_IDS = [
     "users_sync_create",
     "users_me_retrieve",
 ]
-OPERATION_COUNT = 324
+OPERATION_COUNT = 326
 
 __all__ = [
     "EXCLUDED_PATHS",
