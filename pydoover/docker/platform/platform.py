@@ -1423,8 +1423,9 @@ class PlatformInterface(GRPCInterface):
         return list(response.failed_do), list(response.failed_ao)
 
     def subscribe_image(self, callback, max_rate_hz: float | None = None):
-        """Call ``callback(image)`` with a :class:`ProcessImage` whenever the
-        image changes, at most ``max_rate_hz`` times a second.
+        """Call ``callback(image)`` with each new :class:`ProcessImage` (every
+        board frame on a Doovit 2: 50 a second), at most ``max_rate_hz`` times
+        a second.
 
         Runs until :meth:`close`, reconnecting if the stream drops. The callback
         may be sync or async.
@@ -1444,7 +1445,7 @@ class PlatformInterface(GRPCInterface):
         callback
             Called with each :class:`ProcessImage`.
         max_rate_hz
-            Upper bound on calls per second; ``None`` delivers every change.
+            Upper bound on calls per second; ``None`` delivers every image.
         """
         listener = asyncio.create_task(self.recv_image(callback, max_rate_hz))
         self.pulse_counter_listeners.append(listener)

@@ -394,7 +394,9 @@ class ProcessImage:
     devices : list[DeviceImageStatus]
         Master first, then slaves in configured order.
     sequence : int
-        Increases when any value or channel status changes, and only then.
+        Increases with every image a device delivers (on a Doovit 2, every
+        board frame, 50 a second, identical or not), every write, and every
+        change of channel status.
     """
 
     di: list[bool]
