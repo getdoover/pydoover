@@ -13,9 +13,9 @@ from pydoover.api.control._generated_sync import OPERATION_COUNT as SYNC_OPERATI
 
 
 def test_generated_group_tree_matches_expected_surface():
-    assert OPERATION_COUNT == 324
-    assert SYNC_OPERATION_COUNT == 324
-    assert ASYNC_OPERATION_COUNT == 324
+    assert OPERATION_COUNT == 326
+    assert SYNC_OPERATION_COUNT == 326
+    assert ASYNC_OPERATION_COUNT == 326
     assert "public" not in GROUP_TREE
     assert "pwa" not in GROUP_TREE
     assert GROUP_TREE["container"] == {"registry": {}}

@@ -656,6 +656,44 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
             item_schema=None,
         )
 
+    async def files_retrieve(
+        self, id: str, organisation_id: int | None = None
+    ) -> list[control_models.ApplicationFile]:
+        path = f"/applications/{id}/files/"
+        params = None
+        return await self._root._execute(
+            "GET",
+            path,
+            params=params,
+            body=None,
+            body_schema=None,
+            body_mode="json",
+            binary_fields=None,
+            organisation_id=organisation_id,
+            response_kind="list_model",
+            response_schema=None,
+            item_schema="ApplicationFileSerializerDetail",
+        )
+
+    async def files_update(
+        self, id: str, body: Any, organisation_id: int | None = None
+    ) -> list[control_models.ApplicationFile]:
+        path = f"/applications/{id}/files/"
+        params = None
+        return await self._root._execute(
+            "PUT",
+            path,
+            params=params,
+            body=body,
+            body_schema="ApplicationFilesUploadRequestDetailRequest",
+            body_mode="multipart",
+            binary_fields=["file"],
+            organisation_id=organisation_id,
+            response_kind="list_model",
+            response_schema=None,
+            item_schema="ApplicationFileSerializerDetail",
+        )
+
     async def installs_list(
         self,
         parent_lookup_application: str,
@@ -833,7 +871,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         parent_lookup_application: str,
         body: Any,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.ApplicationOrganisationAccess:
         path = f"/applications/{parent_lookup_application}/organisation_access/"
         params = None
         return await self._root._execute(
@@ -855,7 +893,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         id: str,
         parent_lookup_application: str,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.ApplicationOrganisationAccess:
         path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -878,7 +916,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         parent_lookup_application: str,
         body: Any,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.ApplicationOrganisationAccess:
         path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -907,7 +945,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         per_page: int | None = None,
         search: str | None = None,
         organisation_id: int | None = None,
-    ) -> control_models.ControlPage[Any]:
+    ) -> control_models.ControlPage[control_models.ApplicationOrganisationAccess]:
         path = f"/applications/{parent_lookup_application}/organisation_access/"
         params = {
             "access": access,
@@ -939,7 +977,7 @@ class ApplicationsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         parent_lookup_application: str,
         body: Any | None = None,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.ApplicationOrganisationAccess:
         path = f"/applications/{parent_lookup_application}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -2171,7 +2209,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         parent_lookup_device_type: str,
         body: Any,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.DeviceTypeOrganisationAccess:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/"
         params = None
         return await self._root._execute(
@@ -2193,7 +2231,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         id: str,
         parent_lookup_device_type: str,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.DeviceTypeOrganisationAccess:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -2216,7 +2254,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         parent_lookup_device_type: str,
         body: Any,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.DeviceTypeOrganisationAccess:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -2245,7 +2283,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         per_page: int | None = None,
         search: str | None = None,
         organisation_id: int | None = None,
-    ) -> control_models.ControlPage[Any]:
+    ) -> control_models.ControlPage[control_models.DeviceTypeOrganisationAccess]:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/"
         params = {
             "access": access,
@@ -2277,7 +2315,7 @@ class DevicesAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         parent_lookup_device_type: str,
         body: Any | None = None,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.DeviceTypeOrganisationAccess:
         path = f"/devices/types/{parent_lookup_device_type}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -6850,7 +6888,7 @@ class SolutionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
 
     async def organisation_access_create(
         self, parent_lookup_solution: str, body: Any, organisation_id: int | None = None
-    ) -> Any:
+    ) -> control_models.SolutionOrganisationAccess:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/"
         params = None
         return await self._root._execute(
@@ -6869,7 +6907,7 @@ class SolutionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
 
     async def organisation_access_retrieve(
         self, id: str, parent_lookup_solution: str, organisation_id: int | None = None
-    ) -> Any:
+    ) -> control_models.SolutionOrganisationAccess:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -6892,7 +6930,7 @@ class SolutionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         parent_lookup_solution: str,
         body: Any,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.SolutionOrganisationAccess:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -6921,7 +6959,7 @@ class SolutionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         search: str | None = None,
         solution: str | None = None,
         organisation_id: int | None = None,
-    ) -> control_models.ControlPage[Any]:
+    ) -> control_models.ControlPage[control_models.SolutionOrganisationAccess]:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/"
         params = {
             "access": access,
@@ -6953,7 +6991,7 @@ class SolutionsAsyncGroup(_ControlGroupBase[_AsyncControlExecutor]):
         parent_lookup_solution: str,
         body: Any | None = None,
         organisation_id: int | None = None,
-    ) -> Any:
+    ) -> control_models.SolutionOrganisationAccess:
         path = f"/solutions/{parent_lookup_solution}/organisation_access/{id}/"
         params = None
         return await self._root._execute(
@@ -7495,7 +7533,7 @@ def _attach_async_groups(root: AsyncControlClientGroups):
     root.users = UsersAsyncGroup(root)
 
 
-OPERATION_COUNT = 324
+OPERATION_COUNT = 326
 
 __all__ = [
     "AsyncControlClientGroups",

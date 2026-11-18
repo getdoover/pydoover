@@ -218,15 +218,17 @@ class AsyncControlClient(AsyncControlClientGroups, BaseControlClient):
                             if value is None:
                                 continue
                             if binary_fields and key in binary_fields:
-                                filename, data, content_type = _coerce_file_value(
-                                    key, value
-                                )
-                                form.add_field(
-                                    key,
-                                    data,
-                                    filename=filename,
-                                    content_type=content_type,
-                                )
+                                values = value if isinstance(value, list) else [value]
+                                for v in values:
+                                    filename, data, content_type = _coerce_file_value(
+                                        key, v
+                                    )
+                                    form.add_field(
+                                        key,
+                                        data,
+                                        filename=filename,
+                                        content_type=content_type,
+                                    )
                             elif isinstance(value, (dict, list)):
                                 form.add_field(key, json.dumps(value))
                             elif isinstance(value, bool):

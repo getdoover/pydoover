@@ -1779,6 +1779,123 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OpenAPIErrorResponse'
+  /applications/{id}/files/:
+    get:
+      operationId: applications_files_retrieve
+      description: |-
+        The files the next version ships: PUT replaces them all (the manifest
+        names each channel's files; each `file` part is one of them, by name).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this application.
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationFileSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+    put:
+      operationId: applications_files_update
+      description: |-
+        The files the next version ships: PUT replaces them all (the manifest
+        names each channel's files; each `file` part is one of them, by name).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: A unique value identifying this application.
+        required: true
+      - name: X-Doover-Organisation
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional organisation override header
+      tags:
+      - applications
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplicationFilesUploadRequestDetailRequest'
+        required: true
+      security:
+      - bearer_or_cookie_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationFileSerializerDetail'
+          description: ''
+        '400':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '403':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '404':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
+        '409':
+          description: Conflict response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAPIErrorResponse'
   /applications/{id}/widget/:
     put:
       operationId: applications_widget_update
@@ -23266,6 +23383,50 @@ components:
       - config_profiles
       - display_name
       - id
+    ApplicationFileSerializerDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        channel:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        content_type:
+          type: string
+          readOnly: true
+        sha256:
+          type: string
+          readOnly: true
+        size:
+          type: integer
+          readOnly: true
+      required:
+      - channel
+      - content_type
+      - id
+      - name
+      - sha256
+      - size
+    ApplicationFilesUploadRequestDetailRequest:
+      type: object
+      properties:
+        manifest:
+          type: string
+          description: 'JSON: [{"channel": "{app_key}_widget", "files": ["widget.js"],
+            "content_type": optional}, ...]. One entry per channel; `{app_key}` becomes
+            each install''s name.'
+        file:
+          type: array
+          items:
+            type: string
+            format: binary
+      required:
+      - file
+      - manifest
     ApplicationWidgetUploadRequestDetailRequest:
       type: object
       properties:
