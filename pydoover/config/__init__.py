@@ -683,6 +683,45 @@ class Integer(ConfigElement):
         return res
 
 
+class Duration(Integer):
+    """A length of time, stored as a whole number of milliseconds.
+
+    In the config it's a JSON integer (ms) with ``"format": "doover-duration"``, which Doover
+    Admin renders as one field that takes and shows a duration as people write it ("30 s",
+    "5 min", "1 h 30 min") and stores the milliseconds. So an app reads ``value`` as an int and
+    never parses text itself.
+
+    Examples
+    --------
+
+    >>> from pydoover import config
+    >>> class MyAppConfig(config.Schema):
+    ...     every = config.Duration("Every", default=5 * 60_000, minimum=1000,
+    ...                             description="How often it's read.")
+
+    Attributes
+    ----------
+    display_name: str
+        The display name of the config element. This is used in the UI.
+    default: int | None
+        The default, in ms. None makes it optional (unset reads as None).
+    minimum, maximum: int | None
+        Limits, in ms.
+    """
+
+    FORMAT = "doover-duration"
+
+    def to_dict(self):
+        res = super().to_dict()
+        res["format"] = self.FORMAT
+        return res
+
+    @property
+    def seconds(self) -> float | None:
+        """The value in seconds, None if unset."""
+        return None if self.value is None else self.value / 1000
+
+
 class Number(Integer):
     """Represents a JSON Number type, for any numeric type. Internally represented as a float.
 
